@@ -1,0 +1,379 @@
+{
+  "tile": 32,
+  "buildings": [
+    {
+      "id": "launch",
+      "name": "Launch Hall",
+      "file": "launch.png",
+      "footprint": {
+        "w": 12,
+        "h": 7
+      },
+      "door_tile_offset": {
+        "x": 6,
+        "y": 6
+      },
+      "interact_tile_offset": {
+        "x": 6,
+        "y": 7
+      },
+      "pixel_size": {
+        "w": 384,
+        "h": 288
+      },
+      "anchor": "bottom-left at footprint (x, y+h); sprite rises 2 tiles above footprint"
+    },
+    {
+      "id": "cafe",
+      "name": "Shiba Sips Caf\u00e9",
+      "file": "cafe.png",
+      "footprint": {
+        "w": 8,
+        "h": 6
+      },
+      "door_tile_offset": {
+        "x": 4,
+        "y": 5
+      },
+      "interact_tile_offset": {
+        "x": 4,
+        "y": 6
+      },
+      "pixel_size": {
+        "w": 256,
+        "h": 256
+      },
+      "anchor": "bottom-left at footprint (x, y+h); sprite rises 2 tiles above footprint"
+    },
+    {
+      "id": "cars",
+      "name": "Zoomies Motors",
+      "file": "cars.png",
+      "footprint": {
+        "w": 10,
+        "h": 6
+      },
+      "door_tile_offset": {
+        "x": 5,
+        "y": 5
+      },
+      "interact_tile_offset": {
+        "x": 5,
+        "y": 6
+      },
+      "pixel_size": {
+        "w": 320,
+        "h": 256
+      },
+      "anchor": "bottom-left at footprint (x, y+h); sprite rises 2 tiles above footprint"
+    },
+    {
+      "id": "fashion",
+      "name": "Fetch Fashion",
+      "file": "fashion.png",
+      "footprint": {
+        "w": 7,
+        "h": 6
+      },
+      "door_tile_offset": {
+        "x": 3,
+        "y": 5
+      },
+      "interact_tile_offset": {
+        "x": 3,
+        "y": 6
+      },
+      "pixel_size": {
+        "w": 224,
+        "h": 256
+      },
+      "anchor": "bottom-left at footprint (x, y+h); sprite rises 2 tiles above footprint"
+    },
+    {
+      "id": "shop",
+      "name": "Paws & Pillows",
+      "file": "shop.png",
+      "footprint": {
+        "w": 9,
+        "h": 6
+      },
+      "door_tile_offset": {
+        "x": 4,
+        "y": 5
+      },
+      "interact_tile_offset": {
+        "x": 4,
+        "y": 6
+      },
+      "pixel_size": {
+        "w": 288,
+        "h": 256
+      },
+      "anchor": "bottom-left at footprint (x, y+h); sprite rises 2 tiles above footprint"
+    },
+    {
+      "id": "mall",
+      "name": "Kibble Mall",
+      "file": "mall.png",
+      "footprint": {
+        "w": 14,
+        "h": 8
+      },
+      "door_tile_offset": {
+        "x": 7,
+        "y": 7
+      },
+      "interact_tile_offset": {
+        "x": 7,
+        "y": 8
+      },
+      "pixel_size": {
+        "w": 448,
+        "h": 320
+      },
+      "anchor": "bottom-left at footprint (x, y+h); sprite rises 2 tiles above footprint"
+    },
+    {
+      "id": "jewel",
+      "name": "Gilded Collar Jewelers",
+      "file": "jewel.png",
+      "footprint": {
+        "w": 8,
+        "h": 6
+      },
+      "door_tile_offset": {
+        "x": 4,
+        "y": 5
+      },
+      "interact_tile_offset": {
+        "x": 4,
+        "y": 6
+      },
+      "pixel_size": {
+        "w": 256,
+        "h": 256
+      },
+      "anchor": "bottom-left at footprint (x, y+h); sprite rises 2 tiles above footprint"
+    },
+    {
+      "id": "designer",
+      "name": "Royal Paws Designer",
+      "file": "designer.png",
+      "footprint": {
+        "w": 8,
+        "h": 6
+      },
+      "door_tile_offset": {
+        "x": 4,
+        "y": 5
+      },
+      "interact_tile_offset": {
+        "x": 4,
+        "y": 6
+      },
+      "pixel_size": {
+        "w": 256,
+        "h": 256
+      },
+      "anchor": "bottom-left at footprint (x, y+h); sprite rises 2 tiles above footprint"
+    },
+    {
+      "id": "goldden",
+      "name": "Golden Den Furniture",
+      "file": "goldden.png",
+      "footprint": {
+        "w": 8,
+        "h": 6
+      },
+      "door_tile_offset": {
+        "x": 4,
+        "y": 5
+      },
+      "interact_tile_offset": {
+        "x": 4,
+        "y": 6
+      },
+      "pixel_size": {
+        "w": 256,
+        "h": 256
+      },
+      "anchor": "bottom-left at footprint (x, y+h); sprite rises 2 tiles above footprint"
+    },
+    {
+      "id": "luxauto",
+      "name": "Zoomies Luxury Autos",
+      "file": "luxauto.png",
+      "footprint": {
+        "w": 8,
+        "h": 6
+      },
+      "door_tile_offset": {
+        "x": 4,
+        "y": 5
+      },
+      "interact_tile_offset": {
+        "x": 4,
+        "y": 6
+      },
+      "pixel_size": {
+        "w": 256,
+        "h": 256
+      },
+      "anchor": "bottom-left at footprint (x, y+h); sprite rises 2 tiles above footprint"
+    },
+    {
+      "id": "office",
+      "name": "President's Office",
+      "file": "office.png",
+      "footprint": {
+        "w": 10,
+        "h": 5
+      },
+      "door_tile_offset": {
+        "x": 5,
+        "y": 4
+      },
+      "interact_tile_offset": {
+        "x": 5,
+        "y": 5
+      },
+      "pixel_size": {
+        "w": 320,
+        "h": 224
+      },
+      "anchor": "bottom-left at footprint (x, y+h); sprite rises 2 tiles above footprint"
+    },
+    {
+      "id": "leaders",
+      "name": "Leaderboards Hall",
+      "file": "leaders.png",
+      "footprint": {
+        "w": 3,
+        "h": 2
+      },
+      "door_tile_offset": {
+        "x": 1,
+        "y": 1
+      },
+      "interact_tile_offset": {
+        "x": 1,
+        "y": 2
+      },
+      "pixel_size": {
+        "w": 96,
+        "h": 96
+      },
+      "anchor": "bottom-left at footprint (x, y+h); sprite rises 1 tiles above footprint"
+    },
+    {
+      "id": "clubhouse",
+      "name": "Pack Clubhouse",
+      "file": "clubhouse.png",
+      "footprint": {
+        "w": 9,
+        "h": 5
+      },
+      "door_tile_offset": {
+        "x": 4,
+        "y": 4
+      },
+      "interact_tile_offset": {
+        "x": 4,
+        "y": 5
+      },
+      "pixel_size": {
+        "w": 288,
+        "h": 224
+      },
+      "anchor": "bottom-left at footprint (x, y+h); sprite rises 2 tiles above footprint"
+    },
+    {
+      "id": "house_1",
+      "name": "Player House (Red Brick)",
+      "file": "house_1.png",
+      "footprint": {
+        "w": 6,
+        "h": 5
+      },
+      "door_tile_offset": {
+        "x": 3,
+        "y": 4
+      },
+      "interact_tile_offset": {
+        "x": 3,
+        "y": 5
+      },
+      "pixel_size": {
+        "w": 192,
+        "h": 224
+      },
+      "anchor": "bottom-left at footprint (x, y+h); sprite rises 2 tiles above footprint"
+    },
+    {
+      "id": "house_2",
+      "name": "Player House (Blue Clapboard)",
+      "file": "house_2.png",
+      "footprint": {
+        "w": 6,
+        "h": 5
+      },
+      "door_tile_offset": {
+        "x": 3,
+        "y": 4
+      },
+      "interact_tile_offset": {
+        "x": 3,
+        "y": 5
+      },
+      "pixel_size": {
+        "w": 192,
+        "h": 224
+      },
+      "anchor": "bottom-left at footprint (x, y+h); sprite rises 2 tiles above footprint"
+    },
+    {
+      "id": "house_3",
+      "name": "Player House (Cream Cottage)",
+      "file": "house_3.png",
+      "footprint": {
+        "w": 6,
+        "h": 5
+      },
+      "door_tile_offset": {
+        "x": 3,
+        "y": 4
+      },
+      "interact_tile_offset": {
+        "x": 3,
+        "y": 5
+      },
+      "pixel_size": {
+        "w": 192,
+        "h": 224
+      },
+      "anchor": "bottom-left at footprint (x, y+h); sprite rises 2 tiles above footprint"
+    },
+    {
+      "id": "house_4",
+      "name": "Player House (Modern Charcoal)",
+      "file": "house_4.png",
+      "footprint": {
+        "w": 6,
+        "h": 5
+      },
+      "door_tile_offset": {
+        "x": 3,
+        "y": 4
+      },
+      "interact_tile_offset": {
+        "x": 3,
+        "y": 5
+      },
+      "pixel_size": {
+        "w": 192,
+        "h": 224
+      },
+      "anchor": "bottom-left at footprint (x, y+h); sprite rises 2 tiles above footprint"
+    }
+  ]
+}

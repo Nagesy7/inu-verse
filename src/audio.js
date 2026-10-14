@@ -34,3 +34,8 @@ export function footstep() { if (!ac || muted) return; noise(ac.currentTime, 0.0
 export function chirp() { if (!ac || muted) return; const t = ac.currentTime; for (let i = 0; i < 3; i++) { const o = tone(2400 + Math.random() * 800, t + i * 0.09, 0.07, 0.015, 'sine', master); o.frequency.exponentialRampToValueAtTime(3600, t + i * 0.09 + 0.06); } }
 export function bork() { if (!ac || muted) return; const t = ac.currentTime; const o = tone(320, t, 0.22, 0.12, 'sawtooth', master); o.frequency.setValueAtTime(420, t); o.frequency.exponentialRampToValueAtTime(180, t + 0.2); noise(t, 0.08, 0.05, 800); }
 export function blip(f = 880) { if (!ac || muted) return; tone(f, ac.currentTime, 0.12, 0.04, 'square', master); }
+export function uiClick() { if (!ac || muted) return; const t = ac.currentTime; tone(1180, t, 0.05, 0.03, 'square', master); tone(1580, t + 0.03, 0.05, 0.02, 'square', master); }
+export function uiOpen() { if (!ac || muted) return; const t = ac.currentTime; [523, 659, 784].forEach((f, i) => tone(f, t + i * 0.045, 0.12, 0.03, 'triangle', master)); }
+export function uiClose() { if (!ac || muted) return; const t = ac.currentTime; [784, 587].forEach((f, i) => tone(f, t + i * 0.05, 0.1, 0.025, 'triangle', master)); }
+export function textBlip(f = 620) { if (!ac || muted) return; tone(f + Math.random() * 60, ac.currentTime, 0.035, 0.022, 'square', master); }
+export function rustle() { if (!ac || muted) return; noise(ac.currentTime, 0.07, 0.02, 3000); }

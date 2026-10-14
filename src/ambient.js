@@ -1,10 +1,11 @@
 // Ambient life: day/night, weather, wildlife, street life, emotes, mail. Purely cosmetic.
 // Pure helpers (dayPhase, makeAmbient, stepAmbient, addMail) are headless-testable; draw* need a canvas.
-import { TILE, MAP_W, MAP_H, MAP, T, BUILDINGS, PLOTS } from './world.js';
+import { TILE, MAP_W, MAP_H, MAP, T, BUILDINGS, PLOTS, MALL_BUILDINGS, NPC_HOMES } from './world.js';
 import { mulberry32 } from './rng.js';
 
 export const DAY_LEN = 720; // seconds per in-game day (~12 real minutes)
-export const LAMPS = [[8, 18], [24, 18], [40, 23], [52, 18], [12, 29], [44, 29], [20, 33], [50, 33]].map(([x, y]) => ({ x: x * TILE + 16, y: y * TILE - 15 }));
+export const LAMP_TILES = [[8, 18], [24, 18], [40, 23], [52, 18], [12, 29], [44, 29], [20, 33], [50, 33], [13, 46], [50, 46], [24, 56], [40, 56], [29, 5], [45, 34]];
+export const LAMPS = LAMP_TILES.map(([x, y]) => ({ x: x * TILE + 16, y: y * TILE - 34, gy: y * TILE + 22 }));
 export const PONDS = [[5, 3, 9, 5], [37, 35, 18, 4]];
 export const EMOTES = { wave: 'HI!', sit: 'SIT', zoomies: 'ZOOM', dance: '♪♫', heart: 'heart', bork: 'BORK!' };
 import { drawEmblem } from './art.js';
@@ -124,23 +125,46 @@ export function drawSkyLife(c, A, phase) {
     for (const L of LAMPS) for (let k = 0; k < 3; k++) { const a = t * 3 + k * 2.1 + L.x, x = L.x + Math.cos(a) * 9, y = L.y + Math.sin(a * 1.3) * 6; c.fillStyle = 'rgba(255,240,200,.8)'; c.fillRect(x, y, 2, 2); }
     c.globalCompositeOperation = 'source-over'; }
 }
-// Screen-space overlay: tint + night darkness with light holes (windows, lamps, your home), rain + petals.
+// Screen-space overlay: colour grade (multiply) with additive light pools, then weather.
+const mix = (a, b, k) => a.map((v, i) => Math.round(v + (b[i] - v) * k));
+export function gradeFor(phase, rain = 0) {
+  let g = [255, 255, 255];
+  if (phase.dark > 0) g = mix(g, [44, 54, 118], Math.min(1, phase.dark / 0.62));
+  if (phase.tint[3] > 0) g = mix(g, [255, 168, 120], Math.min(1, phase.tint[3] * 1.6));
+  if (rain > 0) g = mix(g, [168, 182, 214], rain * 0.6);
+  return g;
+}
 export function drawAtmosphere(c, A, phase, cam, vw, vh, lights) {
-  if (phase.dark > 0.01 || phase.tint[3] > 0) {
-    const ox = vw / 2 - cam.x, oy = vh / 2 - cam.y;
+  const ox = Math.round(vw / 2 - cam.x), oy = Math.round(vh / 2 - cam.y), g = gradeFor(phase, A.rain), night = Math.min(1, phase.dark / 0.62);
+  if (g.some((v) => v < 254)) {
     if (!A.lcv) A.lcv = document.createElement('canvas');
     const L = A.lcv; if (L.width !== vw || L.height !== vh) { L.width = vw; L.height = vh; }
-    const x = L.getContext('2d'); x.globalCompositeOperation = 'source-over'; x.clearRect(0, 0, vw, vh);
-    x.fillStyle = `rgba(${phase.tint[0]},${phase.tint[1]},${phase.tint[2]},${Math.max(phase.tint[3], phase.dark)})`; x.fillRect(0, 0, vw, vh);
-    if (phase.dark > 0.1) { x.globalCompositeOperation = 'destination-out';
-      for (const l of lights) { const g = x.createRadialGradient(l.x + ox, l.y + oy, 0, l.x + ox, l.y + oy, l.r); g.addColorStop(0, 'rgba(0,0,0,.95)'); g.addColorStop(1, 'rgba(0,0,0,0)'); x.fillStyle = g; x.fillRect(l.x + ox - l.r, l.y + oy - l.r, l.r * 2, l.r * 2); } }
-    c.drawImage(L, 0, 0);
-    if (phase.dark > 0.1) { c.globalCompositeOperation = 'lighter'; for (const l of lights) if (l.glow) { const g = c.createRadialGradient(l.x + ox, l.y + oy, 0, l.x + ox, l.y + oy, l.r * .6); g.addColorStop(0, `rgba(255,190,90,${.35 * phase.dark})`); g.addColorStop(1, 'rgba(255,190,90,0)'); c.fillStyle = g; c.fillRect(l.x + ox - l.r, l.y + oy - l.r, l.r * 2, l.r * 2); } c.globalCompositeOperation = 'source-over'; }
+    const x = L.getContext('2d'); x.globalCompositeOperation = 'source-over'; x.fillStyle = `rgb(${g})`; x.fillRect(0, 0, vw, vh);
+    if (night > 0.15) { x.globalCompositeOperation = 'lighter';
+      for (const l of lights) { const lx = l.x + ox, ly = (l.gy ?? l.y) + oy; if (lx < -l.r || ly < -l.r || lx > vw + l.r || ly > vh + l.r) continue;
+        const gr = x.createRadialGradient(lx, ly, 0, lx, ly, l.r); gr.addColorStop(0, `rgba(255,206,140,${0.72 * night})`); gr.addColorStop(0.55, `rgba(170,120,70,${0.25 * night})`); gr.addColorStop(1, 'rgba(0,0,0,0)');
+        x.fillStyle = gr; x.beginPath(); x.ellipse(lx, ly, l.r, l.r * (l.flat ?? 0.6), 0, 0, 7); x.fill(); } }
+    c.save(); c.globalCompositeOperation = 'multiply'; c.drawImage(L, 0, 0); c.restore();
+    if (night > 0.15) { c.save(); c.globalCompositeOperation = 'lighter';
+      for (const l of lights) if (l.glow) { const lx = l.x + ox, ly = l.y + oy; if (lx < -60 || ly < -60 || lx > vw + 60 || ly > vh + 60) continue; const r = l.core || 26;
+        const gr = c.createRadialGradient(lx, ly, 0, lx, ly, r); gr.addColorStop(0, `rgba(255,220,140,${0.55 * night})`); gr.addColorStop(1, 'rgba(255,170,80,0)'); c.fillStyle = gr; c.fillRect(lx - r, ly - r, r * 2, r * 2); }
+      c.restore(); }
+    if (phase.tint[3] > 0) { const gr = c.createLinearGradient(0, 0, 0, vh); gr.addColorStop(0, `rgba(255,150,90,${phase.tint[3] * 0.5})`); gr.addColorStop(1, 'rgba(255,120,80,0)'); c.save(); c.globalCompositeOperation = 'soft-light'; c.fillStyle = gr; c.fillRect(0, 0, vw, vh); c.restore(); }
   }
   const t = A.t;
-  if (A.rain > 0.02) { c.fillStyle = `rgba(30,40,70,${A.rain * .18})`; c.fillRect(0, 0, vw, vh); c.strokeStyle = `rgba(190,210,255,${A.rain * .55})`; c.lineWidth = 1; c.beginPath();
-    const n = Math.floor(160 * A.rain); for (let i = 0; i < n; i++) { const x = (i * 97 + t * 60) % vw, y = (i * 53 + t * 700 + i * i) % vh; c.moveTo(x, y); c.lineTo(x - 3, y + 12); } c.stroke(); }
-  else for (const p of A.petals) { const x = ((p.x + t * 25 + Math.sin(t + p.p) * 30) % (vw + 40)) - 20, y = ((p.y + t * 18) % (vh + 40)) - 20; c.fillStyle = p.p > 4.5 ? '#f6b6c8' : '#f08cb0'; c.fillRect(Math.round(x), Math.round(y), 4, 3); c.fillRect(Math.round(x) + 1, Math.round(y) + 3, 2, 1); }
+  if (A.rain > 0.02) { // pixel rain streaks (two depths) + ground splashes
+    const n = Math.floor(220 * A.rain);
+    for (let i = 0; i < n; i++) { const far = i % 3 === 0, sp = far ? 520 : 820, x = Math.round(((i * 97.3 + t * (far ? 90 : 140)) % (vw + 40)) - 20), y = Math.round((i * 53.7 + t * sp + i * i * 0.37) % (vh + 30)) - 15;
+      c.fillStyle = far ? `rgba(170,190,240,${A.rain * 0.35})` : `rgba(210,225,255,${A.rain * 0.6})`; for (let k = 0; k < (far ? 3 : 5); k++) c.fillRect(x - k, y + k * 3, 1, 3); }
+    for (let i = 0; i < Math.floor(40 * A.rain); i++) { const ph = (t * 3 + i * 0.37) % 1, x = Math.round((i * 211.7 + Math.floor(t * 3 + i * 0.37) * 97) % vw), y = Math.round((i * 137.3 + Math.floor(t * 3 + i * 0.37) * 61) % vh), r = 1 + Math.floor(ph * 4);
+      c.fillStyle = `rgba(220,235,255,${(1 - ph) * 0.6 * A.rain})`; c.fillRect(x - r, y, 1, 1); c.fillRect(x + r, y, 1, 1); c.fillRect(x - r + 1, y - 1, r * 2 - 1, 1); c.fillRect(x - r + 1, y + 1, r * 2 - 1, 1); }
+  } else if (night < 0.5) for (const p of A.petals) { // sakura petals: tumbling 3-frame sprites drifting on the breeze
+    const x = Math.round(((p.x + t * 22 + Math.sin(t * 0.8 + p.p) * 34) % (vw + 40)) - 20), y = Math.round(((p.y + t * 16 + Math.sin(t * 1.7 + p.p) * 6) % (vh + 40)) - 20), f = Math.floor(t * 6 + p.p * 3) % 4;
+    const a = p.p > 4.5 ? '#ffd0de' : '#f59ab8', b = '#d86a92'; c.fillStyle = a;
+    if (f === 0) { c.fillRect(x, y, 4, 2); c.fillRect(x + 1, y + 2, 2, 1); c.fillStyle = b; c.fillRect(x + 3, y + 1, 1, 1); }
+    else if (f === 1 || f === 3) { c.fillRect(x + 1, y, 2, 3); c.fillStyle = b; c.fillRect(x + 1, y + 2, 1, 1); }
+    else { c.fillRect(x, y + 1, 4, 1); }
+  }
 }
 export function drawEmote(c, x, y, kind, t) {
   const icon = EMOTES[kind]; if (!icon) return;
@@ -150,8 +174,10 @@ export function drawEmote(c, x, y, kind, t) {
   c.font = kind === 'dance' ? '14px sans-serif' : '8px Silkscreen, monospace'; c.textAlign = 'center'; c.textBaseline = 'middle'; c.fillStyle = '#f2cc68'; c.fillText(icon, x, yy);
 }
 export function lightsFor(state, phase, playerHome) {
-  const L = LAMPS.map((l) => ({ x: l.x, y: l.y, r: 70, glow: true }));
-  for (const b of BUILDINGS) L.push({ x: (b.x + b.w / 2) * TILE, y: (b.y + b.h - 1) * TILE, r: 110, glow: true });
-  for (const p of PLOTS) if (state.plots[p.id]) L.push({ x: (p.x + 3) * TILE, y: (p.y + 3) * TILE, r: playerHome === p.id ? 150 : 70, glow: playerHome === p.id });
+  const L = LAMPS.map((l) => ({ x: l.x, y: l.y, gy: l.gy, r: 92, glow: true, core: 20 }));
+  for (const b of [...BUILDINGS, ...MALL_BUILDINGS, ...NPC_HOMES]) { // lit doorway pool + window glows
+    L.push({ x: (b.x + b.w / 2) * TILE, y: (b.y + b.h - 0.8) * TILE, gy: (b.y + b.h + 0.6) * TILE, r: 84, glow: true, core: 30, flat: 0.5 });
+    for (let k = 1; k < b.w; k += 3) L.push({ x: (b.x + k + 0.5) * TILE, y: (b.y + b.h - 2.6) * TILE, r: 34, glow: true, core: 16, flat: 0.8 }); }
+  for (const p of PLOTS) if (state.plots[p.id]) L.push({ x: (p.x + 3) * TILE, y: (p.y + 5) * TILE, gy: (p.y + 6.5) * TILE, r: playerHome === p.id ? 150 : 80, glow: true, core: 28 });
   return L;
 }

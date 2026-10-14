@@ -30,6 +30,7 @@ export const NPC_HOMES = [
 ];
 // Pack clubhouse lot (north of Market Row). Shows the clubhouse of the Pack you belong to.
 export const CLUBHOUSE = { id: 'clubhouse', x: 47, y: 1, w: 9, h: 5 };
+export const BRIDGES = [{ x: 9, y: 3, w: 2, h: 5 }, { x: 46, y: 35, w: 2, h: 4 }]; // walkable plank bridges over the ponds
 export const STALL_SLOTS = Array.from({ length: 9 }, (_, i) => ({ x: 34 + i * 3, y: 7 }));
 
 export function buildMap() {
@@ -47,6 +48,7 @@ export function buildMap() {
   for (const h of NPC_HOMES) fill(h.x, h.y, h.w, h.h, T.HOME);
   fill(CLUBHOUSE.x, CLUBHOUSE.y, CLUBHOUSE.w, CLUBHOUSE.h, T.HOME);
   fill(37, 35, 18, 4, T.WATER);
+  for (const b of BRIDGES) fill(b.x, b.y, b.w, b.h, T.WALK);
   // south: Kibble Mall district
   fill(1, 42, MAP_W - 2, 1, T.WALK); fill(1, 43, MAP_W - 2, 2, T.ROAD); fill(1, 45, MAP_W - 2, 1, T.WALK);
   fill(7, 46, 50, 22, T.PLAZA);
@@ -71,9 +73,9 @@ export function interactables(state) {
   list.push({ kind: 'mall', id: 'leaders', name: 'Leaderboards Hall', cat: 'leaders', tx: LEADERS.x + 1, ty: LEADERS.y + 2 });
   for (const p of PLOTS) {
     const owned = !!state?.plots?.[p.id];
-    list.push({ kind: 'plot', id: p.id, name: owned ? 'Your Home' : 'Plot for claim', tx: p.x + 3, ty: p.y - 1 });
+    list.push({ kind: 'plot', id: p.id, name: owned ? 'Your Home' : 'Plot for claim', tx: p.x + 3, ty: p.y + p.h });
   }
-  for (const h of NPC_HOMES) list.push({ kind: 'visit', id: h.id, name: `${h.owner}'s Home`, tx: h.x + 3, ty: h.y - 1 });
+  for (const h of NPC_HOMES) list.push({ kind: 'visit', id: h.id, name: `${h.owner}'s Home`, tx: h.x + 3, ty: h.y + h.h });
   list.push({ kind: 'clubhouse', id: CLUBHOUSE.id, name: state?.packs?.joined ? 'Pack Clubhouse' : 'Pack Clubhouse lot', tx: CLUBHOUSE.x + 4, ty: CLUBHOUSE.y + CLUBHOUSE.h });
   (state?.tokens || []).forEach((tok, i) => { const s = STALL_SLOTS[i % STALL_SLOTS.length]; list.push({ kind: 'stall', id: tok.id, name: `$${tok.ticker} stall`, tx: s.x + 1, ty: s.y + 2 }); });
   return list;

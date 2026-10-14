@@ -1,5 +1,7 @@
 // Pixel-art world rendering: chunky gold-trimmed buildings, navy/gold palette.
-import { TILE, MAP_W, MAP_H, MAP, T, BUILDINGS, PLOTS, NPC_HOMES, STALL_SLOTS, CLUBHOUSE, MALL_BUILDINGS, LEADERS } from './world.js';
+import { TILE, MAP_W, MAP_H, MAP, T, BUILDINGS, PLOTS, NPC_HOMES, STALL_SLOTS, CLUBHOUSE, MALL_BUILDINGS, LEADERS, BRIDGES } from './world.js';
+import { N, SCALE, PAL, buildGround, sprites, shadowEllipse, hash, mk, P } from './tiles.js';
+import { LAMP_TILES, unreadMail } from './ambient.js';
 import { drawEmblem, ART } from './art.js';
 import { NPC_INTERIORS } from './homes.js';
 import { WALLS } from './furniture.js';
@@ -7,7 +9,6 @@ import { WALLS } from './furniture.js';
 export const GOLD = '#d4a640', GOLD_L = '#f2cc68', GOLD_D = '#8f6a22', NAVY = '#121a36', NAVY_L = '#24305c', INK = '#0c1022';
 export const FONT = 'Silkscreen, "Press Start 2P", monospace';
 const R = (c, x, y, w, h, col) => { c.fillStyle = col; c.fillRect(Math.round(x), Math.round(y), Math.round(w), Math.round(h)); };
-const hash = (x, y) => { let h = (x * 374761393 + y * 668265263) ^ 0x5bd1e995; h = Math.imul(h ^ (h >>> 13), 1274126177); return ((h ^ (h >>> 16)) >>> 0) / 4294967296; };
 const shade = (hex, f) => { const n = parseInt(hex.slice(1), 16); const ch = (v) => Math.max(0, Math.min(255, Math.round(v * f))); return '#' + [(n >> 16) & 255, (n >> 8) & 255, n & 255].map((v) => ch(v).toString(16).padStart(2, '0')).join(''); };
 
 // 5x5-ish pixel paw at unit s
@@ -119,7 +120,7 @@ export function storefront(c, x, y, w, h, th, name, { small = false } = {}) {
   if (!small) { pottedTree(c, fx + 10, y + h - plH + 2, 0.8); pottedTree(c, fx + fw - 6, y + h - plH + 2, 0.8); }
 }
 
-function building(c, b) {
+function legacyBuilding(c, b) {
   const x = b.x * TILE, y = b.y * TILE, w = b.w * TILE, h = b.h * TILE, th = THEMES[b.id];
   const im = ART['building-' + b.id];
   if (im) { // reference-art building, bottom-aligned on its footprint
@@ -145,113 +146,139 @@ export function house(c, x, y, w, h, roof, wallCol, label) {
   R(c, x + w / 2 - 8, hy + hh, 16, y + h - hy - hh - 2, '#c8b48c');
   storefront(c, hx, hy, hw, hh, { wall: wallCol, roof, accent: GOLD_L }, label || 'Home', { small: true });
 }
-function npcHouse(c, h) { const I = NPC_INTERIORS[h.id]; house(c, h.x * TILE, h.y * TILE, h.w * TILE, h.h * TILE, I.roof, shade(WALLS[I.wall].color, 0.7), `${h.owner}'s`); }
+function legacyNpcHouse(c, h) { const I = NPC_INTERIORS[h.id]; house(c, h.x * TILE, h.y * TILE, h.w * TILE, h.h * TILE, I.roof, shade(WALLS[I.wall].color, 0.7), `${h.owner}'s`); }
 
-function tree(c, x, y) {
-  R(c, x - 12, y + 10, 24, 5, 'rgba(8,20,16,0.3)'); R(c, x - 3, y, 6, 13, '#5a3a22'); R(c, x - 3, y, 2, 13, '#7a5232');
-  for (const [dx, dy, w, h, col] of [[-14, -10, 28, 12, '#1c4f2e'], [-12, -18, 24, 10, '#256a3a'], [-9, -25, 18, 8, '#2f8046'], [-5, -30, 10, 6, '#3d9a54'], [-10, -16, 6, 4, '#3d9a54'], [4, -12, 6, 3, '#174028'], [-3, -27, 4, 3, '#5cb86a']]) R(c, x + dx, y + dy, w, h, col);
+
+// ---------- square front-facing building art (drop-in: assets/buildings/<id>.png + manifest.json) ----------
+export const BIMG = {};
+export const buildingsReady = typeof Image === 'undefined' ? Promise.resolve() : fetch('assets/buildings/manifest.json').then((r) => r.json()).then((m) => Promise.all(m.buildings.map((b) => new Promise((res) => {
+  const im = new Image(); im.onload = () => { BIMG[b.id] = im; res(); }; im.onerror = () => res(); im.src = 'assets/buildings/' + b.file; })))).catch(() => {});
+const HOUSE_ART = { h1: 'house_1', h2: 'house_2', h3: 'house_3', h4: 'house_4' };
+// draw a building image bottom-aligned on footprint (fx,fy,fw,fh in tiles); returns false if art missing
+function drawBuildingArt(c, id, fx, fy, fw, fh) {
+  const im = BIMG[id]; if (!im) return false;
+  c.drawImage(im, fx * TILE + Math.round((fw * TILE - im.width) / 2), (fy + fh) * TILE - im.height); return true;
+}
+function plaque(c, text, cx, y) {
+  c.font = `8px ${FONT}`; const w = Math.ceil(c.measureText(text).width) + 10;
+  R(c, cx - w / 2 - 1, y - 1, w + 2, 13, INK); R(c, cx - w / 2, y, w, 11, NAVY); R(c, cx - w / 2, y + 10, w, 1, GOLD);
+  c.textAlign = 'center'; c.textBaseline = 'middle'; c.fillStyle = GOLD_L; c.fillText(text, Math.round(cx), y + 6);
+}
+const sp = (spr, wx, wy, base) => ({ y: base, d: (c) => c.drawImage(spr, wx, wy, spr.width * SCALE, spr.height * SCALE) });
+
+let yardCv = null;
+function yard() { // pre-rendered grass yard for claimed plots (6x6 tiles, native)
+  if (yardCv) return yardCv; const [cv, c] = mk(6 * N, 6 * N);
+  c.fillStyle = PAL.g2; c.fillRect(0, 0, cv.width, cv.height);
+  for (let i = 0; i < 260; i++) P(c, hash(i, 1) * cv.width | 0, hash(i, 2) * cv.height | 0, hash(i, 3) < 0.5 ? PAL.g1 : PAL.g3);
+  for (let i = 0; i < 14; i++) { const x = hash(i, 4) * 88 | 0, y = hash(i, 5) * 88 | 0; P(c, x, y + 2, PAL.g0, 5, 1); P(c, x, y, PAL.g4); P(c, x + 2, y - 1, PAL.g4); P(c, x + 4, y, PAL.g4); }
+  P(c, 0, 0, PAL.g0, cv.width, 1); return (yardCv = cv);
+}
+
+function groundExtras(c) {
+  const S = sprites(), shTree = (x, y) => shadowEllipse(c, x * N + 8, y * N + 14, 9, 3, 0.3);
+  for (let y = 0; y < MAP_H; y++) for (let x = 0; x < MAP_W; x++) if (MAP[y][x] === T.TREE) shTree(x, y);
+  for (const b of [...BUILDINGS, ...MALL_BUILDINGS, ...NPC_HOMES, CLUBHOUSE, { x: LEADERS.x, y: LEADERS.y, w: 3, h: 2 }]) { // soft cast shadow (sun from top-left)
+    c.fillStyle = 'rgba(16,24,48,.28)'; c.fillRect(b.x * N + 4, (b.y + b.h) * N, b.w * N, 3); c.fillRect((b.x + b.w) * N, b.y * N + 6 - 2 * N, 4, b.h * N + 2 * N - 3);
+    c.fillStyle = 'rgba(16,24,48,.14)'; c.fillRect(b.x * N + 6, (b.y + b.h) * N + 3, b.w * N, 2);
+  }
+  for (const [lx, ly] of LAMP_TILES) shadowEllipse(c, lx * N + 8, ly * N + 12, 4, 1, 0.3);
+  // lily pads + reeds on ponds
+  for (const [x0, y0, w, h] of [[5, 3, 9, 5], [37, 35, 18, 4]]) for (let i = 0; i < w; i += 3) {
+    if (BRIDGES.some((b) => x0 + i + 1 >= b.x - 1 && x0 + i + 1 <= b.x + b.w)) continue;
+    const lx = (x0 + i + 1) * N + 2, ly = (y0 + 1 + (i % 2) * (h - 3)) * N + 6;
+    P(c, lx, ly, '#2c7a3c', 7, 4); P(c, lx + 1, ly - 1, '#2c7a3c', 5, 1); P(c, lx + 2, ly, '#4fa858', 3, 1); P(c, lx + 3, ly + 2, PAL.w1, 1, 2); if (i % 2 === 0) { P(c, lx + 5, ly - 2, PAL.pink2, 2, 2); P(c, lx + 5, ly - 2, PAL.pink3); }
+  }
 }
 
 export function prerenderMap() {
-  const cv = document.createElement('canvas'); cv.width = MAP_W * TILE; cv.height = MAP_H * TILE; const c = cv.getContext('2d'); c.imageSmoothingEnabled = false;
-  for (let y = 0; y < MAP_H; y++) for (let x = 0; x < MAP_W; x++) {
-    const t = MAP[y][x], px = x * TILE, py = y * TILE, r = hash(x, y);
-    R(c, px, py, TILE, TILE, r < 0.5 ? '#4f8f45' : '#53944a');
-    if (t === T.GRASS || t === T.TREE || t === T.FLOWER || t === T.BUILDING || t === T.HOME) for (let i = 0; i < 4; i++) { const a = hash(x + i * 7, y), b = hash(x, y + i * 9); R(c, px + Math.floor(a * 14) * 2, py + Math.floor(b * 14) * 2, 2, 4, i % 2 ? '#3f7a3a' : '#66a85a'); }
-    if (t === T.FLOWER) for (let i = 0; i < 3; i++) { const a = hash(x + i, y * 3), b = hash(x * 5, y + i); const fx = px + 4 + Math.floor(a * 11) * 2, fy = py + 4 + Math.floor(b * 11) * 2; R(c, fx, fy, 4, 4, ['#f6efe0', GOLD_L, '#f08cb0'][i]); R(c, fx + 1, fy + 1, 2, 2, '#c9763a'); }
-    if (t === T.ROAD) { R(c, px, py, TILE, TILE, '#2e3448'); if (r < 0.6) R(c, px + Math.floor(r * 12) * 2, py + Math.floor(hash(y, x) * 12) * 2, 4, 2, '#394058'); }
-    if (t === T.WALK) { R(c, px, py, TILE, TILE, '#b9a888'); for (let j = 0; j < 4; j++) { R(c, px, py + j * 8, TILE, 1, '#9a8a6c'); R(c, px + ((j % 2) ? 4 : 12) + (x % 2) * 16, py + j * 8, 1, 8, '#9a8a6c'); } }
-    if (t === T.PLAZA) { R(c, px, py, TILE, TILE, '#c9b893'); R(c, px, py, TILE, 1, '#a8976f'); R(c, px, py, 1, TILE, '#a8976f'); R(c, px + 1, py + 1, TILE - 2, 1, '#dccca8'); if ((x + y) % 4 === 0) { R(c, px + 13, py + 13, 6, 6, GOLD); R(c, px + 15, py + 15, 2, 2, GOLD_D); } }
-    if (t === T.WATER) { R(c, px, py, TILE, TILE, '#1f5a86'); if (r < 0.7) { R(c, px + 4 + Math.floor(r * 8) * 2, py + 10 + (x % 3) * 4, 8, 2, '#4a8fc0'); R(c, px + 18 - Math.floor(r * 4) * 2, py + 22, 6, 2, '#2f75a6'); } }
-    if (t === T.PLOT) { R(c, px, py, TILE, TILE, '#8a6a46'); R(c, px + Math.floor(r * 12) * 2, py + Math.floor(hash(y, x) * 12) * 2, 4, 2, '#7a5c3c'); R(c, px + 6, py + 20, 2, 2, '#9c7c54'); }
+  const S = sprites(), props = [];
+  const ground = buildGround(groundExtras);
+  // trees: sakura near the ponds/Sakura Lane, green elsewhere
+  for (let y = 0; y < MAP_H; y++) for (let x = 0; x < MAP_W; x++) if (MAP[y][x] === T.TREE) {
+    const sak = (x < 29 && y < 11) || (y > 33 && y < 42 && x < 30) || (x > 33 && y > 33 && y < 41) ? hash(x, y, 5) < 0.75 : hash(x, y, 5) < 0.12, spr = sak ? S.sakura : S.tree;
+    props.push(sp(spr, x * TILE + 16 - 32, (y + 1) * TILE - 88 + 2, (y + 1) * TILE - 4));
   }
-  // road dashes (gold)
-  for (let x = 1; x < MAP_W - 1; x++) { R(c, x * TILE + 8, 21 * TILE - 2, 14, 4, GOLD); R(c, x * TILE + 8, 32 * TILE - 2, 14, 4, GOLD); }
-  for (let y = 6; y < 41; y++) if (y < 19 || (y > 22 && y < 30) || y > 33) R(c, 32 * TILE - 2, y * TILE + 8, 4, 14, GOLD);
-  // pond stone edges + lily pads
-  for (const [x0, y0, w, h] of [[5, 3, 9, 5], [37, 35, 18, 4]]) {
-    for (let i = 0; i < w * TILE; i += 8) { R(c, x0 * TILE + i, y0 * TILE - 4, 7, 6, (i / 8) % 2 ? '#8c8aa0' : '#a4a2b8'); R(c, x0 * TILE + i, (y0 + h) * TILE - 2, 7, 6, (i / 8) % 2 ? '#8c8aa0' : '#a4a2b8'); }
-    for (let j = 0; j < h * TILE; j += 8) { R(c, x0 * TILE - 4, y0 * TILE + j, 6, 7, '#9896ac'); R(c, (x0 + w) * TILE - 2, y0 * TILE + j, 6, 7, '#9896ac'); }
-    for (let i = 0; i < w; i += 2) { const lx = (x0 + i + 1) * TILE - 6, ly = (y0 + 1) * TILE - 4; R(c, lx, ly, 12, 8, '#3f8a4a'); R(c, lx + 2, ly + 2, 4, 2, '#5cb86a'); R(c, lx + 6, ly - 2, 4, 4, '#f08cb0'); }
-  }
-  for (const h of NPC_HOMES) npcHouse(c, h);
-  for (const b of BUILDINGS) building(c, b);
-  for (const b of MALL_BUILDINGS) building(c, b);
-  { // Leaderboards hall board
+  for (const [lx, ly] of LAMP_TILES) props.push(sp(S.lamp, lx * TILE + 4, ly * TILE + 24 - 68, ly * TILE + 24));
+  for (const [bx, by] of [[17, 6], [11, 8], [38, 33.5], [50, 33.5], [22, 52], [41, 52], [28, 47]]) props.push(sp(S.bench, bx * TILE, by * TILE + 4, by * TILE + 28));
+  for (const [cx, cy] of [[61, 6], [61, 7], [60.6, 6.5], [33.2, 9.2], [26.4, 19.0]]) props.push(sp(S.crate, cx * TILE, cy * TILE, cy * TILE + 28));
+  // flowering bushes flanking each shop door, hedges at NPC home fronts
+  const bushAt = (tx, ty, spr) => { if (MAP[ty]?.[tx] === T.GRASS || MAP[ty]?.[tx] === T.FLOWER || MAP[ty]?.[tx] === T.PLAZA) props.push(sp(spr, tx * TILE - 2, ty * TILE + 4, ty * TILE + 30)); };
+  for (const b of [...BUILDINGS, ...MALL_BUILDINGS]) { bushAt(b.x - 1, b.y + b.h - 1, S.bushP); bushAt(b.x + b.w, b.y + b.h - 1, S.bushY); }
+  for (const h of NPC_HOMES) { for (const dx of [0, 1, 4, 5]) props.push(sp(S.hedge, (h.x + dx) * TILE, (h.y + h.h) * TILE + 4, (h.y + h.h) * TILE + 30)); props.push(sp(S.mailbox, (h.x + 5) * TILE + 6, (h.y + h.h + 1) * TILE - 34, (h.y + h.h + 1) * TILE - 2)); }
+  for (const b of BRIDGES) for (const k of [0, b.h]) {} // (bridges are drawn flat in the ground layer)
+  // buildings (square front-facing art; legacy procedural storefront if the PNG is missing)
+  for (const b of [...BUILDINGS, ...MALL_BUILDINGS]) props.push({ y: (b.y + b.h) * TILE - 1, d: (c) => { if (!drawBuildingArt(c, b.id, b.x, b.y, b.w, b.h)) legacyBuilding(c, b); } });
+  for (const h of NPC_HOMES) props.push({ y: (h.y + h.h) * TILE - 1, d: (c) => { if (!drawBuildingArt(c, HOUSE_ART[h.id], h.x, h.y, h.w, h.h)) legacyNpcHouse(c, h); plaque(c, `${h.owner.toUpperCase()}'S`, (h.x + 1.5) * TILE, (h.y + h.h) * TILE - 22); } });
+  props.push({ y: (LEADERS.y + 2) * TILE - 1, d: (c) => { if (drawBuildingArt(c, 'leaders', LEADERS.x, LEADERS.y, 3, 2)) return;
     const x = LEADERS.x * TILE, y = LEADERS.y * TILE - 20; R(c, x + 6, y + 40, 4, 44, GOLD_D); R(c, x + 86, y + 40, 4, 44, GOLD_D);
-    R(c, x - 4, y - 4, 104, 68, GOLD); R(c, x, y, 96, 60, NAVY); pixelText(c, 'LEADERBOARDS', x + 48, y + 10, 90, 8, GOLD_L);
-    for (let i = 0; i < 3; i++) { R(c, x + 8, y + 22 + i * 12, 80, 8, NAVY_L); R(c, x + 10, y + 24 + i * 12, [60, 46, 34][i], 4, [GOLD_L, '#c9d0dc', '#c8783a'][i]); }
-  }
-  for (let y = 0; y < MAP_H; y++) for (let x = 0; x < MAP_W; x++) if (MAP[y][x] === T.TREE) tree(c, x * TILE + 16, y * TILE + 14);
-  // bench + gold lamp posts
-  R(c, 17 * TILE, 6 * TILE + 8, 56, 6, '#7a4a2a'); R(c, 17 * TILE, 6 * TILE + 16, 56, 4, '#5a3420'); R(c, 17 * TILE + 4, 6 * TILE + 20, 4, 6, INK); R(c, 17 * TILE + 48, 6 * TILE + 20, 4, 6, INK);
-  for (const [lx, ly] of [[8, 18], [24, 18], [40, 23], [52, 18], [12, 29], [44, 29], [20, 33], [50, 33]]) { const X = lx * TILE + 14, Y = ly * TILE; R(c, X - 2, Y + 18, 8, 4, GOLD_D); R(c, X, Y - 10, 4, 30, NAVY_L); R(c, X + 1, Y - 10, 1, 30, '#3a4880'); R(c, X - 4, Y - 20, 12, 10, GOLD); R(c, X - 2, Y - 18, 8, 6, '#fff1b8'); R(c, X - 2, Y - 23, 8, 3, GOLD_D); }
-  const label = (txt, x, y) => { c.font = `10px ${FONT}`; const w = c.measureText(txt).width + 14; R(c, x - 2, y - 2, w + 4, 18, GOLD); R(c, x, y, w, 14, NAVY); c.textAlign = 'left'; c.textBaseline = 'middle'; c.fillStyle = GOLD_L; c.fillText(txt, x + 7, y + 7); };
-  label('MARKET ROW - LAUNCHED TOKEN STALLS', 34 * TILE, 6 * TILE + 2);
-  label('SAKURA POND', 7 * TILE, 2 * TILE + 6);
-  label('SAKURA LANE', 2 * TILE, 34 * TILE + 2);
-  label('KIBBLE MALL DISTRICT - OWNED BY PRESIDENT INU - DEMO KIBBLE ONLY', 9 * TILE, 46 * TILE + 6);
-  return cv;
+    R(c, x - 4, y - 4, 104, 68, GOLD); R(c, x, y, 96, 60, NAVY); pixelText(c, 'LEADERBOARDS', x + 48, y + 10, 90, 8, GOLD_L); } });
+  // district signposts (wooden plank sign on two posts)
+  const signpost = (txt, tx, ty) => { const [cv, c] = mk(1, 1); c.font = `8px ${FONT}`; const w = Math.ceil(c.measureText(txt).width) + 16; cv.width = w; cv.height = 34; const k = cv.getContext('2d');
+    R(k, 6, 16, 4, 18, PAL.woodD); R(k, w - 10, 16, 4, 18, PAL.woodD); R(k, 7, 16, 1, 18, PAL.woodL); R(k, w - 9, 16, 1, 18, PAL.woodL);
+    R(k, 0, 0, w, 20, INK); R(k, 1, 1, w - 2, 18, PAL.wood); R(k, 1, 1, w - 2, 2, PAL.woodL); R(k, 1, 17, w - 2, 2, PAL.woodD); for (const xx of [3, w - 5]) R(k, xx, 8, 2, 2, GOLD);
+    k.font = `8px ${FONT}`; k.textAlign = 'center'; k.textBaseline = 'middle'; k.fillStyle = '#3a2210'; k.fillText(txt, w / 2, 11); k.fillStyle = '#fff1d0'; k.fillText(txt, w / 2, 10);
+    props.push({ y: ty * TILE + 30, d: (c) => c.drawImage(cv, Math.round(tx * TILE), ty * TILE - 4) }); };
+  signpost('MARKET ROW - TOKEN STALLS', 34, 5); signpost('SAKURA POND', 14.5, 2); signpost('SAKURA LANE', 2, 41); signpost('KIBBLE MALL DISTRICT', 9, 46); signpost('DEMO KIBBLE ONLY', 49, 46);
+  props.sort((a, b) => a.y - b.y);
+  return { ground, props };
 }
 
-export function drawPlots(c, state, t) {
-  for (const p of PLOTS) {
+// Dynamic, y-sortable drawables: claimed homes, unclaimed plots, stalls, clubhouse.
+export function dynamicProps(state, t, pack) {
+  const out = [], S = sprites();
+  PLOTS.forEach((p, i) => {
     const x = p.x * TILE, y = p.y * TILE, w = p.w * TILE, h = p.h * TILE, home = state.plots[p.id];
-    if (home) house(c, x, y, w, h, home.roof, shade(WALLS[home.wall].color, 0.7), `${state.player.name}'s Home`);
-    else {
-      for (let i = 0; i <= 6; i++) { const fx = x + i * 32 - 2 + (i === 6 ? -3 : 0); R(c, fx, y, 6, 14, '#7a5232'); R(c, fx, y, 6, 2, GOLD); }
-      R(c, x, y + 4, w, 3, '#9c6c40');
-      const sx = x + w / 2, sy = Math.round(y + h / 2 + Math.sin(t * 2 + p.x) * 1.5);
-      R(c, sx - 2, sy - 4, 5, 34, '#5a3a22');
-      R(c, sx - 44, sy - 32, 88, 36, GOLD); R(c, sx - 42, sy - 30, 84, 32, NAVY);
-      pixelText(c, 'FOR CLAIM', sx, sy - 21, 78, 10, GOLD_L); pixelText(c, '300 BONES', sx, sy - 8, 78, 8, '#f6e7b8', null);
+    if (home) {
+      out.push({ y: y - 1, flat: true, d: (c) => c.drawImage(yard(), x, y, w, h) });
+      out.push({ y: y + h - 1, d: (c) => { if (!drawBuildingArt(c, 'house_' + ((i % 4) + 1), p.x, p.y + 1, p.w, p.h - 1)) house(c, x, y, w, h, home.roof, shade(WALLS[home.wall].color, 0.7), `${state.player.name}'s Home`); plaque(c, 'YOUR HOME', x + 1.5 * TILE, y + h - 22); } });
+      const mx = (p.x + 5) * TILE + 8, my = (p.y + p.h + 1) * TILE - 2, un = unreadMail(state);
+      out.push({ y: my, d: (c) => { c.drawImage(S.mailbox, mx, my - 36, 20, 36); if (un) { const b = Math.round(Math.sin(t * 4) * 2); R(c, mx + 18, my - 44 + b, 2, 12, GOLD_D); R(c, mx + 20, my - 44 + b, 8, 5, '#ffd84a'); } } });
+    } else {
+      for (let k = 0; k < p.w; k++) out.push(sp(S.fence, x + k * TILE, y - 10, y + 12));
+      out.push({ y: y + h * 0.5 + 30, d: (c) => { const sx = x + w / 2, sy = Math.round(y + h / 2 + Math.sin(t * 2 + p.x) * 1.5);
+        R(c, sx - 2, sy - 4, 5, 34, PAL.woodD); R(c, sx - 1, sy - 4, 1, 34, PAL.woodL); R(c, sx - 45, sy - 33, 90, 38, INK);
+        R(c, sx - 44, sy - 32, 88, 36, GOLD); R(c, sx - 42, sy - 30, 84, 32, NAVY); pixelText(c, 'FOR CLAIM', sx, sy - 21, 78, 8, GOLD_L); pixelText(c, '300 BONES', sx, sy - 9, 78, 8, '#f6e7b8', null); } });
     }
-  }
-}
-
-export function drawStalls(c, state, t) {
-  state.tokens.forEach((tok, i) => {
-    if (i >= STALL_SLOTS.length) return;
-    const s = STALL_SLOTS[i], x = s.x * TILE, y = s.y * TILE;
-    R(c, x + 6, y + 56, 84, 6, 'rgba(8,10,24,.3)');
-    R(c, x + 4, y + 28, 84, 30, '#6a4428'); R(c, x + 4, y + 28, 84, 3, GOLD); R(c, x + 4, y + 55, 84, 3, '#4a2e1a');
-    R(c, x + 6, y + 6, 3, 24, GOLD_D); R(c, x + 83, y + 6, 3, 24, GOLD_D);
-    for (let k = 0; k < 6; k++) { R(c, x + 4 + k * 14, y + 4, 14, 14, k % 2 ? '#f6efe0' : tok.color); R(c, x + 5 + k * 14, y + 18, 12, 3, k % 2 ? '#f6efe0' : tok.color); }
-    R(c, x + 2, y + 2, 88, 3, GOLD);
-    R(c, x + 34, y + 32, 24, 20, tok.color); R(c, x + 34, y + 32, 24, 2, '#ffffff55');
-    pixelText(c, tok.ticker.slice(0, 4), x + 46, y + 42, 22, 7, '#fff', INK);
-    c.font = `8px ${FONT}`; const lbl = '$' + tok.ticker + (tok.curve.graduated ? ' *' : ''); const lw = c.measureText(lbl).width + 8;
-    R(c, x + 46 - lw / 2, y - 12, lw, 12, NAVY); R(c, x + 46 - lw / 2, y - 1, lw, 1, GOLD);
-    c.fillStyle = GOLD_L; c.textAlign = 'center'; c.textBaseline = 'middle'; c.fillText(lbl, x + 46, y - 6);
   });
+  state.tokens.forEach((tok, i) => { if (i < STALL_SLOTS.length) { const s = STALL_SLOTS[i]; out.push({ y: s.y * TILE + 58, d: (c) => drawStall(c, tok, s) }); } });
+  out.push(...clubhouseProps(state, t, pack));
+  return out;
 }
+function drawStall(c, tok, s) {
+  const x = s.x * TILE, y = s.y * TILE;
+  R(c, x + 6, y + 56, 84, 6, 'rgba(16,24,48,.3)');
+  R(c, x + 3, y + 27, 86, 32, INK); R(c, x + 4, y + 28, 84, 30, '#6a4428'); R(c, x + 4, y + 28, 84, 3, GOLD); R(c, x + 4, y + 55, 84, 3, '#4a2e1a'); for (let k = 0; k < 6; k++) R(c, x + 8 + k * 14, y + 34, 1, 20, '#5a3820');
+  R(c, x + 6, y + 6, 3, 24, GOLD_D); R(c, x + 83, y + 6, 3, 24, GOLD_D);
+  for (let k = 0; k < 6; k++) { R(c, x + 4 + k * 14, y + 4, 14, 14, k % 2 ? '#f6efe0' : tok.color); R(c, x + 5 + k * 14, y + 18, 12, 3, k % 2 ? '#f6efe0' : tok.color); R(c, x + 4 + k * 14, y + 4, 14, 2, '#ffffff40'); }
+  R(c, x + 2, y + 2, 88, 3, GOLD);
+  R(c, x + 34, y + 32, 24, 20, tok.color); R(c, x + 34, y + 32, 24, 2, '#ffffff55');
+  pixelText(c, tok.ticker.slice(0, 4), x + 46, y + 42, 22, 7, '#fff', INK);
+  c.font = `8px ${FONT}`; const lbl = '$' + tok.ticker + (tok.curve.graduated ? ' *' : ''); const lw = c.measureText(lbl).width + 8;
+  R(c, x + 46 - lw / 2, y - 12, lw, 12, NAVY); R(c, x + 46 - lw / 2, y - 1, lw, 1, GOLD);
+  c.fillStyle = GOLD_L; c.textAlign = 'center'; c.textBaseline = 'middle'; c.fillText(lbl, x + 46, y - 6);
+}
+// kept for drop-in compatibility (flat passes are now part of dynamicProps)
+export function drawPlots() {} export function drawStalls() {}
+export function drawClubhouse(c, state, t, pack) { for (const p of clubhouseProps(state, t, pack)) p.d(c); }
 
-// Pack clubhouse: your Pack's hall with its banner flying from a tall pole, or an empty lot sign.
-export function drawClubhouse(c, state, t, pack) {
-  const b = CLUBHOUSE, x = b.x * TILE, y = b.y * TILE, w = b.w * TILE, h = b.h * TILE;
-  if (!pack) {
-    R(c, x + 2, y + 2, w - 4, h - 4, '#6a8a4a');
-    for (let i = 0; i <= b.w; i++) { const fx = x + i * 32 - 2 - (i === b.w ? 3 : 0); R(c, fx, y + h - 18, 6, 14, '#7a5232'); R(c, fx, y + h - 18, 6, 2, GOLD); }
-    R(c, x, y + h - 14, w, 3, '#9c6c40');
-    const sx = x + w / 2, sy = y + h / 2 + 4; R(c, sx - 2, sy, 5, 30, '#5a3a22');
-    R(c, sx - 70, sy - 30, 140, 40, GOLD); R(c, sx - 68, sy - 28, 136, 36, NAVY);
-    pixelText(c, 'PACK CLUBHOUSE', sx, sy - 18, 128, 10, GOLD_L); pixelText(c, 'FOUND OR JOIN A PACK', sx, sy - 4, 128, 7, '#f6e7b8', null);
-    return;
-  }
+function clubhouseProps(state, t, pack) {
+  const b = CLUBHOUSE, x = b.x * TILE, y = b.y * TILE, w = b.w * TILE, h = b.h * TILE, S = sprites();
+  if (!pack) return [...Array.from({ length: b.w }, (_, k) => sp(S.fence, x + k * TILE, y + h - 22, y + h)), { y: y + h - 10, d: (c) => {
+    const sx = x + w / 2, sy = y + h / 2 + 4; R(c, sx - 2, sy, 5, 30, PAL.woodD);
+    R(c, sx - 71, sy - 31, 142, 42, INK); R(c, sx - 70, sy - 30, 140, 40, GOLD); R(c, sx - 68, sy - 28, 136, 36, NAVY);
+    pixelText(c, 'PACK CLUBHOUSE', sx, sy - 18, 128, 8, GOLD_L); pixelText(c, 'FOUND OR JOIN A PACK', sx, sy - 5, 128, 8, '#f6e7b8', null); } }];
   const ch = pack.clubhouse;
-  house(c, x, y, w, h, ch.roof || pack.color, shade(WALLS[ch.wall]?.color || '#f3e6cf', 0.7), `${pack.name}`);
-  // banner pole + waving banner in pack colour with emblem and tag
-  const px = x + w - 30, top = y - 22;
-  R(c, px - 2, top, 4, h - 6, GOLD_D); R(c, px - 1, top, 1, h - 6, GOLD_L); R(c, px - 4, top - 5, 8, 6, GOLD_L); R(c, px - 6, y + h - 12, 12, 4, GOLD_D);
-  const bw = 46, bh = 30;
-  for (let i = 0; i < bw; i += 2) {
-    const wave = Math.round(Math.sin(t * 4 - i * 0.18) * 2 * (i / bw));
-    R(c, px + 2 + i, top + 2 + wave, 2, bh, pack.color);
-    R(c, px + 2 + i, top + 2 + wave, 2, 2, shade(pack.color, 1.3)); R(c, px + 2 + i, top + bh + wave, 2, 2, shade(pack.color, 0.6));
-    if (i % 8 === 0) R(c, px + 2 + i, top + bh + 2 + wave, 2, 3, GOLD);
-  }
-  const wv = Math.round(Math.sin(t * 4 - 10 * 0.18) * 2 * 0.4);
-  R(c, px + 9, top + 6 + wv, 14, 14, '#fff6e0'); drawEmblem(c, pack.emblem, px + 10, top + 7 + wv, 2.4, pack.color);
-  pixelText(c, pack.tag, px + 35, top + 14 + wv, 20, 8, '#fff6e0', INK);
-  R(c, x + w / 2 - 50, y + h - 2, 100, 12, NAVY); pixelText(c, 'PACK CLUBHOUSE', x + w / 2, y + h + 4, 96, 7, GOLD_L, null);
+  return [{ y: y + h - 1, d: (c) => {
+    if (!drawBuildingArt(c, 'clubhouse', b.x, b.y, b.w, b.h)) house(c, x, y, w, h, ch.roof || pack.color, shade(WALLS[ch.wall]?.color || '#f3e6cf', 0.7), `${pack.name}`);
+    const px = x + w + 6, top = y - 40;
+    R(c, px - 2, top, 4, h + 34, GOLD_D); R(c, px - 1, top, 1, h + 34, GOLD_L); R(c, px - 4, top - 5, 8, 6, GOLD_L); R(c, px - 6, y + h - 8, 12, 4, GOLD_D);
+    const bw = 46, bh = 30;
+    for (let i = 0; i < bw; i += 2) { const wave = Math.round(Math.sin(t * 4 - i * 0.18) * 2 * (i / bw));
+      R(c, px + 2 + i, top + 2 + wave, 2, bh, pack.color); R(c, px + 2 + i, top + 2 + wave, 2, 2, shade(pack.color, 1.3)); R(c, px + 2 + i, top + bh + wave, 2, 2, shade(pack.color, 0.6)); if (i % 8 === 0) R(c, px + 2 + i, top + bh + 2 + wave, 2, 3, GOLD); }
+    const wv = Math.round(Math.sin(t * 4 - 10 * 0.18) * 2 * 0.4);
+    R(c, px + 9, top + 6 + wv, 14, 14, '#fff6e0'); drawEmblem(c, pack.emblem, px + 10, top + 7 + wv, 2.4, pack.color);
+    pixelText(c, pack.tag, px + 35, top + 14 + wv, 20, 8, '#fff6e0', INK);
+    plaque(c, pack.name.toUpperCase().slice(0, 18), x + w / 2, y + h + 2);
+  } }];
 }

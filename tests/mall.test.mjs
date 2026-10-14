@@ -5,7 +5,7 @@ import { save, load, MemoryStorage } from '../src/save.js';
 test('fee split is exact: 1% owner, .25/.5/.25 pools, no rounding loss', () => {
   const q = feeSplit(toU(12)); assert.equal(q.fee, 240000); assert.equal(q.owner, 120000); assert.equal(q.daily, 30000); assert.equal(q.weekly, 60000); assert.equal(q.monthly, 30000); assert.equal(q.total, toU(12.24));
   for (const p of [1, 3, 7, 33, 101, 999999, 1234567, 5.25 * U, 9.5 * U]) { const f = feeSplit(p); assert.equal(f.owner + f.daily + f.weekly + f.monthly, f.fee, `p=${p}`); assert.equal(f.fee, Math.floor(p * 0.02)); assert.ok(f.owner >= Math.floor(p / 100)); }
-  assert.match(FEE_LABEL, /2% fee: 1% Mall owner, 1% community prize pools/); assert.ok(OWNER_WALLET);
+  assert.match(FEE_LABEL, /2% fee: 1% Mall owner, 1% community prize pools/); assert.equal(OWNER_WALLET, 'BzLYTFAfUsjzQ5x8bx5BbPK4DFtaHrLCuferkvkxTNGJ');
 });
 test('purchase charges price + 2%, accrues treasury and pools, grants item', () => {
   const s = newGame(); s.kibble = 100; const r = buyMallItem(s, 'gold_suit'); assert.ok(r.ok);

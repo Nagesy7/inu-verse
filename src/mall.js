@@ -6,14 +6,14 @@
 //   0.25% -> monthly prize pool  (top Pack in the Kibble Cup)
 // Prize pools are skill/activity based - winners are chosen by score, never by chance.
 // Amounts are kept as integer micro-KIBBLE units (1 KIBBLE = 1,000,000 u) so splits are exact.
-// Backend/wallet hook: OWNER_WALLET + POOL_WALLETS are placeholders; settle() is the single place
+// Backend/wallet hook: OWNER_WALLET is the real treasury receive address (display only, no transfers); POOL_WALLETS are placeholders; settle() is the single place
 // a real on-chain split would be submitted later.
 import { OUTFITS } from './outfits.js';
 import { FURNITURE } from './furniture.js';
 
 export const U = 1_000_000;
 export const OWNER = { name: 'President Inu', title: 'Owner of Kibble Mall & the shopping district' };
-export const OWNER_WALLET = 'OWNER_WALLET_PLACEHOLDER'; // set to a real wallet address when on-chain settlement exists
+export const OWNER_WALLET = 'BzLYTFAfUsjzQ5x8bx5BbPK4DFtaHrLCuferkvkxTNGJ'; // President's treasury (Solana receive address). Simulated: no transfers are made.
 export const POOL_WALLETS = { daily: 'DAILY_POOL_PLACEHOLDER', weekly: 'WEEKLY_POOL_PLACEHOLDER', monthly: 'MONTHLY_POOL_PLACEHOLDER' };
 export const FEE_BPS = { owner: 100, daily: 25, weekly: 50, monthly: 25 }; // basis points (sum 200 = 2%)
 export const FEE_TOTAL_BPS = 200;
