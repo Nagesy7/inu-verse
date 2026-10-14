@@ -14,6 +14,10 @@ export const SimWallet = {
     return { ok: true, quote: q, sig: 'sim-' + Date.now().toString(36), simulated: true, to: TREASURY };
   },
   async purchase(o) { return this.purchaseSync(o); },
+  // burn: tokens leave circulation (no treasury, no fee). Real path: kibblePay.burn(amount)
+  burnSync({ state, itemId, amountU }) { if (toU(state.kibble) < amountU) return { ok: false, reason: `Need ${fmtK(amountU)} KIBBLE to burn` };
+    state.kibble = fromU(toU(state.kibble) - amountU); const m = ensureMall(state); m.burnedU = (m.burnedU || 0) + amountU; (m.burnLog ||= []).unshift({ itemId, amountU, at: Date.now() }); m.burnLog.length = Math.min(m.burnLog.length, 50);
+    return { ok: true, burnedU: amountU, sig: 'simburn-' + Date.now().toString(36), simulated: true }; },
 };
 // Adapter for the real SDK (kibble-pay public/kibble-pay.js). Server-side catalog is authoritative; the 2% split
 // becomes an off-chain ledger on the server, so we send the all-in total (price + fee) as the price.
@@ -22,6 +26,7 @@ export function kibblePayWallet(kibblePay) { return {
   async purchase({ state, itemId, priceU }) { const q = feeSplit(priceU);
     const r = await kibblePay.buy({ itemId, priceBaseUnits: String(q.total) }); if (!r?.ok) return { ok: false, reason: r?.reason || 'Payment failed', quote: q };
     settle(ensureMall(state), q, itemId); return { ok: true, quote: q, sig: r.signature, orderId: r.orderId, simulated: false, to: TREASURY }; },
+  async burn({ state, itemId, amountU }) { const r = await kibblePay.burn(BigInt(amountU), { memo: 'kibble:burn:' + itemId }); return r?.ok ? { ok: true, burnedU: amountU, sig: r.signature } : { ok: false, reason: r?.error || 'Burn failed' }; },
 }; }
 let active = SimWallet;
 export const wallet = () => active;

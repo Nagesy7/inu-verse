@@ -188,3 +188,4 @@ body.short .row{margin-top:6px}body.short .btn.big{font-size:13px;padding:7px 14
 .chip-o.sw{width:26px;height:26px;padding:0}.chip-o.sw.sel{box-shadow:0 0 0 2px var(--goldl);border-color:#fff}
 @media(max-width:700px){.crow{flex-direction:column;gap:2px}.clbl{width:auto;padding-top:0}.chip-o{padding:7px 8px}.chip-o.sw{width:32px;height:32px}}
 #title:not([hidden]) ~ #zoomctl{display:none!important}
+.chip.pools{cursor:pointer;font:inherit;color:var(--cream);white-space:nowrap;font-size:9px}.grid.pools{grid-template-columns:repeat(auto-fit,minmax(220px,1fr))}.grid.pools .card{text-align:left}#panel .card>b,#panel .card>small{display:block;margin:2px 0}.lb{margin:4px 0;padding:0;font-size:10px;list-style:none;text-align:left}.lb li.me{color:var(--goldl)}

@@ -30,6 +30,8 @@ import { ensureBiz, bizHour, bizDay, rollBizWeek } from './biz.js';
 import { renderField, renderFarm, renderLot, renderBizBoard } from './farmui.js';
 import * as REL from './relations.js';
 import { startJob } from './jobui.js';
+import { renderCity } from './flyui.js';
+import { ensureFly, featuredOf, statusGlow, poolsOf, FEATURED_SLOTS, claimPresDrop } from './flywheels.js';
 import { makeTown, townHour, lineFor, playerDid, friendsOf, rivalsOf } from './townai.js';
 import { mountCreator, drawPreview, profileOfChoices } from './creatorui.js';
 import { applyCreation, defaultChoices, restyle, SALON_PRICE } from './creator.js';
@@ -73,7 +75,10 @@ function toast(msg, cls = '') { // de-duplicated: an identical visible toast is 
   const d = document.createElement('div'); d.dataset.msg = msg; d.className = 'toast ' + cls; d.textContent = msg; $('#toast').appendChild(d); d._t = setTimeout(() => d.remove(), 2200); }
 let profSaveT = 0;
 function persist() { if (state) { save(state, localStorage); if (hasCustomLook(state) && Date.now() - profSaveT > 15000) { profSaveT = Date.now(); saveProfile(state); } } }
-function hud() { $('#bones').textContent = Math.floor(state.bones); $('#kibble').textContent = state.kibble.toFixed(2); $('#hud-name').textContent = state.player.name; }
+// burn-for-status flair: pulsing pixel halo + sparkles at the feet (world, home and photos)
+function drawFlair(c, col, t) { const r = 40 + Math.sin(t * 3) * 3; c.save(); c.globalAlpha = 0.5; c.fillStyle = col; c.fillRect(-r, 6, r * 2, 12); c.fillRect(-r + 10, 0, r * 2 - 20, 24); c.globalAlpha = 0.22 + Math.sin(t * 4) * 0.08; c.fillRect(-r + 8, -100, r * 2 - 16, 106); c.globalAlpha = 1; for (let i = 0; i < 6; i++) { const a = t * 1.6 + i * 1.047; c.fillStyle = i % 2 ? '#ffffff' : col; c.fillRect(Math.round(Math.cos(a) * 52) - 4, Math.round(-50 + Math.sin(a) * 56) - 4, 8, 8); } c.restore(); }
+function featuredMap() { const nowH = state.clockSec / (DAY_LEN / 24), out = {}; for (const id of Object.keys(FEATURED_SLOTS)) { const r = featuredOf(state, id, nowH); if (r) out[id] = r; } return out; }
+function hud() { { const P = poolsOf(state), el = $('#pools'); if (el) el.textContent = `D${(P.daily / 1e6).toFixed(2)} W${(P.weekly / 1e6).toFixed(2)} M${(P.monthly / 1e6).toFixed(2)}`; } $('#bones').textContent = Math.floor(state.bones); $('#kibble').textContent = state.kibble.toFixed(2); $('#hud-name').textContent = state.player.name; }
 
 function resize() { cv.width = Math.round(innerWidth * devicePixelRatio); cv.height = Math.round(innerHeight * devicePixelRatio); vignette = null; document.body.classList.toggle('landscape', innerWidth > innerHeight); document.body.classList.toggle('short', innerHeight < 520); }
 addEventListener('resize', resize); addEventListener('orientationchange', () => setTimeout(resize, 60)); window.visualViewport?.addEventListener('resize', resize); resize();
@@ -222,7 +227,7 @@ function carAction() { // E/A: park (while driving) or hop into the parked car n
 function spawnCar(id) { const g = ensureGarage(state), car = carOf(state, id); if (!car) return; g.active = id; g.parked = null; drive = { car, v: 0, vx: 0, vy: 0, dir: 'east' }; closePanel(); toast(`Hop in! Drive with WASD/stick, H/B to honk, E/A to park.`, 'good'); persist(); }
 function petPup(n) { if (n.workerRef) { const w = n.workerRef; blip(880); if (w.chatted) { w.chatted = false; playJob(WORKER_JOB[w.job]); return; } w.chatted = true; feel.say(`${w.name} (${w.job})`, w.line + ' (talk again for an odd job)', textBlip); return; }
   if (n.pet) { petF.love = 2; blip(990); feel.say(n.pet.name, ['*happy noises*', '*nuzzles you*', '*purrs/chirps contentedly*', '*does a little spin*'][Math.floor(rng() * 4)], textBlip); return; }
-  if (n.president) { const r = presTalk(pres, state); pres.emote = { kind: 'heart', t: 2 }; blip(990); feel.say('President Inu', r.quote, textBlip); if (r.tip) { toast(`President Inu tipped you ${r.tip} bones!`, 'good'); hud(); persist(); } return; } n.wag = 1.2; n.path = []; blip(990); if (REL.PEOPLE[n.name]) { const r = REL.chat(state, n.name, gameDay()); if (r.gain) n.emote = { kind: 'heart', t: 2.2 }; persist(); openPanel('friend', { name: n.name }); if (r.scene) startScene(n.name, REL.SCENES[r.scene](n.name)); return; } feel.say(n.name, PUP_LINES[Math.floor(rng() * PUP_LINES.length)], textBlip); }
+  if (n.president) { if (pres.stage === 'visit') { const d = claimPresDrop(state, 'visit' + pres.n); if (d.ok) { toast(`President Inu gave you a free limited drop: ${d.drop.name}!`, 'good'); persist(); } } const r = presTalk(pres, state); pres.emote = { kind: 'heart', t: 2 }; blip(990); feel.say('President Inu', r.quote, textBlip); if (r.tip) { toast(`President Inu tipped you ${r.tip} bones!`, 'good'); hud(); persist(); } return; } n.wag = 1.2; n.path = []; blip(990); if (REL.PEOPLE[n.name]) { const r = REL.chat(state, n.name, gameDay()); if (r.gain) n.emote = { kind: 'heart', t: 2.2 }; persist(); openPanel('friend', { name: n.name }); if (r.scene) startScene(n.name, REL.SCENES[r.scene](n.name)); return; } feel.say(n.name, PUP_LINES[Math.floor(rng() * PUP_LINES.length)], textBlip); }
 const PUP_LINES = ['Woof! That spot behind the ears... perfect!', 'Arf! Have you tried the taiyaki cart on Main Street?', 'Wanna race to Sakura Pond? Last one there is a wet biscuit!', 'I buried a bone by the big tree. Shh, it is a secret.', 'Bork bork! The Launch Hall is busy today.'];
 function doEmote(kind) { player.emote = { kind, t: kind === 'zoomies' ? 2.4 : 2.5 }; $('#emotes').hidden = true; blip(kind === 'heart' ? 990 : 740);
   for (const n of npcs) if (Math.hypot(n.x - state.player.x, n.y - state.player.y) < 260 && rng() < 0.6) setTimeout(() => { n.emote = { kind: rng() < 0.5 ? kind : 'heart', t: 2 }; }, 400 + rng() * 600); }
@@ -233,6 +238,7 @@ function togglePhoto() { photo = !photo; document.body.classList.toggle('photo',
 $('#btn-mute').onclick = () => { initAudio(); toggleMute(); };
 $('#btn-emote').onclick = () => toggleEmotes();
 $('#btn-photo').onclick = () => togglePhoto();
+$('#btn-pools').onclick = () => { initAudio(); uiClick?.(); openPanel('city', { tab: 'pools' }); };
 $('#photo-save').onclick = () => { const a = document.createElement('a'); a.download = `inu-verse-${Date.now()}.png`; a.href = cv.toDataURL('image/png'); a.click(); toast('Photo saved', 'good'); };
 $('#photo-exit').onclick = () => togglePhoto();
 $('#btn-phantom').onclick = () => toast('Phantom wallet support is coming soon — nothing is connected.', '');
@@ -326,7 +332,7 @@ function renderWorld() {
     const tx0 = Math.floor(-ox / TILE) - 1, ty0 = Math.floor(-oy / TILE) - 1; ctx.save(); ctx.scale(SCALE, SCALE); drawWater(ctx, time, tx0, ty0, tx0 + Math.ceil(vw / TILE) + 2, ty0 + Math.ceil(vh / TILE) + 2); ctx.restore(); }
   const phase = dayPhase(time + dayOffset);
   globalThis.__inuNight = phase.dark;
-  const dyn = [...dynamicProps(state, time, myPack(state)), ...presidentProps(pres, time), ...carWorldProps(), ...crewProps(), ...adProps(trend, adRot, adIdx, !!globalThis.__inuNight, time), ...confettiProps()];
+  const dyn = [...dynamicProps(state, time, myPack(state)), ...presidentProps(pres, time), ...carWorldProps(), ...crewProps(), ...adProps(trend, adRot, adIdx, !!globalThis.__inuNight, time, featuredMap()), ...confettiProps()];
   for (const d of dyn) if (d.flat) d.d(ctx);
   drawGroundLife(ctx, amb, phase); feel.drawGround(ctx);
   if (player.clickMark && player.path.length) { const m = player.clickMark, k = Math.round(10 + Math.sin(time * 6) * 2); ctx.fillStyle = '#f2cc68'; for (const [ax, ay] of [[-k, 0], [k - 4, 0], [0, -k / 2], [0, k / 2 - 2]]) ctx.fillRect(Math.round(m.x + ax), Math.round(m.y + 6 + ay), 4, 3); }
@@ -347,6 +353,7 @@ function renderWorld() {
     if (a.petSpecies) { drawPetActor(ctx, a); ctx.restore(); continue; }
     if (a.president) { drawPresident(ctx, a); if (a.emote) drawEmote(ctx, 0, -14, a.emote.kind, time); ctx.restore(); continue; }
     if (a.pupScale) { drawShiba(ctx, 0, 0, { coat: a.coat, outfit: a.outfit, face: a.face, phase: a.phase, moving: a.moving, name: a.name, scale: a.pupScale, art: a.art }); ctx.fillStyle = a.pupPatch; ctx.fillRect(-7 * a.pupScale, -30 * a.pupScale, 14 * a.pupScale, 4 * a.pupScale); ctx.fillStyle = a.pupHex; ctx.fillRect(-7 * a.pupScale, -26 * a.pupScale, 14 * a.pupScale, 3 * a.pupScale); ctx.restore(); continue; }
+    if (a.me) { const gl = statusGlow(state); if (gl) drawFlair(ctx, gl, time); }
     if (a.profile) { drawProfileShiba(ctx, 0, 0, a.profile, { face: a.face, phase: a.phase, moving: a.moving, name: a.name, scale: 1.5, badge: a.badge }); if (a.emote) drawEmote(ctx, 0, -110, a.emote.kind, time); }
     else drawShiba(ctx, 0, 0, { coat: a.coat, outfit: a.outfit, face: a.face, phase: a.phase, moving: a.moving, name: a.name, scale: 1.5, badge: a.badge, art: a.art, emote: a.emote?.kind });
     if (a.worker) { drawVest(ctx, a.face); drawTool(ctx, a.worker); }
@@ -445,6 +452,7 @@ function openPanel(kind, opts = {}) {
   if (kind === 'friend') return renderFriend(relCtx(), opts.name);
   if (kind === 'chapel') return renderChapel(relCtx());
   if (kind === 'salon') return renderSalon();
+  if (kind === 'city') return renderCity({ ...farmCtx(), tab: opts.tab, nowH: state.clockSec / (DAY_LEN / 24), dayFrac: (state.clockSec % DAY_LEN) / DAY_LEN, trend, presOn: pres.on && pres.stage === 'visit', presKey: 'visit' + pres.n, open: (t) => openPanel('city', { tab: t }) });
   if (kind === 'furn') return renderFurnStore(relCtx(), opts.store);
   if (kind === 'plot') {
     const p = PLOTS.find((x) => x.id === opts.plotId);
@@ -718,7 +726,7 @@ function renderBuild() {
     const bx = ox + ROOM_W * cell - cell * 1.6, by0 = oy - cell * 1.5; ctx.fillStyle = pk.color; ctx.fillRect(bx, by0, cell * 1.4, cell * 1.2); ctx.fillStyle = '#d4a640'; ctx.fillRect(bx, by0 + cell * 1.2, cell * 1.4, 4); drawEmblem(ctx, pk.emblem, bx + cell * 0.35, by0 + cell * 0.2, cell * 0.14, '#fff6e0'); }
   if (!build.pack && !build.readOnly && state.spouse) { const sp = npcByName(state.spouse.name); drawShiba(ctx, ox + cell * 1.2, oy - cell * 0.2, { coat: sp?.coat || 'cream', outfit: sp?.outfit || {}, scale: 1.5, name: state.spouse.name }); (state.pups || []).forEach((p, i) => drawShiba(ctx, ox + cell * (2.4 + i), oy - cell * 0.1, { coat: p.coat.base, outfit: {}, scale: REL.PUP_SCALE[REL.stageOfPup(p, gameDay())] })); }
   if (!build.pack && !build.readOnly) { const pet = activePet(state); if (pet) { ctx.save(); ctx.imageSmoothingEnabled = false; ctx.drawImage(petSprite(pet.species, Math.floor(time * 2) % 2), ox + ROOM_W * cell - cell * 1.6, oy - cell * 0.55, cell * 0.8, cell * 0.8); ctx.restore(); } }
-  else { const ni = +build.plotId.slice(1) - 1; if (!build.readOnly && hasCustomLook(state)) drawProfileShiba(ctx, ox + ROOM_W * cell - cell * 0.6, oy - cell * 0.2, myProfile(), { scale: 1.5 }); else drawShiba(ctx, ox + ROOM_W * cell - cell * 0.6, oy - cell * 0.2, { coat: build.readOnly ? ['tan', 'dark', 'cream', 'red'][ni] : state.player.coat, outfit: build.readOnly ? NPC_OUTFITS[ni] : state.wardrobe.equipped, scale: 1.5 }); }
+  else { const ni = +build.plotId.slice(1) - 1; if (!build.readOnly && statusGlow(state)) { ctx.save(); ctx.translate(ox + ROOM_W * cell - cell * 0.6, oy - cell * 0.2); drawFlair(ctx, statusGlow(state), performance.now() / 1000); ctx.restore(); } if (!build.readOnly && hasCustomLook(state)) drawProfileShiba(ctx, ox + ROOM_W * cell - cell * 0.6, oy - cell * 0.2, myProfile(), { scale: 1.5 }); else drawShiba(ctx, ox + ROOM_W * cell - cell * 0.6, oy - cell * 0.2, { coat: build.readOnly ? ['tan', 'dark', 'cream', 'red'][ni] : state.player.coat, outfit: build.readOnly ? NPC_OUTFITS[ni] : state.wardrobe.equipped, scale: 1.5 }); }
   ctx.fillStyle = '#f2cc68'; ctx.font = '18px Silkscreen, monospace'; ctx.textAlign = 'center';
   ctx.fillText(build.pack ? `${myPack(state).name} [${myPack(state).tag}] Clubhouse — decorate together` : build.readOnly ? `${NPC_HOMES.find((x) => x.id === build.plotId).owner}'s Home` : `${state.player.name}'s Home — Build & Decorate`, innerWidth / 2, 70);
 }

@@ -1,0 +1,13 @@
+import test from 'node:test'; import assert from 'node:assert/strict';
+const F = await import('../src/flywheels.js'); const { newGame } = await import('../src/game.js'); const { ensureMall, toU, OWNER_WALLET } = await import('../src/mall.js'); const { coinFor, AD_SLOTS } = await import('../src/coinads.js'); const { jobBoard, finishJob } = await import('../src/jobs.js');
+const S = () => { const s = newGame({ name: 'T' }); s.kibble = 200; return s; };
+test('featured billboard: rent for KIBBLE to treasury (+2% to pools), FEATURED badge, expires; organic ads stay free', () => { const s = S(), m = ensureMall(s), t0 = m.treasury;
+  const r = F.rentFeatured(s, 'bb1', 'MOCHI', 10); assert.ok(r.ok); assert.ok(m.treasury > t0); assert.ok(m.pools.daily > 0); assert.equal(s.kibble, 200 - 8 * 1.02);
+  assert.equal(F.rentFeatured(s, 'bb1', 'SNIF', 11).ok, false); const slot = AD_SLOTS.find((x) => x.id === 'bb1'), c = coinFor(slot, [{ ticker: 'ZEN', name: 'z', color: '#fff', pct: 1 }], 0, 0, { bb1: F.featuredOf(s, 'bb1', 12) }); assert.equal(c.featured, true); assert.equal(c.ticker, 'MOCHI');
+  const organic = coinFor(AD_SLOTS.find((x) => x.id === 'bb2'), [{ ticker: 'ZEN', pct: 1 }], 0, 0, {}); assert.ok(!organic.featured); assert.equal(F.featuredOf(s, 'bb1', 10 + 25), null); });
+test('burn-for-status: burns (no treasury), numbered, capped supply, one each, flair glow', () => { const s = S(), m = ensureMall(s), t0 = m.treasury;
+  const r = F.burnForStatus(s, 'pet_void'); assert.ok(r.ok); assert.equal(r.n, 1); assert.equal(m.treasury, t0); assert.equal(m.burnedU, toU(25)); assert.equal(s.kibble, 175); assert.equal(F.remaining(s, 'pet_void'), 99);
+  assert.equal(F.burnForStatus(s, 'pet_void').ok, false); assert.ok(F.statusGlow(s)); s.fly.burns.store_gold = 150; assert.equal(F.burnForStatus(s, 'store_gold').reason, 'Sold out'); const poor = S(); poor.kibble = 1; assert.equal(F.burnForStatus(poor, 'supercar_01').ok, false); });
+test('prize pools: shown from fees; job board ranks by shift pay (skill), no entry', () => { const s = S(); F.rentFeatured(s, 'bb2', 'ZEN', 0); const P = F.poolsOf(s); assert.ok(P.daily > 0 && P.weekly > 0 && P.monthly > 0);
+  finishJob(s, 'cafe', { score: 5000, maxCombo: 30 }, 4); const b = jobBoard(s, 4, 1); assert.ok(b.find((r) => r.me).score > 0); assert.ok(b[0].score >= b[b.length - 1].score); });
+test('President drops: free, one per visit, collectable set', () => { const s = S(), k0 = s.kibble; const a = F.claimPresDrop(s, 'visit1'); assert.ok(a.ok); assert.equal(F.claimPresDrop(s, 'visit1').ok, false); assert.ok(F.claimPresDrop(s, 'visit2').ok); assert.equal(s.kibble, k0); assert.ok(s.fly.cosmetics.includes(a.drop.id)); });

@@ -20,7 +20,8 @@ export const AD_SLOTS = [
   { id: 'facade', kind: 'facade', x: (MALL.x + 3) * T, y: MALL.y * T + 146, w: (MALL.w - 6) * T, h: 14, rank: 0, list: true, depth: (MALL.y + MALL.h) * T + 1 },
   ...[[29, 60], [35, 60], [29, 69], [35, 69]].map(([x, y], i) => ({ id: `flag${i}`, kind: 'flag', x: x * T + 20, y: y * T - 14, w: 26, h: 16, rank: i % 3, depth: y * T + 30 })),
 ];
-export function coinFor(slot, trend, rot = 0, crewIdx = 0) { if (!trend.length) return null; return trend[(slot.rank + rot + (slot.crew ? crewIdx : 0)) % trend.length]; }
+export function coinFor(slot, trend, rot = 0, crewIdx = 0, featured) { if (featured?.[slot.id]) { const t = trend.find((c) => c.ticker === featured[slot.id].ticker) || { ticker: featured[slot.id].ticker, name: 'Featured', color: '#ffcf3a', pct: 0 }; return { ...t, featured: true, by: featured[slot.id].by }; }
+  if (!trend.length) return null; return trend[(slot.rank + rot + (slot.crew ? crewIdx : 0)) % trend.length]; }
 export function adAt(trend, rot, crewIdx, wx, wy) { for (const s of AD_SLOTS) if (wx >= s.x && wx <= s.x + s.w && wy >= s.y && wy <= s.y + s.h) { const c = s.list ? trend[Math.min(trend.length - 1, Math.floor(((wx - s.x) / s.w) * Math.min(3, trend.length)))] : coinFor(s, trend, rot, crewIdx); if (c) return { slot: s.id, coin: c }; } return null; }
 const pctTxt = (p) => (p >= 0 ? '+' : '') + p.toFixed(1) + '%';
 function hash(s) { let h = 7; for (const ch of s) h = (h * 31 + ch.charCodeAt(0)) >>> 0; return h; }
@@ -30,15 +31,16 @@ export function drawLogo(c, x, y, r, coin) { // generated logo: coin colour disc
   for (let i = 0; i < 9; i++) if ((h >> i) & 1) { const gx = i % 3, gy = Math.floor(i / 3); c.fillRect(x - r + gx * u * 2 / 3 * 2, y - r + gy * u * 2 / 3 * 2, u, u); }
   c.fillStyle = '#fff'; c.font = `${Math.max(5, Math.round(r * 1.2))}px Silkscreen, monospace`; c.textAlign = 'center'; c.textBaseline = 'middle'; c.fillText(coin.ticker[0] || '?', x, y + 0.5); c.textBaseline = 'alphabetic'; }
 function glowOn(c, night, col) { if (night) { c.shadowColor = col; c.shadowBlur = 10; } }
-export function drawAd(c, s, trend, rot, crewIdx, night, t) {
-  const coin = coinFor(s, trend, rot, crewIdx); if (!coin) return; const up = coin.pct >= 0, pc = up ? '#5df07a' : '#ff6a6a';
+export function drawAd(c, s, trend, rot, crewIdx, night, t, featured) {
+  const coin = coinFor(s, trend, rot, crewIdx, featured); if (!coin) return; const up = coin.pct >= 0, pc = up ? '#5df07a' : '#ff6a6a';
   c.save(); c.textAlign = 'center';
   if (s.kind === 'billboard') { c.fillStyle = '#4a4f5e'; c.fillRect(s.x + 20, s.y + 34, 6, 30); c.fillRect(s.x + s.w - 26, s.y + 34, 6, 30);
     glowOn(c, night, coin.color); c.fillStyle = '#1b1f33'; c.fillRect(s.x, s.y - 6, s.w, s.h); c.shadowBlur = 0; c.fillStyle = night ? '#232a4a' : '#f7f1df'; c.fillRect(s.x + 4, s.y - 2, s.w - 8, s.h - 8);
     c.fillStyle = coin.color; c.fillRect(s.x + 4, s.y - 2, 6, s.h - 8); drawLogo(c, s.x + 28, s.y + 16, 13, coin);
     c.textAlign = 'left'; c.fillStyle = night ? '#fff' : '#141a2e'; c.font = '10px Silkscreen, monospace'; c.fillText('$' + coin.ticker, s.x + 48, s.y + 12);
     c.font = '6px Silkscreen, monospace'; c.fillText(coin.name.slice(0, 18) + ' · trending in Launch Hall', s.x + 48, s.y + 24, s.w - 56); c.fillStyle = pc; c.font = '9px Silkscreen, monospace'; c.textAlign = 'right'; c.fillText(pctTxt(coin.pct), s.x + s.w - 8, s.y + 12);
-    c.fillStyle = night ? '#ffcf3a' : '#8a6a1a'; c.font = '5px Silkscreen, monospace'; c.fillText('TAP TO TRADE (DEMO)', s.x + s.w - 8, s.y + 32); }
+    c.fillStyle = night ? '#ffcf3a' : '#8a6a1a'; c.font = '5px Silkscreen, monospace'; c.fillText(coin.featured ? 'FEATURED · PAID TO TREASURY' : 'TAP TO TRADE (DEMO)', s.x + s.w - 8, s.y + 32);
+    if (coin.featured) { c.fillStyle = '#ffcf3a'; c.fillRect(s.x + s.w - 70, s.y - 14, 66, 12); c.fillStyle = '#141a2e'; c.font = '6px Silkscreen, monospace'; c.textAlign = 'center'; c.fillText('FEATURED', s.x + s.w - 37, s.y - 5); } }
   else if (s.kind === 'banner') { c.fillStyle = '#c9a23a'; c.fillRect(s.x - 2, s.y - 2, s.w + 4, 3); glowOn(c, night, coin.color); c.fillStyle = coin.color; c.fillRect(s.x, s.y, s.w, s.h - 6); c.shadowBlur = 0;
     c.beginPath(); c.moveTo(s.x, s.y + s.h - 6); c.lineTo(s.x + s.w / 2, s.y + s.h); c.lineTo(s.x + s.w, s.y + s.h - 6); c.fill(); drawLogo(c, s.x + s.w / 2, s.y + 9, 6, coin);
     c.fillStyle = '#fff'; c.font = '5px Silkscreen, monospace'; c.fillText(coin.ticker.slice(0, 4), s.x + s.w / 2, s.y + 24); c.fillStyle = '#141a2e'; c.fillRect(s.x + 1, s.y + 27, s.w - 2, 7); c.fillStyle = pc; c.font = '4px Silkscreen, monospace'; c.fillText(pctTxt(coin.pct), s.x + s.w / 2, s.y + 32.5); }
@@ -51,4 +53,4 @@ export function drawAd(c, s, trend, rot, crewIdx, night, t) {
   else { glowOn(c, night, coin.color); c.fillStyle = '#141a2e'; c.fillRect(s.x, s.y, s.w, s.h); c.shadowBlur = 0; c.fillStyle = '#c9a23a'; c.fillRect(s.x + 8, s.y - 5, 1, 5); c.fillRect(s.x + s.w - 9, s.y - 5, 1, 5);
     drawLogo(c, s.x + 8, s.y + s.h / 2, 5, coin); c.textAlign = 'left'; c.fillStyle = '#fff'; c.font = '5px Silkscreen, monospace'; c.fillText('$' + coin.ticker, s.x + 15, s.y + 8); c.fillStyle = pc; c.fillText(pctTxt(coin.pct), s.x + 15, s.y + 15); }
   c.restore(); }
-export function adProps(trend, rot, crewIdx, night, t) { return AD_SLOTS.map((s) => ({ y: s.depth ?? s.y + s.h + 30, d: (c) => drawAd(c, s, trend, rot, crewIdx, night, t) })); }
+export function adProps(trend, rot, crewIdx, night, t, featured) { return AD_SLOTS.map((s) => ({ y: s.depth ?? s.y + s.h + 30, d: (c) => drawAd(c, s, trend, rot, crewIdx, night, t, featured) })); }

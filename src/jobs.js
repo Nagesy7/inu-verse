@@ -25,5 +25,12 @@ export function ensureJobs(s) { s.jobs ||= {}; for (const k in JOBS) s.jobs[k] |
 // record a finished run: pays bones, xp = performance pay (capped), personal best. returns summary for the results screen
 export function finishJob(s, jobId, result, day) { const J = ensureJobs(s)[jobId], first = J.lastDay !== day, pay = payFor(jobId, result, first, perk(s, 'jobPay')), before = rankOf(J.xp);
   J.runs++; J.lastDay = day; J.xp += pay.perf + pay.combo; /* skill xp capped per run */ const pb = result.score > J.best; if (pb) J.best = Math.round(result.score); J.bestCombo = Math.max(J.bestCombo, result.maxCombo || 0);
+  J.today = J.today?.day === day ? { day, total: J.today.total + pay.total, best: Math.max(J.today.best, pay.perf) } : { day, total: pay.total, best: pay.perf };
   s.bones += pay.total; if (s.stats) s.stats.bonesEarned = (s.stats.bonesEarned || 0) + pay.total; const after = rankOf(J.xp);
   return { ...pay, pb, best: J.best, rank: after.title, rankUp: after.level > before.level, next: after.next, xp: J.xp }; }
+
+// daily Job board (feeds the daily prize pool): today's shift earnings across all jobs vs seeded townsfolk
+const h32 = (x) => { let h = 2166136261; for (const c of String(x)) h = Math.imul(h ^ c.charCodeAt(0), 16777619); return (h >>> 0) / 4294967296; };
+export const JOB_RIVALS = ['Mochi', 'Kuro', 'Hana', 'Taro', 'Yuzu', 'Goma'];
+export function jobBoard(s, day, frac = 1) { const J = ensureJobs(s), mine = Object.values(J).reduce((t, j) => t + (j.today?.day === day ? j.today.total : 0), 0);
+  return [{ id: 'you', name: s.player?.name || 'You', score: mine, me: true }, ...JOB_RIVALS.map((n) => ({ id: n, name: n, score: Math.floor((60 + h32(n + day) * 380) * Math.max(0.05, frac)) }))].sort((a, b) => b.score - a.score); }
