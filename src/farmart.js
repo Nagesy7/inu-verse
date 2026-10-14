@@ -3,6 +3,7 @@ import { CHAPEL } from './world.js';
 import { TILE, FIELDS, BARN, POND, MARKET, CRAFT, PEN, ORCHARD, FARM_SIGNS, LOTS, MATCHMAKER } from './world.js';
 import { CROPS, ensureFarm, stageOf, COSMETICS } from './farm.js';
 import { ensureBiz, TYPES, rivalAt, PREMIUM_LOOKS } from './biz.js';
+import { sponsorOf } from './fly5.js';
 const N = 16, INK = '#141a2e';
 const R = (c, x, y, w, h, col) => { c.fillStyle = col; c.fillRect(Math.round(x), Math.round(y), w, h); };
 function txt(c, s, x, y, size = 7, col = '#fff', align = 'center') { c.font = `${size}px Silkscreen, monospace`; c.textAlign = align; c.fillStyle = INK; c.fillText(s, x, y + 1); c.fillStyle = col; c.fillText(s, x, y); }
@@ -59,7 +60,7 @@ function cow(c, x, y, t, i) { const b = Math.sin(t * 2 + i) > 0.6 ? 1 : 0; R(c, 
 function fruitTree(c, x, y, fruit, ready, i) { R(c, x + 6, y + 4, 22, 5, 'rgba(0,0,0,.18)'); R(c, x + 13, y - 14, 6, 20, '#6a4422'); R(c, x + 13, y - 14, 2, 20, '#8a5a32');
   const rows = [[10, 12], [4, 24], [0, 32], [0, 32], [2, 28], [8, 16]]; rows.forEach(([o, w], k) => { R(c, x + o, y - 44 + k * 5, w, 5, k < 2 ? '#4caf50' : k > 3 ? '#2a6a32' : '#3a8c3e'); }); R(c, x + 8, y - 38, 8, 4, '#7ad06a');
   if (fruit && ready > 0) for (let k = 0; k < Math.min(6, Math.ceil(ready / 2)); k++) { const fx = x + 4 + ((k * 11 + i * 7) % 22), fy = y - 38 + ((k * 7 + i * 5) % 18); R(c, fx, fy, 5, 5, fruit === 'apple' ? '#e8344a' : '#ffa07a'); R(c, fx + 1, fy + 1, 2, 1, '#fff'); } }
-function storefront(c, L, m, rival, t) { const x = L.x * TILE, y = L.y * TILE, w = L.w * TILE, h = L.h * TILE; const type = m ? m.type : rival?.type, T = TYPES[type], col = T ? T.color : '#9aa0b0', look = m?.look;
+function storefront(c, L, m, rival, t, sponsor = null) { const x = L.x * TILE, y = L.y * TILE, w = L.w * TILE, h = L.h * TILE; const type = m ? m.type : rival?.type, T = TYPES[type], col = T ? T.color : '#9aa0b0', look = m?.look;
   R(c, x - 4, y - 8, w + 8, 18, INK); R(c, x - 2, y - 6, w + 4, 14, look === 'gold' ? '#c9a23a' : look === 'marble' ? '#e8e4dc' : '#5a4a6a');
   R(c, x, y + 8, w, h - 8, look === 'marble' ? '#f2efe8' : look === 'gold' ? '#2a2440' : look === 'sakura' ? '#ffd6e4' : '#e8dcc4'); for (let r = y + 16; r < y + h; r += 8) R(c, x, r, w, 1, 'rgba(0,0,0,.08)');
   if (T) { for (let i = 0; i < w; i += 16) { R(c, x + i, y + 36, 8, 14, col); R(c, x + i + 8, y + 36, 8, 14, '#fff'); } R(c, x, y + 50, w, 3, INK); }
@@ -75,7 +76,8 @@ function storefront(c, L, m, rival, t) { const x = L.x * TILE, y = L.y * TILE, w
   if (m?.staff) for (let k = 0; k < m.staff; k++) R(c, x + 18 + k * 14, y + 64, 8, 10, '#e8a23a');
   // burn-for-status skins: sakura petals + gold leaf trim (visible beyond the base look)
   if (m?.looks?.store_sakura) { for (let i = 0; i < 5; i++) { R(c, x + 8 + i * 14 + Math.sin(t + i) * 2, y + 8, 4, 4, '#ff8fb6'); R(c, x + 10 + i * 14, y + 10, 2, 2, '#fff'); } R(c, x - 4, y + 30, w + 8, 3, '#ffb0c8'); }
-  if (m?.looks?.store_gold) { R(c, x - 4, y - 10, w + 8, 3, '#e3b341'); R(c, x - 4, y + h - 2, w + 8, 3, '#e3b341'); for (let i = 0; i < 3; i++) R(c, x + 20 + i * 24, y - 18, 8, 8, '#ffd23a'); } }
+  if (m?.looks?.store_gold) { R(c, x - 4, y - 10, w + 8, 3, '#e3b341'); R(c, x - 4, y + h - 2, w + 8, 3, '#e3b341'); for (let i = 0; i < 3; i++) R(c, x + 20 + i * 24, y - 18, 8, 8, '#ffd23a'); }
+  if (sponsor) { R(c, x + 4, y - 28, w - 8, 12, '#141a2e'); R(c, x + 5, y - 27, w - 10, 10, '#ffcf3a'); txt(c, ('SPONSORED · ' + (sponsor.brand || '')).toUpperCase().slice(0, 18), x + w / 2, y - 19, 5, '#141a2e'); } }
 export function farmDynamic(state, t) { const out = []; if (!state) return out; const f = ensureFarm(state), b = ensureBiz(state);
   out.push({ y: (BARN.y + BARN.h) * TILE - 1, d: (c) => barnDraw(c, f.look.barn) }); out.push({ y: (BARN.y + BARN.h + 1) * TILE, d: (c) => tractor(c, (BARN.x + BARN.w + 0.3) * TILE, (BARN.y + BARN.h + 1) * TILE - 4, f.look.tractor) });
   FIELDS.forEach((F, i) => { const fl = f.fields[i], st = stageOf(fl); if (!st) return; for (let r = 0; r < F.h; r++) out.push({ y: (F.y + r) * TILE + 26, d: (c) => { for (let k = 0; k < F.w * 2; k++) crop(c, F.x * TILE + 8 + k * 16, (F.y + r) * TILE + 26, fl.crop, st, t); } });
@@ -85,6 +87,7 @@ export function farmDynamic(state, t) { const out = []; if (!state) return out; 
   for (let i = 0; i < nC; i++) { const x = (PEN.x + 1.5 + ((i * 2.3 + Math.sin(t * 0.4 + i) * 1.5 + 10) % (PEN.w - 3))) * TILE, y = (PEN.y + 1.5 + (i % 3) * 1.4) * TILE + Math.cos(t * 0.5 + i) * 8; out.push({ y, d: (c) => chicken(c, x, y, t, i) }); }
   for (let i = 0; i < nW; i++) { const x = (PEN.x + 2 + i * 2.5 + Math.sin(t * 0.15 + i) * 0.8) * TILE, y = (PEN.y + 4.6) * TILE; out.push({ y, d: (c) => cow(c, x, y, t, i) }); }
   if (Object.values(f.pen).some((n) => n > 0)) out.push({ y: (PEN.y + 1) * TILE, d: (c) => { R(c, 43 * TILE - 6, PEN.y * TILE - 22, 12, 12, INK); R(c, 43 * TILE - 5, PEN.y * TILE - 21, 10, 10, '#fff'); txt(c, '!', 43 * TILE, PEN.y * TILE - 13, 8, '#e8344a'); } });
-  for (const L of LOTS) { const mine = b.mine?.lot === L.id ? b.mine : null; out.push({ y: (L.y + L.h) * TILE - 1, d: (c) => storefront(c, L, mine, rivalAt(L.id), t) }); }
+  const cafeSp = sponsorOf(state, 'cafe', (state.clockSec || 0) / 30); // DAY_LEN/24 ≈ 30s per hour
+  for (const L of LOTS) { const mine = b.mine?.lot === L.id ? b.mine : null; const sp = cafeSp && (mine?.type === 'cafe' || rivalAt(L.id)?.type === 'cafe') ? cafeSp : null; out.push({ y: (L.y + L.h) * TILE - 1, d: (c) => storefront(c, L, mine, rivalAt(L.id), t, sp) }); }
   return out; }
 export { COSMETICS, PREMIUM_LOOKS };

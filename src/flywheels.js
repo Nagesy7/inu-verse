@@ -1,6 +1,7 @@
 // City flywheels: featured billboards, burn-for-status cosmetics, prize-pool HUD, President free drops.
 // Cosmetics and status only. No paid entry, no chance prizes.
 import { wallet } from './wallet.js'; import { toU } from './mall.js'; import { ensureMall } from './mall.js';
+import { recordBurn } from './fly5.js';
 export const FEATURED_SLOTS = {
   bb1: { id: 'bb1', name: 'Bone Street East Billboard', price: 8, hours: 24 },
   bb2: { id: 'bb2', name: 'Bone Street West Billboard', price: 6, hours: 24 },
@@ -34,6 +35,7 @@ export function burnForStatus(s, id) { const S = STATUS[id]; if (!S) return { ok
   const buy = w.burnSync({ state: s, itemId: 'burn:' + id, amountU: priceU }); if (!buy.ok) return buy;
   const f = ensureFly(s); f.burns[id] = (f.burns[id] || 0) + 1; f.owned[id] = { n: f.burns[id], at: Date.now() }; f.burnedTotal += S.burn;
   if (S.kind === 'car') grantBurnCar(s, id, S); if (S.kind === 'storefront') grantBurnStore(s, id); if (S.kind === 'pet') grantBurnPet(s, id, S);
+  recordBurn(s, priceU, Math.floor((s.clockSec || 0) / (720 * 28)));
   return { ok: true, n: f.burns[id], left: remaining(s, id), glow: S.glow, burnedU: buy.burnedU }; }
 function grantBurnCar(s, id, S) { s.garage ||= { cars: [], active: null, parked: null }; if (s.garage.cars.find((c) => c.burnId === id)) return;
   const car = { id: 'burn-' + id, model: 'supercar', color: id.endsWith('02') ? 'Black' : 'Gold', burn: true, burnId: id, n: ensureFly(s).owned[id].n, glow: S.glow, name: S.name }; s.garage.cars.push(car); s.garage.active ??= car.id; }

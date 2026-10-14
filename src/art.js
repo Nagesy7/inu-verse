@@ -69,8 +69,8 @@ export function drawShiba(ctx, x, y, { coat = 'tan', face = 'down', phase = 0, m
   if (name) {
     ctx.save(); ctx.font = '8px Silkscreen, monospace'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
     const tw = Math.ceil(ctx.measureText(name).width) + 8, ty = dy - 8;
-    ctx.fillStyle = '#121a36'; ctx.fillRect(Math.round(x - tw / 2), ty - 6, tw, 12); ctx.fillStyle = '#d4a640'; ctx.fillRect(Math.round(x - tw / 2), ty + 5, tw, 1);
-    ctx.fillStyle = '#f6e7b8'; ctx.fillText(name, Math.round(x), ty);
+    const gold = GOLD.name && name === GOLD.name; ctx.fillStyle = gold ? '#7a5a12' : '#121a36'; ctx.fillRect(Math.round(x - tw / 2), ty - 6, tw, 12); ctx.fillStyle = gold ? '#ffe27a' : '#d4a640'; ctx.fillRect(Math.round(x - tw / 2), ty + 5, tw, 1); if (gold) { ctx.fillRect(Math.round(x - tw / 2), ty - 7, tw, 1); }
+    ctx.fillStyle = (GOLD.name && name === GOLD.name) ? '#ffe27a' : '#f6e7b8'; ctx.fillText(name, Math.round(x), ty);
     if (badge) { // Pack badge: banner-coloured tag with emblem, above the name
       const bt = `[${badge.tag}]`, bw = Math.ceil(ctx.measureText(bt).width) + 18, bx = Math.round(x - bw / 2), byy = ty - 20;
       ctx.fillStyle = '#121a36'; ctx.fillRect(bx - 1, byy - 1, bw + 2, 13); ctx.fillStyle = badge.color; ctx.fillRect(bx, byy, bw, 11);
@@ -109,8 +109,8 @@ function drawArt(ctx, x, y, im, { face, phase, moving, scale, name, shadow, badg
 function nameTag(ctx, x, dy, name, badge) {
   ctx.save(); ctx.font = '8px Silkscreen, monospace'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
   const tw = Math.ceil(ctx.measureText(name).width) + 8, ty = Math.round(dy - 8);
-  ctx.fillStyle = '#121a36'; ctx.fillRect(Math.round(x - tw / 2), ty - 6, tw, 12); ctx.fillStyle = '#d4a640'; ctx.fillRect(Math.round(x - tw / 2), ty + 5, tw, 1);
-  ctx.fillStyle = '#f6e7b8'; ctx.fillText(name, Math.round(x), ty);
+  const gold = GOLD.name && name === GOLD.name; ctx.fillStyle = gold ? '#7a5a12' : '#121a36'; ctx.fillRect(Math.round(x - tw / 2), ty - 6, tw, 12); ctx.fillStyle = gold ? '#ffe27a' : '#d4a640'; ctx.fillRect(Math.round(x - tw / 2), ty + 5, tw, 1); if (gold) { ctx.fillRect(Math.round(x - tw / 2), ty - 7, tw, 1); }
+  ctx.fillStyle = (GOLD.name && name === GOLD.name) ? '#ffe27a' : '#f6e7b8'; ctx.fillText(name, Math.round(x), ty);
   if (badge) {
     const bt = `[${badge.tag}]`, bw = Math.ceil(ctx.measureText(bt).width) + 18, bx = Math.round(x - bw / 2), byy = ty - 20;
     ctx.fillStyle = '#121a36'; ctx.fillRect(bx - 1, byy - 1, bw + 2, 13); ctx.fillStyle = badge.color; ctx.fillRect(bx, byy, bw, 11);
@@ -138,6 +138,7 @@ export function drawMenuIcon(ctx, id, x, y, s = 1) {
 }
 
 // ---- furniture (top-down) ----
+export const GOLD = { name: null }; // VIP holder: gold name tag for this display name
 export function drawFurniture(ctx, id, x, y, cell, rot, alpha = 1) {
   const d = FURNITURE[id], f = footprint(id, rot), w = f.w * cell, h = f.h * cell, p = 4;
   ctx.save(); ctx.globalAlpha = alpha; ctx.translate(x + w / 2, y + h / 2); ctx.rotate((rot * Math.PI) / 2);
