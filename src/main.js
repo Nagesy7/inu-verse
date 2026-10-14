@@ -1,3 +1,4 @@
+import { CHAPEL as CHAPEL_POS, LOTS as BIZ_LOTS } from './world.js';
 import { TILE, MAP_W, MAP_H, MAP, T, BUILDINGS, PLOTS, NPC_HOMES, CLUBHOUSE, MALL_BUILDINGS, STATUE, LEADERS, PLOT_COST, findPath, moveBody, nearestInteractable, interactables, isSolid } from './world.js';
 import { COATS, newGame, claimPlot, buyFurniture, placeFurniture, moveFurniture, storeFurniture, sellPlaced, sellFromInventory, upgrade, swapBonesToKibble, BONES_PER_KIBBLE } from './game.js';
 import { FURNITURE, WALLS, FLOORS, ROOM_W, ROOM_H, canPlace, itemAt, footprint } from './furniture.js';
@@ -27,6 +28,8 @@ import { trending, adProps, adAt } from './coinads.js';
 import { ensureFarm, tickFarm, seasonOf, marketHour, rollFarmWeek, catchUp, fishCatch, WEEK_DAYS } from './farm.js';
 import { ensureBiz, bizHour, bizDay, rollBizWeek } from './biz.js';
 import { renderField, renderFarm, renderLot, renderBizBoard } from './farmui.js';
+import * as REL from './relations.js';
+import { renderFriend, renderChapel, renderFurnStore } from './relui.js';
 import { prerenderMap, dynamicProps, buildingsReady } from './render.js';
 import { N, SCALE, drawWater } from './tiles.js';
 import { feel } from './feel.js';
@@ -94,7 +97,7 @@ function titleScreen() {
   requestAnimationFrame(loop);
 }
 
-function startGame(s) { seedTokens(s, rng); ensureFarm(s); ensureBiz(s); s.clockSec ??= 0; catchUp(s, Date.now(), { season: seasonOf(Math.floor(s.clockSec / DAY_LEN)), rain: false }); hourIdx = Math.floor(s.clockSec / (DAY_LEN / 24));
+function startGame(s) { seedTokens(s, rng); REL.ensureRel(s); ensureFarm(s); ensureBiz(s); s.clockSec ??= 0; catchUp(s, Date.now(), { season: seasonOf(Math.floor(s.clockSec / DAY_LEN)), rain: false }); hourIdx = Math.floor(s.clockSec / (DAY_LEN / 24));
   state = s; state.kibble ??= 20; ensureWardrobe(state); ensurePacks(state); ensureMall(state); state.clockSec ??= 0; lastEarned = state.stats.bonesEarned; mode = 'world';
   $('#title').hidden = true; $('#hud').hidden = false; $('#minimap-wrap').hidden = false;
   mapImg = prerenderMap(); npcs = spawnNpcs(rng, 6); npcs.forEach((n) => { n.art = artKey(n.coat); }); amb = makeAmbient(42);
@@ -152,15 +155,41 @@ addEventListener('pointerdown', () => initAudio(), { once: true });
 document.addEventListener('pointerdown', (e) => { if (e.target.closest('button,.btn,.coat,[data-buy],[data-inv]')) { initAudio(); uiClick(); } });
 let hourIdx = 0; const fish = { state: 'idle', t: 0, biteAt: 0 };
 const gameDay = () => Math.floor((state.clockSec || 0) / DAY_LEN), hourKey = () => Math.floor((state.clockSec || 0) / (DAY_LEN / 24));
-function farmCtx() { const day = gameDay(); return { state, body: $('#panel-body'), toast, hud, persist, rerender: () => openPanel(panel.kind, panel), season: seasonOf(day), rain: amb.rain > 0.3, day, hourKey: hourKey(), weekFrac: ((state.clockSec / DAY_LEN) % WEEK_DAYS) / WEEK_DAYS, fish,
+function farmCtx() { const day = gameDay(); return { state, body: $('#panel-body'), toast, hud, persist, rerender: () => { if (panel) openPanel(panel.kind, panel); }, season: seasonOf(day), rain: amb.rain > 0.3, day, hourKey: hourKey(), weekFrac: ((state.clockSec / DAY_LEN) % WEEK_DAYS) / WEEK_DAYS, fish,
   cast: () => { fish.state = 'wait'; fish.t = 0; fish.biteAt = 1.2 + rng() * 2.5; }, reel: () => { if (fish.state !== 'bite') { fish.state = 'idle'; return { ok: false, reason: 'Too early — it swam off' }; } const r = fishCatch(state, rng(), fish.t); fish.state = 'idle'; if (r.ok) toast(`Caught a ${r.item === 'koi' ? 'GOLDEN KOI!' : r.item}!`, 'good'); return r; } }; }
 function farmTick(dt) { const day = gameDay(); tickFarm(state, dt, { season: seasonOf(day), rain: amb.rain > 0.3 }); ensureFarm(state).lastReal = Date.now();
   if (fish.state === 'wait') { fish.t += dt; if (fish.t >= fish.biteAt) { fish.state = 'bite'; fish.t = 0; blip(1200); if (panel?.kind === 'farm' && panel.id === 'pond') openPanel('farm', panel); } } else if (fish.state === 'bite') { fish.t += dt; if (fish.t > 1.5) { fish.state = 'idle'; if (panel?.kind === 'farm' && panel.id === 'pond') { toast('It got away!'); openPanel('farm', panel); } } }
   const hk = hourKey(); while (hourIdx < hk) { hourIdx++; marketHour(state); const r = bizHour(state, hourIdx % 24, rng, state.spouse?.helps === 'biz' ? 2 : 0);
+    if (hourIdx % 24 === 6) { const w = REL.spouseMorning(state); if (w) toast(`${state.spouse.name} watered ${w} field${w > 1 ? 's' : ''} this morning`, 'good'); for (const j of REL.pupJobs(state, Math.floor(hourIdx / 24))) toast(j, 'good'); }
     if (hourIdx % 24 === 0) { const row = bizDay(state, Math.floor(hourIdx / 24) - 1); if (row?.closed) toast(`3 unpaid days: your shop closed and the lease on ${row.lot} was handed back.`, 'bad'); else if (row?.unpaid) toast(`Warning: couldn't cover rent + wages (${row.due} bones). Unpaid day ${row.unpaidDays}/3 — the shop closes after 3.`, 'bad'); else if (row) toast(`Shop ledger: day profit ${row.profit} bones`, row.profit >= 0 ? 'good' : 'bad');
       const wk = Math.floor(Math.floor(hourIdx / 24) / WEEK_DAYS); const a = rollFarmWeek(state, wk), b = rollBizWeek(state, wk); if (a?.paid) toast(`Top Farmer #${a.rank}: +${a.paid} bones!`, 'good'); if (b?.paid) toast(`Top Business #${b.rank}: +${b.paid} bones!`, 'good'); }
     if (r?.sold && panel?.kind === 'lot') openPanel('lot', panel); } }
+const LOTS_POS = Object.fromEntries(BIZ_LOTS.map((l) => [l.id, [l.x + 3.5, l.y + l.h + 0.6]]));
+const pupF = [];
+function stepPups(dt) { const P = state.pups || []; while (pupF.length < P.length) pupF.push({ x: state.player.x, y: state.player.y, dir: 1, phase: 0, moving: false }); let lead = drive ? null : state.player;
+  P.forEach((p, i) => { const f = pupF[i]; if (!lead) return; followStep(f, lead.x - player.dir * 20, lead.y + 6, dt); lead = f; }); }
+function pupActors() { if (drive) return []; return (state.pups || []).map((p, i) => { const f = pupF[i]; if (!f) return null; const st = REL.stageOfPup(p, gameDay()); return { x: f.x, y: f.y, coat: p.coat.base, outfit: {}, face: f.dir > 0 ? 'right' : 'left', phase: f.phase, moving: f.moving, name: `${p.name} (${st})`, pupScale: REL.PUP_SCALE[st], pupHex: p.coat.hex, pupPatch: p.coat.patch, art: artKey(p.coat.base, {}) }; }).filter(Boolean); }
+const DATE_SPOTS = { cafe: [5.5, 19.5], fountain: [32, 67.4], pond: [11, 95.5], dinner: [32, 59.5] };
+let scene = null, confetti = [];
+function npcByName(n) { return npcs.find((x) => x.name === n); }
+function startScene(who, lines, place) { if (panel) closePanel(); const sp = DATE_SPOTS[place]; const n = npcByName(who);
+  if (sp) { state.player.x = sp[0] * TILE; state.player.y = sp[1] * TILE; if (n) { n.x = state.player.x + 28; n.y = state.player.y; n.path = []; n.wait = 12; n.face = 'left'; } }
+  if (n) n.emote = { kind: 'heart', t: 3 }; scene = { who, lines, i: -1, t: 99, place }; }
+function stepScene(dt) { if (!scene) return; scene.t += dt; if (scene.t > 3.4) { scene.i++; scene.t = 0; if (scene.i >= scene.lines.length) { const done = scene; scene = null; if (done.wedding) { toast('Photo mode: snap your wedding photo! (Esc to exit)', 'good'); togglePhoto(); } return; } feel.say(scene.who, scene.lines[scene.i], textBlip); } }
+function drawSceneBars() { if (!scene) return; const d = devicePixelRatio, h = Math.round(innerHeight * 0.08); ctx.setTransform(d, 0, 0, d, 0, 0); ctx.fillStyle = '#000'; ctx.fillRect(0, 0, innerWidth, h); ctx.fillRect(0, innerHeight - h, innerWidth, h); }
+function startWedding(name, guests) { if (panel) closePanel(); const cx = (CHAPEL_POS.x + 3.5) * TILE, cy = (CHAPEL_POS.y + CHAPEL_POS.h + 0.6) * TILE; state.player.x = cx - 16; state.player.y = cy; player.face = 'right';
+  const sp = npcByName(name); if (sp) Object.assign(sp, { x: cx + 16, y: cy, path: [], wait: 30, face: 'left' });
+  guests.forEach((g, i) => { const n = npcByName(g); if (n) Object.assign(n, { x: cx + (i - (guests.length - 1) / 2) * 34, y: cy + 46 + (i % 2) * 14, path: [], wait: 30, face: 'up', emote: { kind: 'heart', t: 6 } }); });
+  confetti = Array.from({ length: 140 }, (_, i) => ({ x: cx + (Math.random() - 0.5) * 220, y: cy - 120 - Math.random() * 160, vy: 30 + Math.random() * 40, ph: Math.random() * 6, col: ['#ff5a7a', '#ffd23a', '#5fd3ff', '#9cf06b', '#fff'][i % 5], life: 14 }));
+  fanfare(); scene = { who: name, lines: [`Friends gather at the Park Chapel...`, `${name}: I promise to share every bone with you.`, `You: And I promise to always throw the ball.`, `Everyone: Hooray! Just married!`], i: -1, t: 99, wedding: true }; }
+function confettiProps(dt) { if (!confetti.length) return []; return [{ y: 1e9, d: (c) => { for (const p of confetti) { c.fillStyle = p.col; c.fillRect(p.x + Math.sin(p.ph) * 6, p.y, 4, 3); } } }]; }
+function stepConfetti(dt) { for (const p of confetti) { p.y += p.vy * dt; p.ph += dt * 4; p.life -= dt; if (p.y > (CHAPEL_POS.y + CHAPEL_POS.h + 3) * TILE) p.y -= 200; } confetti = confetti.filter((p) => p.life > 0); }
+function relCtx() { const c = farmCtx(); return Object.assign(c, { panel, say: (n, l) => feel.say(n, l, textBlip), emote: (n, k) => { const x = npcByName(n); if (x) x.emote = { kind: k, t: 2.5 }; }, scene: startScene, wedding: startWedding, coatOf: (n) => npcByName(n)?.coat || 'cream', rng, drawFurniture,
+  preview: (cv, ids) => { if (!cv) return; const x = cv.getContext('2d'), home = { wall: ROOM_WALL_PREVIEW, floor: 2, items: [] }; let uid = 1; for (const id of ids) { let done = false; for (let y = 0; y < ROOM_H && !done; y++) for (let xx = 0; xx < ROOM_W && !done; xx++) if (canPlace(home, id, xx, y, 0)) { home.items.push({ uid: uid++, id, x: xx, y, rot: 0 }); done = true; } }
+    x.clearRect(0, 0, cv.width, cv.height); drawRoom(x, home, 10, 70, 50, ROOM_W, ROOM_H - 3 > 0 ? 4 : ROOM_H); } }); }
+const ROOM_WALL_PREVIEW = 2;
 globalThis.__open = (k, o) => openPanel(k, o || {});
+globalThis.__rel = { build: (id) => enterBuild(id, false), claim: (id) => claimPlot(state, id), place: (...a) => placeFurniture(state, ...a), start: startScene, wedding: startWedding, get scene() { return scene; } };
 globalThis.__farm = { tick: (s) => farmTick(s), get fish() { return fish; } };
 const crew = makeCrew(); let adIdx = 0, adRot = 0, adT = 0, trend = []; globalThis.__ads = () => ({ trend, adRot, adIdx }); globalThis.__crew = crew;
 function crewActors() { return crew.filter((w) => w.on).map((w) => ({ x: w.x, y: w.y, coat: w.coat, outfit: {}, face: w.face, phase: w.phase, moving: w.moving, name: w.name, worker: w, art: artKey(w.coat, {}) })); }
@@ -179,7 +208,7 @@ function carAction() { // E/A: park (while driving) or hop into the parked car n
 function spawnCar(id) { const g = ensureGarage(state), car = carOf(state, id); if (!car) return; g.active = id; g.parked = null; drive = { car, v: 0, vx: 0, vy: 0, dir: 'east' }; closePanel(); toast(`Hop in! Drive with WASD/stick, H/B to honk, E/A to park.`, 'good'); persist(); }
 function petPup(n) { if (n.workerRef) { const w = n.workerRef; blip(880); if (w.chatted) { const r = takeGig(state, w, Math.floor((state.clockSec || 0) / DAY_LEN)); w.chatted = false; if (r.ok) { toast(`${r.task}: +${r.pay} bones`, 'good'); hud(); persist(); } else toast(r.reason); return; } w.chatted = true; feel.say(`${w.name} (${w.job})`, w.line + ' (talk again for an odd job)', textBlip); return; }
   if (n.pet) { petF.love = 2; blip(990); feel.say(n.pet.name, ['*happy noises*', '*nuzzles you*', '*purrs/chirps contentedly*', '*does a little spin*'][Math.floor(rng() * 4)], textBlip); return; }
-  if (n.president) { const r = presTalk(pres, state); pres.emote = { kind: 'heart', t: 2 }; blip(990); feel.say('President Inu', r.quote, textBlip); if (r.tip) { toast(`President Inu tipped you ${r.tip} bones!`, 'good'); hud(); persist(); } return; } n.emote = { kind: 'heart', t: 2.2 }; n.wag = 2.2; n.path = []; blip(990); feel.say(n.name, PUP_LINES[Math.floor(rng() * PUP_LINES.length)], textBlip); }
+  if (n.president) { const r = presTalk(pres, state); pres.emote = { kind: 'heart', t: 2 }; blip(990); feel.say('President Inu', r.quote, textBlip); if (r.tip) { toast(`President Inu tipped you ${r.tip} bones!`, 'good'); hud(); persist(); } return; } n.wag = 1.2; n.path = []; blip(990); if (REL.PEOPLE[n.name]) { const r = REL.chat(state, n.name, gameDay()); if (r.gain) n.emote = { kind: 'heart', t: 2.2 }; persist(); openPanel('friend', { name: n.name }); if (r.scene) startScene(n.name, REL.SCENES[r.scene](n.name)); return; } feel.say(n.name, PUP_LINES[Math.floor(rng() * PUP_LINES.length)], textBlip); }
 const PUP_LINES = ['Woof! That spot behind the ears... perfect!', 'Arf! Have you tried the taiyaki cart on Main Street?', 'Wanna race to Sakura Pond? Last one there is a wet biscuit!', 'I buried a bone by the big tree. Shh, it is a secret.', 'Bork bork! The Launch Hall is busy today.'];
 function doEmote(kind) { player.emote = { kind, t: kind === 'zoomies' ? 2.4 : 2.5 }; $('#emotes').hidden = true; blip(kind === 'heart' ? 990 : 740);
   for (const n of npcs) if (Math.hypot(n.x - state.player.x, n.y - state.player.y) < 260 && rng() < 0.6) setTimeout(() => { n.emote = { kind: rng() < 0.5 ? kind : 'heart', t: 2 }; }, 400 + rng() * 600); }
@@ -240,7 +269,9 @@ function updateWorld(dt) {
   adT += dt; if (adT > 8 || !trend.length) { adT = 0; adRot++; trend = trending(state, 6); }
   farmTick(dt); if (state.bones < 0) state.bones = 0;
   stepCrew(crew, dt, dayPhase(time + dayOffset).hour, () => { adIdx++; });
-  for (const n of npcs) { if (amb.ball?.dog === n && amb.ball.state !== 'air') continue; if (n.wag > 0) { n.wag -= dt; n.moving = true; n.phase += dt * 20; continue; } if (n.emote) { n.emote.t -= dt; if (n.emote.t <= 0) n.emote = null; } updateNpc(n, dt, rng); }
+  stepScene(dt); stepConfetti(dt); stepPups(dt);
+  for (const n of npcs) { if (state.spouse?.name === n.name && !scene) { const H = state.spouse.helps === 'biz' && state.biz?.mine ? LOTS_POS[state.biz.mine.lot] : [17.5, 92.6]; if (H && Math.hypot(n.x - H[0] * TILE, n.y - H[1] * TILE) > 64) { n.x = H[0] * TILE; n.y = H[1] * TILE; n.path = []; } n.wait = Math.max(n.wait || 0, 1); }
+    if (amb.ball?.dog === n && amb.ball.state !== 'air') continue; if (n.wag > 0) { n.wag -= dt; n.moving = true; n.phase += dt * 20; continue; } if (n.emote) { n.emote.t -= dt; if (n.emote.t <= 0) n.emote = null; } updateNpc(n, dt, rng); }
   { const pet = activePet(state); if (pet && !drive) { if (!petF.id || petF.id !== pet.id) Object.assign(petF, { id: pet.id, x: p.x - 20, y: p.y + 4 }); followStep(petF, p.x - player.dir * 22, p.y + 2, dt); if (petF.love > 0) petF.love -= dt; } else if (drive) Object.assign(petF, { x: p.x, y: p.y }); }
   if (honkT > 0) honkT -= dt;
   if (player.emote) { player.emote.t -= dt; if (player.emote.kind === 'zoomies') { const a = player.emote.t * 5; moveBody(p, Math.cos(a) * 150 * dt, Math.sin(a) * 150 * dt); player.moving = true; player.phase += dt * 20; player.face = Math.cos(a + 1.57) > 0 ? 'right' : 'left'; } if (player.emote.t <= 0) player.emote = null; }
@@ -262,8 +293,8 @@ function updateWorld(dt) {
   if (drive) { pr.hidden = false; pr.innerHTML = `<kbd${tch ? ' class="ta"' : ''}>${tch ? 'A' : 'E'}</kbd>Park ${esc(CAR_MODELS[drive.car.model].name)} · <kbd${tch ? ' class="ta"' : ''}>${tch ? 'B' : 'H'}</kbd>Honk`; setA('PARK'); }
   else if (pk) { pr.hidden = false; pr.innerHTML = `<kbd${tch ? ' class="ta"' : ''}>${tch ? 'A' : 'E'}</kbd>Drive your ${esc(CAR_MODELS[carOf(state, pk.id)?.model]?.name || 'car')}`; setA('DRIVE'); }
   else if (pup?.workerRef) { pr.hidden = false; const v = pup.workerRef.chatted ? 'Odd job (+15) for' : 'Chat with'; pr.innerHTML = tch ? `<kbd class="ta">A</kbd>${v} ${esc(pup.name)}` : `<kbd>E</kbd>${v} ${esc(pup.name)}`; setA('TALK'); }
-  else if (pup) { pr.hidden = false; pr.innerHTML = tch ? `<kbd class="ta">A</kbd>Pet ${esc(pup.name)}` : `<kbd>E</kbd>Pet ${esc(pup.name)} · <kbd>T</kbd> throw ball`; setA('PET'); }
-  else if (it) { pr.hidden = false; const verb = { building: 'Enter', plot: state.plots[it.id] ? 'Enter' : 'Inspect', visit: 'Visit', stall: 'View', clubhouse: myPack(state) ? 'Decorate' : 'Open', mall: 'Enter' }[it.kind]; pr.innerHTML = `<kbd${tch ? ' class="ta"' : ''}>${tch ? 'A' : 'E'}</kbd>${verb} ${esc(it.name)}`; pr.dataset.target = it.id; setA(verb.toUpperCase()); }
+  else if (pup) { pr.hidden = false; const v = REL.PEOPLE[pup.name] && !pup.pet ? `Talk to ${esc(pup.name)} ${'♥'.repeat(REL.hearts(REL.ensureRel(state)[pup.name]))}` : `Pet ${esc(pup.name)}`; pr.innerHTML = tch ? `<kbd class="ta">A</kbd>${v}` : `<kbd>E</kbd>${v} · <kbd>T</kbd> throw ball`; setA(REL.PEOPLE[pup.name] && !pup.pet ? 'TALK' : 'PET'); }
+  else if (it) { pr.hidden = false; const verb = { building: 'Enter', plot: state.plots[it.id] ? 'Enter' : 'Inspect', visit: 'Visit', stall: 'View', clubhouse: myPack(state) ? 'Decorate' : 'Open', mall: 'Enter', field: 'Tend', farm: 'Use', lot: 'Visit', biz: 'Read', chapel: 'Enter' }[it.kind] || 'Use'; pr.innerHTML = `<kbd${tch ? ' class="ta"' : ''}>${tch ? 'A' : 'E'}</kbd>${verb} ${esc(it.name)}`; pr.dataset.target = it.id; setA(verb.toUpperCase()); }
   else { pr.hidden = true; setA(''); }
 }
 
@@ -279,11 +310,11 @@ function renderWorld() {
     const tx0 = Math.floor(-ox / TILE) - 1, ty0 = Math.floor(-oy / TILE) - 1; ctx.save(); ctx.scale(SCALE, SCALE); drawWater(ctx, time, tx0, ty0, tx0 + Math.ceil(vw / TILE) + 2, ty0 + Math.ceil(vh / TILE) + 2); ctx.restore(); }
   const phase = dayPhase(time + dayOffset);
   globalThis.__inuNight = phase.dark;
-  const dyn = [...dynamicProps(state, time, myPack(state)), ...presidentProps(pres, time), ...carWorldProps(), ...crewProps(), ...adProps(trend, adRot, adIdx, !!globalThis.__inuNight, time)];
+  const dyn = [...dynamicProps(state, time, myPack(state)), ...presidentProps(pres, time), ...carWorldProps(), ...crewProps(), ...adProps(trend, adRot, adIdx, !!globalThis.__inuNight, time), ...confettiProps()];
   for (const d of dyn) if (d.flat) d.d(ctx);
   drawGroundLife(ctx, amb, phase); feel.drawGround(ctx);
   if (player.clickMark && player.path.length) { const m = player.clickMark, k = Math.round(10 + Math.sin(time * 6) * 2); ctx.fillStyle = '#f2cc68'; for (const [ax, ay] of [[-k, 0], [k - 4, 0], [0, -k / 2], [0, k / 2 - 2]]) ctx.fillRect(Math.round(m.x + ax), Math.round(m.y + 6 + ay), 4, 3); }
-  const actors = [...npcs.map((n) => ({ ...n, npc: true, badge: badgeOf(packOfName(state, n.name)) })), ...(drive ? [] : [{ x: state.player.x, y: state.player.y, coat: state.player.coat, outfit: state.wardrobe.equipped, face: player.face, phase: player.phase, moving: player.moving, name: state.player.name, me: true, badge: badgeOf(myPack(state)), emote: player.emote, art: artKey(state.player.coat, state.wardrobe.equipped) }]), ...streetPups(), ...presActors(), ...petActors(), ...crewActors()];
+  const actors = [...npcs.map((n) => ({ ...n, npc: true, badge: badgeOf(packOfName(state, n.name)) })), ...(drive ? [] : [{ x: state.player.x, y: state.player.y, coat: state.player.coat, outfit: state.wardrobe.equipped, face: player.face, phase: player.phase, moving: player.moving, name: state.player.name, me: true, badge: badgeOf(myPack(state)), emote: player.emote, art: artKey(state.player.coat, state.wardrobe.equipped) }]), ...streetPups(), ...presActors(), ...petActors(), ...crewActors(), ...pupActors()];
   // one depth-sorted list: static props (culled), dynamic props and actors, by ground y
   const L = -ox - 200, Rt = -ox + vw + 200, Tp = -oy - 60, Bt = -oy + vh + 400, list = [];
   for (const p of mapImg.props) if (p.y > Tp && p.y < Bt) list.push(p);
@@ -299,6 +330,7 @@ function renderWorld() {
     if (a.me) { ctx.fillStyle = 'rgba(242,204,104,0.45)'; ctx.fillRect(-20, 9, 40, 4); ctx.fillRect(-14, 7, 28, 8); }
     if (a.petSpecies) { drawPetActor(ctx, a); ctx.restore(); continue; }
     if (a.president) { drawPresident(ctx, a); if (a.emote) drawEmote(ctx, 0, -14, a.emote.kind, time); ctx.restore(); continue; }
+    if (a.pupScale) { drawShiba(ctx, 0, 0, { coat: a.coat, outfit: a.outfit, face: a.face, phase: a.phase, moving: a.moving, name: a.name, scale: a.pupScale, art: a.art }); ctx.fillStyle = a.pupPatch; ctx.fillRect(-7 * a.pupScale, -30 * a.pupScale, 14 * a.pupScale, 4 * a.pupScale); ctx.fillStyle = a.pupHex; ctx.fillRect(-7 * a.pupScale, -26 * a.pupScale, 14 * a.pupScale, 3 * a.pupScale); ctx.restore(); continue; }
     drawShiba(ctx, 0, 0, { coat: a.coat, outfit: a.outfit, face: a.face, phase: a.phase, moving: a.moving, name: a.name, scale: 1.5, badge: a.badge, art: a.art, emote: a.emote?.kind });
     if (a.worker) { drawVest(ctx, a.face); drawTool(ctx, a.worker); }
     if (a.emote) drawEmote(ctx, 0, a.name ? -14 : 0, a.emote.kind, time); ctx.restore();
@@ -376,6 +408,8 @@ function interact(it) {
   else if (it.kind === 'stall') openPanel('launch', { sel: it.id });
   else if (it.kind === 'mall' && it.cat === 'car') openPanel('dealer', { dealer: 'luxauto' });
   else if (it.kind === 'mall' && it.cat === 'pets') openPanel('pets');
+  else if (it.kind === 'mall' && it.cat?.startsWith('furn_')) openPanel('furn', { store: it.cat.slice(5) });
+  else if (it.kind === 'chapel') openPanel('chapel');
   else if (it.kind === 'mall') openPanel('mall', { cat: it.cat, store: it.id });
   else if (it.kind === 'field') openPanel('field', { i: it.i });
   else if (it.kind === 'farm') openPanel('farm', { id: it.id });
@@ -386,11 +420,14 @@ function interact(it) {
 
 function openPanel(kind, opts = {}) {
   if (!panel) { feel.fade(); uiOpen(); } panel = { kind, ...opts }; $('#panel').hidden = false; $('#prompt').hidden = true; keys.clear();
-  const body = $('#panel-body'); body.onclick = null;
+  const body = $('#panel-body'); body.onclick = null; const dg = $('#dialog'); if (dg) { dg.style.pointerEvents = 'none'; dg.style.visibility = 'hidden'; }
   if (kind === 'field') return renderField(farmCtx(), opts.i);
   if (kind === 'farm') return renderFarm(farmCtx(), opts.id);
   if (kind === 'lot') return renderLot(farmCtx(), opts.id);
   if (kind === 'bizboard') return renderBizBoard(farmCtx());
+  if (kind === 'friend') return renderFriend(relCtx(), opts.name);
+  if (kind === 'chapel') return renderChapel(relCtx());
+  if (kind === 'furn') return renderFurnStore(relCtx(), opts.store);
   if (kind === 'plot') {
     const p = PLOTS.find((x) => x.id === opts.plotId);
     body.innerHTML = `<h2>Empty plot ${p.id.toUpperCase()}</h2><p class="sub">A sunny ${p.w}×${p.h} lot on Bone Street. Claim it to build and decorate your own home.</p>
@@ -445,7 +482,7 @@ function renderGarage() { const body = $('#panel-body'), g = ensureGarage(state)
     else if (t.dataset.home) { g.active = t.dataset.home; persist(); renderGarage(); }
     else if (t.dataset.walk) { st.active = st.active === t.dataset.walk ? null : t.dataset.walk; persist(); renderGarage(); }
     else if (t.dataset.rename) { const n = prompt('New name?'); if (n) { renamePet(state, t.dataset.rename, n); persist(); renderGarage(); } } }; }
-function closePanel() {
+function closePanel() { const dg = $('#dialog'); if (dg) { dg.style.pointerEvents = ''; dg.style.visibility = ''; }
   if (panel?.kind === 'cafe' && panel.shift && !panel.shift.settled && panel.shift.earned > 0) { finishShift(state, panel.shift); packAct('shift'); toast(`Shift ended early: +${panel.shift.paid} bones`, 'good'); hud(); persist(); }
   if (panel) uiClose(); panel = null; $('#panel').hidden = true;
 }
@@ -457,7 +494,7 @@ function renderShop() {
   body.innerHTML = `<h2>Paws & Pillows</h2><p class="sub">Furniture for discerning dogs. Items go to your inventory — place them from build mode in your home.${Object.keys(state.plots).length ? '' : ' <b>Tip: claim a plot first!</b>'}</p><div class="grid" id="shopgrid"></div>`;
   const grid = $('#shopgrid');
   for (const [id, d] of Object.entries(FURNITURE)) {
-    if (d.mall) continue;
+    if (d.mall || d.store) continue;
     const card = document.createElement('div'); card.className = 'card';
     const cell = 50 / Math.max(d.w, d.h + 0.2);
     card.appendChild(iconCanvas((x) => drawFurniture(x, id, 32 - (d.w * cell) / 2, 26 - (d.h * cell) / 2, cell, 0)));
@@ -648,6 +685,7 @@ function renderBuild() {
   // owner pup sitting in the room
   if (build.pack) { const pk = myPack(state); pk.members.slice(0, 6).forEach((m, i) => drawShiba(ctx, ox + cell * 0.8 + i * cell * 1.1, oy - cell * 0.15, { coat: m.coat, outfit: m.id === ME ? state.wardrobe.equipped : NPC_OUTFITS[i % NPC_OUTFITS.length], scale: 1, shadow: false }));
     const bx = ox + ROOM_W * cell - cell * 1.6, by0 = oy - cell * 1.5; ctx.fillStyle = pk.color; ctx.fillRect(bx, by0, cell * 1.4, cell * 1.2); ctx.fillStyle = '#d4a640'; ctx.fillRect(bx, by0 + cell * 1.2, cell * 1.4, 4); drawEmblem(ctx, pk.emblem, bx + cell * 0.35, by0 + cell * 0.2, cell * 0.14, '#fff6e0'); }
+  if (!build.pack && !build.readOnly && state.spouse) { const sp = npcByName(state.spouse.name); drawShiba(ctx, ox + cell * 1.2, oy - cell * 0.2, { coat: sp?.coat || 'cream', outfit: sp?.outfit || {}, scale: 1.5, name: state.spouse.name }); (state.pups || []).forEach((p, i) => drawShiba(ctx, ox + cell * (2.4 + i), oy - cell * 0.1, { coat: p.coat.base, outfit: {}, scale: REL.PUP_SCALE[REL.stageOfPup(p, gameDay())] })); }
   if (!build.pack && !build.readOnly) { const pet = activePet(state); if (pet) { ctx.save(); ctx.imageSmoothingEnabled = false; ctx.drawImage(petSprite(pet.species, Math.floor(time * 2) % 2), ox + ROOM_W * cell - cell * 1.6, oy - cell * 0.55, cell * 0.8, cell * 0.8); ctx.restore(); } }
   else { const ni = +build.plotId.slice(1) - 1; drawShiba(ctx, ox + ROOM_W * cell - cell * 0.6, oy - cell * 0.2, { coat: build.readOnly ? ['tan', 'dark', 'cream', 'red'][ni] : state.player.coat, outfit: build.readOnly ? NPC_OUTFITS[ni] : state.wardrobe.equipped, scale: 1.5 }); }
   ctx.fillStyle = '#f2cc68'; ctx.font = '18px Silkscreen, monospace'; ctx.textAlign = 'center';
@@ -786,7 +824,7 @@ function frame(now) {
     saveAcc += dt; if (saveAcc > 5) { saveAcc = 0; persist(); }
     if (panel?.kind === 'cafe' && panel.shift && !panel.shift.settled) { tickShift(panel.shift, dt, rng); cafeUi(); }
   }
-  if (mode === 'world') { updateWorld(dt); renderWorld(); }
+  if (mode === 'world') { updateWorld(dt); renderWorld(); drawSceneBars(); }
   else if (mode === 'build') { $('#prompt').hidden = true; renderBuild(); }
   requestAnimationFrame(frame);
 }

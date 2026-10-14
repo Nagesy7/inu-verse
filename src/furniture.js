@@ -16,6 +16,27 @@ export const FURNITURE = {
   gold_lamp:   { name: 'Gilded Lamp', w: 1, h: 1, price: 75, color: '#f2cc68', layer: 'obj', mall: true },
   arcade:   { name: 'Inu Arcade',    w: 1, h: 1, price: 150, color: '#6c5ce7', layer: 'obj' },
 };
+// Furniture stores (outer district). store 'cosy' = Cosy Corner (Bones), 'royal' = Maison Royale ($KIBBLE, 2% split).
+// draw: which base drawing to use; set: themed collection; cat: shelf section.
+export const FURN_STORES = { cosy: { name: 'Cosy Corner', currency: 'bones', sets: ['cosy', 'modern'] }, royal: { name: 'Maison Royale', currency: 'kibble', sets: ['royal', 'deco'] } };
+export const FURN_CATS = ['beds', 'sofas', 'tables', 'lamps', 'rugs', 'wall art', 'plants', 'kitchen', 'baby & pup'];
+const SET_ITEMS = [ // [set, cat, draw, name, w, h, color, layer]
+  ['cosy', 'beds', 'bed', 'Patchwork Bed', 2, 3, '#e8a06a'], ['cosy', 'sofas', 'sofa', 'Knitted Loveseat', 2, 1, '#c97a5a'], ['cosy', 'tables', 'table', 'Farmhouse Table', 2, 2, '#a8744a'], ['cosy', 'lamps', 'lamp', 'Candle Lamp', 1, 1, '#ffd08a'],
+  ['cosy', 'rugs', 'rug', 'Braided Rug', 3, 2, '#d89a6a', 'floor'], ['cosy', 'wall art', 'art', 'Sunflower Print', 1, 1, '#f2c84b'], ['cosy', 'plants', 'plant', 'Fern Basket', 1, 1, '#6cbf4a'], ['cosy', 'kitchen', 'stove', 'Cast-Iron Stove', 2, 1, '#4a4f5c'],
+  ['cosy', 'baby & pup', 'crib', 'Wicker Pup Crib', 2, 2, '#e8c890'], ['cosy', 'baby & pup', 'pupbed', 'Plaid Pup Bed', 1, 1, '#c8323c'],
+  ['modern', 'beds', 'bed', 'Low Platform Bed', 2, 3, '#9aa8b8'], ['modern', 'sofas', 'sofa', 'Grey Sectional', 3, 1, '#7a8090'], ['modern', 'tables', 'table', 'Glass Coffee Table', 2, 2, '#bfe6ff'], ['modern', 'lamps', 'lamp', 'Arc Lamp', 1, 1, '#f4f4f4'],
+  ['modern', 'rugs', 'rug', 'Geo Rug', 3, 2, '#5ab0b8', 'floor'], ['modern', 'wall art', 'art', 'Abstract Canvas', 1, 1, '#ff6a8a'], ['modern', 'plants', 'plant', 'Snake Plant', 1, 1, '#3f8a5a'], ['modern', 'kitchen', 'stove', 'Induction Island', 2, 1, '#e8e8ee'],
+  ['modern', 'baby & pup', 'crib', 'Bubble Crib', 2, 2, '#bfe6ff'],
+  ['royal', 'beds', 'bed', 'Canopy Royal Bed', 2, 3, '#7a2a6a'], ['royal', 'sofas', 'sofa', 'Velvet Chaise', 3, 1, '#5a1a6a'], ['royal', 'tables', 'table', 'Gilded Banquet Table', 2, 2, '#e3b341'], ['royal', 'lamps', 'lamp', 'Crystal Chandelier', 1, 1, '#fff1b0'],
+  ['royal', 'rugs', 'rug', 'Persian Throne Rug', 3, 2, '#a8323a', 'floor'], ['royal', 'wall art', 'art', 'Portrait of President Inu', 1, 1, '#c9a23a'], ['royal', 'plants', 'plant', 'Gold-Pot Orchid', 1, 1, '#d88ad8'], ['royal', 'kitchen', 'stove', 'Marble Chef Range', 2, 1, '#f2efe8'],
+  ['royal', 'baby & pup', 'crib', 'Royal Pup Cradle', 2, 2, '#e3b341'],
+  ['deco', 'sofas', 'sofa', 'Emerald Deco Sofa', 3, 1, '#1f6a4a'], ['deco', 'lamps', 'lamp', 'Fan Sconce Lamp', 1, 1, '#ffd86a'], ['deco', 'wall art', 'art', 'Sunburst Mirror', 1, 1, '#e3b341'], ['deco', 'tables', 'table', 'Onyx Side Table', 2, 2, '#2a2440'],
+  ['deco', 'baby & pup', 'pupbed', 'Velvet Pup Pouf', 1, 1, '#1f6a4a'],
+];
+const PRICE = { beds: [140, 9], sofas: [110, 7], tables: [70, 5], lamps: [35, 2.5], rugs: [55, 3.5], 'wall art': [40, 3], plants: [25, 1.5], kitchen: [160, 10], 'baby & pup': [90, 6] };
+for (const [set, cat, draw, name, w, h, color, layer] of SET_ITEMS) { const store = FURN_STORES.cosy.sets.includes(set) ? 'cosy' : 'royal', id = (set + '_' + name).toLowerCase().replace(/[^a-z0-9]+/g, '_');
+  FURNITURE[id] = { name, w, h, color, layer: layer || 'obj', draw, set, cat, store, ...(store === 'cosy' ? { price: PRICE[cat][0] } : { price: Math.round(PRICE[cat][0] * 2), kibble: PRICE[cat][1] }) }; }
+export const storeItems = (store) => Object.entries(FURNITURE).filter(([, d]) => d.store === store);
 export const WALLS = [
   { name: 'Plain Cream', price: 0, color: '#f3e6cf', trim: '#d8c3a0' },
   { name: 'Wood Panel', price: 80, color: '#c79a6b', trim: '#9c7148' },

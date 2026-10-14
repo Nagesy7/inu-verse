@@ -8,7 +8,7 @@ export const DAY_LEN = 720; // seconds per in-game day (~12 real minutes)
 export const LAMP_TILES = [[8, 18], [24, 18], [40, 23], [52, 18], [12, 29], [44, 29], [20, 34], [50, 34], [13, 46], [50, 46], [24, 56], [40, 56], [29, 5], [45, 34]];
 export const LAMPS = LAMP_TILES.map(([x, y]) => ({ x: x * TILE + 16, y: y * TILE - 34, gy: y * TILE + 22 }));
 export const PONDS = [[5, 3, 9, 5], [37, 35, 18, 4]];
-export const EMOTES = { wave: 'HI!', sit: 'SIT', zoomies: 'ZOOM', dance: '♪♫', heart: 'heart', bork: 'BORK!' };
+export const EMOTES = { wave: 'HI!', sit: 'SIT', zoomies: 'ZOOM', dance: '♪♫', heart: 'heart', bork: 'BORK!', happy: 'YAY', note: 'OK', angry: 'HMPH' };
 import { drawEmblem } from './art.js';
 import { drawCar, LANES, CAR_LEN } from './cars.js';
 

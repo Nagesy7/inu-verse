@@ -19,6 +19,8 @@ export const MALL_BUILDINGS = [
   { id: 'luxauto', name: 'Zoomies Luxury Autos', x: 46, y: 60, w: 8, h: 6, cat: 'car' },
   { id: 'office', name: "President's Office", x: 27, y: 74, w: 10, h: 5, cat: 'office' },
   { id: 'petshop', name: 'Pawsome Pets', x: 10, y: 70, w: 8, h: 6, cat: 'pets' },
+  { id: 'cosy', name: 'Cosy Corner Furniture', x: 18, y: 60, w: 5, h: 5, cat: 'furn_cosy' },
+  { id: 'royal', name: 'Maison Royale', x: 55, y: 69, w: 7, h: 5, cat: 'furn_royal' },
 ];
 // Varied entrances: front door offset (tiles from the left), or a side porch on the left/right wall facing a side street.
 export const DOORS = {"cafe": {dx: 1, side: "front"}, "shop": {dx: 7, side: "front"}, "fashion": {dx: 0, side: "right"}, "cars": {dx: 2, side: "front"}, "jewel": {dx: 0, side: "left"}, "designer": {dx: 6, side: "front"}, "goldden": {dx: 0, side: "right"}, "luxauto": {dx: 1, side: "front"}, "petshop": {dx: 6, side: "front"}};
@@ -49,6 +51,7 @@ export const MARKET = { id: 'market', name: 'Farmers Market', x: 20, y: 97, w: 6
 export const CRAFT = { id: 'craft', name: 'Crafting Station', x: 28, y: 97, w: 4, h: 3 };
 export const PEN = { x: 38, y: 96, w: 10, h: 7 };
 export const ORCHARD = [[49, 88], [52, 88], [55, 88], [58, 88], [50, 91], [53, 91], [56, 91], [59, 91], [49, 94], [52, 94], [55, 94], [58, 94]];
+export const CHAPEL = { id: 'chapel', name: 'Park Chapel', x: 21, y: 80, w: 7, h: 5 };
 export const FARM_SIGNS = { farmboard: { x: 34, y: 87 }, bizboard: { x: 47, y: 78 } };
 export { LOTS } from './biz.js';
 import { LOTS as BIZ_LOTS } from './biz.js';
@@ -77,6 +80,7 @@ export function buildMap() {
   fill(30, 80, 4, 6, T.WALK); fill(2, 86, 60, 1, T.WALK); fill(2, 95, 60, 1, T.WALK); fill(34, 87, 2, 18, T.WALK); fill(2, 103, 60, 1, T.WALK);
   for (const f of FIELDS) fill(f.x, f.y, f.w, f.h, T.GRASS);
   fill(POND.x, POND.y, POND.w, POND.h, T.WATER);
+  fill(CHAPEL.x, CHAPEL.y, CHAPEL.w, CHAPEL.h, T.BUILDING);
   for (const b of [BARN, MARKET, CRAFT]) fill(b.x, b.y, b.w, b.h, T.BUILDING);
   for (const l of BIZ_LOTS) { fill(l.x, l.y, l.w, l.h, T.BUILDING); if (!l.prime) fill(l.x - 1, l.y + l.h, l.w + 2, 1, T.WALK); }
   // trees: border + some park trees
@@ -120,6 +124,7 @@ export function interactables(state) {
   for (const h of NPC_HOMES) list.push({ kind: 'visit', id: h.id, name: `${h.owner}'s Home`, tx: h.x + 3, ty: h.y + h.h });
   list.push({ kind: 'clubhouse', id: CLUBHOUSE.id, name: state?.packs?.joined ? 'Pack Clubhouse' : 'Pack Clubhouse lot', tx: CLUBHOUSE.x + 4, ty: CLUBHOUSE.y + CLUBHOUSE.h });
   for (const f of FIELDS) list.push({ kind: 'field', id: f.id, i: f.i, name: `Field ${f.i + 1}`, tx: f.x + 3, ty: f.y + f.h });
+  list.push({ kind: 'chapel', id: 'chapel', name: 'Park Chapel', tx: CHAPEL.x + 3, ty: CHAPEL.y + CHAPEL.h });
   list.push({ kind: 'farm', id: 'barn', name: 'Big Barn (seeds, animals, looks)', tx: BARN.x + 4, ty: BARN.y + BARN.h });
   list.push({ kind: 'farm', id: 'market', name: 'Farmers Market', tx: MARKET.x + 3, ty: MARKET.y + MARKET.h });
   list.push({ kind: 'farm', id: 'craft', name: 'Crafting Station', tx: CRAFT.x + 2, ty: CRAFT.y + CRAFT.h });

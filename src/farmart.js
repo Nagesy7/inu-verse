@@ -1,4 +1,5 @@
 // Original pixel art for the farmland district + business lots (procedural, crisp integer rects).
+import { CHAPEL } from './world.js';
 import { TILE, FIELDS, BARN, POND, MARKET, CRAFT, PEN, ORCHARD, FARM_SIGNS, LOTS } from './world.js';
 import { CROPS, ensureFarm, stageOf, COSMETICS } from './farm.js';
 import { ensureBiz, TYPES, rivalAt, PREMIUM_LOOKS } from './biz.js';
@@ -16,7 +17,15 @@ function fence(c, x, y, horiz) { R(c, x + 2, y + 6, 4, 22, '#6a4422'); R(c, x + 
 function stall(c, b, label, awn) { const x = b.x * TILE, y = b.y * TILE, w = b.w * TILE, h = b.h * TILE; R(c, x + 2, y + 30, w - 4, h - 30, '#b07a44'); R(c, x + 2, y + 30, w - 4, 3, '#d8a060');
   for (let i = 0; i < w - 4; i += 16) R(c, x + 2 + i, y + 8, 8, 24, awn), R(c, x + 10 + i, y + 8, 8, 24, '#f4ead2'); R(c, x, y + 4, w, 6, INK); R(c, x + 4, y + h - 34, w - 8, 12, '#8a5a2a');
   R(c, x + 6, y + 30, 4, h - 30, '#6a4422'); R(c, x + w - 10, y + 30, 4, h - 30, '#6a4422'); R(c, x + w / 2 - 40, y - 14, 80, 16, INK); R(c, x + w / 2 - 39, y - 13, 78, 14, '#fff1d0'); txt(c, label, x + w / 2, y - 3, 7, '#6a3a10'); }
-export function farmStatic() { const out = [];
+function chapel(c) { const x = CHAPEL.x * TILE, y = CHAPEL.y * TILE, w = CHAPEL.w * TILE, h = CHAPEL.h * TILE, cx = x + w / 2;
+  R(c, x - 6, y + h - 4, w + 12, 8, '#9cd06a'); for (let i = 0; i < 14; i++) R(c, x - 4 + i * 17, y + h - 2, 5, 5, ['#ff8fb6', '#fff', '#ffd23a'][i % 3]);
+  R(c, x + 8, y + 40, w - 16, h - 40, '#f7f4ee'); for (let r = y + 48; r < y + h; r += 10) R(c, x + 8, r, w - 16, 1, '#e2ddd2');
+  c.fillStyle = '#5a6a9a'; c.beginPath(); c.moveTo(x, y + 44); c.lineTo(cx, y + 6); c.lineTo(x + w, y + 44); c.fill(); c.fillStyle = '#7a8ac0'; c.beginPath(); c.moveTo(x + 10, y + 40); c.lineTo(cx, y + 12); c.lineTo(cx, y + 40); c.fill();
+  R(c, cx - 14, y - 30, 28, 40, '#f7f4ee'); c.fillStyle = '#5a6a9a'; c.beginPath(); c.moveTo(cx - 18, y - 28); c.lineTo(cx, y - 56); c.lineTo(cx + 18, y - 28); c.fill(); R(c, cx - 6, y - 22, 12, 12, '#ffd23a'); R(c, cx - 1, y - 76, 2, 20, '#ffd23a'); R(c, cx - 6, y - 70, 12, 2, '#ffd23a');
+  R(c, cx - 18, y + h - 52, 36, 52, '#8a5a32'); c.fillStyle = '#f7f4ee'; c.beginPath(); c.arc(cx, y + h - 52, 18, Math.PI, 0); c.fill(); c.fillStyle = '#8a5a32'; c.beginPath(); c.arc(cx, y + h - 50, 16, Math.PI, 0); c.fill(); R(c, cx - 1, y + h - 66, 2, 66, '#5a3a1e');
+  for (const wx of [x + 22, x + w - 44]) { R(c, wx, y + 62, 22, 34, '#c9a23a'); for (const [k, col] of [[0, '#ff7aa8'], [1, '#5fd3ff'], [2, '#ffd23a'], [3, '#9cf06b']]) R(c, wx + 2 + (k % 2) * 9, y + 64 + Math.floor(k / 2) * 15, 9, 15, col); }
+  R(c, cx - 30, y + 46, 60, 12, INK); txt(c, 'PARK CHAPEL', cx, y + 55, 6, '#ffe7a3'); }
+export function farmStatic() { const out = [{ y: (CHAPEL.y + CHAPEL.h) * TILE - 1, d: chapel }];
   for (const d of [[PEN.x, PEN.w, PEN.y], [PEN.x, PEN.w, PEN.y + PEN.h - 1]]) for (let x = d[0]; x < d[0] + d[1]; x++) if (!(d[2] === PEN.y && (x === 42 || x === 43))) out.push({ y: d[2] * TILE + 28, d: (c) => fence(c, x * TILE, d[2] * TILE, true) });
   for (let y = PEN.y + 1; y < PEN.y + PEN.h - 1; y++) for (const x of [PEN.x, PEN.x + PEN.w - 1]) out.push({ y: y * TILE + 28, d: (c) => fence(c, x * TILE, y * TILE, false) });
   out.push({ y: (MARKET.y + MARKET.h) * TILE - 1, d: (c) => { stall(c, MARKET, 'FARMERS MARKET', '#d8483a'); for (let i = 0; i < 5; i++) R(c, MARKET.x * TILE + 14 + i * 34, (MARKET.y + MARKET.h) * TILE - 32, 22, 8, ['#ff8a2a', '#e8344a', '#e8c95a', '#6cbf4a', '#f07a1a'][i]); } });

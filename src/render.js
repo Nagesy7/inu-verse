@@ -47,6 +47,8 @@ const THEMES = {
   launch:  { wall: '#22377a', roof: '#18275a', accent: '#7fb4ff', label: 'Demo tokens' },
   cars:    { wall: '#2a2a33', roof: '#1c1c24', accent: '#c9c9d6', label: 'Coming soon' },
   petshop: { wall: '#3a8a8a', roof: '#1e5a5a', accent: '#ffd84a', label: 'Pets - bones & KIBBLE' },
+  cosy:    { wall: '#a8603a', roof: '#6a3a22', accent: '#ffd8a0', label: 'Everyday furniture' },
+  royal:   { wall: '#2a2440', roof: '#1a1630', accent: '#e3b341', label: 'Luxury design - KIBBLE' },
   mall:    { wall: '#6a4a14', roof: '#3a2a0a', accent: '#fff1b0', label: 'Luxury - demo KIBBLE' },
   jewel:   { wall: '#24305c', roof: '#121a36', accent: '#cfe8ff', label: 'Jewelry' },
   designer:{ wall: '#5a2352', roof: '#3f1739', accent: '#f0a6dc', label: 'Designer outfits' },
