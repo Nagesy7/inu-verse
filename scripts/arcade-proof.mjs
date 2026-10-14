@@ -1,0 +1,23 @@
+import { chromium } from 'playwright';
+const URL = process.env.URL || 'http://localhost:8643/', PRE = process.env.PRE || '', b = await chromium.launch(), errs = [], out = {};
+const go = async (vp, mob) => { const ctx = await b.newContext({ viewport: vp, hasTouch: !!mob, isMobile: !!mob }); const p = await ctx.newPage(); p.on('pageerror', (e) => errs.push(e.message)); await p.goto(URL); await p.evaluate(() => localStorage.clear()); await p.reload(); await p.waitForTimeout(900); await p.click('#start'); await p.waitForTimeout(800); return { p, ctx }; };
+const shot = (p, n) => p.screenshot({ path: `proof/${PRE}arcade-${n}.png` });
+let { p, ctx } = await go({ width: 1280, height: 800 });
+await p.evaluate(() => { __inu.setHour?.(21); __inu.state.player.x = 59.5 * 32; __inu.state.player.y = 58 * 32; globalThis.__camLock = { x: 58 * 32, y: 54 * 32 }; __inu.setZoom?.(2.2); }); await p.waitForTimeout(2500);
+await shot(p, '1-building-night');
+await p.evaluate(() => __inu.setHour?.(12)); await p.waitForTimeout(800); await shot(p, '2-building-day'); await p.evaluate(() => { globalThis.__camLock = null; });
+// walk up to the door with the real keyboard, then press E
+await p.keyboard.down('ArrowUp'); await p.waitForTimeout(700); await p.keyboard.up('ArrowUp'); await p.waitForTimeout(300);
+out.prompt = await p.evaluate(() => document.querySelector('#prompt')?.textContent || '');
+await p.keyboard.press('e'); await p.waitForTimeout(4000);
+out.overlay = await p.evaluate(() => { const o = document.getElementById('arcade-ov'); return { shown: !!o && !o.hidden, src: o?.querySelector('iframe')?.src || '' }; });
+await shot(p, '3-overlay-hall');
+const fr = p.frames().find((f) => f.url().includes('inu-arcade')); out.frameTitle = fr ? await fr.title() : null;
+await p.click('#arc-back'); await p.waitForTimeout(400); out.closed = await p.evaluate(() => document.getElementById('arcade-ov').hidden); await shot(p, '4-back-in-world');
+out.top = await p.evaluate(() => __arcade.top); await ctx.close();
+({ p, ctx } = await go({ width: 844, height: 390 }, true));
+await p.evaluate(() => { __inu.state.player.x = 59.5 * 32; __inu.state.player.y = 57 * 32; }); await p.waitForTimeout(700); await shot(p, 'phone-landscape-building');
+const [tab] = await Promise.all([ctx.waitForEvent('page', { timeout: 8000 }).catch(() => null), p.evaluate(() => __arcade.open())]);
+out.phoneNewTab = tab ? tab.url() : null; if (tab) { await tab.waitForTimeout(2500); await tab.screenshot({ path: `proof/${PRE}arcade-phone-newtab.png` }); } await ctx.close();
+({ p, ctx } = await go({ width: 390, height: 844 }, true)); await p.evaluate(() => { __inu.state.player.x = 59.5 * 32; __inu.state.player.y = 57 * 32; }); await p.waitForTimeout(700); await shot(p, 'phone-portrait-building'); await ctx.close();
+console.log(JSON.stringify(out)); console.log('errors', JSON.stringify(errs)); await b.close();

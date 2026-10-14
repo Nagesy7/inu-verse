@@ -54,6 +54,7 @@ export const ORCHARD = [[49, 88], [52, 88], [55, 88], [58, 88], [50, 91], [53, 9
 export const CHAPEL = { id: 'chapel', name: 'Park Chapel', x: 21, y: 80, w: 7, h: 5 };
 export const FARM_SIGNS = { farmboard: { x: 34, y: 87 }, bizboard: { x: 47, y: 78 } };
 export const MATCHMAKER = { x: 15, y: 79 }; // park board west of the chapel
+export const ARCADE = { id: 'arcade', name: 'Inu Arcade', x: 57, y: 50, w: 6, h: 6, door: { tx: 59, ty: 56 }, url: 'https://inu-arcade.vercel.app/' }; // east edge of the Mall plaza; front door opens onto the plaza walkway
 export const SQUARE = { pools: { x: 19, y: 81 }, burn: { x: 28.5, y: 81 }, quest: { x: 10.5, y: 80 } }; // Item 5 monuments + quest board
 export { LOTS } from './biz.js';
 import { LOTS as BIZ_LOTS } from './biz.js';
@@ -77,6 +78,7 @@ export function buildMap() {
   fill(AVENUE, 41, 3, 4, T.ROAD); // avenue joins the south road
   fill(7, 46, 50, 34, T.PLAZA);
   for (const b of MALL_BUILDINGS) fill(b.x, b.y, b.w, b.h, T.BUILDING);
+  fill(ARCADE.x, ARCADE.y, ARCADE.w, ARCADE.h, T.BUILDING); fill(ARCADE.x, ARCADE.y + ARCADE.h, ARCADE.w, 3, T.PLAZA);
   fill(STATUE.x, STATUE.y, 2, 1, T.BUILDING); fill(LEADERS.x, LEADERS.y, LEADERS.w, LEADERS.h, T.BUILDING);
   // farmland: walk from the plaza, a farm lane, fields, barn, pond, market, crafting, animal pen, orchard, lots
   fill(30, 80, 4, 6, T.WALK); fill(2, 86, 60, 1, T.WALK); fill(2, 95, 60, 1, T.WALK); fill(34, 87, 2, 18, T.WALK); fill(2, 103, 60, 1, T.WALK);
@@ -135,6 +137,7 @@ export function interactables(state) {
   list.push({ kind: 'farm', id: 'orchard', name: 'Orchard', tx: 54, ty: 92 });
   list.push({ kind: 'farm', id: 'farmboard', name: 'Top Farmer board', tx: FARM_SIGNS.farmboard.x, ty: FARM_SIGNS.farmboard.y + 1 });
   list.push({ kind: 'biz', id: 'bizboard', name: 'Top Business board', tx: FARM_SIGNS.bizboard.x, ty: FARM_SIGNS.bizboard.y + 1 });
+  list.push({ kind: 'arcade', id: 'arcade', name: 'Inu Arcade', tx: ARCADE.door.tx, ty: ARCADE.door.ty });
   list.push({ kind: 'matchmaker', id: 'matchmaker', name: 'Park Matchmaker', tx: MATCHMAKER.x, ty: MATCHMAKER.y + 1 });
   list.push({ kind: 'square', id: 'pools', name: 'Pools Monument', tx: Math.round(SQUARE.pools.x), ty: SQUARE.pools.y + 2 });
   list.push({ kind: 'square', id: 'burn', name: 'Burn Festival Monument', tx: Math.round(SQUARE.burn.x), ty: SQUARE.burn.y + 2 });

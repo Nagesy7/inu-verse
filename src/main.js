@@ -37,6 +37,8 @@ import * as ENG from './engage.js';
 import * as F5 from './fly5.js';
 import { renderFly5 } from './fly5ui.js';
 import { squareProps } from './fly5art.js';
+import { arcadeProps } from './arcadeart.js';
+import { ARCADE } from './world.js';
 import * as PAIR from './pairing.js';
 import { ensureFly, featuredOf, statusGlow, poolsOf, FEATURED_SLOTS, claimPresDrop } from './flywheels.js';
 import { makeTown, townHour, lineFor, playerDid, friendsOf, rivalsOf } from './townai.js';
@@ -131,7 +133,8 @@ function startGame(s) { loadProfile(s).catch(() => {}); ENG.ensureEngage(s); ENG
 // ---------------- Input ----------------
 addEventListener('keydown', (e) => {
   if (e.target.tagName === 'INPUT') return;
-  const k = e.key.toLowerCase(); keys.add(k);
+  const k = e.key.toLowerCase(); if (globalThis.__arcade && document.getElementById('arcade-ov') && !document.getElementById('arcade-ov').hidden) { if (k === 'escape') globalThis.__arcade.close(); return; }
+  keys.add(k);
   if (['arrowup', 'arrowdown', 'arrowleft', 'arrowright', ' '].includes(k)) e.preventDefault();
   if (k === 'escape' && photo) return togglePhoto();
   initAudio();
@@ -218,6 +221,21 @@ globalThis.__rel = { build: (id) => enterBuild(id, false), claim: (id) => claimP
 globalThis.__farm = { tick: (s) => farmTick(s), get fish() { return fish; } };
 function playDuo(id, partner) { if (panel) closePanel(); keys.clear(); startJob(id, { state, rng, day: gameDay, blip, rustle, fanfare, done: (r) => { const d = PAIR.finishDuo(state, id, partner, r, gameDay()); ENG.addSeasonXp(state, 'duo', gameDay()); hud(); persist(); toast(`Duo with ${partner.name}! x${d.mult} · team ${d.team} (+${d.bonus} Bones)`, 'good'); }, closed: () => keys.clear() }); }
 globalThis.__playDuo = playDuo;
+// ---- Inu Arcade: full-screen overlay (desktop) or new tab (touch), passes wallet + Shiba profile ----
+let arcadeTop = [];
+async function fetchArcadeTop() { try { const r = await fetch(ARCADE.url + 'api/scores?game=arcade&period=weekly'); const j = await r.json(); arcadeTop = (j.entries || []).filter((e) => !e.house).slice(0, 3); } catch {} }
+fetchArcadeTop(); setInterval(fetchArcadeTop, 120000);
+function arcadeUrl() { const p = profileFromState(state), q = new URLSearchParams(); if (/^[1-9A-HJ-NP-Za-km-z]{32,44}$/.test(p.wallet || '')) q.set('wallet', p.wallet);
+  try { const lite = { ...p, pets: [] }; q.set('p', btoa(unescape(encodeURIComponent(JSON.stringify(lite)))).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '')); } catch {}
+  q.set('from', 'inu-verse'); return ARCADE.url + '?' + q.toString(); }
+function openArcade() { const url = arcadeUrl(), touch = matchMedia('(pointer: coarse)').matches;
+  if (touch) { const w = window.open(url, '_blank', 'noopener'); toast(w ? 'Inu Arcade opened in a new tab' : 'Allow pop-ups to open the arcade', w ? 'good' : 'bad'); return; }
+  keys.clear(); let ov = document.getElementById('arcade-ov');
+  if (!ov) { ov = document.createElement('div'); ov.id = 'arcade-ov'; ov.innerHTML = '<div class="arc-bar"><button class="btn" id="arc-back">◀ Back to Inu Verse</button><b>INU ARCADE</b><a class="btn alt" id="arc-tab" target="_blank" rel="noopener">Open in new tab ↗</a></div><iframe id="arc-frame" allow="autoplay; fullscreen; gamepad" title="Inu Arcade"></iframe>'; document.body.appendChild(ov);
+    ov.querySelector('#arc-back').onclick = closeArcade; }
+  ov.querySelector('#arc-frame').src = url; ov.querySelector('#arc-tab').href = url; ov.hidden = false; arcadeOpen = true; setTimeout(() => ov.querySelector('#arc-frame').focus(), 300); }
+function closeArcade() { const ov = document.getElementById('arcade-ov'); if (ov) { ov.hidden = true; ov.querySelector('#arc-frame').src = 'about:blank'; } arcadeOpen = false; fetchArcadeTop(); }
+let arcadeOpen = false; globalThis.__arcade = { open: openArcade, close: closeArcade, url: arcadeUrl, get top() { return arcadeTop; } };
 globalThis.__eng = ENG; globalThis.__fly5 = F5;
 function playJob(id) { if (panel) closePanel(); keys.clear(); startJob(id, { state, rng, day: gameDay, blip, rustle, fanfare, done: (r) => { ENG.addSeasonXp(state, 'job', gameDay()); F5.tourneyScore(state, id, r.score || 0, Math.floor(gameDay() / 7)); hud(); persist(); if ((r.pb || r.rankUp) && state.town) playerDid(state.town, `You ${r.rankUp ? 'made ' + r.rank + ' as a' : 'set a new best as a'} ${JOB_DEFS[id].name.toLowerCase()} worker.`); toast(`${JOB_DEFS[id].name}: +${r.total} bones${r.pb ? ' · new best!' : ''}${r.rankUp ? ` · rank ${r.rank}!` : ''}`, 'good'); }, closed: () => keys.clear() }); }
 globalThis.__playJob = playJob;
@@ -330,7 +348,7 @@ function updateWorld(dt) {
   else if (pk) { pr.hidden = false; pr.innerHTML = `<kbd${tch ? ' class="ta"' : ''}>${tch ? 'A' : 'E'}</kbd>Drive your ${esc(CAR_MODELS[carOf(state, pk.id)?.model]?.name || 'car')}`; setA('DRIVE'); }
   else if (pup?.workerRef) { pr.hidden = false; const v = pup.workerRef.chatted ? `Play ${JOB_DEFS[WORKER_JOB[pup.workerRef.job]].name} with` : 'Chat with'; pr.innerHTML = tch ? `<kbd class="ta">A</kbd>${v} ${esc(pup.name)}` : `<kbd>E</kbd>${v} ${esc(pup.name)}`; setA('TALK'); }
   else if (pup) { pr.hidden = false; const v = REL.PEOPLE[pup.name] && !pup.pet ? `Talk to ${esc(pup.name)} ${'♥'.repeat(REL.hearts(REL.ensureRel(state)[pup.name]))}` : `Pet ${esc(pup.name)}`; pr.innerHTML = tch ? `<kbd class="ta">A</kbd>${v}` : `<kbd>E</kbd>${v} · <kbd>T</kbd> throw ball`; setA(REL.PEOPLE[pup.name] && !pup.pet ? 'TALK' : 'PET'); }
-  else if (it) { pr.hidden = false; const verb = { matchmaker: 'Browse', square: 'Open', building: 'Enter', plot: state.plots[it.id] ? 'Enter' : 'Inspect', visit: 'Visit', stall: 'View', clubhouse: myPack(state) ? 'Decorate' : 'Open', mall: 'Enter', field: 'Tend', farm: 'Use', lot: 'Visit', biz: 'Read', chapel: 'Enter' }[it.kind] || 'Use'; pr.innerHTML = `<kbd${tch ? ' class="ta"' : ''}>${tch ? 'A' : 'E'}</kbd>${verb} ${esc(it.name)}`; pr.dataset.target = it.id; setA(verb.toUpperCase()); }
+  else if (it) { pr.hidden = false; const verb = { arcade: 'Play at', matchmaker: 'Browse', square: 'Open', building: 'Enter', plot: state.plots[it.id] ? 'Enter' : 'Inspect', visit: 'Visit', stall: 'View', clubhouse: myPack(state) ? 'Decorate' : 'Open', mall: 'Enter', field: 'Tend', farm: 'Use', lot: 'Visit', biz: 'Read', chapel: 'Enter' }[it.kind] || 'Use'; pr.innerHTML = `<kbd${tch ? ' class="ta"' : ''}>${tch ? 'A' : 'E'}</kbd>${verb} ${esc(it.name)}`; pr.dataset.target = it.id; setA(verb.toUpperCase()); }
   else { pr.hidden = true; setA(''); }
 }
 
@@ -346,7 +364,7 @@ function renderWorld() {
     const tx0 = Math.floor(-ox / TILE) - 1, ty0 = Math.floor(-oy / TILE) - 1; ctx.save(); ctx.scale(SCALE, SCALE); drawWater(ctx, time, tx0, ty0, tx0 + Math.ceil(vw / TILE) + 2, ty0 + Math.ceil(vh / TILE) + 2); ctx.restore(); }
   const phase = dayPhase(time + dayOffset);
   globalThis.__inuNight = phase.dark;
-  const dyn = [...dynamicProps(state, time, myPack(state)), ...presidentProps(pres, time), ...carWorldProps(), ...crewProps(), ...adProps(trend, adRot, adIdx, !!globalThis.__inuNight, time, featuredMap()), ...confettiProps(), ...squareProps(state, time, Math.floor(gameDay() / 7))];
+  const dyn = [...dynamicProps(state, time, myPack(state)), ...presidentProps(pres, time), ...carWorldProps(), ...crewProps(), ...adProps(trend, adRot, adIdx, !!globalThis.__inuNight, time, featuredMap()), ...confettiProps(), ...squareProps(state, time, Math.floor(gameDay() / 7)), ...arcadeProps(time, arcadeTop)];
   for (const d of dyn) if (d.flat) d.d(ctx);
   drawGroundLife(ctx, amb, phase); feel.drawGround(ctx);
   if (player.clickMark && player.path.length) { const m = player.clickMark, k = Math.round(10 + Math.sin(time * 6) * 2); ctx.fillStyle = '#f2cc68'; for (const [ax, ay] of [[-k, 0], [k - 4, 0], [0, -k / 2], [0, k / 2 - 2]]) ctx.fillRect(Math.round(m.x + ax), Math.round(m.y + 6 + ay), 4, 3); }
@@ -453,6 +471,7 @@ function interact(it) {
   else if (it.kind === 'farm') openPanel('farm', { id: it.id });
   else if (it.kind === 'lot') openPanel('lot', { id: it.id });
   else if (it.kind === 'biz') openPanel('bizboard');
+  else if (it.kind === 'arcade') openArcade();
   else if (it.kind === 'matchmaker') openPanel('matchmaker');
   else if (it.kind === 'square') openPanel('fly5', { tab: it.id === 'pools' ? 'vip' : it.id === 'burn' ? 'burn' : it.id === 'quests' ? 'quests' : 'vip' });
   else if (it.kind === 'clubhouse') { if (myPack(state)) enterBuild('clubhouse', false); else openPanel('packs'); }
