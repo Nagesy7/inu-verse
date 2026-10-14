@@ -1,0 +1,33 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Inu Verse</title><link rel="stylesheet" href="style.css">
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><circle cx='16' cy='18' r='12' fill='%23d9803a'/><path d='M6 12 9 2 14 9zM26 12 23 2 18 9z' fill='%23d9803a'/><ellipse cx='18' cy='22' rx='7' ry='5' fill='%23fff6ea'/></svg>">
+</head><body>
+<canvas id="game"></canvas>
+<div id="title" class="overlay">
+  <div class="title-card">
+    <h1 class="logo">Inu <span>Verse</span></h1>
+    <p class="tag">A cosy neighbourhood for the Inu games network</p>
+    <canvas id="preview" width="220" height="150"></canvas>
+    <label class="lbl">Your Inu's name <input id="name" maxlength="14" value="Kabosu"></label>
+    <div class="lbl">Coat colour</div>
+    <div id="coats" class="coats"></div>
+    <div class="row"><button id="start" class="btn big">Start new life</button><button id="continue" class="btn big alt" hidden>Continue</button></div>
+    <p class="small">WASD / arrows or click to walk · E to interact · Progress saves in your browser</p>
+  </div>
+</div>
+<div id="hud" hidden>
+  <div class="chip who"><span id="hud-name"></span></div>
+  <div class="chip"><i class="boneic"></i> <span id="bones">0</span> bones</div>
+  <div class="chip inu">$KIBBLE <span id="kibble">0</span></div>
+  <div class="spacer"></div>
+  <button id="btn-phantom" class="btn phantom" title="Wallet support is not built yet">Connect Phantom <small>(coming soon)</small></button>
+  <button id="btn-help" class="btn ghost">?</button>
+</div>
+<div id="prompt" hidden></div>
+<div id="minimap-wrap" hidden><canvas id="minimap" width="192" height="126"></canvas></div>
+<div id="buildbar" hidden></div>
+<div id="panel" class="overlay" hidden><div class="panel-card"><button class="close" id="panel-close">×</button><div id="panel-body"></div></div></div>
+<div id="toast"></div>
+<script type="module" src="src/main.js"></script>
+</body></html>

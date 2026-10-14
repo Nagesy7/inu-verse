@@ -1,0 +1,25 @@
+[2026-10-14T10:50:42.912Z] screenshot proof/verse-01-title.png
+[2026-10-14T10:50:43.509Z] screenshot proof/verse-02-avatar.png
+[2026-10-14T10:50:44.435Z] started: bones=500 kibble=20 pos=1008,752
+[2026-10-14T10:50:45.848Z] walked with keys: pos=1145,677 (moved 156px)
+[2026-10-14T10:50:46.039Z] screenshot proof/verse-03-walk.png
+[2026-10-14T10:50:52.857Z] arrived at café via click-to-move
+[2026-10-14T10:50:57.276Z] screenshot proof/verse-04-cafe.png
+[2026-10-14T10:51:53.147Z] shift result: +423 bones (served clicks 17)
+[2026-10-14T10:51:53.284Z] screenshot proof/verse-05-cafe-paid.png
+[2026-10-14T10:51:53.328Z] bones after job: 923
+[2026-10-14T10:52:01.265Z] screenshot proof/verse-06-plot.png
+[2026-10-14T10:52:01.814Z] claimed: plots=p5 bones=623 mode=build
+[2026-10-14T10:52:08.398Z] screenshot proof/verse-07-shop.png
+[2026-10-14T10:52:08.400Z] bought: inv={"sofa":1,"plant":1,"lamp":1,"rug":1} bones=438
+[2026-10-14T10:52:14.069Z] entered home build mode
+[2026-10-14T10:52:14.874Z] placed items: rug,sofa,plant,lamp
+[2026-10-14T10:52:14.932Z] screenshot proof/verse-08-home.png
+[2026-10-14T10:52:21.684Z] after buy: you hold 96.66M $STAR, holders 2, mcap 36.27
+[2026-10-14T10:52:21.812Z] screenshot proof/verse-09-launch.png
+[2026-10-14T10:52:22.258Z] after selling 50%: kibble=20.651 hold=48.33M
+[2026-10-14T10:52:22.376Z] screenshot proof/verse-10-launch-sell.png
+[2026-10-14T10:52:26.616Z] screenshot proof/verse-11-market-row.png
+[2026-10-14T10:52:27.731Z] reload persistence: continue=true plots=p5 bones=338 tokens=3
+[2026-10-14T10:52:39.410Z] screenshot proof/verse-12-visit-home.png
+[2026-10-14T10:52:39.411Z] page errors: none

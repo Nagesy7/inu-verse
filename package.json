@@ -1,0 +1,1 @@
+{"name":"inu-verse","version":"0.1.0","private":true,"type":"module","scripts":{"test":"node --test tests/","proof":"node scripts/proof.mjs","serve":"python3 -m http.server 8642"},"devDependencies":{"playwright":"^1.64.0"}}
