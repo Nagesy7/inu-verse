@@ -92,9 +92,14 @@ export function simulateTick(state, rng) {
 }
 
 export function seedTokens(state, rng) {
-  if (state.tokens.length) return;
+  if (state.tokens.length) { ensureSeedCoins(state, rng); return; }
   const a = makeToken({ name: 'Zoomies', ticker: 'ZOOM', color: '#3fb6a8', creator: 'Kuro', t: 0, id: 'tk-zoom' });
   const b = makeToken({ name: 'Bark Bucks', ticker: 'BARK', color: '#e0567a', creator: 'Hana', t: 0, id: 'tk-bark' });
-  state.tokens.push(a, b);
+  state.tokens.push(a, b); ensureSeedCoins(state, rng, false);
   for (let i = 0; i < 40; i++) simulateTick(state, rng);
 }
+// extra NPC-launched coins so the city's trending ads have a real field to rank
+export const SEED_COINS = [['Mochi Moon', 'MOCHI', '#f2a6c8', 'Mochi'], ['Sniff Coin', 'SNIF', '#d8507a', 'Ume'], ['Taiyaki Token', 'TAIYA', '#e8a23a', 'Taro'], ['Pawsome', 'PAWS', '#6c8cf0', 'Yuzu'], ['Gold Bone', 'GBONE', '#d6b23a', 'Goma'], ['Zen Doge', 'ZEN', '#8fd16a', 'Sora']];
+export function ensureSeedCoins(state, rng, warm = true) { let added = 0;
+  for (const [name, ticker, color, creator] of SEED_COINS) { const id = 'tk-' + ticker.toLowerCase(); if (state.tokens.some((t) => t.id === id)) continue; state.tokens.push(makeToken({ name, ticker, color, creator, t: state.simTime || 0, id })); added++; }
+  if (warm && added) for (let i = 0; i < 40; i++) simulateTick(state, rng); }

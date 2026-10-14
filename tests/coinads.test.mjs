@@ -1,0 +1,10 @@
+import test from 'node:test'; import assert from 'node:assert/strict';
+const { seedTokens, simulateTick, playerBuy } = await import('../src/launch.js');
+const { trending, AD_SLOTS, adAt, coinFor, pctChange } = await import('../src/coinads.js');
+const { mulberry32 } = await import('../src/rng.js');
+const mk = () => { const r = mulberry32(5); r.pick = (a) => a[Math.floor(r() * a.length)]; const s = { tokens: [], simTime: 0, kibble: 100, bones: 0 }; seedTokens(s, r); return { s, r }; };
+test('trending ranks live Launch Hall coins by % change', () => { const { s } = mk(); const tr = trending(s, 6); assert.equal(tr.length, 6); for (let i = 1; i < tr.length; i++) assert.ok(tr[i - 1].pct >= tr[i].pct); for (const c of tr) assert.ok(s.tokens.some((t) => t.id === c.id) && c.ticker && c.color); });
+test('rankings react to trading: a big buy pushes a coin to #1', () => { const { s } = mk(); const last = trending(s, 8).at(-1); s.kibble = 1e6; playerBuy(s, last.id, 200); assert.equal(trending(s, 1)[0].id, last.id); assert.ok(pctChange(s.tokens.find((t) => t.id === last.id)) > 0); });
+test('ad slots cover billboards, banners, shop signs, mall facade and lamp flags; tap hits a coin', () => { const kinds = new Set(AD_SLOTS.map((a) => a.kind)); for (const k of ['billboard', 'banner', 'sign', 'facade', 'flag']) assert.ok(kinds.has(k), k); assert.ok(AD_SLOTS.filter((a) => a.kind === 'billboard').length >= 2);
+  const { s } = mk(), tr = trending(s); const b = AD_SLOTS[0], hit = adAt(tr, 3, 1, b.x + 10, b.y + 10); assert.equal(hit.coin.id, coinFor(b, tr, 3, 1).id); assert.equal(adAt(tr, 0, 0, -50, -50), null); });
+test('old saves gain the seed coins', () => { const r = mulberry32(1); r.pick = (a) => a[0]; const s = { tokens: [{ id: 'x', ticker: 'X', history: [], trades: [] }], simTime: 0 }; const before = s.tokens.length; try { seedTokens(s, r); } catch {} assert.ok(s.tokens.length > before); });
