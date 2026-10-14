@@ -14,7 +14,8 @@ import { ART, artReady, artKey } from './art.js';
 import { carProps } from './ambient.js';
 import { drawCar } from './cars.js';
 import { makeAmbient, stepAmbient, throwBall, dayPhase, timeForHour, drawGroundLife, drawSkyLife, drawAtmosphere, drawEmote, lightsFor, addMail, unreadMail, EMOTES, DAY_LEN } from './ambient.js';
-import { initAudio, setMuted, isMuted, footstep, chirp, bork, blip, uiClick, uiOpen, uiClose, textBlip, rustle } from './audio.js';
+import { initAudio, setMuted, isMuted, footstep, chirp, bork, blip, uiClick, uiOpen, uiClose, textBlip, rustle, fanfare } from './audio.js';
+import { makePresident, startVisit, updatePresident, presidentProps, presidentPresent, talk as presTalk, OUTFIT as PRES_OUTFIT, KINDS as PRES_KINDS } from './president.js';
 import { MALL_ITEMS, quote, buyMallItem, ensureMall, rollPeriods, fmtK, FEE_LABEL, OWNER, OWNER_WALLET, POOL_WALLETS, POOL_RULES, FEE_BPS } from './mall.js';
 import { GAMES, boardRows, poolEntries } from './leaderboards.js';
 import { prerenderMap, dynamicProps, buildingsReady } from './render.js';
@@ -28,6 +29,8 @@ const rng = mulberry32((Date.now() & 0xffff) + 1);
 let lastEarned = 0, amb = null, dayOffset = 0, stepAcc = 0, mailAcc = 0, photo = false;
 let state = null, mapImg = null, npcs = [], mode = 'title';
 const cam = { x: 0, y: 0 };
+const pres = makePresident(7); // President Inu's seeded visit schedule
+const PRES_Q = new URLSearchParams(location.search).get('president'); let presForced = false;
 let vignette = null, miniBase = null;
 const keys = new Set();
 const touch = { x: 0, y: 0, id: null };
@@ -133,8 +136,10 @@ function clickWorldTile(tx, ty) {
 $('#prompt').onclick = () => { const it = nearestInteractable(state, state.player.x, state.player.y); const pup = nearPup(); if (pup && !it) petPup(pup); else if (it) interact(it); };
 addEventListener('pointerdown', () => initAudio(), { once: true });
 document.addEventListener('pointerdown', (e) => { if (e.target.closest('button,.btn,.coat,[data-buy],[data-inv]')) { initAudio(); uiClick(); } });
-function nearPup() { let b = null, bd = 56; for (const n of npcs) { const d = Math.hypot(n.x - state.player.x, n.y - state.player.y); if (d < bd) { bd = d; b = n; } } return b; }
-function petPup(n) { n.emote = { kind: 'heart', t: 2.2 }; n.wag = 2.2; n.path = []; blip(990); feel.say(n.name, PUP_LINES[Math.floor(rng() * PUP_LINES.length)], textBlip); }
+function nearPup() { if (presidentPresent(pres) && Math.hypot(pres.x - state.player.x, pres.y - state.player.y) < 40) return { president: true, name: 'President Inu' }; let b = null, bd = 36; for (const n of npcs) { const d = Math.hypot(n.x - state.player.x, n.y - state.player.y); if (d < bd) { bd = d; b = n; } } return b; }
+function presBanner(msg) { let b = document.getElementById('pres-banner'); if (!b) { b = document.createElement('div'); b.id = 'pres-banner'; b.style.cssText = 'position:fixed;left:50%;top:64px;transform:translateX(-50%);z-index:40;padding:10px 22px;background:#121a36;color:#f2cc68;border:3px solid #d4a640;font:14px Silkscreen,monospace;letter-spacing:1px;box-shadow:0 4px 0 #0008;pointer-events:none;text-align:center'; document.body.appendChild(b); }
+  b.textContent = '★ ' + msg + ' ★'; b.hidden = false; clearTimeout(b._t); b._t = setTimeout(() => { b.hidden = true; }, 4500); }
+function petPup(n) { if (n.president) { const r = presTalk(pres, state); pres.emote = { kind: 'heart', t: 2 }; blip(990); feel.say('President Inu', r.quote, textBlip); if (r.tip) { toast(`President Inu tipped you ${r.tip} bones!`, 'good'); hud(); persist(); } return; } n.emote = { kind: 'heart', t: 2.2 }; n.wag = 2.2; n.path = []; blip(990); feel.say(n.name, PUP_LINES[Math.floor(rng() * PUP_LINES.length)], textBlip); }
 const PUP_LINES = ['Woof! That spot behind the ears... perfect!', 'Arf! Have you tried the taiyaki cart on Main Street?', 'Wanna race to Sakura Pond? Last one there is a wet biscuit!', 'I buried a bone by the big tree. Shh, it is a secret.', 'Bork bork! The Launch Hall is busy today.'];
 function doEmote(kind) { player.emote = { kind, t: kind === 'zoomies' ? 2.4 : 2.5 }; $('#emotes').hidden = true; blip(kind === 'heart' ? 990 : 740);
   for (const n of npcs) if (Math.hypot(n.x - state.player.x, n.y - state.player.y) < 260 && rng() < 0.6) setTimeout(() => { n.emote = { kind: rng() < 0.5 ? kind : 'heart', t: 2 }; }, 400 + rng() * 600); }
@@ -184,6 +189,9 @@ function updateWorld(dt) {
     if (Math.abs(ddx) > 1) player.dir = ddx > 0 ? 1 : -1; if (d > 0.5) player.face = Math.abs(ddx) > Math.abs(ddy) ? (ddx > 0 ? 'right' : 'left') : (ddy > 0 ? 'down' : 'up'); player.moving = true;
   } else player.moving = false;
   if (player.moving) player.phase += dt * 12; else player.phase += dt * 2;
+  { const nowH = ((time + dayOffset) / DAY_LEN) * 24;
+    if (PRES_Q && !presForced) { presForced = true; startVisit(pres, PRES_KINDS.includes(PRES_Q) ? PRES_Q : null, { dayLen: DAY_LEN }); }
+    updatePresident(pres, dt, { nowH, dayLen: DAY_LEN, npcs, rng, toast: (s) => toast(s, 'good'), banner: presBanner, fanfare, snack: () => toast('President Inu bought a taiyaki from the snack cart!', 'good') }); }
   for (const n of npcs) { if (amb.ball?.dog === n && amb.ball.state !== 'air') continue; if (n.wag > 0) { n.wag -= dt; n.moving = true; n.phase += dt * 20; continue; } if (n.emote) { n.emote.t -= dt; if (n.emote.t <= 0) n.emote = null; } updateNpc(n, dt, rng); }
   if (player.emote) { player.emote.t -= dt; if (player.emote.kind === 'zoomies') { const a = player.emote.t * 5; moveBody(p, Math.cos(a) * 150 * dt, Math.sin(a) * 150 * dt); player.moving = true; player.phase += dt * 20; player.face = Math.cos(a + 1.57) > 0 ? 'right' : 'left'; } if (player.emote.t <= 0) player.emote = null; }
   for (const e of stepAmbient(amb, dt, p, npcs)) { if (e.kind === 'flush') chirp(); if (e.kind === 'fetched') toast(`${e.who} brought the ball back!`, 'good'); }
@@ -200,7 +208,7 @@ function updateWorld(dt) {
   if (globalThis.__camLock) { cam.x = __camLock.x; cam.y = __camLock.y; } // debug/screenshot camera lock
   const it = !panel && nearestInteractable(state, p.x, p.y);
   const pr = $('#prompt');
-  const pup = !panel && !it && nearPup();
+  const pup = !panel && !it && nearPup(); // (President Inu counts as a pup to pet/talk to)
   const tch = COARSE.matches;
   if (pup) { pr.hidden = false; pr.innerHTML = tch ? `<kbd class="ta">A</kbd>Pet ${esc(pup.name)}` : `<kbd>E</kbd>Pet ${esc(pup.name)} · <kbd>T</kbd> throw ball`; setA('PET'); }
   else if (it) { pr.hidden = false; const verb = { building: 'Enter', plot: state.plots[it.id] ? 'Enter' : 'Inspect', visit: 'Visit', stall: 'View', clubhouse: myPack(state) ? 'Decorate' : 'Open', mall: 'Enter' }[it.kind]; pr.innerHTML = `<kbd${tch ? ' class="ta"' : ''}>${tch ? 'A' : 'E'}</kbd>${verb} ${esc(it.name)}`; pr.dataset.target = it.id; setA(verb.toUpperCase()); }
@@ -219,11 +227,11 @@ function renderWorld() {
     const tx0 = Math.floor(-ox / TILE) - 1, ty0 = Math.floor(-oy / TILE) - 1; ctx.save(); ctx.scale(SCALE, SCALE); drawWater(ctx, time, tx0, ty0, tx0 + Math.ceil(vw / TILE) + 2, ty0 + Math.ceil(vh / TILE) + 2); ctx.restore(); }
   const phase = dayPhase(time + dayOffset);
   globalThis.__inuNight = phase.dark;
-  const dyn = dynamicProps(state, time, myPack(state));
+  const dyn = [...dynamicProps(state, time, myPack(state)), ...presidentProps(pres, time)];
   for (const d of dyn) if (d.flat) d.d(ctx);
   drawGroundLife(ctx, amb, phase); feel.drawGround(ctx);
   if (player.clickMark && player.path.length) { const m = player.clickMark, k = Math.round(10 + Math.sin(time * 6) * 2); ctx.fillStyle = '#f2cc68'; for (const [ax, ay] of [[-k, 0], [k - 4, 0], [0, -k / 2], [0, k / 2 - 2]]) ctx.fillRect(Math.round(m.x + ax), Math.round(m.y + 6 + ay), 4, 3); }
-  const actors = [...npcs.map((n) => ({ ...n, npc: true, badge: badgeOf(packOfName(state, n.name)) })), { x: state.player.x, y: state.player.y, coat: state.player.coat, outfit: state.wardrobe.equipped, face: player.face, phase: player.phase, moving: player.moving, name: state.player.name, me: true, badge: badgeOf(myPack(state)), emote: player.emote, art: artKey(state.player.coat, state.wardrobe.equipped) }, ...streetPups()];
+  const actors = [...npcs.map((n) => ({ ...n, npc: true, badge: badgeOf(packOfName(state, n.name)) })), { x: state.player.x, y: state.player.y, coat: state.player.coat, outfit: state.wardrobe.equipped, face: player.face, phase: player.phase, moving: player.moving, name: state.player.name, me: true, badge: badgeOf(myPack(state)), emote: player.emote, art: artKey(state.player.coat, state.wardrobe.equipped) }, ...streetPups(), ...presActors()];
   // one depth-sorted list: static props (culled), dynamic props and actors, by ground y
   const L = -ox - 200, Rt = -ox + vw + 200, Tp = -oy - 60, Bt = -oy + vh + 400, list = [];
   for (const p of mapImg.props) if (p.y > Tp && p.y < Bt) list.push(p);
@@ -237,6 +245,7 @@ function renderWorld() {
     if (a.statue) { ctx.fillStyle = '#6a6080'; ctx.fillRect(Math.round(a.x - 34), Math.round(a.y - 4), 68, 18); ctx.fillStyle = '#d4a640'; ctx.fillRect(Math.round(a.x - 38), Math.round(a.y - 8), 76, 5); ctx.fillStyle = '#121a36'; ctx.font = '8px Silkscreen, monospace'; ctx.textAlign = 'center'; ctx.fillText('PRESIDENT INU', Math.round(a.x), Math.round(a.y + 8)); ctx.save(); ctx.filter = 'sepia(1) saturate(2.6) brightness(1.05)'; drawShiba(ctx, a.x, a.y - 10, { art: a.art, scale: 1.5, shadow: false }); ctx.restore(); continue; }
     ctx.save(); ctx.translate(Math.round(a.x * ZOOM) / ZOOM, Math.round(a.y * ZOOM) / ZOOM); ctx.scale(1 / ZOOM, 1 / ZOOM);
     if (a.me) { ctx.fillStyle = 'rgba(242,204,104,0.45)'; ctx.fillRect(-20, 9, 40, 4); ctx.fillRect(-14, 7, 28, 8); }
+    if (a.president) { drawPresident(ctx, a); if (a.emote) drawEmote(ctx, 0, -14, a.emote.kind, time); ctx.restore(); continue; }
     drawShiba(ctx, 0, 0, { coat: a.coat, outfit: a.outfit, face: a.face, phase: a.phase, moving: a.moving, name: a.name, scale: 1.5, badge: a.badge, art: a.art, emote: a.emote?.kind });
     if (a.emote) drawEmote(ctx, 0, a.name ? -14 : 0, a.emote.kind, time); ctx.restore();
   }
@@ -253,10 +262,29 @@ function renderWorld() {
 
 function homeId() { if (mode === 'build' && build && !build.readOnly && !build.pack) return build.plotId; for (const p of PLOTS) if (state.plots[p.id] && Math.abs(state.player.x / TILE - (p.x + 3)) < 5 && Math.abs(state.player.y / TILE - (p.y + 3)) < 5) return p.id; return null; }
 // busker by the clubhouse plaza + two pups playing by Sakura Pond
+const presCache = new Map();
+function drawPresident(c, a) { // navy suit, gold tie (recoloured), sash, sunglasses, gold name tag; drawn at screen scale
+  const fr = a.moving ? Math.floor(a.phase / 1.6) % 4 : 0, key = a.face + fr; let cv = presCache.get(key);
+  if (!cv) { cv = document.createElement('canvas'); cv.width = 160; cv.height = 180; const x = cv.getContext('2d'); drawShiba(x, 80, 150, { coat: 'golden', outfit: PRES_OUTFIT, face: a.face, phase: a.phase, moving: a.moving, scale: 1.5, art: a.art, shadow: false });
+    const d = x.getImageData(0, 0, 160, 180), p = d.data; let y0 = 180, y1 = 0, x0 = 160, x1 = 0;
+    for (let i = 0; i < p.length; i += 4) { if (p[i + 3] > 40) { const q = i / 4, px = q % 160, py = (q / 160) | 0; y0 = Math.min(y0, py); y1 = Math.max(y1, py); x0 = Math.min(x0, px); x1 = Math.max(x1, px); }
+      if (p[i] > 150 && p[i + 1] < 90 && p[i + 2] < 90 && p[i + 3] > 0) { p[i] = 227; p[i + 1] = 179; p[i + 2] = 65; } } // red tie -> gold tie
+    x.putImageData(d, 0, 0);
+    if (a.face !== 'up') { const h = y1 - y0, w = x1 - x0, sx0 = x0 + w * 0.3, sy0 = y0 + h * 0.5, sx1 = x0 + w * 0.68, sy1 = y0 + h * 0.74; // diagonal sash across the chest
+      for (let t = 0; t <= 1; t += 0.03) { const sx = Math.round(sx0 + (sx1 - sx0) * t), sy = Math.round(sy0 + (sy1 - sy0) * t); x.fillStyle = '#b3202c'; x.fillRect(sx - 2, sy - 3, 5, 6); x.fillStyle = '#e3b341'; x.fillRect(sx - 2, sy - 3, 5, 1); x.fillRect(sx - 2, sy + 2, 5, 1); } }
+    cv.top = y0; presCache.set(key, cv); }
+  c.fillStyle = 'rgba(10,14,30,.3)'; c.beginPath(); c.ellipse(0, 11, 22, 6, 0, 0, 7); c.fill();
+  c.save(); if (a.face === 'left' && false) c.scale(-1, 1); c.drawImage(cv, -80, -138); c.restore();
+  if (a.coffee) { c.fillStyle = '#141a2e'; c.fillRect(17, -40, 12, 16); c.fillStyle = '#f4f1ea'; c.fillRect(18, -39, 10, 14); c.fillStyle = '#8a5a30'; c.fillRect(18, -34, 10, 4); c.fillStyle = '#141a2e'; c.fillRect(17, -42, 12, 3); }
+  const tagY = cv.top - 138 - 14; c.font = '8px Silkscreen, monospace'; c.textAlign = 'center'; c.textBaseline = 'middle'; const tw = Math.ceil(c.measureText('PRESIDENT INU').width) + 14;
+  c.fillStyle = '#121a36'; c.fillRect(-tw / 2 - 2, tagY - 8, tw + 4, 16); c.fillStyle = '#d4a640'; c.fillRect(-tw / 2, tagY - 6, tw, 12); c.fillStyle = '#ffe08a'; c.fillRect(-tw / 2, tagY - 6, tw, 1); c.fillStyle = '#121a36'; c.fillText('PRESIDENT INU', 0, tagY + 1); }
+function presActors() { const out = []; if (!pres.on) return out;
+  if (pres.kind === 'limo' && (pres.stage !== 'enter' || pres.t > 6)) for (let i = 0; i < 3; i++) for (const s of [-1, 1]) out.push({ x: 32.5 * TILE + s * 40, y: 45.6 * TILE + i * 34, coat: 'dark', outfit: { top: 'tux_black', bottom: 'slacks_black', eyes: 'shades', neck: 'bowtie', feet: 'loafers' }, face: 'down', phase: 0, moving: false, art: artKey('dark', { top: 'tux_black', bottom: 'slacks_black', eyes: 'shades', neck: 'bowtie', feet: 'loafers' }) });
+  if (presidentPresent(pres)) out.push({ x: pres.x, y: pres.y, coat: 'golden', outfit: PRES_OUTFIT, face: pres.face, phase: pres.phase, moving: pres.moving, president: true, emote: pres.emote, coffee: pres.coffee, art: artKey('golden', PRES_OUTFIT) });
+  return out; }
 function streetPups() {
   const t = time, chase = Math.sin(t * 0.9) * 50;
   return [{ x: 45.5 * TILE, y: 8.4 * TILE, coat: 'golden', art: 'shiba-golden', face: Math.sin(t * 2) > 0 ? 'right' : 'left', phase: t * 8, moving: true, name: 'Busker Biscuit' },
-    { x: 35.5 * TILE, y: 79.6 * TILE, coat: 'golden', outfit: { top: 'gold_suit', hat: 'crown', neck: 'diamond_chain', bottom: 'slacks_black', feet: 'loafers' }, face: 'down', phase: t * 2, moving: false, name: 'President Inu' },
     { x: (STATUE.x + 1) * TILE, y: (STATUE.y + 0.9) * TILE, coat: 'golden', art: 'shiba-golden', statue: true, face: 'down', phase: 0, moving: false },
     { x: 9 * TILE + chase, y: 9.3 * TILE, coat: 'cream', art: 'shiba-cream', face: Math.cos(t * 0.9) > 0 ? 'right' : 'left', phase: t * 14, moving: true },
     { x: 9 * TILE + chase - 24 * Math.sign(Math.cos(t * 0.9)), y: 9.5 * TILE, coat: 'red', art: 'shiba-red', face: Math.cos(t * 0.9) > 0 ? 'right' : 'left', phase: t * 14 + 2, moving: true }];
@@ -650,4 +678,4 @@ function frame(now) {
   requestAnimationFrame(frame);
 }
 titleScreen(); requestAnimationFrame(frame);
-window.__inu = { setHour: (h) => { dayOffset = timeForHour(h) - time; }, setRain: (r) => { amb.rain = amb.rainTarget = r; amb.weatherT = 999; }, get amb() { return amb; }, get npcs() { return npcs; }, emote: (k) => doEmote(k), cam, get state() { return state; }, get mode() { return mode; }, get panel() { return panel?.kind; }, get panelObj() { return panel; } };
+window.__inu = { president: pres, presVisit: (k) => startVisit(pres, k, { dayLen: DAY_LEN }), setHour: (h) => { dayOffset = timeForHour(h) - time; }, setRain: (r) => { amb.rain = amb.rainTarget = r; amb.weatherT = 999; }, get amb() { return amb; }, get npcs() { return npcs; }, emote: (k) => doEmote(k), cam, get state() { return state; }, get mode() { return mode; }, get panel() { return panel?.kind; }, get panelObj() { return panel; } };

@@ -39,3 +39,4 @@ export function uiOpen() { if (!ac || muted) return; const t = ac.currentTime; [
 export function uiClose() { if (!ac || muted) return; const t = ac.currentTime; [784, 587].forEach((f, i) => tone(f, t + i * 0.05, 0.1, 0.025, 'triangle', master)); }
 export function textBlip(f = 620) { if (!ac || muted) return; tone(f + Math.random() * 60, ac.currentTime, 0.035, 0.022, 'square', master); }
 export function rustle() { if (!ac || muted) return; noise(ac.currentTime, 0.07, 0.02, 3000); }
+export function fanfare() { if (!ac || muted) return; const t = ac.currentTime; [[523, 0, .18], [659, .18, .18], [784, .36, .18], [1047, .54, .5], [784, .9, .16], [1047, 1.06, .7]].forEach(([f, d, l]) => { tone(f, t + d, l, 0.05, 'square', master); tone(f / 2, t + d, l, 0.03, 'sawtooth', master); }); }
