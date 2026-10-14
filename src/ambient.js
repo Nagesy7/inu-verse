@@ -1,3 +1,4 @@
+import { luxuryLights } from './luxury.js';
 // Ambient life: day/night, weather, wildlife, street life, emotes, mail. Purely cosmetic.
 // Pure helpers (dayPhase, makeAmbient, stepAmbient, addMail) are headless-testable; draw* need a canvas.
 import { TILE, MAP_W, MAP_H, MAP, T, BUILDINGS, PLOTS, MALL_BUILDINGS, NPC_HOMES } from './world.js';
@@ -185,6 +186,7 @@ export function lightsFor(state, phase, playerHome) {
   for (const b of [...BUILDINGS, ...MALL_BUILDINGS, ...NPC_HOMES]) { // lit doorway pool + window glows
     L.push({ x: (b.x + b.w / 2) * TILE, y: (b.y + b.h - 0.8) * TILE, gy: (b.y + b.h + 0.6) * TILE, r: 64, glow: true, core: 24, flat: 0.5 });
     for (let k = 1; k < b.w; k += 3) L.push({ x: (b.x + k + 0.5) * TILE, y: (b.y + b.h - 2.6) * TILE, r: 26, glow: true, core: 14, flat: 0.8 }); }
+  L.push(...luxuryLights());
   for (const p of PLOTS) if (state.plots[p.id]) L.push({ x: (p.x + 3) * TILE, y: (p.y + 5) * TILE, gy: (p.y + 6.5) * TILE, r: playerHome === p.id ? 150 : 80, glow: true, core: 28 });
   return L;
 }

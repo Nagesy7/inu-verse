@@ -1,4 +1,4 @@
-export const TILE = 32, MAP_W = 64, MAP_H = 70;
+export const TILE = 32, MAP_W = 64, MAP_H = 82;
 export const T = { GRASS: 0, ROAD: 1, WALK: 2, BUILDING: 3, WATER: 4, TREE: 5, PLOT: 6, FLOWER: 7, PLAZA: 8, HOME: 9 };
 const SOLID = new Set([T.BUILDING, T.WATER, T.TREE, T.PLOT, T.HOME]);
 
@@ -17,9 +17,11 @@ export const MALL_BUILDINGS = [
   { id: 'designer', name: 'Royal Paws Designer', x: 46, y: 49, w: 8, h: 6, cat: 'outfit' },
   { id: 'goldden', name: 'Golden Den Furniture', x: 10, y: 60, w: 8, h: 6, cat: 'furniture' },
   { id: 'luxauto', name: 'Zoomies Luxury Autos', x: 46, y: 60, w: 8, h: 6, cat: 'car' },
-  { id: 'office', name: "President's Office", x: 27, y: 62, w: 10, h: 5, cat: 'office' },
+  { id: 'office', name: "President's Office", x: 27, y: 74, w: 10, h: 5, cat: 'office' },
 ];
-export const STATUE = { x: 31, y: 59 };
+export const STATUE = { x: 31, y: 71 };
+export const FOUNTAIN = { x: 30, y: 63, w: 4, h: 3 }; // tiered marble fountain on the Kibble Mall forecourt
+export const FORECOURT = { x: 24, y: 58, w: 16, h: 16 }; // marble plaza in front of the mall
 export const LEADERS = { x: 18, y: 55, w: 6, h: 3 }; // Leaderboards Hall (art is drawn at an integer 2x to fill this footprint)
 export const PLOT_COST = 300;
 export const PLOTS = [2, 9, 16, 23, 35, 42, 49, 56].map((x, i) => ({ id: 'p' + (i + 1), x, y: 24, w: 6, h: 6 }));
@@ -52,7 +54,7 @@ export function buildMap() {
   for (const b of BRIDGES) fill(b.x, b.y, b.w, b.h, T.WALK);
   // south: Kibble Mall district
   fill(AVENUE, 41, 3, 4, T.ROAD); // avenue joins the south road
-  fill(7, 46, 50, 22, T.PLAZA);
+  fill(7, 46, 50, 34, T.PLAZA);
   for (const b of MALL_BUILDINGS) fill(b.x, b.y, b.w, b.h, T.BUILDING);
   fill(STATUE.x, STATUE.y, 2, 1, T.BUILDING); fill(LEADERS.x, LEADERS.y, LEADERS.w, LEADERS.h, T.BUILDING);
   // trees: border + some park trees
@@ -69,7 +71,13 @@ export const DECOR = [];
   for (const b of [...BUILDINGS, ...MALL_BUILDINGS]) { if (ok(b.x - 1, b.y + b.h - 1)) DECOR.push({ x: b.x - 1, y: b.y + b.h - 1, kind: 'bushP' }); if (ok(b.x + b.w, b.y + b.h - 1)) DECOR.push({ x: b.x + b.w, y: b.y + b.h - 1, kind: 'bushY' }); }
   for (const h of NPC_HOMES) for (const dx of [0, 1, 4, 5]) DECOR.push({ x: h.x + dx, y: h.y + h.h, kind: 'hedge' });
   for (const [xs, y] of [[[2, 12, 21, 38, 46, 61], 19], [[8, 15, 22, 41, 48, 55], 23], [[8, 15, 22, 36, 42, 52, 58], 34]]) for (const x of xs) if (MAP[y][x] === T.WALK) DECOR.push({ x, y, kind: 'planter' }); // street trees
-  for (const [x, y] of [[49, 18], [50, 18], [58, 18], [59, 18], [44, 66], [45, 66], [54, 66], [55, 66]]) DECOR.push({ x, y, kind: 'car' }); } // showroom display cars
+  for (const [x, y] of [[49, 18], [50, 18], [58, 18], [59, 18], [44, 66], [45, 66], [54, 66], [55, 66]]) DECOR.push({ x, y, kind: 'car' });
+  // Kibble Mall grand forecourt: fountain, parterres, topiary, palms, valet limo (all solid)
+  for (let y = FOUNTAIN.y; y < FOUNTAIN.y + FOUNTAIN.h; y++) for (let x = FOUNTAIN.x; x < FOUNTAIN.x + FOUNTAIN.w; x++) DECOR.push({ x, y, kind: 'fountain' });
+  for (const x0 of [26, 35]) for (let y = 61; y < 69; y++) for (let x = x0; x < x0 + 3; x++) DECOR.push({ x, y, kind: 'parterre' });
+  for (const [x, y, k] of [[25, 59, 'topSpiral'], [38, 59, 'topSpiral'], [25, 65, 'topBall'], [38, 65, 'topBall'], [25, 70, 'topDog'], [38, 70, 'topDog']]) DECOR.push({ x, y, kind: k });
+  for (const [x, y] of [[23, 60], [40, 60], [23, 66], [40, 66], [23, 72], [40, 72]]) DECOR.push({ x, y, kind: 'palm' });
+  for (const x of [42, 43]) DECOR.push({ x, y: 58, kind: 'car' }); } // showroom display cars + valet limo
 const DECOR_SET = new Set(DECOR.map((d) => d.y * MAP_W + d.x));
 export const isSolid = (tx, ty) => tx < 0 || ty < 0 || tx >= MAP_W || ty >= MAP_H || SOLID.has(MAP[ty][tx]) || DECOR_SET.has(ty * MAP_W + tx);
 

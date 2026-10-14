@@ -197,6 +197,7 @@ function updateWorld(dt) {
   const hw = innerWidth / 2 / ZOOM, hh = innerHeight / 2 / ZOOM;
   cam.x = Math.max(hw, Math.min(MAP_W * TILE - hw, cam.x)); cam.y = Math.max(hh, Math.min(MAP_H * TILE - hh, cam.y));
   if (MAP_W * TILE < innerWidth / ZOOM) cam.x = MAP_W * TILE / 2; if (MAP_H * TILE < innerHeight / ZOOM) cam.y = MAP_H * TILE / 2;
+  if (globalThis.__camLock) { cam.x = __camLock.x; cam.y = __camLock.y; } // debug/screenshot camera lock
   const it = !panel && nearestInteractable(state, p.x, p.y);
   const pr = $('#prompt');
   const pup = !panel && !it && nearPup();
@@ -217,6 +218,7 @@ function renderWorld() {
   { // animated water (native pixels, scaled)
     const tx0 = Math.floor(-ox / TILE) - 1, ty0 = Math.floor(-oy / TILE) - 1; ctx.save(); ctx.scale(SCALE, SCALE); drawWater(ctx, time, tx0, ty0, tx0 + Math.ceil(vw / TILE) + 2, ty0 + Math.ceil(vh / TILE) + 2); ctx.restore(); }
   const phase = dayPhase(time + dayOffset);
+  globalThis.__inuNight = phase.dark;
   const dyn = dynamicProps(state, time, myPack(state));
   for (const d of dyn) if (d.flat) d.d(ctx);
   drawGroundLife(ctx, amb, phase); feel.drawGround(ctx);
@@ -232,7 +234,7 @@ function renderWorld() {
   for (const it of list) {
     if (!it.a) { it.d(ctx); continue; }
     const a = it.a;
-    if (a.statue) { ctx.fillStyle = '#6a6080'; ctx.fillRect(Math.round(a.x - 34), Math.round(a.y - 4), 68, 18); ctx.fillStyle = '#d4a640'; ctx.fillRect(Math.round(a.x - 38), Math.round(a.y - 8), 76, 5); ctx.fillStyle = '#121a36'; ctx.font = '8px Silkscreen, monospace'; ctx.textAlign = 'center'; ctx.fillText('PRESIDENT INU', Math.round(a.x), Math.round(a.y + 8)); ctx.save(); ctx.filter = 'sepia(1) saturate(2.6) brightness(1.05)'; drawShiba(ctx, a.x, a.y - 10, { art: a.art, scale: 2, shadow: false }); ctx.restore(); continue; }
+    if (a.statue) { ctx.fillStyle = '#6a6080'; ctx.fillRect(Math.round(a.x - 34), Math.round(a.y - 4), 68, 18); ctx.fillStyle = '#d4a640'; ctx.fillRect(Math.round(a.x - 38), Math.round(a.y - 8), 76, 5); ctx.fillStyle = '#121a36'; ctx.font = '8px Silkscreen, monospace'; ctx.textAlign = 'center'; ctx.fillText('PRESIDENT INU', Math.round(a.x), Math.round(a.y + 8)); ctx.save(); ctx.filter = 'sepia(1) saturate(2.6) brightness(1.05)'; drawShiba(ctx, a.x, a.y - 10, { art: a.art, scale: 1.5, shadow: false }); ctx.restore(); continue; }
     ctx.save(); ctx.translate(Math.round(a.x * ZOOM) / ZOOM, Math.round(a.y * ZOOM) / ZOOM); ctx.scale(1 / ZOOM, 1 / ZOOM);
     if (a.me) { ctx.fillStyle = 'rgba(242,204,104,0.45)'; ctx.fillRect(-20, 9, 40, 4); ctx.fillRect(-14, 7, 28, 8); }
     drawShiba(ctx, 0, 0, { coat: a.coat, outfit: a.outfit, face: a.face, phase: a.phase, moving: a.moving, name: a.name, scale: 1.5, badge: a.badge, art: a.art, emote: a.emote?.kind });
@@ -254,7 +256,7 @@ function homeId() { if (mode === 'build' && build && !build.readOnly && !build.p
 function streetPups() {
   const t = time, chase = Math.sin(t * 0.9) * 50;
   return [{ x: 45.5 * TILE, y: 8.4 * TILE, coat: 'golden', art: 'shiba-golden', face: Math.sin(t * 2) > 0 ? 'right' : 'left', phase: t * 8, moving: true, name: 'Busker Biscuit' },
-    { x: 35.5 * TILE, y: 67.6 * TILE, coat: 'golden', outfit: { top: 'gold_suit', hat: 'crown', neck: 'diamond_chain', bottom: 'slacks_black', feet: 'loafers' }, face: 'down', phase: t * 2, moving: false, name: 'President Inu' },
+    { x: 35.5 * TILE, y: 79.6 * TILE, coat: 'golden', outfit: { top: 'gold_suit', hat: 'crown', neck: 'diamond_chain', bottom: 'slacks_black', feet: 'loafers' }, face: 'down', phase: t * 2, moving: false, name: 'President Inu' },
     { x: (STATUE.x + 1) * TILE, y: (STATUE.y + 0.9) * TILE, coat: 'golden', art: 'shiba-golden', statue: true, face: 'down', phase: 0, moving: false },
     { x: 9 * TILE + chase, y: 9.3 * TILE, coat: 'cream', art: 'shiba-cream', face: Math.cos(t * 0.9) > 0 ? 'right' : 'left', phase: t * 14, moving: true },
     { x: 9 * TILE + chase - 24 * Math.sign(Math.cos(t * 0.9)), y: 9.5 * TILE, coat: 'red', art: 'shiba-red', face: Math.cos(t * 0.9) > 0 ? 'right' : 'left', phase: t * 14 + 2, moving: true }];
