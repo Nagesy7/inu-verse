@@ -18,6 +18,7 @@ import { initAudio, setMuted, isMuted, footstep, chirp, bork, blip, uiClick, uiO
 import { CAR_MODELS, CAR_COLORS, ensureGarage, buyCar, carOf } from './garage.js';
 import { PETS, ensurePets, buyPet, renamePet, activePet, followStep, petSprite } from './pets.js';
 import { wallet, TREASURY } from './wallet.js';
+import { ZOOMS, DEFAULT_ZOOM, stepZoom, clampCam } from './zoom.js';
 import { makePresident, startVisit, updatePresident, presidentProps, presidentPresent, talk as presTalk, OUTFIT as PRES_OUTFIT, KINDS as PRES_KINDS } from './president.js';
 import { MALL_ITEMS, quote, buyMallItem, ensureMall, rollPeriods, fmtK, FEE_LABEL, OWNER, OWNER_WALLET, POOL_WALLETS, POOL_RULES, FEE_BPS } from './mall.js';
 import { GAMES, boardRows, poolEntries } from './leaderboards.js';
@@ -109,6 +110,7 @@ addEventListener('keydown', (e) => {
     if (k === 'b') { bork(); player.emote = { kind: 'bork', t: 1.2 }; }
     if (k === 't') { const d = throwBall(amb, state.player, player.face, npcs); blip(660); if (d) toast(`${d.name} is fetching!`, 'good'); }
     if (k === 'm') toggleMute();
+    if (k === '+' || k === '=') setZoom(stepZoom(ZOOM, 1)); if (k === '-' || k === '_') setZoom(stepZoom(ZOOM, -1));
     if (k === 'p') togglePhoto();
     if (k === 'g') toggleEmotes();
     const ek = ['1', '2', '3', '4', '5'].indexOf(k); if (ek >= 0) doEmote(Object.keys(EMOTES)[ek]);
@@ -120,7 +122,8 @@ addEventListener('keydown', (e) => {
   if (mode === 'build' && k === 'r') rotateSel();
 });
 addEventListener('keyup', (e) => keys.delete(e.key.toLowerCase()));
-export const ZOOM = 2; // world zoom vs. the Shibas: the town renders 2x bigger, the dogs keep their on-screen size
+let ZOOM = DEFAULT_ZOOM; // world zoom (2 = default close-up; 1 and 0.5 zoom out). Shibas are drawn at half world scale so they shrink with the world.
+function setZoom(z) { if (!ZOOMS.includes(z) || z === ZOOM) return; ZOOM = z; const el = document.getElementById('zlevel'); if (el) el.textContent = ZOOM === 2 ? '1x' : ZOOM === 1 ? '½x' : '¼x'; }
 const screenToWorld = (sx, sy) => ({ x: (sx - innerWidth / 2) / ZOOM + cam.x, y: (sy - innerHeight / 2) / ZOOM + cam.y });
 
 cv.addEventListener('mousemove', (e) => { if (mode === 'build') build.hover = roomCell(e.clientX, e.clientY); });
@@ -224,9 +227,7 @@ function updateWorld(dt) {
   // smooth camera
   const k = 1 - Math.pow(0.004, dt), lead = player.moving ? 10 : 0, fx = { left: -1, right: 1 }[player.face] || 0, fy = { up: -1, down: 1 }[player.face] || 0;
   cam.x += (p.x + fx * lead - cam.x) * k; cam.y += (p.y + fy * lead * 0.6 - cam.y) * k;
-  const hw = innerWidth / 2 / ZOOM, hh = innerHeight / 2 / ZOOM;
-  cam.x = Math.max(hw, Math.min(MAP_W * TILE - hw, cam.x)); cam.y = Math.max(hh, Math.min(MAP_H * TILE - hh, cam.y));
-  if (MAP_W * TILE < innerWidth / ZOOM) cam.x = MAP_W * TILE / 2; if (MAP_H * TILE < innerHeight / ZOOM) cam.y = MAP_H * TILE / 2;
+  Object.assign(cam, clampCam(cam.x, cam.y, innerWidth / ZOOM, innerHeight / ZOOM, MAP_W * TILE, MAP_H * TILE));
   if (globalThis.__camLock) { cam.x = __camLock.x; cam.y = __camLock.y; } // debug/screenshot camera lock
   const it = !panel && nearestInteractable(state, p.x, p.y);
   const pr = $('#prompt');
@@ -268,7 +269,7 @@ function renderWorld() {
     if (!it.a) { it.d(ctx); continue; }
     const a = it.a;
     if (a.statue) { ctx.fillStyle = '#6a6080'; ctx.fillRect(Math.round(a.x - 34), Math.round(a.y - 4), 68, 18); ctx.fillStyle = '#d4a640'; ctx.fillRect(Math.round(a.x - 38), Math.round(a.y - 8), 76, 5); ctx.fillStyle = '#121a36'; ctx.font = '8px Silkscreen, monospace'; ctx.textAlign = 'center'; ctx.fillText('PRESIDENT INU', Math.round(a.x), Math.round(a.y + 8)); ctx.save(); ctx.filter = 'sepia(1) saturate(2.6) brightness(1.05)'; drawShiba(ctx, a.x, a.y - 10, { art: a.art, scale: 1.5, shadow: false }); ctx.restore(); continue; }
-    ctx.save(); ctx.translate(Math.round(a.x * ZOOM) / ZOOM, Math.round(a.y * ZOOM) / ZOOM); ctx.scale(1 / ZOOM, 1 / ZOOM);
+    ctx.save(); ctx.translate(Math.round(a.x * 2) / 2, Math.round(a.y * 2) / 2); ctx.scale(0.5, 0.5);
     if (a.me) { ctx.fillStyle = 'rgba(242,204,104,0.45)'; ctx.fillRect(-20, 9, 40, 4); ctx.fillRect(-14, 7, 28, 8); }
     if (a.petSpecies) { drawPetActor(ctx, a); ctx.restore(); continue; }
     if (a.president) { drawPresident(ctx, a); if (a.emote) drawEmote(ctx, 0, -14, a.emote.kind, time); ctx.restore(); continue; }
@@ -755,4 +756,10 @@ function frame(now) {
   requestAnimationFrame(frame);
 }
 titleScreen(); requestAnimationFrame(frame);
-window.__inu = { president: pres, presVisit: (k) => startVisit(pres, k, { dayLen: DAY_LEN }), setHour: (h) => { dayOffset = timeForHour(h) - time; }, setRain: (r) => { amb.rain = amb.rainTarget = r; amb.weatherT = 999; }, get amb() { return amb; }, get npcs() { return npcs; }, emote: (k) => doEmote(k), cam, get state() { return state; }, get mode() { return mode; }, get panel() { return panel?.kind; }, get panelObj() { return panel; } };
+cv.addEventListener('wheel', (e) => { if (mode !== 'world') return; e.preventDefault(); const now = performance.now(); if (now - (cv._wz || 0) < 180) return; cv._wz = now; setZoom(stepZoom(ZOOM, e.deltaY < 0 ? 1 : -1)); }, { passive: false });
+{ let pinch = null; const dist = (t) => Math.hypot(t[0].clientX - t[1].clientX, t[0].clientY - t[1].clientY);
+  cv.addEventListener('touchstart', (e) => { if (e.touches.length === 2) pinch = dist(e.touches); }, { passive: true });
+  cv.addEventListener('touchmove', (e) => { if (!pinch || e.touches.length !== 2) return; const d = dist(e.touches); if (d / pinch > 1.35) { setZoom(stepZoom(ZOOM, 1)); pinch = d; } else if (pinch / d > 1.35) { setZoom(stepZoom(ZOOM, -1)); pinch = d; } }, { passive: true });
+  cv.addEventListener('touchend', (e) => { if (e.touches.length < 2) pinch = null; }, { passive: true }); }
+document.getElementById('zin')?.addEventListener('click', () => setZoom(stepZoom(ZOOM, 1))); document.getElementById('zout')?.addEventListener('click', () => setZoom(stepZoom(ZOOM, -1)));
+window.__inu = { get zoom() { return ZOOM; }, setZoom, president: pres, presVisit: (k) => startVisit(pres, k, { dayLen: DAY_LEN }), setHour: (h) => { dayOffset = timeForHour(h) - time; }, setRain: (r) => { amb.rain = amb.rainTarget = r; amb.weatherT = 999; }, get amb() { return amb; }, get npcs() { return npcs; }, emote: (k) => doEmote(k), cam, get state() { return state; }, get mode() { return mode; }, get panel() { return panel?.kind; }, get panelObj() { return panel; } };
