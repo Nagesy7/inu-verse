@@ -3,7 +3,7 @@ import { COATS, newGame, claimPlot, buyFurniture, placeFurniture, moveFurniture,
 import { FURNITURE, WALLS, FLOORS, ROOM_W, ROOM_H, canPlace, itemAt, footprint } from './furniture.js';
 import { MENU, newShift, tickShift, addToTray, clearTray, serve, finishShift, SHIFT_LEN } from './cafe.js';
 import { createToken, playerBuy, playerSell, simulateTick, seedTokens, holderCount, PLAYER, CREATE_FEE } from './launch.js';
-import { price, marketCap, progress } from './curve.js';
+import { price, marketCap, progress, fmtPrice } from './curve.js';
 import { save, load } from './save.js';
 import { OUTFITS, SLOTS, SLOT_NAMES, buyOutfit, equipOutfit, unequipSlot, ensureWardrobe } from './outfits.js';
 import { mulberry32 } from './rng.js';
@@ -29,17 +29,22 @@ const cam = { x: 0, y: 0 };
 let vignette = null, miniBase = null;
 const keys = new Set();
 const touch = { x: 0, y: 0, id: null };
+const COARSE = matchMedia('(pointer: coarse)');
+function setA(label) { const b = document.getElementById('btn-a'); if (b && b.dataset.l !== label) { b.dataset.l = label; b.innerHTML = label ? `<span>${label}</span>` : 'A'; b.classList.toggle('ready', !!label); } }
 const player = { face: 'down', dir: 1, phase: 0, moving: false, path: [], target: null };
 let build = null; // {plotId, readOnly, home, sel:{kind:'new'|'move', id, uid, rot}, hover:{x,y}, picked}
 let panel = null; // {kind, ...}
 let packAcc = 0, simAcc = 0, saveAcc = 0, lastT = performance.now(), time = 0;
 const fmt = (n, d = 2) => n >= 1e6 ? (n / 1e6).toFixed(2) + 'M' : n >= 1e3 ? (n / 1e3).toFixed(1) + 'k' : (+n).toFixed(d);
-const fmtP = (p) => p.toExponential(3);
+const fmtP = (p) => fmtPrice(p);
 const esc = (s) => String(s).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 
 const packAct = (k) => { if (myPack(state)) recordActivity(state, k); };
 const badgeOf = (p) => (p ? { tag: p.tag, color: p.color, emblem: p.emblem } : null);
-function toast(msg, cls = '') { const d = document.createElement('div'); d.className = 'toast ' + cls; d.textContent = msg; $('#toast').appendChild(d); setTimeout(() => d.remove(), 2200); }
+function toast(msg, cls = '') { // de-duplicated: an identical visible toast is refreshed instead of stacking
+  for (const e of document.querySelectorAll('#toast .toast')) if (e.dataset.msg === msg) { clearTimeout(e._t); e._t = setTimeout(() => e.remove(), 2200); return; }
+  if ($('#toast').children.length >= 4) $('#toast').firstElementChild.remove();
+  const d = document.createElement('div'); d.dataset.msg = msg; d.className = 'toast ' + cls; d.textContent = msg; $('#toast').appendChild(d); d._t = setTimeout(() => d.remove(), 2200); }
 function persist() { if (state) { save(state, localStorage); } }
 function hud() { $('#bones').textContent = Math.floor(state.bones); $('#kibble').textContent = state.kibble.toFixed(2); $('#hud-name').textContent = state.player.name; }
 
@@ -192,9 +197,10 @@ function updateWorld(dt) {
   const it = !panel && nearestInteractable(state, p.x, p.y);
   const pr = $('#prompt');
   const pup = !panel && !it && nearPup();
-  if (pup) { pr.hidden = false; pr.innerHTML = `<kbd>E</kbd>Pet ${esc(pup.name)} · <kbd>T</kbd> throw ball`; }
-  else if (it) { pr.hidden = false; const verb = { building: 'Enter', plot: state.plots[it.id] ? 'Enter' : 'Inspect', visit: 'Visit', stall: 'View', clubhouse: myPack(state) ? 'Decorate' : 'Open', mall: 'Enter' }[it.kind]; pr.innerHTML = `<kbd>E</kbd>${verb} ${esc(it.name)}`; pr.dataset.target = it.id; }
-  else pr.hidden = true;
+  const tch = COARSE.matches;
+  if (pup) { pr.hidden = false; pr.innerHTML = tch ? `<kbd class="ta">A</kbd>Pet ${esc(pup.name)}` : `<kbd>E</kbd>Pet ${esc(pup.name)} · <kbd>T</kbd> throw ball`; setA('PET'); }
+  else if (it) { pr.hidden = false; const verb = { building: 'Enter', plot: state.plots[it.id] ? 'Enter' : 'Inspect', visit: 'Visit', stall: 'View', clubhouse: myPack(state) ? 'Decorate' : 'Open', mall: 'Enter' }[it.kind]; pr.innerHTML = `<kbd${tch ? ' class="ta"' : ''}>${tch ? 'A' : 'E'}</kbd>${verb} ${esc(it.name)}`; pr.dataset.target = it.id; setA(verb.toUpperCase()); }
+  else { pr.hidden = true; setA(''); }
 }
 
 function renderWorld() {
@@ -293,7 +299,7 @@ function openPanel(kind, opts = {}) {
   if (kind === 'help') $('#reset').onclick = () => { if (confirm('Delete your local save?')) { localStorage.clear(); location.reload(); } };
 }
 function closePanel() {
-  if (panel?.kind === 'cafe' && panel.shift && !panel.shift.paid && panel.shift.earned > 0) { finishShift(state, panel.shift); packAct('shift'); toast(`Shift ended early: +${panel.shift.paid} bones`, 'good'); hud(); persist(); }
+  if (panel?.kind === 'cafe' && panel.shift && !panel.shift.settled && panel.shift.earned > 0) { finishShift(state, panel.shift); packAct('shift'); toast(`Shift ended early: +${panel.shift.paid} bones`, 'good'); hud(); persist(); }
   if (panel) uiClose(); panel = null; $('#panel').hidden = true;
 }
 
@@ -375,7 +381,7 @@ function cafeUi() {
   s.orders.forEach((o) => { const el = $(`.order[data-order="${o.id}"] .pat i`); if (el) { el.style.width = (100 * o.patience / o.max) + '%'; el.style.background = o.patience / o.max < 0.3 ? '#d9534f' : '#3fa66a'; } });
   const tray = $('#tray'); const tsig = s.tray.join();
   if (tray.dataset.sig !== tsig) { tray.dataset.sig = tsig; tray.innerHTML = ''; s.tray.forEach((id) => tray.appendChild(iconCanvas((x) => drawMenuIcon(x, id, 18, 16, 1.1), 36, 32))); if (!s.tray.length) tray.innerHTML = '<span class="small">empty</span>'; }
-  if (s.over && !s.paid) {
+  if (s.over && !s.settled) {
     const total = finishShift(state, s); packAct('shift'); hud(); persist();
     $('#orders').innerHTML = `<div class="card" style="width:100%"><h3>Shift complete!</h3><p>Served ${s.served} · missed ${s.failed}${s.served >= 5 ? ' · +25 star bonus' : ''}</p><div class="big-num" id="shift-total">+${total} bones</div></div>`;
     const b = $('#cstart'); b.hidden = false; b.textContent = 'Work another shift';
@@ -534,7 +540,7 @@ function renderPacks() {
   body.querySelector('.tabs').onclick = (e) => { const b = e.target.closest('[data-tab]'); if (b) { panel.tab = b.dataset.tab; renderPacks(); } };
   const el = $('#packbody'), done = (r, msg) => { if (r.ok) { if (msg) toast(msg, 'good'); hud(); persist(); renderPacks(); } else toast(r.reason, 'bad'); };
   if (tab === 'find') {
-    el.innerHTML = `<p class="sub">Join a Pack to share a clubhouse, chip in bones and compete in the ${SEASON.name}.</p><div class="packlist">${leaderboard(state).map((r) => `<div class="card packrow" data-row="${r.id}"><span class="em"></span><div style="flex:1;text-align:left"><b>${esc(r.name)}</b> <span class="tagchip" style="background:${r.color}">[${r.tag}]</span><div class="small">${r.members} members · ${r.score} pts · #${r.rank}</div></div><button class="btn green" data-join="${r.id}">Join</button></div>`).join('')}</div>`;
+    el.innerHTML = `<p class="sub">Join a Pack to share a clubhouse, chip in bones and compete in the ${SEASON.name}.</p><div class="packlist">${leaderboard(state).map((r) => `<div class="card packrow" data-row="${r.id}"><span class="em"></span><div style="flex:1;text-align:left"><b>${esc(r.name)}</b> <span class="tagchip" style="background:${r.color}">[${r.tag}]</span><div class="small">${r.members} members · <span data-pscore="${r.id}">${r.score}</span> pts · #${r.rank}</div></div><button class="btn green" data-join="${r.id}">Join</button></div>`).join('')}</div>`;
     el.querySelectorAll('[data-row]').forEach((d) => d.querySelector('.em').appendChild(emblemCanvas(state.packs.all[d.dataset.row])));
     el.onclick = (e) => { const b = e.target.closest('[data-join]'); if (b) { const r = joinPack(state, b.dataset.join); if (r.ok) panel.tab = 'home'; done(r, `Welcome to ${r.pack?.name}!`); } };
   } else if (tab === 'create') {
@@ -549,7 +555,7 @@ function renderPacks() {
     $('#pcreate').onclick = () => { const r = createPack(state, { name: $('#pname').value, tag: $('#ptag').value, color: $('#pcolor').value, emblem: emb }); if (r.ok) panel.tab = 'home'; done(r, r.ok ? `${r.pack.name} [${r.pack.tag}] founded! Your banner now flies over the clubhouse.` : ''); };
   } else if (tab === 'home' && pk) {
     const lead = pk.ownerId === ME, rank = leaderboard(state).find((r) => r.mine).rank;
-    el.innerHTML = `<div class="packhead"><span id="pkem"></span><div style="flex:1"><h2 style="margin:0">${esc(pk.name)} <span class="tagchip" style="background:${pk.color}">[${pk.tag}]</span></h2><div class="small">${pk.members.length} members · ${packScore(pk)} pts · rank #${rank} in the Kibble Cup · you are ${lead ? 'leader' : 'a member'}</div></div></div>
+    el.innerHTML = `<div class="packhead"><span id="pkem"></span><div style="flex:1"><h2 style="margin:0">${esc(pk.name)} <span class="tagchip" style="background:${pk.color}">[${pk.tag}]</span></h2><div class="small">${pk.members.length} members · <span data-pscore="${pk.id}">${packScore(pk)}</span> pts · rank #${rank} in the Kibble Cup · you are ${lead ? 'leader' : 'a member'}</div></div></div>
       <div class="launch" style="grid-template-columns:1.3fr 1fr"><div><b>Members</b><div class="members">${[...pk.members].sort((a, b) => memberScore(b.stats) - memberScore(a.stats)).map((m) => `<div class="member" data-m="${m.id}"><span class="mimg"></span><div style="flex:1"><b>${esc(m.name)}</b>${m.id === ME ? ' (you)' : ''} ${m.id === pk.ownerId ? '<span class="tagchip" style="background:#d4a640;color:#121a36">leader</span>' : ''}<div class="small">${m.stats.shifts} shifts · ${m.stats.tokens} tokens · ${m.stats.decor} decor · ${m.stats.contributed} bones → ${memberScore(m.stats)} pts</div></div>${lead && m.id !== ME ? `<button class="btn red" data-kick="${m.id}" style="padding:3px 8px">Kick</button>` : ''}</div>`).join('')}</div>
         ${lead ? '<button class="btn ghost" id="precruit" style="margin-top:6px">Invite a stray pup (simulated)</button>' : ''}</div>
       <div><div class="card" style="text-align:left"><b>Pack treasury</b><div class="big-num" id="ptreasury">${pk.treasury}</div><div class="small">Bones members chipped in. Spent on clubhouse furniture & upgrades.</div>
@@ -570,7 +576,7 @@ function renderPacks() {
     $('#ppostb').onclick = send; $('#ppost').onkeydown = (e) => { if (e.key === 'Enter') send(); };
   } else {
     el.innerHTML = `<h3 style="margin:0 0 4px">${SEASON.name}</h3><p class="sub">Pack score = café shifts ×${SCORE.shift} + tokens launched ×${SCORE.token} + decorating ×${SCORE.decor} + 1 per ${SCORE.bonesPer} bones contributed, summed over members. Preview season: no prizes yet.</p>
-      <table class="cup"><tr><th>#</th><th></th><th>Pack</th><th>Members</th><th>Score</th></tr>${leaderboard(state).map((r) => `<tr class="${r.mine ? 'mine' : ''}" data-row="${r.id}"><td>${r.rank}</td><td class="em"></td><td><b>${esc(r.name)}</b> <span class="tagchip" style="background:${r.color}">[${r.tag}]</span></td><td>${r.members}</td><td><b>${r.score}</b></td></tr>`).join('')}</table>`;
+      <table class="cup"><tr><th>#</th><th></th><th>Pack</th><th>Members</th><th>Score</th></tr>${leaderboard(state).map((r) => `<tr class="${r.mine ? 'mine' : ''}" data-row="${r.id}"><td>${r.rank}</td><td class="em"></td><td><b>${esc(r.name)}</b> <span class="tagchip" style="background:${r.color}">[${r.tag}]</span></td><td>${r.members}</td><td><b data-pscore="${r.id}">${r.score}</b></td></tr>`).join('')}</table>`;
     el.querySelectorAll('[data-row]').forEach((d) => d.querySelector('.em').appendChild(emblemCanvas(state.packs.all[d.dataset.row], 26)));
   }
 }
@@ -593,7 +599,7 @@ function renderMall() {
     const g = panel.game || 'verse', G = GAMES[g], dayFrac = (state.clockSec % DAY_LEN) / DAY_LEN;
     body.innerHTML = `${demo}<h2>Leaderboards Hall</h2><div class="row tabs" style="justify-content:flex-start;margin:0 0 10px">${Object.entries(GAMES).map(([k, x]) => `<button class="btn ${k === g ? '' : 'ghost'}" data-game="${k}">${x.name}${x.status === 'live' ? '' : ' (soon)'}</button>`).join('')}</div>
       ${G.status !== 'live' ? '<div class="demo-banner" style="background:#5a2352">Coming soon — sample layout, not real players or scores</div>' : ''}<p class="sub">Pool share: ${G.share}.</p>
-      <div class="lbgrid">${G.boards.map((b) => `<div class="card" style="text-align:left"><b>${b.title}</b><div class="small">Wins the ${b.pool} pool share: ${b.criterion}</div><table class="cup">${boardRows(state, g, b.id, dayFrac).slice(0, 7).map((r) => `<tr class="${r.id === 'you' || r.mine ? 'mine' : ''}"><td>#${r.rank}</td><td>${esc(r.name)}${r.sample ? ' <i class="small">sample</i>' : ''}</td><td><b>${r.score}</b> ${b.unit}</td></tr>`).join('')}</table></div>`).join('')}</div>`;
+      <div class="lbgrid">${G.boards.map((b) => `<div class="card" style="text-align:left"><b>${b.title}</b><div class="small">Wins the ${b.pool} pool share: ${b.criterion}</div><table class="cup">${boardRows(state, g, b.id, dayFrac).slice(0, 7).map((r) => `<tr class="${r.id === 'you' || r.mine ? 'mine' : ''}"><td>#${r.rank}</td><td>${esc(r.name)}${r.sample ? ' <i class="small">sample</i>' : ''}</td><td><b ${b.id === 'monthly' && g === 'verse' ? `data-pscore="${r.id}"` : ''}>${r.score}</b> ${b.unit}</td></tr>`).join('')}</table></div>`).join('')}</div>`;
     body.querySelector('.tabs').onclick = (e) => { const b = e.target.closest('[data-game]'); if (b) { panel.game = b.dataset.game; renderMall(); } };
     return;
   }
@@ -620,19 +626,21 @@ function renderMall() {
 }
 
 // ---------------- Loop ----------------
+function liveScores() { for (const e of document.querySelectorAll('[data-pscore]')) { const p = state.packs?.all?.[e.dataset.pscore]; if (p) { const v = String(packScore(p)); if (e.textContent !== v) e.textContent = v; } } }
 function frame(now) {
   const dt = Math.min(0.05, (now - lastT) / 1000); lastT = now; time += dt;
   if (state) {
     state.clockSec += dt; { const m = ensureMall(state), dEarn = state.stats.bonesEarned - lastEarned; if (dEarn > 0) m.activity.dayBones += dEarn; lastEarned = state.stats.bonesEarned;
       const day = Math.floor(state.clockSec / DAY_LEN); if (day > m.period.day) for (const w of rollPeriods(state, day, poolEntries(state, 1))) toast(`${w.pool} prize pool: ${w.winner} wins ${fmtK(w.amount)} demo KIBBLE (score ${w.score})`, 'good'); }
     packAcc += dt; if (packAcc > 6) { packAcc = 0; simulatePacks(state, rng); }
+    liveScores(); // every visible pack score reads packScore() (single source of truth), refreshed in place
     simAcc += dt; while (simAcc >= 1.2) { simAcc -= 1.2; simulateTick(state, rng); if (panel?.kind === 'launch') launchUi(); }
     saveAcc += dt; if (saveAcc > 5) { saveAcc = 0; persist(); }
-    if (panel?.kind === 'cafe' && panel.shift && !panel.shift.paid) { tickShift(panel.shift, dt, rng); cafeUi(); }
+    if (panel?.kind === 'cafe' && panel.shift && !panel.shift.settled) { tickShift(panel.shift, dt, rng); cafeUi(); }
   }
   if (mode === 'world') { updateWorld(dt); renderWorld(); }
   else if (mode === 'build') { $('#prompt').hidden = true; renderBuild(); }
   requestAnimationFrame(frame);
 }
 titleScreen(); requestAnimationFrame(frame);
-window.__inu = { setHour: (h) => { dayOffset = timeForHour(h) - time; }, setRain: (r) => { amb.rain = amb.rainTarget = r; amb.weatherT = 999; }, get amb() { return amb; }, get npcs() { return npcs; }, emote: (k) => doEmote(k), cam, get state() { return state; }, get mode() { return mode; }, get panel() { return panel?.kind; } };
+window.__inu = { setHour: (h) => { dayOffset = timeForHour(h) - time; }, setRain: (r) => { amb.rain = amb.rainTarget = r; amb.weatherT = 999; }, get amb() { return amb; }, get npcs() { return npcs; }, emote: (k) => doEmote(k), cam, get state() { return state; }, get mode() { return mode; }, get panel() { return panel?.kind; }, get panelObj() { return panel; } };

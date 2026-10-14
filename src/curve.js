@@ -63,3 +63,13 @@ export function sell(c, tokIn) {
   if (c.realKibble < 1e-12) c.realKibble = Math.max(0, c.realKibble);
   return q;
 }
+
+// Readable small prices: 0.0₇3781 (subscript = number of zeros after "0."), plain decimals otherwise. Never scientific notation.
+const SUB = '₀₁₂₃₄₅₆₇₈₉';
+export function fmtPrice(p, sig = 4) {
+  if (!Number.isFinite(p) || p === 0) return '0';
+  if (p >= 1) return p.toLocaleString('en-US', { maximumFractionDigits: 4 });
+  if (p >= 0.001) return p.toFixed(Math.min(8, sig + Math.max(0, -Math.floor(Math.log10(p)) - 1)));
+  const zeros = -Math.floor(Math.log10(p)) - 1, digits = Math.round(p * 10 ** (zeros + sig)).toString().slice(0, sig).replace(/0+$/, '') || '0';
+  return `0.0${String(zeros).split('').map((d) => SUB[d]).join('')}${digits}`;
+}

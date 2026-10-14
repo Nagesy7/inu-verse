@@ -28,7 +28,8 @@ export function makeAmbient(seed = 7) {
   const rng = mulberry32(seed), A = { rng, t: 0 };
   A.birds = spots([T.GRASS, T.WALK, T.PLAZA], rng, 10).map(([x, y]) => ({ hx: (x + .5) * TILE, hy: (y + .5) * TILE, x: (x + .5) * TILE, y: (y + .5) * TILE, z: 0, vx: 0, vy: 0, state: 'ground', hop: rng() * 3, col: rng.pick(['#7a5a3a', '#4a5a7a', '#c86a4a']) }));
   A.flyers = Array.from({ length: 3 }, (_, i) => ({ x: rng() * MAP_W * TILE, y: rng() * MAP_H * TILE, vx: 40 + rng() * 30, vy: (rng() - .5) * 12, i }));
-  A.ducks = PONDS.flatMap(([x, y, w, h], j) => Array.from({ length: j ? 4 : 3 }, (_, i) => ({ cx: (x + w / 2) * TILE, cy: (y + h / 2) * TILE, rx: (w / 2 - 1) * TILE, ry: (h / 2 - 1) * TILE, a: rng() * 6.28, s: (0.12 + rng() * 0.1) * (i % 2 ? 1 : -1) })));
+  // ducks paddle in the pond sections either side of the bridges (never across the planks)
+  A.ducks = [[5, 3, 4, 5], [11, 3, 3, 5], [37, 35, 9, 4], [48, 35, 7, 4]].flatMap(([x, y, w, h], j) => Array.from({ length: j % 2 ? 1 : 2 }, (_, i) => ({ cx: (x + w / 2) * TILE, cy: (y + h / 2) * TILE, rx: Math.max(10, (w / 2 - 0.9) * TILE), ry: Math.max(8, (h / 2 - 1) * TILE), a: rng() * 6.28, s: (0.12 + rng() * 0.1) * (i % 2 ? 1 : -1) })));
   A.butterflies = spots([T.FLOWER], rng, 9).map(([x, y]) => ({ hx: (x + .5) * TILE, hy: (y + .5) * TILE, p: rng() * 9, col: rng.pick(['#f6efe0', '#f2cc68', '#f08cb0', '#9fd0ff']) }));
   A.squirrels = spots([T.TREE], rng, 40).filter(([x, y]) => x > 0 && y > 0 && x < MAP_W - 1 && y < MAP_H - 1).slice(0, 3).map(([x, y]) => ({ x: (x + .5) * TILE, y: (y + 1.2) * TILE, hx: (x + .5) * TILE, p: rng() * 9 }));
   A.fireflies = Array.from({ length: 40 }, () => ({ x: rng() * MAP_W * TILE, y: rng() * MAP_H * TILE, p: rng() * 9 }));
@@ -129,8 +130,9 @@ export function drawSkyLife(c, A, phase) {
 const mix = (a, b, k) => a.map((v, i) => Math.round(v + (b[i] - v) * k));
 export function gradeFor(phase, rain = 0) {
   let g = [255, 255, 255];
-  if (phase.dark > 0) g = mix(g, [44, 54, 118], Math.min(1, phase.dark / 0.62));
-  if (phase.tint[3] > 0) g = mix(g, [255, 168, 120], Math.min(1, phase.tint[3] * 1.6));
+  if (phase.dark > 0) g = mix(g, [52, 62, 128], Math.min(1, phase.dark / 0.62));
+  const warm = phase.label === 'sunset' || phase.label === 'dawn' ? phase.tint[3] : 0; // night's tint is cool, not a sunset glow
+  if (warm > 0) g = mix(g, [255, 168, 120], Math.min(1, warm * 1.6));
   if (rain > 0) g = mix(g, [168, 182, 214], rain * 0.6);
   return g;
 }
@@ -142,14 +144,14 @@ export function drawAtmosphere(c, A, phase, cam, vw, vh, lights) {
     const x = L.getContext('2d'); x.globalCompositeOperation = 'source-over'; x.fillStyle = `rgb(${g})`; x.fillRect(0, 0, vw, vh);
     if (night > 0.15) { x.globalCompositeOperation = 'lighter';
       for (const l of lights) { const lx = l.x + ox, ly = (l.gy ?? l.y) + oy; if (lx < -l.r || ly < -l.r || lx > vw + l.r || ly > vh + l.r) continue;
-        const gr = x.createRadialGradient(lx, ly, 0, lx, ly, l.r); gr.addColorStop(0, `rgba(255,206,140,${0.72 * night})`); gr.addColorStop(0.55, `rgba(170,120,70,${0.25 * night})`); gr.addColorStop(1, 'rgba(0,0,0,0)');
+        const gr = x.createRadialGradient(lx, ly, 0, lx, ly, l.r); gr.addColorStop(0, `rgba(255,196,124,${0.52 * night})`); gr.addColorStop(0.55, `rgba(150,100,60,${0.16 * night})`); gr.addColorStop(1, 'rgba(0,0,0,0)');
         x.fillStyle = gr; x.beginPath(); x.ellipse(lx, ly, l.r, l.r * (l.flat ?? 0.6), 0, 0, 7); x.fill(); } }
     c.save(); c.globalCompositeOperation = 'multiply'; c.drawImage(L, 0, 0); c.restore();
     if (night > 0.15) { c.save(); c.globalCompositeOperation = 'lighter';
       for (const l of lights) if (l.glow) { const lx = l.x + ox, ly = l.y + oy; if (lx < -60 || ly < -60 || lx > vw + 60 || ly > vh + 60) continue; const r = l.core || 26;
-        const gr = c.createRadialGradient(lx, ly, 0, lx, ly, r); gr.addColorStop(0, `rgba(255,220,140,${0.55 * night})`); gr.addColorStop(1, 'rgba(255,170,80,0)'); c.fillStyle = gr; c.fillRect(lx - r, ly - r, r * 2, r * 2); }
+        const gr = c.createRadialGradient(lx, ly, 0, lx, ly, r); gr.addColorStop(0, `rgba(255,220,140,${0.42 * night})`); gr.addColorStop(1, 'rgba(255,170,80,0)'); c.fillStyle = gr; c.fillRect(lx - r, ly - r, r * 2, r * 2); }
       c.restore(); }
-    if (phase.tint[3] > 0) { const gr = c.createLinearGradient(0, 0, 0, vh); gr.addColorStop(0, `rgba(255,150,90,${phase.tint[3] * 0.5})`); gr.addColorStop(1, 'rgba(255,120,80,0)'); c.save(); c.globalCompositeOperation = 'soft-light'; c.fillStyle = gr; c.fillRect(0, 0, vw, vh); c.restore(); }
+    if (phase.tint[3] > 0 && phase.label !== 'night') { const gr = c.createLinearGradient(0, 0, 0, vh); gr.addColorStop(0, `rgba(255,150,90,${phase.tint[3] * 0.5})`); gr.addColorStop(1, 'rgba(255,120,80,0)'); c.save(); c.globalCompositeOperation = 'soft-light'; c.fillStyle = gr; c.fillRect(0, 0, vw, vh); c.restore(); }
   }
   const t = A.t;
   if (A.rain > 0.02) { // pixel rain streaks (two depths) + ground splashes
@@ -174,10 +176,10 @@ export function drawEmote(c, x, y, kind, t) {
   c.font = kind === 'dance' ? '14px sans-serif' : '8px Silkscreen, monospace'; c.textAlign = 'center'; c.textBaseline = 'middle'; c.fillStyle = '#f2cc68'; c.fillText(icon, x, yy);
 }
 export function lightsFor(state, phase, playerHome) {
-  const L = LAMPS.map((l) => ({ x: l.x, y: l.y, gy: l.gy, r: 92, glow: true, core: 20 }));
+  const L = LAMPS.map((l) => ({ x: l.x, y: l.y, gy: l.gy, r: 72, glow: true, core: 18 }));
   for (const b of [...BUILDINGS, ...MALL_BUILDINGS, ...NPC_HOMES]) { // lit doorway pool + window glows
-    L.push({ x: (b.x + b.w / 2) * TILE, y: (b.y + b.h - 0.8) * TILE, gy: (b.y + b.h + 0.6) * TILE, r: 84, glow: true, core: 30, flat: 0.5 });
-    for (let k = 1; k < b.w; k += 3) L.push({ x: (b.x + k + 0.5) * TILE, y: (b.y + b.h - 2.6) * TILE, r: 34, glow: true, core: 16, flat: 0.8 }); }
+    L.push({ x: (b.x + b.w / 2) * TILE, y: (b.y + b.h - 0.8) * TILE, gy: (b.y + b.h + 0.6) * TILE, r: 64, glow: true, core: 24, flat: 0.5 });
+    for (let k = 1; k < b.w; k += 3) L.push({ x: (b.x + k + 0.5) * TILE, y: (b.y + b.h - 2.6) * TILE, r: 26, glow: true, core: 14, flat: 0.8 }); }
   for (const p of PLOTS) if (state.plots[p.id]) L.push({ x: (p.x + 3) * TILE, y: (p.y + 5) * TILE, gy: (p.y + 6.5) * TILE, r: playerHome === p.id ? 150 : 80, glow: true, core: 28 });
   return L;
 }

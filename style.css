@@ -162,3 +162,22 @@ body.short.landscape .title-card>*:not(.logo):not(.tag):not(#preview){grid-colum
 body.short .lbl{margin:4px 0 3px;font-size:10px}body.short .lbl input{padding:4px 8px;font-size:13px}
 body.short .coat{font-size:8px;padding:2px}body.short .coat canvas{height:44px;width:auto}
 body.short .row{margin-top:6px}body.short .btn.big{font-size:13px;padding:7px 14px}body.short .title-card .small{margin-top:4px;font-size:8px}
+
+/* touch HUD: essentials only, everything else inside the menu sheet */
+@media (pointer:coarse){
+ #hud{flex-wrap:wrap;overflow:visible;gap:4px;align-items:flex-start}
+ #hud .btn,#hud .chip.who,#hud .spacer{display:none!important}
+ body.menu-open #hud{background:#0c1022e6;padding:8px;border:3px solid var(--gold);z-index:12}
+ body.menu-open #hud .btn{display:inline-block!important;font-size:11px;padding:8px 10px;min-height:40px}
+ body.menu-open #hud .spacer{display:block!important;flex-basis:100%;height:0}
+ #hud .chip{font-size:10px;padding:0 2px}.ic{width:24px;height:16px}.ic.kib{width:20px;height:18px}
+ .tb.a.ready{border-color:var(--goldl);animation:pulse 1s ease-in-out infinite}.tb.a span{font-size:9px;line-height:1;display:block;word-break:break-all}
+ @keyframes pulse{50%{box-shadow:inset -4px -4px 0 #0004,inset 3px 3px 0 #fff6,0 0 0 4px #f2cc6880}}
+ #prompt kbd.ta{border-radius:50%;padding:1px 6px}
+ #btn-menu{z-index:13}
+}
+@media (pointer:coarse) and (orientation:portrait){
+ #minimap-wrap{top:calc(max(8px,env(safe-area-inset-top)) + 46px);right:max(8px,env(safe-area-inset-right))}#minimap{width:72px;height:79px}
+ #prompt{top:calc(max(8px,env(safe-area-inset-top)) + 46px);left:12px;transform:none;max-width:calc(100vw - 110px);animation:none}
+ #stick{width:110px;height:110px}#knob{left:29px;top:29px}
+}

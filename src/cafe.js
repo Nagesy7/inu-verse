@@ -51,9 +51,10 @@ export function serve(s, orderId) {
 }
 
 export function finishShift(state, s) {
+  if (s.settled) return 0; // idempotent: a shift is paid (and counted) exactly once, even if it paid 0
   const bonus = s.served >= 5 ? 25 : 0;
   const total = s.earned + bonus;
   state.bones += total; state.stats.shifts++; state.stats.bonesEarned += total; state.stats.served += s.served;
-  s.over = true; s.paid = total;
+  s.over = true; s.paid = total; s.settled = true;
   return total;
 }

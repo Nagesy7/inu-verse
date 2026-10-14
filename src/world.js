@@ -19,7 +19,7 @@ export const MALL_BUILDINGS = [
   { id: 'office', name: "President's Office", x: 27, y: 62, w: 10, h: 5, cat: 'office' },
 ];
 export const STATUE = { x: 31, y: 59 };
-export const LEADERS = { x: 20, y: 56 }; // leaderboard hall board (3x2 tiles) // President Inu statue in the Mall plaza (tile)
+export const LEADERS = { x: 18, y: 55, w: 6, h: 3 }; // Leaderboards Hall (art is drawn at an integer 2x to fill this footprint)
 export const PLOT_COST = 300;
 export const PLOTS = [2, 9, 16, 23, 35, 42, 49, 56].map((x, i) => ({ id: 'p' + (i + 1), x, y: 24, w: 6, h: 6 }));
 export const NPC_HOMES = [
@@ -53,7 +53,7 @@ export function buildMap() {
   fill(1, 42, MAP_W - 2, 1, T.WALK); fill(1, 43, MAP_W - 2, 2, T.ROAD); fill(1, 45, MAP_W - 2, 1, T.WALK);
   fill(7, 46, 50, 22, T.PLAZA);
   for (const b of MALL_BUILDINGS) fill(b.x, b.y, b.w, b.h, T.BUILDING);
-  fill(STATUE.x, STATUE.y, 2, 1, T.BUILDING); fill(LEADERS.x, LEADERS.y, 3, 2, T.BUILDING);
+  fill(STATUE.x, STATUE.y, 2, 1, T.BUILDING); fill(LEADERS.x, LEADERS.y, LEADERS.w, LEADERS.h, T.BUILDING);
   // trees: border + some park trees
   for (let y = 0; y < MAP_H; y++) for (let x = 0; x < MAP_W; x++) if (x === 0 || y === 0 || x === MAP_W - 1 || y === MAP_H - 1) g[y][x] = T.TREE;
   for (const [x, y] of [[2, 2], [16, 3], [19, 5], [22, 2], [25, 7], [3, 9], [27, 3], [15, 9], [61, 14], [60, 24], [34, 38], [57, 36], [58, 39], [35, 35]])
@@ -62,7 +62,13 @@ export function buildMap() {
 }
 
 export const MAP = buildMap();
-export const isSolid = (tx, ty) => tx < 0 || ty < 0 || tx >= MAP_W || ty >= MAP_H || SOLID.has(MAP[ty][tx]);
+// Solid decor: flowering bushes flanking shop doors + hedges along NPC home fronts (door columns left open).
+export const DECOR = [];
+{ const ok = (x, y) => [T.GRASS, T.FLOWER, T.PLAZA].includes(MAP[y]?.[x]);
+  for (const b of [...BUILDINGS, ...MALL_BUILDINGS]) { if (ok(b.x - 1, b.y + b.h - 1)) DECOR.push({ x: b.x - 1, y: b.y + b.h - 1, kind: 'bushP' }); if (ok(b.x + b.w, b.y + b.h - 1)) DECOR.push({ x: b.x + b.w, y: b.y + b.h - 1, kind: 'bushY' }); }
+  for (const h of NPC_HOMES) for (const dx of [0, 1, 4, 5]) DECOR.push({ x: h.x + dx, y: h.y + h.h, kind: 'hedge' }); }
+const DECOR_SET = new Set(DECOR.map((d) => d.y * MAP_W + d.x));
+export const isSolid = (tx, ty) => tx < 0 || ty < 0 || tx >= MAP_W || ty >= MAP_H || SOLID.has(MAP[ty][tx]) || DECOR_SET.has(ty * MAP_W + tx);
 
 // Interaction points: tile player should stand on
 export function interactables(state) {
@@ -70,7 +76,7 @@ export function interactables(state) {
   for (const b of BUILDINGS) list.push({ kind: 'building', id: b.id, name: b.name, tx: b.x + Math.floor(b.w / 2), ty: b.y + b.h });
   for (const b of MALL_BUILDINGS) list.push({ kind: 'mall', id: b.id, name: b.name, cat: b.cat, tx: b.x + Math.floor(b.w / 2), ty: b.y + b.h });
   list.push({ kind: 'mall', id: 'board', name: 'Mall prize-pool board', cat: 'board', tx: STATUE.x + 3, ty: STATUE.y });
-  list.push({ kind: 'mall', id: 'leaders', name: 'Leaderboards Hall', cat: 'leaders', tx: LEADERS.x + 1, ty: LEADERS.y + 2 });
+  list.push({ kind: 'mall', id: 'leaders', name: 'Leaderboards Hall', cat: 'leaders', tx: LEADERS.x + 3, ty: LEADERS.y + LEADERS.h });
   for (const p of PLOTS) {
     const owned = !!state?.plots?.[p.id];
     list.push({ kind: 'plot', id: p.id, name: owned ? 'Your Home' : 'Plot for claim', tx: p.x + 3, ty: p.y + p.h });

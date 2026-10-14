@@ -1,5 +1,5 @@
 // Pixel-art world rendering: chunky gold-trimmed buildings, navy/gold palette.
-import { TILE, MAP_W, MAP_H, MAP, T, BUILDINGS, PLOTS, NPC_HOMES, STALL_SLOTS, CLUBHOUSE, MALL_BUILDINGS, LEADERS, BRIDGES } from './world.js';
+import { TILE, MAP_W, MAP_H, MAP, T, BUILDINGS, PLOTS, NPC_HOMES, STALL_SLOTS, CLUBHOUSE, MALL_BUILDINGS, LEADERS, BRIDGES, DECOR } from './world.js';
 import { N, SCALE, PAL, buildGround, sprites, shadowEllipse, hash, mk, P } from './tiles.js';
 import { LAMP_TILES, unreadMail } from './ambient.js';
 import { drawEmblem, ART } from './art.js';
@@ -157,7 +157,8 @@ const HOUSE_ART = { h1: 'house_1', h2: 'house_2', h3: 'house_3', h4: 'house_4' }
 // draw a building image bottom-aligned on footprint (fx,fy,fw,fh in tiles); returns false if art missing
 function drawBuildingArt(c, id, fx, fy, fw, fh) {
   const im = BIMG[id]; if (!im) return false;
-  c.drawImage(im, fx * TILE + Math.round((fw * TILE - im.width) / 2), (fy + fh) * TILE - im.height); return true;
+  const k = Math.max(1, Math.floor((fw * TILE) / im.width)), w = im.width * k, h = im.height * k; // integer upscale when the art is smaller than its footprint
+  c.drawImage(im, fx * TILE + Math.round((fw * TILE - w) / 2), (fy + fh) * TILE - h, w, h); return true;
 }
 function plaque(c, text, cx, y) {
   c.font = `8px ${FONT}`; const w = Math.ceil(c.measureText(text).width) + 10;
@@ -178,7 +179,7 @@ function yard() { // pre-rendered grass yard for claimed plots (6x6 tiles, nativ
 function groundExtras(c) {
   const S = sprites(), shTree = (x, y) => shadowEllipse(c, x * N + 8, y * N + 14, 9, 3, 0.3);
   for (let y = 0; y < MAP_H; y++) for (let x = 0; x < MAP_W; x++) if (MAP[y][x] === T.TREE) shTree(x, y);
-  for (const b of [...BUILDINGS, ...MALL_BUILDINGS, ...NPC_HOMES, CLUBHOUSE, { x: LEADERS.x, y: LEADERS.y, w: 3, h: 2 }]) { // soft cast shadow (sun from top-left)
+  for (const b of [...BUILDINGS, ...MALL_BUILDINGS, ...NPC_HOMES, CLUBHOUSE, LEADERS]) { // soft cast shadow (sun from top-left)
     c.fillStyle = 'rgba(16,24,48,.28)'; c.fillRect(b.x * N + 4, (b.y + b.h) * N, b.w * N, 3); c.fillRect((b.x + b.w) * N, b.y * N + 6 - 2 * N, 4, b.h * N + 2 * N - 3);
     c.fillStyle = 'rgba(16,24,48,.14)'; c.fillRect(b.x * N + 6, (b.y + b.h) * N + 3, b.w * N, 2);
   }
@@ -203,14 +204,12 @@ export function prerenderMap() {
   for (const [bx, by] of [[17, 6], [11, 8], [38, 33.5], [50, 33.5], [22, 52], [41, 52], [28, 47]]) props.push(sp(S.bench, bx * TILE, by * TILE + 4, by * TILE + 28));
   for (const [cx, cy] of [[61, 6], [61, 7], [60.6, 6.5], [33.2, 9.2], [26.4, 19.0]]) props.push(sp(S.crate, cx * TILE, cy * TILE, cy * TILE + 28));
   // flowering bushes flanking each shop door, hedges at NPC home fronts
-  const bushAt = (tx, ty, spr) => { if (MAP[ty]?.[tx] === T.GRASS || MAP[ty]?.[tx] === T.FLOWER || MAP[ty]?.[tx] === T.PLAZA) props.push(sp(spr, tx * TILE - 2, ty * TILE + 4, ty * TILE + 30)); };
-  for (const b of [...BUILDINGS, ...MALL_BUILDINGS]) { bushAt(b.x - 1, b.y + b.h - 1, S.bushP); bushAt(b.x + b.w, b.y + b.h - 1, S.bushY); }
-  for (const h of NPC_HOMES) { for (const dx of [0, 1, 4, 5]) props.push(sp(S.hedge, (h.x + dx) * TILE, (h.y + h.h) * TILE + 4, (h.y + h.h) * TILE + 30)); props.push(sp(S.mailbox, (h.x + 5) * TILE + 6, (h.y + h.h + 1) * TILE - 34, (h.y + h.h + 1) * TILE - 2)); }
-  for (const b of BRIDGES) for (const k of [0, b.h]) {} // (bridges are drawn flat in the ground layer)
+  for (const d of DECOR) props.push(d.kind === 'hedge' ? sp(S.hedge, d.x * TILE, d.y * TILE + 4, d.y * TILE + 30) : sp(S[d.kind], d.x * TILE - 2, d.y * TILE + 4, d.y * TILE + 30));
+  for (const h of NPC_HOMES) props.push(sp(S.mailbox, (h.x + 5) * TILE + 6, (h.y + h.h + 1) * TILE - 34, (h.y + h.h + 1) * TILE - 2));
   // buildings (square front-facing art; legacy procedural storefront if the PNG is missing)
   for (const b of [...BUILDINGS, ...MALL_BUILDINGS]) props.push({ y: (b.y + b.h) * TILE - 1, d: (c) => { if (!drawBuildingArt(c, b.id, b.x, b.y, b.w, b.h)) legacyBuilding(c, b); } });
   for (const h of NPC_HOMES) props.push({ y: (h.y + h.h) * TILE - 1, d: (c) => { if (!drawBuildingArt(c, HOUSE_ART[h.id], h.x, h.y, h.w, h.h)) legacyNpcHouse(c, h); plaque(c, `${h.owner.toUpperCase()}'S`, (h.x + 1.5) * TILE, (h.y + h.h) * TILE - 22); } });
-  props.push({ y: (LEADERS.y + 2) * TILE - 1, d: (c) => { if (drawBuildingArt(c, 'leaders', LEADERS.x, LEADERS.y, 3, 2)) return;
+  props.push({ y: (LEADERS.y + LEADERS.h) * TILE - 1, d: (c) => { if (drawBuildingArt(c, 'leaders', LEADERS.x, LEADERS.y, LEADERS.w, LEADERS.h)) return;
     const x = LEADERS.x * TILE, y = LEADERS.y * TILE - 20; R(c, x + 6, y + 40, 4, 44, GOLD_D); R(c, x + 86, y + 40, 4, 44, GOLD_D);
     R(c, x - 4, y - 4, 104, 68, GOLD); R(c, x, y, 96, 60, NAVY); pixelText(c, 'LEADERBOARDS', x + 48, y + 10, 90, 8, GOLD_L); } });
   // district signposts (wooden plank sign on two posts)
