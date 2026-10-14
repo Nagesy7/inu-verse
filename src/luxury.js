@@ -1,6 +1,6 @@
 // Kibble Mall luxury district: marble forecourt, tiered fountain, parterres, topiary, palms, facade, sparkles, night uplighting.
 // Original pixel art. Ground bits are painted at native res (N=16/tile); props are native sprites drawn at 2x (U=2).
-import { TILE, FOUNTAIN, FORECOURT, MALL_BUILDINGS, BUILDINGS, DECOR } from './world.js';
+import { TILE, FOUNTAIN, FORECOURT, MALL_BUILDINGS, BUILDINGS, DECOR, DOORS } from './world.js';
 import { N, PAL, mk, P, hash } from './tiles.js';
 import { drawCar } from './cars.js';
 
@@ -80,8 +80,9 @@ export function luxuryProps() { const S = sprites(), out = [];
   out.push(at2(S.valet, 41 * TILE + 8, 59 * TILE - 2));
   // upscale storefronts across the outer shopping district: flower window boxes, glass window displays, A-board signs
   SHOPS.forEach((b, i) => { const cx = (b.x + b.w / 2) * TILE, base = (b.y + b.h) * TILE;
-    for (const sx of [-1, 1]) { out.push(at2(S['wb' + (i % 2)], cx + sx * 64, base + 6)); out.push(at2(S['dc' + ((i + (sx > 0)) % 3)], cx + sx * 104, base + 22)); }
-    out.push(at2(S.aboard, cx + 40, base + 30)); });
+    const d = DOORS[b.id], dx = d?.side === 'front' ? (b.x + d.dx + 0.5) * TILE : d?.side === 'left' ? b.x * TILE - 16 : d?.side === 'right' ? (b.x + b.w) * TILE + 16 : cx, clear = (x) => Math.abs(x - dx) > 44;
+    for (const sx of [-1, 1]) { if (clear(cx + sx * 64)) out.push(at2(S['wb' + (i % 2)], cx + sx * 64, base + 6)); if (clear(cx + sx * 104)) out.push(at2(S['dc' + ((i + (sx > 0)) % 3)], cx + sx * 104, base + 22)); }
+    const ab = dx + (dx > cx ? -44 : 44); out.push(at2(S.aboard, ab, base + 30)); });
   out.push({ y: 59 * TILE, d: (c) => drawCar(c, 43 * TILE, 59 * TILE - 2, { col: GOLD, kind: 'limo', dir: 'west' }) });
   return out; }
 

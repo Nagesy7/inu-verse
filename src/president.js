@@ -10,7 +10,7 @@ export const TIP = 25;
 const HOUR = (dayLen) => dayLen / 24; // real seconds per in-game hour
 const h32 = (n) => { let h = (n * 2654435761) ^ 0x9e3779b9; h = Math.imul(h ^ (h >>> 15), 2246822507); h = Math.imul(h ^ (h >>> 13), 3266489909); return ((h ^ (h >>> 16)) >>> 0) / 4294967296; };
 const T = (x, y) => ({ x: (x + 0.5) * TILE, y: (y + 0.5) * TILE });
-const SPOTS = { limoStop: { x: LANES.south(), y: 44 * TILE + 10 }, carpetEnd: T(32, 48), heli: T(20, 70), smoke: T(32, 67), edge: T(1, 45), edgeIn: T(8, 45) };
+const SPOTS = { limoStop: { x: LANES.south(), y: 44 * TILE + 10 }, carpetEnd: T(32, 48), heli: T(21, 71), smoke: T(32, 67), edge: T(1, 45), edgeIn: T(8, 45) };
 export const WAYPOINTS = [[32, 59], [14, 56], [50, 56], [14, 67], [50, 67], [32, 80], [32, 67], [32, 48]];
 
 export function makePresident(seed = 7) { return { seed, n: 0, next: null, on: false, stage: 'away', kind: null, t: 0, x: 0, y: 0, face: 'down', moving: false, phase: 0, path: [], wait: 0, stay: 0, tipped: false, emote: null, coffee: false, fx: [], gatherT: 0, said: 0, veh: null }; }

@@ -32,18 +32,19 @@
         "h": 6
       },
       "door_tile_offset": {
-        "x": 4,
+        "x": 1,
         "y": 5
       },
       "interact_tile_offset": {
-        "x": 4,
+        "x": 1,
         "y": 6
       },
       "pixel_size": {
         "w": 256,
         "h": 256
       },
-      "anchor": "bottom-left at footprint (x, y+h); sprite rises 2 tiles above footprint"
+      "anchor": "bottom-left at footprint (x, y+h); sprite rises 2 tiles above footprint",
+      "door_side": "front"
     },
     {
       "id": "cars",
@@ -54,18 +55,19 @@
         "h": 6
       },
       "door_tile_offset": {
-        "x": 5,
+        "x": 2,
         "y": 5
       },
       "interact_tile_offset": {
-        "x": 5,
+        "x": 2,
         "y": 6
       },
       "pixel_size": {
         "w": 320,
         "h": 256
       },
-      "anchor": "bottom-left at footprint (x, y+h); sprite rises 2 tiles above footprint"
+      "anchor": "bottom-left at footprint (x, y+h); sprite rises 2 tiles above footprint",
+      "door_side": "front"
     },
     {
       "id": "fashion",
@@ -76,18 +78,19 @@
         "h": 6
       },
       "door_tile_offset": {
-        "x": 3,
+        "x": 6,
         "y": 5
       },
       "interact_tile_offset": {
-        "x": 3,
-        "y": 6
+        "x": 7,
+        "y": 5
       },
       "pixel_size": {
         "w": 224,
         "h": 256
       },
-      "anchor": "bottom-left at footprint (x, y+h); sprite rises 2 tiles above footprint"
+      "anchor": "bottom-left at footprint (x, y+h); sprite rises 2 tiles above footprint",
+      "door_side": "right"
     },
     {
       "id": "shop",
@@ -98,18 +101,19 @@
         "h": 6
       },
       "door_tile_offset": {
-        "x": 4,
+        "x": 7,
         "y": 5
       },
       "interact_tile_offset": {
-        "x": 4,
+        "x": 7,
         "y": 6
       },
       "pixel_size": {
         "w": 288,
         "h": 256
       },
-      "anchor": "bottom-left at footprint (x, y+h); sprite rises 2 tiles above footprint"
+      "anchor": "bottom-left at footprint (x, y+h); sprite rises 2 tiles above footprint",
+      "door_side": "front"
     },
     {
       "id": "mall",
@@ -142,18 +146,19 @@
         "h": 6
       },
       "door_tile_offset": {
-        "x": 4,
+        "x": 0,
         "y": 5
       },
       "interact_tile_offset": {
-        "x": 4,
-        "y": 6
+        "x": -1,
+        "y": 5
       },
       "pixel_size": {
         "w": 256,
         "h": 256
       },
-      "anchor": "bottom-left at footprint (x, y+h); sprite rises 2 tiles above footprint"
+      "anchor": "bottom-left at footprint (x, y+h); sprite rises 2 tiles above footprint",
+      "door_side": "left"
     },
     {
       "id": "designer",
@@ -164,18 +169,19 @@
         "h": 6
       },
       "door_tile_offset": {
-        "x": 4,
+        "x": 6,
         "y": 5
       },
       "interact_tile_offset": {
-        "x": 4,
+        "x": 6,
         "y": 6
       },
       "pixel_size": {
         "w": 256,
         "h": 256
       },
-      "anchor": "bottom-left at footprint (x, y+h); sprite rises 2 tiles above footprint"
+      "anchor": "bottom-left at footprint (x, y+h); sprite rises 2 tiles above footprint",
+      "door_side": "front"
     },
     {
       "id": "goldden",
@@ -186,18 +192,19 @@
         "h": 6
       },
       "door_tile_offset": {
-        "x": 4,
+        "x": 7,
         "y": 5
       },
       "interact_tile_offset": {
-        "x": 4,
-        "y": 6
+        "x": 8,
+        "y": 5
       },
       "pixel_size": {
         "w": 256,
         "h": 256
       },
-      "anchor": "bottom-left at footprint (x, y+h); sprite rises 2 tiles above footprint"
+      "anchor": "bottom-left at footprint (x, y+h); sprite rises 2 tiles above footprint",
+      "door_side": "right"
     },
     {
       "id": "luxauto",
@@ -208,18 +215,19 @@
         "h": 6
       },
       "door_tile_offset": {
-        "x": 4,
+        "x": 1,
         "y": 5
       },
       "interact_tile_offset": {
-        "x": 4,
+        "x": 1,
         "y": 6
       },
       "pixel_size": {
         "w": 256,
         "h": 256
       },
-      "anchor": "bottom-left at footprint (x, y+h); sprite rises 2 tiles above footprint"
+      "anchor": "bottom-left at footprint (x, y+h); sprite rises 2 tiles above footprint",
+      "door_side": "front"
     },
     {
       "id": "office",

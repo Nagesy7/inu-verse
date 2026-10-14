@@ -15,6 +15,9 @@ import { carProps } from './ambient.js';
 import { drawCar } from './cars.js';
 import { makeAmbient, stepAmbient, throwBall, dayPhase, timeForHour, drawGroundLife, drawSkyLife, drawAtmosphere, drawEmote, lightsFor, addMail, unreadMail, EMOTES, DAY_LEN } from './ambient.js';
 import { initAudio, setMuted, isMuted, footstep, chirp, bork, blip, uiClick, uiOpen, uiClose, textBlip, rustle, fanfare } from './audio.js';
+import { CAR_MODELS, CAR_COLORS, ensureGarage, buyCar, carOf } from './garage.js';
+import { PETS, ensurePets, buyPet, renamePet, activePet, followStep, petSprite } from './pets.js';
+import { wallet, TREASURY } from './wallet.js';
 import { makePresident, startVisit, updatePresident, presidentProps, presidentPresent, talk as presTalk, OUTFIT as PRES_OUTFIT, KINDS as PRES_KINDS } from './president.js';
 import { MALL_ITEMS, quote, buyMallItem, ensureMall, rollPeriods, fmtK, FEE_LABEL, OWNER, OWNER_WALLET, POOL_WALLETS, POOL_RULES, FEE_BPS } from './mall.js';
 import { GAMES, boardRows, poolEntries } from './leaderboards.js';
@@ -29,6 +32,7 @@ const rng = mulberry32((Date.now() & 0xffff) + 1);
 let lastEarned = 0, amb = null, dayOffset = 0, stepAcc = 0, mailAcc = 0, photo = false;
 let state = null, mapImg = null, npcs = [], mode = 'title';
 const cam = { x: 0, y: 0 };
+let drive = null; const petF = { x: 0, y: 0, dir: 1, phase: 0, moving: false }; let honkT = 0; // driving state (runtime) + pet follower
 const pres = makePresident(7); // President Inu's seeded visit schedule
 const PRES_Q = new URLSearchParams(location.search).get('president'); let presForced = false;
 let vignette = null, miniBase = null;
@@ -101,6 +105,7 @@ addEventListener('keydown', (e) => {
   if (k === 'escape' && photo) return togglePhoto();
   initAudio();
   if (mode === 'world' && !panel && state) {
+    if (k === 'h' && drive) honk();
     if (k === 'b') { bork(); player.emote = { kind: 'bork', t: 1.2 }; }
     if (k === 't') { const d = throwBall(amb, state.player, player.face, npcs); blip(660); if (d) toast(`${d.name} is fetching!`, 'good'); }
     if (k === 'm') toggleMute();
@@ -110,6 +115,7 @@ addEventListener('keydown', (e) => {
   }
   if (feel.talking() && (k === 'e' || k === 'enter' || k === ' ')) { feel.advance(); return; }
   if (k === 'escape') { if (panel) closePanel(); else if (build) exitBuild(); }
+  if (mode === 'world' && !panel && (k === 'e' || k === 'enter') && carAction()) return;
   if (mode === 'world' && !panel && (k === 'e' || k === 'enter')) { const it = nearestInteractable(state, state.player.x, state.player.y); const pup = nearPup(); if (pup && !it) petPup(pup); else if (it) interact(it); }
   if (mode === 'build' && k === 'r') rotateSel();
 });
@@ -136,10 +142,19 @@ function clickWorldTile(tx, ty) {
 $('#prompt').onclick = () => { const it = nearestInteractable(state, state.player.x, state.player.y); const pup = nearPup(); if (pup && !it) petPup(pup); else if (it) interact(it); };
 addEventListener('pointerdown', () => initAudio(), { once: true });
 document.addEventListener('pointerdown', (e) => { if (e.target.closest('button,.btn,.coat,[data-buy],[data-inv]')) { initAudio(); uiClick(); } });
-function nearPup() { if (presidentPresent(pres) && Math.hypot(pres.x - state.player.x, pres.y - state.player.y) < 40) return { president: true, name: 'President Inu' }; let b = null, bd = 36; for (const n of npcs) { const d = Math.hypot(n.x - state.player.x, n.y - state.player.y); if (d < bd) { bd = d; b = n; } } return b; }
+function nearPup() { const pet = activePet(state); if (pet && !drive && Math.hypot(petF.x - state.player.x, petF.y - state.player.y) < 34) return { pet, name: pet.name }; if (presidentPresent(pres) && Math.hypot(pres.x - state.player.x, pres.y - state.player.y) < 40) return { president: true, name: 'President Inu' }; let b = null, bd = 36; for (const n of npcs) { const d = Math.hypot(n.x - state.player.x, n.y - state.player.y); if (d < bd) { bd = d; b = n; } } return b; }
 function presBanner(msg) { let b = document.getElementById('pres-banner'); if (!b) { b = document.createElement('div'); b.id = 'pres-banner'; b.style.cssText = 'position:fixed;left:50%;top:64px;transform:translateX(-50%);z-index:40;padding:10px 22px;background:#121a36;color:#f2cc68;border:3px solid #d4a640;font:14px Silkscreen,monospace;letter-spacing:1px;box-shadow:0 4px 0 #0008;pointer-events:none;text-align:center'; document.body.appendChild(b); }
   b.textContent = '★ ' + msg + ' ★'; b.hidden = false; clearTimeout(b._t); b._t = setTimeout(() => { b.hidden = true; }, 4500); }
-function petPup(n) { if (n.president) { const r = presTalk(pres, state); pres.emote = { kind: 'heart', t: 2 }; blip(990); feel.say('President Inu', r.quote, textBlip); if (r.tip) { toast(`President Inu tipped you ${r.tip} bones!`, 'good'); hud(); persist(); } return; } n.emote = { kind: 'heart', t: 2.2 }; n.wag = 2.2; n.path = []; blip(990); feel.say(n.name, PUP_LINES[Math.floor(rng() * PUP_LINES.length)], textBlip); }
+function honk() { if (honkT > 0) return; honkT = 0.5; blip(392); setTimeout(() => blip(330), 120); feel.say && null; player.emote = { kind: 'bork', t: 0.8, honk: true }; for (const n of npcs) if (Math.hypot(n.x - state.player.x, n.y - state.player.y) < 120) n.emote = { kind: 'wave', t: 1.2 }; }
+function parkedNear() { const g = ensureGarage(state), pk = g.parked; return pk && !drive && Math.hypot(pk.x - state.player.x, pk.y - state.player.y) < 48 ? pk : null; }
+function carAction() { // E/A: park (while driving) or hop into the parked car next to you
+  const g = ensureGarage(state);
+  if (drive) { if (drive.v > 30) { toast('Slow down to park', ''); return true; } g.parked = { id: drive.car.id, x: state.player.x, y: state.player.y, dir: drive.dir }; drive = null; state.player.y += 30; if (isSolid(Math.floor(state.player.x / TILE), Math.floor(state.player.y / TILE))) state.player.y -= 60; toast('Parked. Press E by your car to hop back in.', 'good'); persist(); return true; }
+  const pk = parkedNear(); if (pk && !nearestInteractable(state, state.player.x, state.player.y)) { const car = carOf(state, pk.id); if (!car) { g.parked = null; return false; } drive = { car, v: 0, vx: 0, vy: 0, dir: pk.dir || 'east' }; state.player.x = pk.x; state.player.y = pk.y; g.parked = null; blip(520); return true; }
+  return false; }
+function spawnCar(id) { const g = ensureGarage(state), car = carOf(state, id); if (!car) return; g.active = id; g.parked = null; drive = { car, v: 0, vx: 0, vy: 0, dir: 'east' }; closePanel(); toast(`Hop in! Drive with WASD/stick, H/B to honk, E/A to park.`, 'good'); persist(); }
+function petPup(n) { if (n.pet) { petF.love = 2; blip(990); feel.say(n.pet.name, ['*happy noises*', '*nuzzles you*', '*purrs/chirps contentedly*', '*does a little spin*'][Math.floor(rng() * 4)], textBlip); return; }
+  if (n.president) { const r = presTalk(pres, state); pres.emote = { kind: 'heart', t: 2 }; blip(990); feel.say('President Inu', r.quote, textBlip); if (r.tip) { toast(`President Inu tipped you ${r.tip} bones!`, 'good'); hud(); persist(); } return; } n.emote = { kind: 'heart', t: 2.2 }; n.wag = 2.2; n.path = []; blip(990); feel.say(n.name, PUP_LINES[Math.floor(rng() * PUP_LINES.length)], textBlip); }
 const PUP_LINES = ['Woof! That spot behind the ears... perfect!', 'Arf! Have you tried the taiyaki cart on Main Street?', 'Wanna race to Sakura Pond? Last one there is a wet biscuit!', 'I buried a bone by the big tree. Shh, it is a secret.', 'Bork bork! The Launch Hall is busy today.'];
 function doEmote(kind) { player.emote = { kind, t: kind === 'zoomies' ? 2.4 : 2.5 }; $('#emotes').hidden = true; blip(kind === 'heart' ? 990 : 740);
   for (const n of npcs) if (Math.hypot(n.x - state.player.x, n.y - state.player.y) < 260 && rng() < 0.6) setTimeout(() => { n.emote = { kind: rng() < 0.5 ? kind : 'heart', t: 2 }; }, 400 + rng() * 600); }
@@ -156,6 +171,7 @@ $('#btn-phantom').onclick = () => toast('Phantom wallet support is coming soon �
 $('#btn-help').onclick = () => openPanel('help');
 $('#btn-pack').onclick = () => { if (mode === 'world') openPanel('packs'); };
 $('#btn-wardrobe').onclick = () => { if (mode === 'world') openPanel('wardrobe'); };
+$('#btn-garage').onclick = () => { if (mode === 'world') openPanel('garage'); };
 $('#panel-close').onclick = () => closePanel();
 // ---- touch controls (virtual stick on the left, A/B + menu on the right) ----
 { const pad = $('#stick'), knob = $('#knob');
@@ -166,9 +182,9 @@ $('#panel-close').onclick = () => closePanel();
   pad.addEventListener('pointermove', (e) => { if (e.pointerId === touch.id) upd(e); });
   const end = (e) => { if (e.pointerId !== touch.id) return; touch.id = null; touch.x = touch.y = 0; knob.style.transform = ''; pad.classList.remove('on'); };
   pad.addEventListener('pointerup', end); pad.addEventListener('pointercancel', end);
-  const act = () => { if (feel.talking()) return feel.advance(); if (mode !== 'world' || panel || !state) return; const it = nearestInteractable(state, state.player.x, state.player.y); const pup = nearPup(); if (pup && !it) petPup(pup); else if (it) interact(it); };
+  const act = () => { if (feel.talking()) return feel.advance(); if (mode !== 'world' || panel || !state) return; if (carAction()) return; const it = nearestInteractable(state, state.player.x, state.player.y); const pup = nearPup(); if (pup && !it) petPup(pup); else if (it) interact(it); };
   $('#btn-a').addEventListener('pointerdown', (e) => { e.preventDefault(); initAudio(); act(); });
-  $('#btn-b').addEventListener('pointerdown', (e) => { e.preventDefault(); initAudio(); if (mode === 'world' && !panel && state) { bork(); player.emote = { kind: 'bork', t: 1.2 }; } });
+  $('#btn-b').addEventListener('pointerdown', (e) => { e.preventDefault(); initAudio(); if (mode === 'world' && !panel && state) { if (drive) return honk(); bork(); player.emote = { kind: 'bork', t: 1.2 }; } });
   $('#btn-menu').addEventListener('pointerdown', (e) => { e.preventDefault(); document.body.classList.toggle('menu-open'); });
 }
 
@@ -181,6 +197,10 @@ function updateWorld(dt) {
   }
   if (!panel && (touch.x || touch.y)) { dx = touch.x; dy = touch.y; }
   const speed = 92; // world px/s (world is zoomed 2x, so ~184 screen px/s)
+  if (drive) { player.path = []; const m = CAR_MODELS[drive.car.model], top = m.speed, l = Math.hypot(dx, dy);
+    if (l) { drive.v = Math.min(top, drive.v + 260 * dt); drive.vx = dx / l; drive.vy = dy / l; drive.dir = Math.abs(dx) >= Math.abs(dy) ? (dx > 0 ? 'east' : 'west') : (dy > 0 ? 'south' : 'north'); } else drive.v = Math.max(0, drive.v - 320 * dt);
+    if (drive.v > 0) { const bx = p.x, by = p.y; moveBody(p, drive.vx * drive.v * dt, drive.vy * drive.v * dt, 14); if (Math.hypot(p.x - bx, p.y - by) < drive.v * dt * 0.3 && l) { drive.v *= 0.3; if (drive.bump <= 0) { blip(180); drive.bump = 0.4; } } }
+    drive.bump = (drive.bump || 0) - dt; player.moving = false; player.face = { east: 'right', west: 'left', south: 'down', north: 'up' }[drive.dir]; dx = dy = 0; }
   if (dx || dy) { player.path = []; player.target = null; const l = Math.hypot(dx, dy); moveBody(p, (dx / l) * speed * dt, (dy / l) * speed * dt); if (dx) player.dir = dx > 0 ? 1 : -1; player.face = dx ? (dx > 0 ? 'right' : 'left') : (dy > 0 ? 'down' : 'up'); player.moving = true; }
   else if (player.path.length) {
     const [tx, ty] = player.path[0], gx = (tx + 0.5) * TILE, gy = (ty + 0.5) * TILE, ddx = gx - p.x, ddy = gy - p.y, d = Math.hypot(ddx, ddy), st = speed * dt;
@@ -193,6 +213,8 @@ function updateWorld(dt) {
     if (PRES_Q && !presForced) { presForced = true; startVisit(pres, PRES_KINDS.includes(PRES_Q) ? PRES_Q : null, { dayLen: DAY_LEN }); }
     updatePresident(pres, dt, { nowH, dayLen: DAY_LEN, npcs, rng, toast: (s) => toast(s, 'good'), banner: presBanner, fanfare, snack: () => toast('President Inu bought a taiyaki from the snack cart!', 'good') }); }
   for (const n of npcs) { if (amb.ball?.dog === n && amb.ball.state !== 'air') continue; if (n.wag > 0) { n.wag -= dt; n.moving = true; n.phase += dt * 20; continue; } if (n.emote) { n.emote.t -= dt; if (n.emote.t <= 0) n.emote = null; } updateNpc(n, dt, rng); }
+  { const pet = activePet(state); if (pet && !drive) { if (!petF.id || petF.id !== pet.id) Object.assign(petF, { id: pet.id, x: p.x - 20, y: p.y + 4 }); followStep(petF, p.x - player.dir * 22, p.y + 2, dt); if (petF.love > 0) petF.love -= dt; } else if (drive) Object.assign(petF, { x: p.x, y: p.y }); }
+  if (honkT > 0) honkT -= dt;
   if (player.emote) { player.emote.t -= dt; if (player.emote.kind === 'zoomies') { const a = player.emote.t * 5; moveBody(p, Math.cos(a) * 150 * dt, Math.sin(a) * 150 * dt); player.moving = true; player.phase += dt * 20; player.face = Math.cos(a + 1.57) > 0 ? 'right' : 'left'; } if (player.emote.t <= 0) player.emote = null; }
   for (const e of stepAmbient(amb, dt, p, npcs)) { if (e.kind === 'flush') chirp(); if (e.kind === 'fetched') toast(`${e.who} brought the ball back!`, 'good'); }
   if (rng() < dt * 0.08) chirp();
@@ -210,7 +232,10 @@ function updateWorld(dt) {
   const pr = $('#prompt');
   const pup = !panel && !it && nearPup(); // (President Inu counts as a pup to pet/talk to)
   const tch = COARSE.matches;
-  if (pup) { pr.hidden = false; pr.innerHTML = tch ? `<kbd class="ta">A</kbd>Pet ${esc(pup.name)}` : `<kbd>E</kbd>Pet ${esc(pup.name)} · <kbd>T</kbd> throw ball`; setA('PET'); }
+  const pk = !panel && !it && parkedNear();
+  if (drive) { pr.hidden = false; pr.innerHTML = `<kbd${tch ? ' class="ta"' : ''}>${tch ? 'A' : 'E'}</kbd>Park ${esc(CAR_MODELS[drive.car.model].name)} · <kbd${tch ? ' class="ta"' : ''}>${tch ? 'B' : 'H'}</kbd>Honk`; setA('PARK'); }
+  else if (pk) { pr.hidden = false; pr.innerHTML = `<kbd${tch ? ' class="ta"' : ''}>${tch ? 'A' : 'E'}</kbd>Drive your ${esc(CAR_MODELS[carOf(state, pk.id)?.model]?.name || 'car')}`; setA('DRIVE'); }
+  else if (pup) { pr.hidden = false; pr.innerHTML = tch ? `<kbd class="ta">A</kbd>Pet ${esc(pup.name)}` : `<kbd>E</kbd>Pet ${esc(pup.name)} · <kbd>T</kbd> throw ball`; setA('PET'); }
   else if (it) { pr.hidden = false; const verb = { building: 'Enter', plot: state.plots[it.id] ? 'Enter' : 'Inspect', visit: 'Visit', stall: 'View', clubhouse: myPack(state) ? 'Decorate' : 'Open', mall: 'Enter' }[it.kind]; pr.innerHTML = `<kbd${tch ? ' class="ta"' : ''}>${tch ? 'A' : 'E'}</kbd>${verb} ${esc(it.name)}`; pr.dataset.target = it.id; setA(verb.toUpperCase()); }
   else { pr.hidden = true; setA(''); }
 }
@@ -227,11 +252,11 @@ function renderWorld() {
     const tx0 = Math.floor(-ox / TILE) - 1, ty0 = Math.floor(-oy / TILE) - 1; ctx.save(); ctx.scale(SCALE, SCALE); drawWater(ctx, time, tx0, ty0, tx0 + Math.ceil(vw / TILE) + 2, ty0 + Math.ceil(vh / TILE) + 2); ctx.restore(); }
   const phase = dayPhase(time + dayOffset);
   globalThis.__inuNight = phase.dark;
-  const dyn = [...dynamicProps(state, time, myPack(state)), ...presidentProps(pres, time)];
+  const dyn = [...dynamicProps(state, time, myPack(state)), ...presidentProps(pres, time), ...carWorldProps()];
   for (const d of dyn) if (d.flat) d.d(ctx);
   drawGroundLife(ctx, amb, phase); feel.drawGround(ctx);
   if (player.clickMark && player.path.length) { const m = player.clickMark, k = Math.round(10 + Math.sin(time * 6) * 2); ctx.fillStyle = '#f2cc68'; for (const [ax, ay] of [[-k, 0], [k - 4, 0], [0, -k / 2], [0, k / 2 - 2]]) ctx.fillRect(Math.round(m.x + ax), Math.round(m.y + 6 + ay), 4, 3); }
-  const actors = [...npcs.map((n) => ({ ...n, npc: true, badge: badgeOf(packOfName(state, n.name)) })), { x: state.player.x, y: state.player.y, coat: state.player.coat, outfit: state.wardrobe.equipped, face: player.face, phase: player.phase, moving: player.moving, name: state.player.name, me: true, badge: badgeOf(myPack(state)), emote: player.emote, art: artKey(state.player.coat, state.wardrobe.equipped) }, ...streetPups(), ...presActors()];
+  const actors = [...npcs.map((n) => ({ ...n, npc: true, badge: badgeOf(packOfName(state, n.name)) })), ...(drive ? [] : [{ x: state.player.x, y: state.player.y, coat: state.player.coat, outfit: state.wardrobe.equipped, face: player.face, phase: player.phase, moving: player.moving, name: state.player.name, me: true, badge: badgeOf(myPack(state)), emote: player.emote, art: artKey(state.player.coat, state.wardrobe.equipped) }]), ...streetPups(), ...presActors(), ...petActors()];
   // one depth-sorted list: static props (culled), dynamic props and actors, by ground y
   const L = -ox - 200, Rt = -ox + vw + 200, Tp = -oy - 60, Bt = -oy + vh + 400, list = [];
   for (const p of mapImg.props) if (p.y > Tp && p.y < Bt) list.push(p);
@@ -245,6 +270,7 @@ function renderWorld() {
     if (a.statue) { ctx.fillStyle = '#6a6080'; ctx.fillRect(Math.round(a.x - 34), Math.round(a.y - 4), 68, 18); ctx.fillStyle = '#d4a640'; ctx.fillRect(Math.round(a.x - 38), Math.round(a.y - 8), 76, 5); ctx.fillStyle = '#121a36'; ctx.font = '8px Silkscreen, monospace'; ctx.textAlign = 'center'; ctx.fillText('PRESIDENT INU', Math.round(a.x), Math.round(a.y + 8)); ctx.save(); ctx.filter = 'sepia(1) saturate(2.6) brightness(1.05)'; drawShiba(ctx, a.x, a.y - 10, { art: a.art, scale: 1.5, shadow: false }); ctx.restore(); continue; }
     ctx.save(); ctx.translate(Math.round(a.x * ZOOM) / ZOOM, Math.round(a.y * ZOOM) / ZOOM); ctx.scale(1 / ZOOM, 1 / ZOOM);
     if (a.me) { ctx.fillStyle = 'rgba(242,204,104,0.45)'; ctx.fillRect(-20, 9, 40, 4); ctx.fillRect(-14, 7, 28, 8); }
+    if (a.petSpecies) { drawPetActor(ctx, a); ctx.restore(); continue; }
     if (a.president) { drawPresident(ctx, a); if (a.emote) drawEmote(ctx, 0, -14, a.emote.kind, time); ctx.restore(); continue; }
     drawShiba(ctx, 0, 0, { coat: a.coat, outfit: a.outfit, face: a.face, phase: a.phase, moving: a.moving, name: a.name, scale: 1.5, badge: a.badge, art: a.art, emote: a.emote?.kind });
     if (a.emote) drawEmote(ctx, 0, a.name ? -14 : 0, a.emote.kind, time); ctx.restore();
@@ -278,6 +304,17 @@ function drawPresident(c, a) { // navy suit, gold tie (recoloured), sash, sungla
   if (a.coffee) { c.fillStyle = '#141a2e'; c.fillRect(17, -40, 12, 16); c.fillStyle = '#f4f1ea'; c.fillRect(18, -39, 10, 14); c.fillStyle = '#8a5a30'; c.fillRect(18, -34, 10, 4); c.fillStyle = '#141a2e'; c.fillRect(17, -42, 12, 3); }
   const tagY = cv.top - 138 - 14; c.font = '8px Silkscreen, monospace'; c.textAlign = 'center'; c.textBaseline = 'middle'; const tw = Math.ceil(c.measureText('PRESIDENT INU').width) + 14;
   c.fillStyle = '#121a36'; c.fillRect(-tw / 2 - 2, tagY - 8, tw + 4, 16); c.fillStyle = '#d4a640'; c.fillRect(-tw / 2, tagY - 6, tw, 12); c.fillStyle = '#ffe08a'; c.fillRect(-tw / 2, tagY - 6, tw, 1); c.fillStyle = '#121a36'; c.fillText('PRESIDENT INU', 0, tagY + 1); }
+function petActors() { const pet = activePet(state); if (!pet || drive) return []; return [{ x: petF.x, y: petF.y, petSpecies: pet.species, petName: pet.name, dir: petF.dir, moving: petF.moving, phase: petF.phase, love: petF.love }]; }
+function drawPetActor(c, a) { const spr = petSprite(a.petSpecies, Math.floor(a.phase / 2.5) % 2), hop = a.moving ? -Math.abs(Math.sin(a.phase)) * 4 : 0;
+  c.fillStyle = 'rgba(10,14,30,.3)'; c.beginPath(); c.ellipse(0, 10, 18, 5, 0, 0, 7); c.fill(); c.save(); if (a.dir < 0) c.scale(-1, 1); c.drawImage(spr, -24, -36 + hop, 48, 48); c.restore();
+  if (a.love > 0) { c.fillStyle = '#ff5a8a'; const y = -44 - (2 - a.love) * 10; c.fillRect(-6, y, 4, 4); c.fillRect(2, y, 4, 4); c.fillRect(-6, y + 2, 12, 4); c.fillRect(-4, y + 6, 8, 2); c.fillRect(-2, y + 8, 4, 2); }
+  c.font = '8px Silkscreen, monospace'; c.textAlign = 'center'; c.textBaseline = 'middle'; const tw = Math.ceil(c.measureText(a.petName).width) + 8; c.fillStyle = '#121a36'; c.fillRect(-tw / 2, -54, tw, 11); c.fillStyle = '#f6e7b8'; c.fillText(a.petName, 0, -48); }
+function carWorldProps() { const out = [], g = ensureGarage(state), col = (c) => CAR_COLORS[c.color] || '#c8323c';
+  if (drive) { const p = state.player, c = drive.car; out.push({ y: p.y + 10, d: (x) => { drawCar(x, p.x, p.y + 12, { col: col(c), kind: CAR_MODELS[c.model].kind, dir: drive.dir }); if (honkT > 0.2) { x.fillStyle = '#fff6c8'; x.font = '8px Silkscreen, monospace'; x.textAlign = 'center'; x.fillText('HONK!', p.x, p.y - 34); } } }); }
+  if (g.parked) { const pk = g.parked, c = carOf(state, pk.id); if (c) out.push({ y: pk.y + 10, d: (x) => drawCar(x, pk.x, pk.y + 12, { col: col(c), kind: CAR_MODELS[c.model].kind, dir: pk.dir || 'east' }) }); }
+  const free = (c) => (!drive || drive.car.id !== c.id) && (!g.parked || g.parked.id !== c.id), home = [g.cars.find((c) => c.id === g.active), ...g.cars].find((c) => c && free(c)); // car on the driveway apron in front of each home you own
+  if (home) for (const p of PLOTS) if (state.plots[p.id]) out.push({ y: (p.y + p.h + 1) * TILE - 4, d: (x) => drawCar(x, (p.x + 1.4) * TILE, (p.y + p.h + 1) * TILE - 4, { col: col(home), kind: CAR_MODELS[home.model].kind, dir: 'east' }) });
+  return out; }
 function presActors() { const out = []; if (!pres.on) return out;
   if (pres.kind === 'limo' && (pres.stage !== 'enter' || pres.t > 6)) for (let i = 0; i < 3; i++) for (const s of [-1, 1]) out.push({ x: 32.5 * TILE + s * 40, y: 45.6 * TILE + i * 34, coat: 'dark', outfit: { top: 'tux_black', bottom: 'slacks_black', eyes: 'shades', neck: 'bowtie', feet: 'loafers' }, face: 'down', phase: 0, moving: false, art: artKey('dark', { top: 'tux_black', bottom: 'slacks_black', eyes: 'shades', neck: 'bowtie', feet: 'loafers' }) });
   if (presidentPresent(pres)) out.push({ x: pres.x, y: pres.y, coat: 'golden', outfit: PRES_OUTFIT, face: pres.face, phase: pres.phase, moving: pres.moving, president: true, emote: pres.emote, coffee: pres.coffee, art: artKey('golden', PRES_OUTFIT) });
@@ -309,6 +346,8 @@ function interact(it) {
   else if (it.kind === 'plot') { if (state.plots[it.id]) enterBuild(it.id, false); else openPanel('plot', { plotId: it.id }); }
   else if (it.kind === 'visit') enterBuild(it.id, true);
   else if (it.kind === 'stall') openPanel('launch', { sel: it.id });
+  else if (it.kind === 'mall' && it.cat === 'car') openPanel('dealer', { dealer: 'luxauto' });
+  else if (it.kind === 'mall' && it.cat === 'pets') openPanel('pets');
   else if (it.kind === 'mall') openPanel('mall', { cat: it.cat, store: it.id });
   else if (it.kind === 'clubhouse') { if (myPack(state)) enterBuild('clubhouse', false); else openPanel('packs'); }
 }
@@ -329,10 +368,47 @@ function openPanel(kind, opts = {}) {
   else if (kind === 'packs') renderPacks();
   else if (kind === 'mall') renderMall();
   else if (kind === 'mail') { const m = state.mail || []; body.innerHTML = `<h2>Mailbox</h2><p class="sub">Notes neighbours left at your door.</p><div class="board">${m.map((n) => `<div class="post ${n.read ? '' : 'mine'}"><b>${esc(n.from)}</b> ${esc(n.text)}</div>`).join('') || '<p class="small">No mail yet — neighbours drop by now and then.</p>'}</div>`; m.forEach((n) => n.read = true); persist(); }
-  else if (kind === 'cars') body.innerHTML = `<h2>Zoomies Motors</h2><p class="sub">Scooters, convertibles and the legendary Bone-mobile — arriving in a future update.</p><div class="demo-banner">Car Dealer: coming soon</div>`;
+  else if (kind === 'cars') { panel.kind = 'dealer'; panel.dealer = 'cars'; renderDealer(); }
+  else if (kind === 'dealer') renderDealer();
+  else if (kind === 'pets') renderPets();
+  else if (kind === 'garage') renderGarage();
   else if (kind === 'help') body.innerHTML = `<h2>How to play</h2><ul><li>Walk with <b>WASD</b>/<b>arrows</b> or <b>click</b> anywhere.</li><li>Press <b>E</b> near doors and signs.</li><li>Earn <b>bones</b> serving orders at the Shiba Sips Café.</li><li>Claim a plot (${PLOT_COST} bones), buy furniture at Paws & Pillows, decorate (R to rotate).</li><li>Buy clothes at <b>Fetch Fashion</b> and dress up in your <b>Wardrobe</b> (HUD button).</li><li>Launch Hall: create and trade <b>simulated</b> tokens paired with demo <b>$KIBBLE</b>. Nothing here is real money or on any blockchain.</li><li><b>Packs</b>: found or join a Pack (HUD button), chip in bones to the treasury, decorate the shared clubhouse north of Market Row and climb the Kibble Cup. Packs are simulated locally for now.</li><li>Visit Mochi, Kuro, Hana and Taro's homes on Sakura Lane.</li></ul><button class="btn red" id="reset">Reset save</button>`;
   if (kind === 'help') $('#reset').onclick = () => { if (confirm('Delete your local save?')) { localStorage.clear(); location.reload(); } };
 }
+// ---------- Car dealers, pet shop, garage ----------
+const priceTag = (m) => m.cur === 'bones' ? `${m.price} bones` : (() => { const q = wallet().quote(Math.round(m.price * 1e6)); return `${m.price} KIBBLE <small>+2% = ${(q.total / 1e6).toFixed(2)}</small>`; })();
+function carIcon(model, color) { const m = CAR_MODELS[model]; return iconCanvas((x) => { x.imageSmoothingEnabled = false; x.scale(0.75, 0.75); drawCar(x, 43, 58, { col: CAR_COLORS[color], kind: m.kind, dir: 'east' }); }, 64, 52); }
+function renderDealer() { const body = $('#panel-body'), lux = panel.dealer === 'luxauto', g = ensureGarage(state); panel.col ||= {};
+  body.innerHTML = `<h2>${lux ? 'Zoomies Luxury Autos' : 'Zoomies Motors'}</h2><p class="sub">${lux ? `Luxury cars in demo $KIBBLE (you have ${state.kibble.toFixed(2)}). ${FEE_LABEL}. Paid to the treasury <code>${TREASURY.slice(0, 6)}…${TREASURY.slice(-4)}</code> via the ${wallet().simulated ? 'simulated' : 'live'} wallet.` : `Everyday cars priced in bones (you have ${Math.floor(state.bones)}).`} Pick a colour, buy, then drive it from your Garage.</p><div class="grid" id="dealgrid"></div>`;
+  const grid = $('#dealgrid');
+  for (const [id, m] of Object.entries(CAR_MODELS).filter(([, m]) => m.dealer === panel.dealer)) { const col = panel.col[id] || (lux ? 'Gold' : 'Red'), owned = g.cars.filter((c) => c.model === id).length;
+    const card = document.createElement('div'); card.className = 'card'; card.appendChild(carIcon(id, col));
+    card.insertAdjacentHTML('beforeend', `<b>${m.name}</b><small>${m.blurb} Top speed ${m.speed}.</small><div class="swatches">${Object.entries(CAR_COLORS).map(([n, h]) => `<button class="sw ${n === col ? 'on' : ''}" title="${n}" data-car="${id}" data-col="${n}" style="background:${h};width:16px;height:16px;border:2px solid ${n === col ? '#f2cc68' : '#141a2e'};margin:1px;padding:0"></button>`).join('')}</div><button class="btn green" data-buycar="${id}">Buy ${col} · ${priceTag(m)}</button>${owned ? `<small>Owned: ${owned}</small>` : ''}`);
+    grid.appendChild(card); }
+  grid.onclick = (e) => { const sw = e.target.closest('[data-col]'); if (sw) { panel.col[sw.dataset.car] = sw.dataset.col; return renderDealer(); }
+    const b = e.target.closest('[data-buycar]'); if (!b) return; const id = b.dataset.buycar, r = buyCar(state, id, panel.col[id] || (lux ? 'Gold' : 'Red'));
+    if (r.ok) { toast(`You bought a ${r.car.color} ${CAR_MODELS[id].name}! Find it in your Garage.`, 'good'); hud(); persist(); renderDealer(); } else toast(r.reason, 'bad'); }; }
+function petIcon(sp) { return iconCanvas((x) => { x.imageSmoothingEnabled = false; x.drawImage(petSprite(sp, 0), 12, 4, 40, 40); }, 64, 48); }
+function renderPets() { const body = $('#panel-body'), st = ensurePets(state);
+  body.innerHTML = `<h2>Pawsome Pets</h2><p class="sub">Companions that follow you around. Common pets cost bones (${Math.floor(state.bones)}); exotic pets cost demo $KIBBLE (${state.kibble.toFixed(2)}) with the ${FEE_LABEL}, sent to the treasury via the ${wallet().simulated ? 'simulated' : 'live'} wallet.</p>
+   <label class="small">Name your new pet: <input id="petname" maxlength="16" placeholder="e.g. Biscuit"></label><div class="grid" id="petgrid"></div>`;
+  const grid = $('#petgrid');
+  for (const [id, p] of Object.entries(PETS)) { const card = document.createElement('div'); card.className = 'card'; card.appendChild(petIcon(id));
+    card.insertAdjacentHTML('beforeend', `<b>${p.name}${p.exotic ? ' ★' : ''}</b><small>${p.exotic ? 'Exotic' : 'Common'}</small><button class="btn ${p.exotic ? 'alt' : 'green'}" data-buypet="${id}">Adopt · ${priceTag(p)}</button>`); grid.appendChild(card); }
+  grid.onclick = (e) => { const b = e.target.closest('[data-buypet]'); if (!b) return; const r = buyPet(state, b.dataset.buypet, $('#petname').value);
+    if (r.ok) { toast(`${r.pet.name} the ${PETS[r.pet.species].name} is following you!`, 'good'); hud(); persist(); renderPets(); } else toast(r.reason, 'bad'); }; }
+function renderGarage() { const body = $('#panel-body'), g = ensureGarage(state), st = ensurePets(state);
+  body.innerHTML = `<h2>Garage & Pets</h2><p class="sub">Spawn a car to drive it (WASD / stick, <b>H</b> or <b>B</b> to honk, <b>E</b> / <b>A</b> to park). Your active car shows on your home driveway.</p>
+   <b>Cars</b><div class="grid" id="gcars"></div><b>Pets</b><div class="grid" id="gpets"></div>`;
+  const gc = $('#gcars'); if (!g.cars.length) gc.innerHTML = '<p class="small">No cars yet - visit Zoomies Motors (Market Row) or Zoomies Luxury Autos (Kibble Mall).</p>';
+  for (const c of g.cars) { const card = document.createElement('div'); card.className = 'card'; card.appendChild(carIcon(c.model, c.color)); card.insertAdjacentHTML('beforeend', `<b>${c.color} ${CAR_MODELS[c.model].name}</b>${g.active === c.id ? '<small>Home car</small>' : ''}<button class="btn green" data-drive="${c.id}">Drive</button><button class="btn ghost" data-home="${c.id}">Set as home car</button>`); gc.appendChild(card); }
+  const gp = $('#gpets'); if (!st.owned.length) gp.innerHTML = '<p class="small">No pets yet - visit Pawsome Pets in the Kibble Mall district.</p>';
+  for (const p of st.owned) { const card = document.createElement('div'); card.className = 'card'; card.appendChild(petIcon(p.species)); card.insertAdjacentHTML('beforeend', `<b>${esc(p.name)}</b><small>${PETS[p.species].name}${st.active === p.id ? ' · following' : ''}</small><button class="btn green" data-walk="${p.id}">${st.active === p.id ? 'Leave at home' : 'Take for a walk'}</button><button class="btn ghost" data-rename="${p.id}">Rename</button>`); gp.appendChild(card); }
+  body.onclick = (e) => { const t = e.target.closest('button'); if (!t) return;
+    if (t.dataset.drive) spawnCar(t.dataset.drive);
+    else if (t.dataset.home) { g.active = t.dataset.home; persist(); renderGarage(); }
+    else if (t.dataset.walk) { st.active = st.active === t.dataset.walk ? null : t.dataset.walk; persist(); renderGarage(); }
+    else if (t.dataset.rename) { const n = prompt('New name?'); if (n) { renamePet(state, t.dataset.rename, n); persist(); renderGarage(); } } }; }
 function closePanel() {
   if (panel?.kind === 'cafe' && panel.shift && !panel.shift.settled && panel.shift.earned > 0) { finishShift(state, panel.shift); packAct('shift'); toast(`Shift ended early: +${panel.shift.paid} bones`, 'good'); hud(); persist(); }
   if (panel) uiClose(); panel = null; $('#panel').hidden = true;
@@ -536,6 +612,7 @@ function renderBuild() {
   // owner pup sitting in the room
   if (build.pack) { const pk = myPack(state); pk.members.slice(0, 6).forEach((m, i) => drawShiba(ctx, ox + cell * 0.8 + i * cell * 1.1, oy - cell * 0.15, { coat: m.coat, outfit: m.id === ME ? state.wardrobe.equipped : NPC_OUTFITS[i % NPC_OUTFITS.length], scale: 1, shadow: false }));
     const bx = ox + ROOM_W * cell - cell * 1.6, by0 = oy - cell * 1.5; ctx.fillStyle = pk.color; ctx.fillRect(bx, by0, cell * 1.4, cell * 1.2); ctx.fillStyle = '#d4a640'; ctx.fillRect(bx, by0 + cell * 1.2, cell * 1.4, 4); drawEmblem(ctx, pk.emblem, bx + cell * 0.35, by0 + cell * 0.2, cell * 0.14, '#fff6e0'); }
+  if (!build.pack && !build.readOnly) { const pet = activePet(state); if (pet) { ctx.save(); ctx.imageSmoothingEnabled = false; ctx.drawImage(petSprite(pet.species, Math.floor(time * 2) % 2), ox + ROOM_W * cell - cell * 1.6, oy - cell * 0.55, cell * 0.8, cell * 0.8); ctx.restore(); } }
   else { const ni = +build.plotId.slice(1) - 1; drawShiba(ctx, ox + ROOM_W * cell - cell * 0.6, oy - cell * 0.2, { coat: build.readOnly ? ['tan', 'dark', 'cream', 'red'][ni] : state.player.coat, outfit: build.readOnly ? NPC_OUTFITS[ni] : state.wardrobe.equipped, scale: 1.5 }); }
   ctx.fillStyle = '#f2cc68'; ctx.font = '18px Silkscreen, monospace'; ctx.textAlign = 'center';
   ctx.fillText(build.pack ? `${myPack(state).name} [${myPack(state).tag}] Clubhouse — decorate together` : build.readOnly ? `${NPC_HOMES.find((x) => x.id === build.plotId).owner}'s Home` : `${state.player.name}'s Home — Build & Decorate`, innerWidth / 2, 70);

@@ -1,4 +1,5 @@
 // Pixel-art world rendering: chunky gold-trimmed buildings, navy/gold palette.
+import { DOORS } from './world.js';
 import { TILE, MAP_W, MAP_H, MAP, T, BUILDINGS, PLOTS, NPC_HOMES, STALL_SLOTS, CLUBHOUSE, MALL_BUILDINGS, LEADERS, BRIDGES, DECOR } from './world.js';
 import { N, SCALE, PAL, buildGround, sprites, shadowEllipse, hash, mk, P } from './tiles.js';
 import { LAMP_TILES, unreadMail } from './ambient.js';
@@ -44,6 +45,7 @@ const THEMES = {
   fashion: { wall: '#5a2352', roof: '#3f1739', accent: '#f0a6dc', label: 'Clothing' },
   launch:  { wall: '#22377a', roof: '#18275a', accent: '#7fb4ff', label: 'Demo tokens' },
   cars:    { wall: '#2a2a33', roof: '#1c1c24', accent: '#c9c9d6', label: 'Coming soon' },
+  petshop: { wall: '#3a8a8a', roof: '#1e5a5a', accent: '#ffd84a', label: 'Pets - bones & KIBBLE' },
   mall:    { wall: '#6a4a14', roof: '#3a2a0a', accent: '#fff1b0', label: 'Luxury - demo KIBBLE' },
   jewel:   { wall: '#24305c', roof: '#121a36', accent: '#cfe8ff', label: 'Jewelry' },
   designer:{ wall: '#5a2352', roof: '#3f1739', accent: '#f0a6dc', label: 'Designer outfits' },
@@ -161,6 +163,29 @@ function drawBuildingArt(c, id, fx, fy, fw, fh) {
   const k = Math.max(1, Math.floor((fw * TILE) / im.width)), w = im.width * k, h = im.height * k; // integer upscale when the art is smaller than its footprint
   c.drawImage(im, fx * TILE + Math.round((fw * TILE - w) / 2), (fy + fh) * TILE - h, w, h); return true;
 }
+// Varied entrances: the art's centre door becomes a shop window; a new door is drawn left/right of centre or as a side porch.
+const sampleCv = {};
+function artPixel(id, ix, iy) { const im = BIMG[id]; if (!sampleCv[id]) { const [cv, x] = mk(im.width, im.height); x.drawImage(im, 0, 0); sampleCv[id] = x; } const d = sampleCv[id].getImageData(Math.max(0, Math.min(im.width - 1, ix | 0)), Math.max(0, Math.min(im.height - 1, iy | 0)), 1, 1).data; return `rgb(${d[0]},${d[1]},${d[2]})`; }
+function doorFace(c, dcx, base, accent) { // front double door with striped awning + steps (world px)
+  R(c, dcx - 22, base - 6, 44, 6, '#b8b0a2'); R(c, dcx - 22, base - 6, 44, 2, '#e8e2d6'); R(c, dcx - 18, base - 10, 36, 4, '#cfc8ba');
+  R(c, dcx - 17, base - 54, 34, 44, INK); for (const s of [-1, 1]) { const x = dcx + (s < 0 ? -15 : 1); R(c, x, base - 52, 14, 42, '#8a5a30'); R(c, x + 2, base - 50, 10, 16, '#fff3c0'); R(c, x + 2, base - 50, 3, 6, '#ffffff'); R(c, x + 2, base - 30, 10, 2, '#5e3c22'); R(c, x + (s < 0 ? 10 : 2), base - 28, 2, 6, GOLD_L); }
+  for (let i = 0; i < 6; i++) R(c, dcx - 24 + i * 8, base - 64, 8, 10, i % 2 ? '#f4f1ea' : accent); R(c, dcx - 24, base - 56, 48, 2, INK); for (let i = 0; i < 6; i++) R(c, dcx - 24 + i * 8 + 2, base - 54, 4, 2, i % 2 ? '#f4f1ea' : accent); }
+function shopWindow(c, cx, base, wall) { R(c, cx - 26, base - 70, 52, 66, wall); R(c, cx - 26, base - 4, 52, 4, '#b8b0a2');
+  R(c, cx - 21, base - 58, 42, 40, INK); R(c, cx - 19, base - 56, 38, 36, GOLD_D); R(c, cx - 17, base - 54, 34, 32, '#cfeefa'); R(c, cx - 15, base - 52, 4, 12, '#ffffff');
+  R(c, cx - 10, base - 34, 8, 10, '#c8323c'); R(c, cx + 2, base - 38, 10, 14, GOLD); R(c, cx + 4, base - 35, 6, 2, '#fff6ea'); R(c, cx - 19, base - 22, 38, 3, GOLD); R(c, cx - 21, base - 18, 42, 8, '#5e3c22'); for (let x = cx - 18; x < cx + 18; x += 5) R(c, x, base - 21, 3, 3, x % 2 ? '#ff7080' : '#ffd84a'); }
+function sidePorch(c, b, side) { const base = (b.y + b.h) * TILE, x = side === 'left' ? b.x * TILE - 30 : (b.x + b.w) * TILE + 2, im = BIMG[b.id];
+  const wall = im ? artPixel(b.id, side === 'left' ? 6 : im.width - 7, im.height - 40) : '#c8a878', th = THEMES[b.id] || THEMES.shop;
+  R(c, x - 2, base - 58, 32, 56, INK); R(c, x, base - 56, 28, 52, wall); R(c, x, base - 56, 28, 3, 'rgba(255,255,255,.25)');
+  R(c, x - 5, base - 66, 38, 10, INK); R(c, x - 4, base - 65, 36, 8, th.roof || '#5a2a1a'); R(c, x - 4, base - 58, 36, 2, GOLD);
+  R(c, x + 6, base - 46, 16, 40, INK); R(c, x + 7, base - 45, 14, 38, '#8a5a30'); R(c, x + 9, base - 43, 10, 12, '#fff3c0'); R(c, x + (side === 'left' ? 9 : 17), base - 26, 2, 5, GOLD_L);
+  R(c, x - 4, base - 6, 36, 6, '#b8b0a2'); R(c, x - 4, base - 6, 36, 2, '#e8e2d6'); // step
+  R(c, side === 'left' ? x + 28 : x - 2, base - 56, 2, 52, 'rgba(16,24,48,.3)'); }
+function drawDoors(c, b) { const d = DOORS[b.id], im = BIMG[b.id]; if (!d || !im) return;
+  const base = (b.y + b.h) * TILE, cx = (b.x + b.w / 2) * TILE, k = Math.max(1, Math.floor((b.w * TILE) / im.width)), x0 = b.x * TILE + Math.round((b.w * TILE - im.width * k) / 2), y0 = base - im.height * k;
+  const wall = artPixel(b.id, (cx - 1.4 * TILE - x0) / k, (base - 30 - y0) / k), th = THEMES[b.id] || THEMES.shop;
+  if (d.side === 'front' && Math.abs((b.x + d.dx + 0.5) * TILE - cx) < 24) return; // already centred
+  shopWindow(c, cx, base, wall);
+  if (d.side === 'front') doorFace(c, (b.x + d.dx + 0.5) * TILE, base, th.accent === '#fff1b0' ? '#c8323c' : (th.accent || '#c8323c')); }
 function plaque(c, text, cx, y) {
   c.font = `8px ${FONT}`; const w = Math.ceil(c.measureText(text).width) + 10;
   R(c, cx - w / 2 - 1, y - 1, w + 2, 13, INK); R(c, cx - w / 2, y, w, 11, NAVY); R(c, cx - w / 2, y + 10, w, 1, GOLD);
@@ -211,7 +236,8 @@ export function prerenderMap() {
     else if (!LUX.has(d.kind)) props.push(d.kind === 'hedge' ? sp(S.hedge, d.x * TILE, d.y * TILE + 4, d.y * TILE + 30) : sp(S[d.kind], d.x * TILE - 2, d.y * TILE + 4, d.y * TILE + 30)); }
   for (const h of NPC_HOMES) props.push(sp(S.mailbox, (h.x + 5) * TILE + 6, (h.y + h.h + 1) * TILE - 34, (h.y + h.h + 1) * TILE - 2));
   // buildings (square front-facing art; legacy procedural storefront if the PNG is missing)
-  for (const b of [...BUILDINGS, ...MALL_BUILDINGS]) props.push({ y: (b.y + b.h) * TILE - 1, d: (c) => { if (b.id === 'mall') return drawMallFacade(c, pixelText); if (!drawBuildingArt(c, b.id, b.x, b.y, b.w, b.h)) legacyBuilding(c, b); } });
+  for (const b of [...BUILDINGS, ...MALL_BUILDINGS]) props.push({ y: (b.y + b.h) * TILE - 1, d: (c) => { if (b.id === 'mall') return drawMallFacade(c, pixelText); if (!drawBuildingArt(c, b.id, b.x, b.y, b.w, b.h)) legacyBuilding(c, b); else drawDoors(c, b); } });
+  for (const b of [...BUILDINGS, ...MALL_BUILDINGS]) if (DOORS[b.id] && DOORS[b.id].side !== 'front') props.push({ y: (b.y + b.h) * TILE - 26, d: (c) => sidePorch(c, b, DOORS[b.id].side) });
   props.push(...luxuryProps());
   for (const h of NPC_HOMES) props.push({ y: (h.y + h.h) * TILE - 1, d: (c) => { if (!drawBuildingArt(c, HOUSE_ART[h.id], h.x, h.y, h.w, h.h)) legacyNpcHouse(c, h); plaque(c, `${h.owner.toUpperCase()}'S`, (h.x + 1.5) * TILE, (h.y + h.h) * TILE - 22); } });
   props.push({ y: (LEADERS.y + LEADERS.h) * TILE - 1, d: (c) => { if (drawBuildingArt(c, 'leaders', LEADERS.x, LEADERS.y, LEADERS.w, LEADERS.h)) return;

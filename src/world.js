@@ -18,7 +18,12 @@ export const MALL_BUILDINGS = [
   { id: 'goldden', name: 'Golden Den Furniture', x: 10, y: 60, w: 8, h: 6, cat: 'furniture' },
   { id: 'luxauto', name: 'Zoomies Luxury Autos', x: 46, y: 60, w: 8, h: 6, cat: 'car' },
   { id: 'office', name: "President's Office", x: 27, y: 74, w: 10, h: 5, cat: 'office' },
+  { id: 'petshop', name: 'Pawsome Pets', x: 10, y: 70, w: 8, h: 6, cat: 'pets' },
 ];
+// Varied entrances: front door offset (tiles from the left), or a side porch on the left/right wall facing a side street.
+export const DOORS = {"cafe": {dx: 1, side: "front"}, "shop": {dx: 7, side: "front"}, "fashion": {dx: 0, side: "right"}, "cars": {dx: 2, side: "front"}, "jewel": {dx: 0, side: "left"}, "designer": {dx: 6, side: "front"}, "goldden": {dx: 0, side: "right"}, "luxauto": {dx: 1, side: "front"}, "petshop": {dx: 6, side: "front"}};
+export function doorTile(b) { const d = DOORS[b.id]; if (!d) return { tx: b.x + Math.floor(b.w / 2), ty: b.y + b.h, side: 'front' };
+  return d.side === 'left' ? { tx: b.x - 1, ty: b.y + b.h - 1, side: 'left' } : d.side === 'right' ? { tx: b.x + b.w, ty: b.y + b.h - 1, side: 'right' } : { tx: b.x + d.dx, ty: b.y + b.h, side: 'front' }; }
 export const STATUE = { x: 31, y: 71 };
 export const FOUNTAIN = { x: 30, y: 63, w: 4, h: 3 }; // tiered marble fountain on the Kibble Mall forecourt
 export const FORECOURT = { x: 24, y: 58, w: 16, h: 16 }; // marble plaza in front of the mall
@@ -68,7 +73,7 @@ export const MAP = buildMap();
 // Solid decor: flowering bushes flanking shop doors + hedges along NPC home fronts (door columns left open).
 export const DECOR = [];
 { const ok = (x, y) => [T.GRASS, T.FLOWER, T.PLAZA].includes(MAP[y]?.[x]);
-  for (const b of [...BUILDINGS, ...MALL_BUILDINGS]) { if (ok(b.x - 1, b.y + b.h - 1)) DECOR.push({ x: b.x - 1, y: b.y + b.h - 1, kind: 'bushP' }); if (ok(b.x + b.w, b.y + b.h - 1)) DECOR.push({ x: b.x + b.w, y: b.y + b.h - 1, kind: 'bushY' }); }
+  for (const b of [...BUILDINGS, ...MALL_BUILDINGS]) { const sd = DOORS[b.id]?.side; if (sd !== 'left' && ok(b.x - 1, b.y + b.h - 1)) DECOR.push({ x: b.x - 1, y: b.y + b.h - 1, kind: 'bushP' }); if (sd !== 'right' && ok(b.x + b.w, b.y + b.h - 1)) DECOR.push({ x: b.x + b.w, y: b.y + b.h - 1, kind: 'bushY' }); }
   for (const h of NPC_HOMES) for (const dx of [0, 1, 4, 5]) DECOR.push({ x: h.x + dx, y: h.y + h.h, kind: 'hedge' });
   for (const [xs, y] of [[[2, 12, 21, 38, 46, 61], 19], [[8, 15, 22, 41, 48, 55], 23], [[8, 15, 22, 36, 42, 52, 58], 34]]) for (const x of xs) if (MAP[y][x] === T.WALK) DECOR.push({ x, y, kind: 'planter' }); // street trees
   for (const [x, y] of [[49, 18], [50, 18], [58, 18], [59, 18], [44, 66], [45, 66], [54, 66], [55, 66]]) DECOR.push({ x, y, kind: 'car' });
@@ -84,8 +89,8 @@ export const isSolid = (tx, ty) => tx < 0 || ty < 0 || tx >= MAP_W || ty >= MAP_
 // Interaction points: tile player should stand on
 export function interactables(state) {
   const list = [];
-  for (const b of BUILDINGS) list.push({ kind: 'building', id: b.id, name: b.name, tx: b.x + Math.floor(b.w / 2), ty: b.y + b.h });
-  for (const b of MALL_BUILDINGS) list.push({ kind: 'mall', id: b.id, name: b.name, cat: b.cat, tx: b.x + Math.floor(b.w / 2), ty: b.y + b.h });
+  for (const b of BUILDINGS) list.push({ kind: 'building', id: b.id, name: b.name, ...doorTile(b) });
+  for (const b of MALL_BUILDINGS) list.push({ kind: 'mall', id: b.id, name: b.name, cat: b.cat, ...doorTile(b) });
   list.push({ kind: 'mall', id: 'board', name: 'Mall prize-pool board', cat: 'board', tx: STATUE.x + 3, ty: STATUE.y });
   list.push({ kind: 'mall', id: 'leaders', name: 'Leaderboards Hall', cat: 'leaders', tx: LEADERS.x + 3, ty: LEADERS.y + LEADERS.h });
   for (const p of PLOTS) {
