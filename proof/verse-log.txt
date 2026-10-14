@@ -1,25 +1,38 @@
-[2026-10-14T10:50:42.912Z] screenshot proof/verse-01-title.png
-[2026-10-14T10:50:43.509Z] screenshot proof/verse-02-avatar.png
-[2026-10-14T10:50:44.435Z] started: bones=500 kibble=20 pos=1008,752
-[2026-10-14T10:50:45.848Z] walked with keys: pos=1145,677 (moved 156px)
-[2026-10-14T10:50:46.039Z] screenshot proof/verse-03-walk.png
-[2026-10-14T10:50:52.857Z] arrived at café via click-to-move
-[2026-10-14T10:50:57.276Z] screenshot proof/verse-04-cafe.png
-[2026-10-14T10:51:53.147Z] shift result: +423 bones (served clicks 17)
-[2026-10-14T10:51:53.284Z] screenshot proof/verse-05-cafe-paid.png
-[2026-10-14T10:51:53.328Z] bones after job: 923
-[2026-10-14T10:52:01.265Z] screenshot proof/verse-06-plot.png
-[2026-10-14T10:52:01.814Z] claimed: plots=p5 bones=623 mode=build
-[2026-10-14T10:52:08.398Z] screenshot proof/verse-07-shop.png
-[2026-10-14T10:52:08.400Z] bought: inv={"sofa":1,"plant":1,"lamp":1,"rug":1} bones=438
-[2026-10-14T10:52:14.069Z] entered home build mode
-[2026-10-14T10:52:14.874Z] placed items: rug,sofa,plant,lamp
-[2026-10-14T10:52:14.932Z] screenshot proof/verse-08-home.png
-[2026-10-14T10:52:21.684Z] after buy: you hold 96.66M $STAR, holders 2, mcap 36.27
-[2026-10-14T10:52:21.812Z] screenshot proof/verse-09-launch.png
-[2026-10-14T10:52:22.258Z] after selling 50%: kibble=20.651 hold=48.33M
-[2026-10-14T10:52:22.376Z] screenshot proof/verse-10-launch-sell.png
-[2026-10-14T10:52:26.616Z] screenshot proof/verse-11-market-row.png
-[2026-10-14T10:52:27.731Z] reload persistence: continue=true plots=p5 bones=338 tokens=3
-[2026-10-14T10:52:39.410Z] screenshot proof/verse-12-visit-home.png
-[2026-10-14T10:52:39.411Z] page errors: none
+[2026-10-14T11:13:34.010Z] screenshot proof/verse-01-title.png
+[2026-10-14T11:13:34.037Z] coat choices: Classic Tan | Cream / White | Reddish-Brown | Dark Brown | Light Golden | Gray
+[2026-10-14T11:13:34.076Z] screenshot proof/style-01-character-creation.png
+[2026-10-14T11:13:34.475Z] screenshot proof/verse-02-avatar.png
+[2026-10-14T11:13:35.380Z] started: bones=500 kibble=20 pos=1008,752
+[2026-10-14T11:13:36.792Z] walked with keys: pos=1145,677 (moved 156px)
+[2026-10-14T11:13:36.962Z] screenshot proof/verse-03-walk.png
+[2026-10-14T11:13:38.354Z] screenshot proof/style-02-neighbourhood.png
+[2026-10-14T11:13:45.153Z] arrived at café via click-to-move
+[2026-10-14T11:13:49.579Z] screenshot proof/verse-04-cafe.png
+[2026-10-14T11:14:45.603Z] shift result: +399 bones (served clicks 17)
+[2026-10-14T11:14:45.718Z] screenshot proof/verse-05-cafe-paid.png
+[2026-10-14T11:14:45.756Z] bones after job: 899
+[2026-10-14T11:14:53.664Z] screenshot proof/verse-06-plot.png
+[2026-10-14T11:14:54.208Z] claimed: plots=p5 bones=599 mode=build
+[2026-10-14T11:15:00.770Z] screenshot proof/verse-07-shop.png
+[2026-10-14T11:15:00.773Z] bought: inv={"sofa":1,"plant":1,"lamp":1,"rug":1} bones=414
+[2026-10-14T11:15:06.431Z] entered home build mode
+[2026-10-14T11:15:07.234Z] placed items: rug,sofa,plant,lamp
+[2026-10-14T11:15:07.289Z] screenshot proof/verse-08-home.png
+[2026-10-14T11:15:14.035Z] after buy: you hold 91.30M $STAR, holders 3, mcap 41.59
+[2026-10-14T11:15:14.125Z] screenshot proof/verse-09-launch.png
+[2026-10-14T11:15:14.577Z] after selling 50%: kibble=20.954 hold=45.65M
+[2026-10-14T11:15:14.676Z] screenshot proof/verse-10-launch-sell.png
+[2026-10-14T11:15:18.911Z] screenshot proof/verse-11-market-row.png
+[2026-10-14T11:15:25.233Z] screenshot proof/style-03-launch-hall-exterior.png
+[2026-10-14T11:15:25.235Z] proof top-up: +1500 bones for fashion demo
+[2026-10-14T11:15:30.171Z] screenshot proof/style-04-fetch-fashion-exterior.png
+[2026-10-14T11:15:32.283Z] fashion: spent 1070 bones; owned=["hawaiian","chinos","gold_shades","chain_gold","sneakers_red","cap_red","suit_navy","gown_white"]
+[2026-10-14T11:15:32.374Z] screenshot proof/style-05-fashion-shop.png
+[2026-10-14T11:15:32.572Z] equipped: {"top":"hawaiian","eyes":"gold_shades","neck":"chain_gold","feet":"sneakers_red","hat":"cap_red","bottom":"chinos"}
+[2026-10-14T11:15:32.676Z] screenshot proof/style-06-wardrobe.png
+[2026-10-14T11:15:33.796Z] screenshot proof/style-07-outfit-in-world.png
+[2026-10-14T11:15:34.772Z] screenshot proof/style-08-title-with-saved-outfit.png
+[2026-10-14T11:15:35.384Z] reload persistence: continue=true plots=p5 bones=744 tokens=3 outfit={"top":"hawaiian","eyes":"gold_shades","neck":"chain_gold","feet":"sneakers_red","hat":"cap_red","bottom":"chinos"}
+[2026-10-14T11:15:41.593Z] screenshot proof/style-09-sakura-lane-npc-outfits.png
+[2026-10-14T11:15:48.568Z] screenshot proof/verse-12-visit-home.png
+[2026-10-14T11:15:48.569Z] page errors: none

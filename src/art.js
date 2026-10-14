@@ -1,45 +1,24 @@
 // All art drawn procedurally - original.
-import { COATS } from './game.js';
+import { shibaSprite } from './sprite.js';
 import { FURNITURE, footprint, WALLS, FLOORS } from './furniture.js';
 
 const rr = (ctx, x, y, w, h, r) => { ctx.beginPath(); ctx.roundRect(x, y, w, h, r); };
 
-export function drawShiba(ctx, x, y, { coat = 'red', dir = 1, phase = 0, moving = false, scale = 1, name = null, happy = false } = {}) {
-  const c = COATS[coat] || COATS.red, W = '#fff6ea';
-  ctx.save(); ctx.translate(x, y); ctx.scale(scale * dir, scale);
-  const bob = moving ? Math.abs(Math.sin(phase)) * 1.6 : Math.sin(phase * 0.3) * 0.5;
-  ctx.fillStyle = 'rgba(40,30,20,0.22)'; ctx.beginPath(); ctx.ellipse(0, 9, 13, 4, 0, 0, 7); ctx.fill();
-  // legs
-  const legs = [[-8, 0], [-3, Math.PI], [5, Math.PI], [9, 0]];
-  for (const [lx, off] of legs) { const sw = moving ? Math.sin(phase + off) * 2.2 : 0; ctx.fillStyle = c.dark; rr(ctx, lx - 2 + sw, 2 - bob * 0.3, 4, 8, 2); ctx.fill(); ctx.fillStyle = W; rr(ctx, lx - 2 + sw, 7 - bob * 0.3, 4, 3, 1.5); ctx.fill(); }
-  ctx.translate(0, -bob);
-  // tail curl
-  ctx.strokeStyle = c.base; ctx.lineWidth = 5; ctx.lineCap = 'round'; ctx.beginPath(); ctx.arc(-11, -6, 5, Math.PI * 0.2, Math.PI * 1.7); ctx.stroke();
-  ctx.strokeStyle = W; ctx.lineWidth = 2; ctx.beginPath(); ctx.arc(-11, -6, 5, Math.PI * 0.9, Math.PI * 1.4); ctx.stroke();
-  // body
-  ctx.fillStyle = c.base; ctx.beginPath(); ctx.ellipse(0, -1, 13, 8, 0, 0, 7); ctx.fill();
-  if (coat === 'sesame') { ctx.fillStyle = 'rgba(70,45,25,0.55)'; ctx.beginPath(); ctx.ellipse(-1, -5, 10, 3.5, 0, 0, 7); ctx.fill(); }
-  ctx.fillStyle = W; ctx.beginPath(); ctx.ellipse(3, 3, 8, 3.6, 0, 0, 7); ctx.fill();
-  // head
-  ctx.translate(11, -10);
-  ctx.fillStyle = c.base;
-  for (const ex of [-6, 3]) { ctx.beginPath(); ctx.moveTo(ex - 3, -5); ctx.lineTo(ex + 1, -14); ctx.lineTo(ex + 5, -4); ctx.closePath(); ctx.fill(); }
-  ctx.fillStyle = coat === 'black' ? c.tan : '#f3b8a8';
-  for (const ex of [-6, 3]) { ctx.beginPath(); ctx.moveTo(ex - 1, -6); ctx.lineTo(ex + 1, -11); ctx.lineTo(ex + 3, -5.5); ctx.closePath(); ctx.fill(); }
-  ctx.fillStyle = c.base; ctx.beginPath(); ctx.arc(0, 0, 9, 0, 7); ctx.fill();
-  ctx.fillStyle = W; ctx.beginPath(); ctx.ellipse(3.5, 3.5, 6.5, 4.5, 0, 0, 7); ctx.fill();
-  ctx.beginPath(); ctx.ellipse(-3, 3, 3.5, 3, 0, 0, 7); ctx.fill();
-  if (coat === 'black') { ctx.fillStyle = c.tan; ctx.beginPath(); ctx.arc(-1, -4.5, 1.6, 0, 7); ctx.arc(4.5, -4.5, 1.6, 0, 7); ctx.fill(); }
-  ctx.fillStyle = '#2a1c14';
-  if (happy) { ctx.lineWidth = 1.6; ctx.strokeStyle = '#2a1c14'; ctx.beginPath(); ctx.arc(2.5, -1.5, 2, Math.PI * 1.1, Math.PI * 1.9); ctx.stroke(); }
-  else { ctx.beginPath(); ctx.arc(2.5, -1.5, 1.8, 0, 7); ctx.fill(); ctx.fillStyle = '#fff'; ctx.beginPath(); ctx.arc(3.1, -2.1, 0.6, 0, 7); ctx.fill(); }
-  ctx.fillStyle = '#2a1c14'; ctx.beginPath(); ctx.ellipse(9, 2, 2, 1.6, 0, 0, 7); ctx.fill();
-  ctx.fillStyle = 'rgba(240,120,120,0.45)'; ctx.beginPath(); ctx.arc(-1, 4, 2, 0, 7); ctx.fill();
+// Pixel Shiba (see sprite.js). (x,y) = ground point under the feet-ish centre.
+export function drawShiba(ctx, x, y, { coat = 'tan', face = 'down', phase = 0, moving = false, scale = 1, name = null, outfit = null, shadow = true } = {}) {
+  const px = Math.max(1, Math.round(2 * scale));
+  const frame = moving ? Math.floor(phase / 1.6) % 4 : 0;
+  const spr = shibaSprite(coat, face, frame, outfit || {});
+  const w = spr.width * px, h = spr.height * px, dx = Math.round(x - w / 2), dy = Math.round(y + 12 - h);
+  ctx.save(); ctx.imageSmoothingEnabled = false;
+  if (shadow) { ctx.fillStyle = 'rgba(10,14,30,0.28)'; ctx.fillRect(Math.round(x - 7 * px), Math.round(y + 12 - 2 * px), 14 * px, 2 * px); ctx.fillRect(Math.round(x - 5 * px), Math.round(y + 12 - 3 * px), 10 * px, 3 * px); }
+  ctx.drawImage(spr, dx, dy, w, h);
   ctx.restore();
   if (name) {
-    ctx.save(); ctx.font = 'bold 11px "Trebuchet MS",sans-serif'; ctx.textAlign = 'center';
-    const w = ctx.measureText(name).width + 10; ctx.fillStyle = 'rgba(30,25,40,0.65)'; rr(ctx, x - w / 2, y - 42 * scale, w, 15, 7); ctx.fill();
-    ctx.fillStyle = '#fff'; ctx.fillText(name, x, y - 42 * scale + 11); ctx.restore();
+    ctx.save(); ctx.font = '8px Silkscreen, monospace'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+    const tw = Math.ceil(ctx.measureText(name).width) + 8, ty = dy - 10;
+    ctx.fillStyle = '#121a36'; ctx.fillRect(Math.round(x - tw / 2), ty - 6, tw, 12); ctx.fillStyle = '#d4a640'; ctx.fillRect(Math.round(x - tw / 2), ty + 5, tw, 1);
+    ctx.fillStyle = '#f6e7b8'; ctx.fillText(name, Math.round(x), ty); ctx.restore();
   }
 }
 

@@ -2,18 +2,24 @@ import { PLOTS, PLOT_COST, TILE } from './world.js';
 import { FURNITURE, WALLS, FLOORS, canPlace } from './furniture.js';
 
 export const START_BONES = 500, START_KIBBLE = 20, BONES_PER_KIBBLE = 25, SELL_BACK = 0.5;
+// The six starter Shiba coats (only avatar choices at character creation).
 export const COATS = {
-  red: { name: 'Classic Red', base: '#d9803a', dark: '#b4602a' },
-  sesame: { name: 'Sesame', base: '#c58b52', dark: '#5f412a' },
-  black: { name: 'Black & Tan', base: '#2e2724', dark: '#1d1816', tan: '#d39a5e' },
-  cream: { name: 'Cream', base: '#f0dbb2', dark: '#d4b886' },
+  tan:    { name: 'Classic Tan',    base: '#d98b45', dark: '#a8622c', light: '#f7e6c8', ear: '#f0b48e' },
+  cream:  { name: 'Cream / White',  base: '#efe4cf', dark: '#c9b79a', light: '#fffaf0', ear: '#f3c6b0' },
+  red:    { name: 'Reddish-Brown',  base: '#b4532b', dark: '#7f351a', light: '#f3d9bf', ear: '#e59a7c' },
+  dark:   { name: 'Dark Brown',     base: '#4b3529', dark: '#2d1f18', light: '#8c6b52', ear: '#7a5644' },
+  golden: { name: 'Light Golden',   base: '#e9b75c', dark: '#bf8a36', light: '#fcf0d4', ear: '#f4c79a' },
+  gray:   { name: 'Gray',           base: '#a4a7ad', dark: '#73777e', light: '#ececee', ear: '#d6b3b0' },
 };
+const COAT_ALIASES = { sesame: 'tan', black: 'dark' };
+export const normalizeCoat = (c) => (COATS[c] ? c : COATS[COAT_ALIASES[c]] ? COAT_ALIASES[c] : 'tan');
 
-export function newGame({ name = 'Inu', coat = 'red' } = {}) {
+export function newGame({ name = 'Inu', coat = 'tan' } = {}) {
   return {
-    v: 1, player: { name: String(name).slice(0, 14) || 'Inu', coat: COATS[coat] ? coat : 'red', x: 31.5 * TILE, y: 23.5 * TILE },
+    v: 1, player: { name: String(name).slice(0, 14) || 'Inu', coat: normalizeCoat(coat), x: 31.5 * TILE, y: 23.5 * TILE },
     bones: START_BONES, kibble: START_KIBBLE, plots: {}, inventory: {}, tokens: [], uid: 1,
     stats: { shifts: 0, bonesEarned: 0, served: 0 }, simTime: 0,
+    wardrobe: { owned: [], equipped: {} },
   };
 }
 

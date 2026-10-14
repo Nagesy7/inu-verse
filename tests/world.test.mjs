@@ -1,7 +1,7 @@
 import test from 'node:test'; import assert from 'node:assert/strict';
 import { PLOTS, BUILDINGS, isSolid, findPath, interactables, nearestInteractable, TILE } from '../src/world.js';
 import { newGame } from '../src/game.js';
-test('8 plots and 4 buildings', () => { assert.equal(PLOTS.length, 8); assert.deepEqual(BUILDINGS.map((b) => b.id), ['cafe', 'shop', 'launch', 'cars']); });
+test('8 plots and 5 buildings', () => { assert.equal(PLOTS.length, 8); assert.deepEqual(BUILDINGS.map((b) => b.id), ['cafe', 'shop', 'fashion', 'launch', 'cars']); });
 test('every interactable reachable from spawn', () => {
   const s = newGame(); const sx = Math.floor(s.player.x / TILE), sy = Math.floor(s.player.y / TILE); assert.equal(isSolid(sx, sy), false);
   for (const it of interactables(s)) assert.ok(findPath(sx, sy, it.tx, it.ty), it.id);

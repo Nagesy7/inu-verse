@@ -1,14 +1,14 @@
 <!doctype html>
 <html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Inu Verse</title><link rel="stylesheet" href="style.css">
-<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><circle cx='16' cy='18' r='12' fill='%23d9803a'/><path d='M6 12 9 2 14 9zM26 12 23 2 18 9z' fill='%23d9803a'/><ellipse cx='18' cy='22' rx='7' ry='5' fill='%23fff6ea'/></svg>">
+<title>Inu Verse</title><link rel="preload" href="fonts/Silkscreen.ttf" as="font" type="font/ttf" crossorigin><link rel="stylesheet" href="style.css">
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><circle cx='16' cy='18' r='12' fill='%23d98b45'/><path d='M6 12 9 2 14 9zM26 12 23 2 18 9z' fill='%23d98b45'/><ellipse cx='18' cy='22' rx='7' ry='5' fill='%23fff6ea'/></svg>">
 </head><body>
 <canvas id="game"></canvas>
 <div id="title" class="overlay">
   <div class="title-card">
     <h1 class="logo">Inu <span>Verse</span></h1>
     <p class="tag">A cosy neighbourhood for the Inu games network</p>
-    <canvas id="preview" width="220" height="150"></canvas>
+    <canvas id="preview" width="300" height="180"></canvas>
     <label class="lbl">Your Inu's name <input id="name" maxlength="14" value="Kabosu"></label>
     <div class="lbl">Coat colour</div>
     <div id="coats" class="coats"></div>
@@ -22,6 +22,7 @@
   <div class="chip inu">$KIBBLE <span id="kibble">0</span></div>
   <div class="spacer"></div>
   <button id="btn-phantom" class="btn phantom" title="Wallet support is not built yet">Connect Phantom <small>(coming soon)</small></button>
+  <button id="btn-wardrobe" class="btn alt">Wardrobe</button>
   <button id="btn-help" class="btn ghost">?</button>
 </div>
 <div id="prompt" hidden></div>

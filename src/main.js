@@ -5,8 +5,9 @@ import { MENU, newShift, tickShift, addToTray, clearTray, serve, finishShift, SH
 import { createToken, playerBuy, playerSell, simulateTick, seedTokens, holderCount, PLAYER, CREATE_FEE } from './launch.js';
 import { price, marketCap, progress } from './curve.js';
 import { save, load } from './save.js';
+import { OUTFITS, SLOTS, SLOT_NAMES, buyOutfit, equipOutfit, unequipSlot, ensureWardrobe } from './outfits.js';
 import { mulberry32 } from './rng.js';
-import { spawnNpcs, updateNpc } from './npc.js';
+import { spawnNpcs, updateNpc, NPC_OUTFITS } from './npc.js';
 import { npcHome } from './homes.js';
 import { drawShiba, drawFurniture, drawRoom, drawMenuIcon, drawBoneIcon } from './art.js';
 import { prerenderMap, drawPlots, drawStalls } from './render.js';
@@ -17,7 +18,7 @@ const rng = mulberry32((Date.now() & 0xffff) + 1);
 let state = null, mapImg = null, npcs = [], mode = 'title';
 const cam = { x: 0, y: 0 };
 const keys = new Set();
-const player = { dir: 1, phase: 0, moving: false, path: [], target: null };
+const player = { face: 'down', dir: 1, phase: 0, moving: false, path: [], target: null };
 let build = null; // {plotId, readOnly, home, sel:{kind:'new'|'move', id, uid, rot}, hover:{x,y}, picked}
 let panel = null; // {kind, ...}
 let simAcc = 0, saveAcc = 0, lastT = performance.now(), time = 0;
@@ -33,23 +34,37 @@ function resize() { cv.width = innerWidth * devicePixelRatio; cv.height = innerH
 addEventListener('resize', resize); resize();
 
 // ---------------- Title ----------------
-let chosenCoat = 'red';
+let chosenCoat = 'tan';
+function spriteCanvas(coat, outfit, w, h, scale, face = 'down') { const c = document.createElement('canvas'); c.width = w; c.height = h; const x = c.getContext('2d'); x.imageSmoothingEnabled = false; drawShiba(x, w / 2, h - 16, { coat, outfit, scale, face }); return c; }
 function titleScreen() {
   const wrap = $('#coats');
-  wrap.innerHTML = Object.entries(COATS).map(([k, c]) => `<button class="coat ${k === chosenCoat ? 'sel' : ''}" data-coat="${k}"><i style="background:${c.base}"></i>${c.name}</button>`).join('');
+  wrap.innerHTML = Object.entries(COATS).map(([k, c]) => `<button class="coat ${k === chosenCoat ? 'sel' : ''}" data-coat="${k}"><span class="cimg"></span>${c.name}</button>`).join('');
+  wrap.querySelectorAll('.coat').forEach((b) => b.querySelector('.cimg').appendChild(spriteCanvas(b.dataset.coat, {}, 60, 76, 1)));
   wrap.onclick = (e) => { const b = e.target.closest('.coat'); if (!b) return; chosenCoat = b.dataset.coat; wrap.querySelectorAll('.coat').forEach((x) => x.classList.toggle('sel', x === b)); };
   const saved = load(localStorage);
   if (saved) { $('#continue').hidden = false; $('#continue').onclick = () => startGame(saved); }
   $('#start').onclick = () => { const s = newGame({ name: $('#name').value.trim() || 'Inu', coat: chosenCoat }); seedTokens(s, rng); startGame(s); toast(`Welcome to Inu Verse, ${s.player.name}!`, 'good'); };
-  const pc = $('#preview').getContext('2d');
-  const loop = (t) => { if (mode !== 'title') return; pc.clearRect(0, 0, 220, 150); pc.fillStyle = '#9fd47f'; pc.beginPath(); pc.ellipse(110, 118, 80, 18, 0, 0, 7); pc.fill(); drawShiba(pc, 105, 100, { coat: chosenCoat, scale: 3, phase: t / 100, moving: true, happy: true }); requestAnimationFrame(loop); };
+  const pv = $('#preview'), pc = pv.getContext('2d');
+  const faces = ['down', 'right', 'up', 'left'];
+  const loop = (t) => {
+    if (mode !== 'title') return; pc.imageSmoothingEnabled = false; pc.clearRect(0, 0, pv.width, pv.height);
+    const face = faces[Math.floor(t / 1600) % 4];
+    const pads = saved ? [[pv.width * 0.3, chosenCoat, {}, 'NEW'], [pv.width * 0.72, saved.player.coat, saved.wardrobe?.equipped, saved.player.name.toUpperCase()]] : [[pv.width / 2, chosenCoat, {}, null]];
+    for (const [x, coat, outfit, lbl] of pads) {
+      pc.fillStyle = '#d4a640'; pc.fillRect(x - 54, 150, 108, 10); pc.fillStyle = '#8f6a22'; pc.fillRect(x - 54, 158, 108, 4); pc.fillStyle = '#24305c'; pc.fillRect(x - 50, 152, 100, 5);
+      drawShiba(pc, x, 140, { coat, outfit, scale: 2, phase: t / 90, moving: true, face, shadow: false });
+      if (lbl) { pc.font = '8px Silkscreen, monospace'; pc.textAlign = 'center'; pc.fillStyle = '#f2cc68'; pc.fillText(lbl, x, 172); }
+    }
+    requestAnimationFrame(loop);
+  };
   requestAnimationFrame(loop);
 }
 
 function startGame(s) {
-  state = s; state.kibble ??= 20; mode = 'world';
+  state = s; state.kibble ??= 20; ensureWardrobe(state); mode = 'world';
   $('#title').hidden = true; $('#hud').hidden = false; $('#minimap-wrap').hidden = false;
   mapImg = prerenderMap(); npcs = spawnNpcs(rng, 6);
+  document.fonts?.load('10px Silkscreen').then(() => { mapImg = prerenderMap(); }).catch(() => {});
   cam.x = state.player.x; cam.y = state.player.y; hud(); persist();
 }
 
@@ -84,6 +99,7 @@ function clickWorldTile(tx, ty) {
 $('#prompt').onclick = () => { const it = nearestInteractable(state, state.player.x, state.player.y); if (it) interact(it); };
 $('#btn-phantom').onclick = () => toast('Phantom wallet support is coming soon — nothing is connected.', '');
 $('#btn-help').onclick = () => openPanel('help');
+$('#btn-wardrobe').onclick = () => { if (mode === 'world') openPanel('wardrobe'); };
 $('#panel-close').onclick = () => closePanel();
 
 // ---------------- World update ----------------
@@ -94,12 +110,12 @@ function updateWorld(dt) {
     if (keys.has('a') || keys.has('arrowleft')) dx -= 1; if (keys.has('d') || keys.has('arrowright')) dx += 1;
   }
   const speed = 150;
-  if (dx || dy) { player.path = []; player.target = null; const l = Math.hypot(dx, dy); moveBody(p, (dx / l) * speed * dt, (dy / l) * speed * dt); if (dx) player.dir = dx > 0 ? 1 : -1; player.moving = true; }
+  if (dx || dy) { player.path = []; player.target = null; const l = Math.hypot(dx, dy); moveBody(p, (dx / l) * speed * dt, (dy / l) * speed * dt); if (dx) player.dir = dx > 0 ? 1 : -1; player.face = dx ? (dx > 0 ? 'right' : 'left') : (dy > 0 ? 'down' : 'up'); player.moving = true; }
   else if (player.path.length) {
     const [tx, ty] = player.path[0], gx = (tx + 0.5) * TILE, gy = (ty + 0.5) * TILE, ddx = gx - p.x, ddy = gy - p.y, d = Math.hypot(ddx, ddy), st = speed * dt;
     if (d <= st) { p.x = gx; p.y = gy; player.path.shift(); if (!player.path.length && player.target) { const t = player.target; player.target = null; interact(t); } }
     else { p.x += (ddx / d) * st; p.y += (ddy / d) * st; }
-    if (Math.abs(ddx) > 1) player.dir = ddx > 0 ? 1 : -1; player.moving = true;
+    if (Math.abs(ddx) > 1) player.dir = ddx > 0 ? 1 : -1; if (d > 0.5) player.face = Math.abs(ddx) > Math.abs(ddy) ? (ddx > 0 ? 'right' : 'left') : (ddy > 0 ? 'down' : 'up'); player.moving = true;
   } else player.moving = false;
   if (player.moving) player.phase += dt * 12; else player.phase += dt * 2;
   for (const n of npcs) updateNpc(n, dt, rng);
@@ -117,32 +133,32 @@ function updateWorld(dt) {
 
 function renderWorld() {
   const dpr = devicePixelRatio; ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
-  ctx.fillStyle = '#5a9a48'; ctx.fillRect(0, 0, innerWidth, innerHeight);
+  ctx.imageSmoothingEnabled = false; ctx.fillStyle = '#121a36'; ctx.fillRect(0, 0, innerWidth, innerHeight);
   const ox = Math.round(innerWidth / 2 - cam.x), oy = Math.round(innerHeight / 2 - cam.y);
   ctx.save(); ctx.translate(ox, oy);
   ctx.drawImage(mapImg, 0, 0);
   drawPlots(ctx, state, time); drawStalls(ctx, state, time);
-  if (player.clickMark && player.path.length) { const m = player.clickMark; ctx.strokeStyle = 'rgba(255,255,255,0.8)'; ctx.lineWidth = 2; ctx.beginPath(); ctx.ellipse(m.x, m.y + 6, 10 + Math.sin(time * 6) * 2, 5, 0, 0, 7); ctx.stroke(); }
-  const actors = [...npcs.map((n) => ({ ...n, npc: true })), { x: state.player.x, y: state.player.y, coat: state.player.coat, dir: player.dir, phase: player.phase, moving: player.moving, name: state.player.name, me: true }];
+  if (player.clickMark && player.path.length) { const m = player.clickMark, k = Math.round(10 + Math.sin(time * 6) * 2); ctx.fillStyle = '#f2cc68'; for (const [ax, ay] of [[-k, 0], [k - 4, 0], [0, -k / 2], [0, k / 2 - 2]]) ctx.fillRect(Math.round(m.x + ax), Math.round(m.y + 6 + ay), 4, 3); }
+  const actors = [...npcs.map((n) => ({ ...n, npc: true })), { x: state.player.x, y: state.player.y, coat: state.player.coat, outfit: state.wardrobe.equipped, face: player.face, phase: player.phase, moving: player.moving, name: state.player.name, me: true }];
   actors.sort((a, b) => a.y - b.y);
   for (const a of actors) {
-    if (a.me) { ctx.fillStyle = 'rgba(255,207,90,0.45)'; ctx.beginPath(); ctx.ellipse(a.x, a.y + 9, 16, 6, 0, 0, 7); ctx.fill(); }
-    drawShiba(ctx, a.x, a.y, { coat: a.coat, dir: a.dir, phase: a.phase, moving: a.moving, name: a.name, scale: 1 });
+    if (a.me) { ctx.fillStyle = 'rgba(242,204,104,0.55)'; ctx.fillRect(Math.round(a.x - 16), Math.round(a.y + 8), 32, 4); ctx.fillRect(Math.round(a.x - 12), Math.round(a.y + 6), 24, 8); }
+    drawShiba(ctx, a.x, a.y, { coat: a.coat, outfit: a.outfit, face: a.face, phase: a.phase, moving: a.moving, name: a.name, scale: 1 });
   }
   ctx.restore();
   // vignette warm light
   const g = ctx.createRadialGradient(innerWidth / 2, innerHeight / 2, innerHeight * 0.4, innerWidth / 2, innerHeight / 2, innerHeight);
-  g.addColorStop(0, 'rgba(255,220,170,0)'); g.addColorStop(1, 'rgba(120,70,30,0.25)'); ctx.fillStyle = g; ctx.fillRect(0, 0, innerWidth, innerHeight);
+  g.addColorStop(0, 'rgba(18,26,54,0)'); g.addColorStop(1, 'rgba(12,16,34,0.45)'); ctx.fillStyle = g; ctx.fillRect(0, 0, innerWidth, innerHeight);
   minimap();
 }
 
 function minimap() {
   const m = $('#minimap').getContext('2d'), s = 3;
-  const col = { [T.GRASS]: '#8fcf6f', [T.FLOWER]: '#8fcf6f', [T.ROAD]: '#5e6470', [T.WALK]: '#d9d2c4', [T.PLAZA]: '#e8dcc2', [T.BUILDING]: '#b07ad6', [T.WATER]: '#5bb8e0', [T.TREE]: '#3f8f4f', [T.PLOT]: '#c9a77a', [T.HOME]: '#e0735a' };
+  const col = { [T.GRASS]: '#4f8f45', [T.FLOWER]: '#4f8f45', [T.ROAD]: '#2e3448', [T.WALK]: '#b9a888', [T.PLAZA]: '#c9b893', [T.BUILDING]: '#d4a640', [T.WATER]: '#1f5a86', [T.TREE]: '#1c4f2e', [T.PLOT]: '#8a6a46', [T.HOME]: '#8e2430' };
   for (let y = 0; y < MAP_H; y++) for (let x = 0; x < MAP_W; x++) { m.fillStyle = col[MAP[y][x]]; m.fillRect(x * s, y * s, s, s); }
-  for (const p of PLOTS) if (state.plots[p.id]) { m.fillStyle = '#ffcf5a'; m.fillRect(p.x * s, p.y * s, p.w * s, p.h * s); }
+  for (const p of PLOTS) if (state.plots[p.id]) { m.fillStyle = '#f2cc68'; m.fillRect(p.x * s, p.y * s, p.w * s, p.h * s); }
   m.fillStyle = '#fff'; for (const n of npcs) m.fillRect(n.x / TILE * s - 1, n.y / TILE * s - 1, 3, 3);
-  m.fillStyle = '#e94f4f'; m.beginPath(); m.arc(state.player.x / TILE * s, state.player.y / TILE * s, 3.5, 0, 7); m.fill();
+  m.fillStyle = '#e94f4f'; m.fillRect(state.player.x / TILE * s - 3, state.player.y / TILE * s - 3, 6, 6);
 }
 
 // ---------------- Interactions ----------------
@@ -164,8 +180,10 @@ function openPanel(kind, opts = {}) {
   } else if (kind === 'shop') renderShop();
   else if (kind === 'cafe') renderCafe();
   else if (kind === 'launch') renderLaunch();
+  else if (kind === 'fashion') renderFashion();
+  else if (kind === 'wardrobe') renderWardrobe();
   else if (kind === 'cars') body.innerHTML = `<h2>Zoomies Motors</h2><p class="sub">Scooters, convertibles and the legendary Bone-mobile — arriving in a future update.</p><div class="demo-banner">Car Dealer: coming soon</div>`;
-  else if (kind === 'help') body.innerHTML = `<h2>How to play</h2><ul><li>Walk with <b>WASD</b>/<b>arrows</b> or <b>click</b> anywhere.</li><li>Press <b>E</b> near doors and signs.</li><li>Earn <b>bones</b> serving orders at the Shiba Sips Café.</li><li>Claim a plot (${PLOT_COST} bones), buy furniture at Paws & Pillows, decorate (R to rotate).</li><li>Launch Hall: create and trade <b>simulated</b> tokens paired with demo <b>$KIBBLE</b>. Nothing here is real money or on any blockchain.</li><li>Visit Mochi, Kuro, Hana and Taro's homes on Sakura Lane.</li></ul><button class="btn red" id="reset">Reset save</button>`;
+  else if (kind === 'help') body.innerHTML = `<h2>How to play</h2><ul><li>Walk with <b>WASD</b>/<b>arrows</b> or <b>click</b> anywhere.</li><li>Press <b>E</b> near doors and signs.</li><li>Earn <b>bones</b> serving orders at the Shiba Sips Café.</li><li>Claim a plot (${PLOT_COST} bones), buy furniture at Paws & Pillows, decorate (R to rotate).</li><li>Buy clothes at <b>Fetch Fashion</b> and dress up in your <b>Wardrobe</b> (HUD button).</li><li>Launch Hall: create and trade <b>simulated</b> tokens paired with demo <b>$KIBBLE</b>. Nothing here is real money or on any blockchain.</li><li>Visit Mochi, Kuro, Hana and Taro's homes on Sakura Lane.</li></ul><button class="btn red" id="reset">Reset save</button>`;
   if (kind === 'help') $('#reset').onclick = () => { if (confirm('Delete your local save?')) { localStorage.clear(); location.reload(); } };
 }
 function closePanel() {
@@ -187,6 +205,37 @@ function renderShop() {
     grid.appendChild(card);
   }
   grid.onclick = (e) => { const b = e.target.closest('[data-buy]'); if (!b) return; const r = buyFurniture(state, b.dataset.buy); if (r.ok) { toast(`Bought ${FURNITURE[b.dataset.buy].name}`, 'good'); hud(); persist(); renderShop(); } else toast(r.reason, 'bad'); };
+}
+
+// ---- Fetch Fashion + Wardrobe ----
+const wearPreview = (extra, w = 72, h = 92) => { const eq = { ...state.wardrobe.equipped }; if (extra) { const d = OUTFITS[extra]; eq[d.slot] = extra; if (d.full) delete eq.bottom; if (d.slot === 'bottom' && OUTFITS[eq.top]?.full) delete eq.top; } return spriteCanvas(state.player.coat, eq, w, h, 1); };
+function renderFashion() {
+  const body = $('#panel-body'), w = state.wardrobe;
+  body.innerHTML = `<h2>Fetch Fashion</h2><p class="sub">Hats, suits, gowns and bling for discerning dogs. Bought clothes go to your <b>Wardrobe</b>. Preview shows the item on you.</p><div class="row" style="justify-content:flex-start;margin:0 0 10px"><button class="btn alt" id="open-wardrobe">Open wardrobe</button></div><div class="grid" id="fashgrid"></div>`;
+  const grid = $('#fashgrid');
+  for (const [id, d] of Object.entries(OUTFITS)) {
+    const own = w.owned.includes(id), on = w.equipped[d.slot] === id;
+    const card = document.createElement('div'); card.className = 'card' + (on ? ' on' : ''); card.dataset.item = id;
+    card.appendChild(wearPreview(id));
+    card.insertAdjacentHTML('beforeend', `<div><b>${d.name}</b></div><div class="small" style="margin:2px 0">${SLOT_NAMES[d.slot]}</div><div class="price">${own ? 'Owned' : d.price + ' bones'}</div>${own ? `<button class="btn ${on ? 'ghost' : 'green'}" data-equip="${id}">${on ? 'Wearing' : 'Wear'}</button>` : `<button class="btn" data-buyfit="${id}">Buy</button>`}`);
+    grid.appendChild(card);
+  }
+  grid.onclick = (e) => {
+    const b = e.target.closest('[data-buyfit]'), q = e.target.closest('[data-equip]');
+    if (b) { const r = buyOutfit(state, b.dataset.buyfit); if (r.ok) { equipOutfit(state, b.dataset.buyfit); toast(`Bought ${OUTFITS[b.dataset.buyfit].name} - wearing it now!`, 'good'); hud(); persist(); renderFashion(); } else toast(r.reason, 'bad'); }
+    if (q) { equipOutfit(state, q.dataset.equip); persist(); renderFashion(); }
+  };
+  $('#open-wardrobe').onclick = () => openPanel('wardrobe');
+}
+function renderWardrobe() {
+  const body = $('#panel-body'), w = state.wardrobe;
+  body.innerHTML = `<h2>Wardrobe</h2><p class="sub">Equip the clothes you own. One item per slot; gowns replace bottoms.${w.owned.length ? '' : ' <b>Nothing yet - visit Fetch Fashion!</b>'}</p>
+    <div class="wardrobe"><div class="mirror" id="mirror"></div><div id="slots"></div></div>`;
+  const m = $('#mirror'); m.appendChild(spriteCanvas(state.player.coat, w.equipped, 168, 220, 3));
+  m.insertAdjacentHTML('beforeend', `<div class="mname">${esc(state.player.name)}</div><div class="small">${COATS[state.player.coat].name}</div>`);
+  $('#slots').innerHTML = SLOTS.map((slot) => { const items = w.owned.filter((id) => OUTFITS[id].slot === slot);
+    return `<div class="slot"><b>${SLOT_NAMES[slot]}</b><div class="slot-items"><button class="btn ${w.equipped[slot] ? 'ghost' : 'alt'}" data-unequip="${slot}">${slot === 'top' ? 'Cream tee' : slot === 'bottom' ? 'Navy jeans' : 'None'}</button>${items.map((id) => `<button class="btn ${w.equipped[slot] === id ? 'alt' : 'ghost'}" data-wear="${id}">${OUTFITS[id].name}</button>`).join('')}</div></div>`; }).join('');
+  $('#slots').onclick = (e) => { const a = e.target.closest('[data-wear]'), u = e.target.closest('[data-unequip]'); if (a) equipOutfit(state, a.dataset.wear); else if (u) unequipSlot(state, u.dataset.unequip); else return; persist(); renderWardrobe(); };
 }
 
 // ---- Café ----
@@ -213,7 +262,7 @@ function cafeUi() {
   if ($('#orders').dataset.sig !== sig) {
     $('#orders').dataset.sig = sig;
     $('#orders').innerHTML = s.over ? '' : s.orders.map((o) => `<div class="order" data-order="${o.id}" data-items="${o.items.join(',')}"><canvas width="60" height="44" data-face="${o.customer}"></canvas><b>${o.customer}</b><div class="small" style="margin:4px 0">${o.items.map(name).join(' + ')}</div><div class="pat"><i></i></div></div>`).join('') || '<p class="small">Waiting for customers…</p>';
-    $('#orders').querySelectorAll('canvas[data-face]').forEach((c, i) => { const x = c.getContext('2d'); drawShiba(x, 26, 34, { coat: ['red', 'cream', 'black', 'sesame'][s.orders[i].id % 4], scale: 1.2, happy: true }); });
+    $('#orders').querySelectorAll('canvas[data-face]').forEach((c, i) => { const x = c.getContext('2d'); drawShiba(x, 30, 28, { coat: Object.keys(COATS)[s.orders[i].id % 6], outfit: NPC_OUTFITS[s.orders[i].id % NPC_OUTFITS.length], scale: 0.5, shadow: false }); });
   }
   s.orders.forEach((o) => { const el = $(`.order[data-order="${o.id}"] .pat i`); if (el) { el.style.width = (100 * o.patience / o.max) + '%'; el.style.background = o.patience / o.max < 0.3 ? '#d9534f' : '#3fa66a'; } });
   const tray = $('#tray'); const tsig = s.tray.join();
@@ -322,7 +371,7 @@ function buildBar() {
 }
 function renderBuild() {
   const dpr = devicePixelRatio; ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
-  const g = ctx.createLinearGradient(0, 0, 0, innerHeight); g.addColorStop(0, '#f6d9b8'); g.addColorStop(1, '#e8b98a'); ctx.fillStyle = g; ctx.fillRect(0, 0, innerWidth, innerHeight);
+  ctx.imageSmoothingEnabled = false; ctx.fillStyle = '#121a36'; ctx.fillRect(0, 0, innerWidth, innerHeight); ctx.fillStyle = '#18234a'; for (let yy = 0; yy < innerHeight; yy += 32) for (let xx = (yy / 32) % 2 * 32; xx < innerWidth; xx += 64) ctx.fillRect(xx, yy, 32, 32);
   const { cell, ox, oy } = roomGeom(), h = build.home;
   const hiddenUid = build.sel?.kind === 'move' ? build.sel.uid : null;
   drawRoom(ctx, hiddenUid ? { ...h, items: h.items.filter((i) => i.uid !== hiddenUid) } : h, ox, oy, cell, ROOM_W, ROOM_H);
@@ -334,8 +383,8 @@ function renderBuild() {
     drawFurniture(ctx, s.id, ox + c.x * cell, oy + c.y * cell, cell, s.rot, 0.75);
   }
   // owner pup sitting in the room
-  drawShiba(ctx, ox + ROOM_W * cell + 0 - cell * 0.6, oy - cell * 0.4, { coat: build.readOnly ? ['red', 'black', 'cream', 'sesame'][+build.plotId.slice(1) - 1] : state.player.coat, scale: 1.6, phase: time * 3, happy: true, dir: -1 });
-  ctx.fillStyle = '#5a4030'; ctx.font = 'bold 20px "Trebuchet MS",sans-serif'; ctx.textAlign = 'center';
+  { const ni = +build.plotId.slice(1) - 1; drawShiba(ctx, ox + ROOM_W * cell - cell * 0.6, oy - cell * 0.2, { coat: build.readOnly ? ['tan', 'dark', 'cream', 'red'][ni] : state.player.coat, outfit: build.readOnly ? NPC_OUTFITS[ni] : state.wardrobe.equipped, scale: 1.5 }); }
+  ctx.fillStyle = '#f2cc68'; ctx.font = '18px Silkscreen, monospace'; ctx.textAlign = 'center';
   ctx.fillText(build.readOnly ? `${NPC_HOMES.find((x) => x.id === build.plotId).owner}'s Home` : `${state.player.name}'s Home — Build & Decorate`, innerWidth / 2, 70);
 }
 

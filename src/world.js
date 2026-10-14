@@ -5,6 +5,7 @@ const SOLID = new Set([T.BUILDING, T.WATER, T.TREE, T.PLOT, T.HOME]);
 export const BUILDINGS = [
   { id: 'cafe', name: 'Shiba Sips Café', x: 3, y: 12, w: 8, h: 6 },
   { id: 'shop', name: 'Paws & Pillows', x: 13, y: 12, w: 9, h: 6 },
+  { id: 'fashion', name: 'Fetch Fashion', x: 23, y: 12, w: 7, h: 6 },
   { id: 'launch', name: 'Launch Hall', x: 35, y: 11, w: 12, h: 7 },
   { id: 'cars', name: 'Zoomies Motors', x: 50, y: 12, w: 10, h: 6 },
 ];
@@ -34,7 +35,7 @@ export function buildMap() {
   fill(37, 35, 18, 4, T.WATER);
   // trees: border + some park trees
   for (let y = 0; y < MAP_H; y++) for (let x = 0; x < MAP_W; x++) if (x === 0 || y === 0 || x === MAP_W - 1 || y === MAP_H - 1) g[y][x] = T.TREE;
-  for (const [x, y] of [[2, 2], [16, 3], [19, 5], [22, 2], [25, 7], [3, 9], [27, 3], [15, 9], [24, 13], [27, 15], [61, 14], [60, 24], [34, 38], [57, 36], [58, 39], [35, 35]])
+  for (const [x, y] of [[2, 2], [16, 3], [19, 5], [22, 2], [25, 7], [3, 9], [27, 3], [15, 9], [61, 14], [60, 24], [34, 38], [57, 36], [58, 39], [35, 35]])
     if (g[y][x] === T.GRASS || g[y][x] === T.FLOWER) g[y][x] = T.TREE;
   return g;
 }

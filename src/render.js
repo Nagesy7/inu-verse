@@ -1,109 +1,189 @@
+// Pixel-art world rendering: chunky gold-trimmed buildings, navy/gold palette.
 import { TILE, MAP_W, MAP_H, MAP, T, BUILDINGS, PLOTS, NPC_HOMES, STALL_SLOTS } from './world.js';
 import { NPC_INTERIORS } from './homes.js';
 import { WALLS } from './furniture.js';
-import { drawShiba, drawBoneIcon } from './art.js';
 
-const rr = (c, x, y, w, h, r) => { c.beginPath(); c.roundRect(x, y, w, h, r); };
+export const GOLD = '#d4a640', GOLD_L = '#f2cc68', GOLD_D = '#8f6a22', NAVY = '#121a36', NAVY_L = '#24305c', INK = '#0c1022';
+export const FONT = 'Silkscreen, "Press Start 2P", monospace';
+const R = (c, x, y, w, h, col) => { c.fillStyle = col; c.fillRect(Math.round(x), Math.round(y), Math.round(w), Math.round(h)); };
 const hash = (x, y) => { let h = (x * 374761393 + y * 668265263) ^ 0x5bd1e995; h = Math.imul(h ^ (h >>> 13), 1274126177); return ((h ^ (h >>> 16)) >>> 0) / 4294967296; };
+const shade = (hex, f) => { const n = parseInt(hex.slice(1), 16); const ch = (v) => Math.max(0, Math.min(255, Math.round(v * f))); return '#' + [(n >> 16) & 255, (n >> 8) & 255, n & 255].map((v) => ch(v).toString(16).padStart(2, '0')).join(''); };
 
-function tree(c, x, y, s = 1) {
-  c.fillStyle = 'rgba(30,60,30,0.25)'; c.beginPath(); c.ellipse(x, y + 12 * s, 14 * s, 5 * s, 0, 0, 7); c.fill();
-  c.fillStyle = '#7a5032'; c.fillRect(x - 3 * s, y, 6 * s, 12 * s);
-  for (const [dx, dy, r, col] of [[0, -6, 15, '#3f8f4f'], [-7, -2, 10, '#4aa25a'], [7, -3, 10, '#4aa25a'], [-2, -12, 9, '#5cb86a'], [3, -9, 6, '#7ccf7f']]) { c.fillStyle = col; c.beginPath(); c.arc(x + dx * s, y + dy * s, r * s, 0, 7); c.fill(); }
+// 5x5-ish pixel paw at unit s
+export function paw(c, x, y, s, col) {
+  for (const [px, py] of [[0, 1], [2, 0], [4, 1], [5, 3], [-1, 3]]) R(c, x + px * s, y + py * s, s, s, col);
+  R(c, x + s, y + 3 * s, 3 * s, 2 * s, col); R(c, x + 0.5 * s, y + 4 * s, 4 * s, s, col);
+}
+
+function pixelText(c, text, cx, cy, maxW, size, col, shadowCol = INK) {
+  let s = size; c.font = `${s}px ${FONT}`; while (c.measureText(text).width > maxW && s > 6) { s -= 1; c.font = `${s}px ${FONT}`; }
+  c.textAlign = 'center'; c.textBaseline = 'middle';
+  if (shadowCol) { c.fillStyle = shadowCol; c.fillText(text, Math.round(cx) + 1, Math.round(cy) + 1); }
+  c.fillStyle = col; c.fillText(text, Math.round(cx), Math.round(cy)); return s;
+}
+
+function flag(c, x, y) { // pole base at (x,y)
+  R(c, x - 1, y - 30, 3, 30, GOLD_D); R(c, x - 1, y - 30, 1, 30, GOLD_L); R(c, x - 3, y - 34, 6, 5, GOLD_L);
+  R(c, x + 2, y - 30, 20, 12, GOLD); R(c, x + 18, y - 27, 6, 6, GOLD); R(c, x + 2, y - 19, 20, 2, GOLD_D);
+  paw(c, x + 7, y - 28, 1.6, NAVY);
+}
+function pottedTree(c, x, y, s = 1) { // base centre
+  R(c, x - 6 * s, y - 8 * s, 12 * s, 8 * s, GOLD_D); R(c, x - 6 * s, y - 8 * s, 12 * s, 2 * s, GOLD); R(c, x - 5 * s, y - 6 * s, 10 * s, 5 * s, '#3a2a1e');
+  R(c, x - 1 * s, y - 12 * s, 2 * s, 4 * s, '#5a3a22');
+  for (const [dx, dy, w, h, col] of [[-6, -18, 12, 6, '#1f5a34'], [-5, -24, 10, 6, '#2a7442'], [-3, -29, 6, 5, '#3a9152'], [-2, -31, 3, 2, '#5cb86a']]) R(c, x + dx * s, y + dy * s, w * s, h * s, col);
+  R(c, x + 3 * s, y - 22 * s, 2 * s, 2 * s, '#1f5a34'); R(c, x - 5 * s, y - 16 * s, 2 * s, 2 * s, '#174628');
+}
+
+const THEMES = {
+  cafe:    { wall: '#8e2430', roof: '#6a1822', accent: '#f2a3b4', label: 'Barista job' },
+  shop:    { wall: '#1f5a5a', roof: '#163f42', accent: '#9fe3d8', label: 'Furniture' },
+  fashion: { wall: '#5a2352', roof: '#3f1739', accent: '#f0a6dc', label: 'Clothing' },
+  launch:  { wall: '#22377a', roof: '#18275a', accent: '#7fb4ff', label: 'Demo tokens' },
+  cars:    { wall: '#2a2a33', roof: '#1c1c24', accent: '#c9c9d6', label: 'Coming soon' },
+};
+
+// Chunky pseudo-isometric storefront filling footprint (x,y,w,h); flag pokes above.
+export function storefront(c, x, y, w, h, th, name, { small = false } = {}) {
+  const side = small ? 8 : 14, plH = small ? 8 : 12, fw = w - side - 8, fx = x + 4;
+  const roofH = Math.round(h * (small ? 0.36 : 0.34)), wallTop = y + roofH, wallBot = y + h - plH;
+  // shadow
+  R(c, x + 8, y + h - 4, w - 4, 8, 'rgba(8,10,24,0.35)');
+  // plinth
+  R(c, x, y + h - plH, w, plH, '#3b3550'); R(c, x, y + h - plH, w, 2, GOLD); R(c, x, y + h - 2, w, 2, GOLD_D);
+  for (let i = 8; i < w; i += 16) R(c, x + i, y + h - plH + 4, 8, 2, '#4d4666');
+  // right side face (depth)
+  const sw = shade(th.wall, 0.62);
+  R(c, fx + fw, wallTop + side / 2, side, wallBot - wallTop - side / 2, sw);
+  for (let i = 0; i < side; i += 2) R(c, fx + fw + i, wallTop + i / 2, 2, side / 2 - i / 2 + 1, sw);
+  R(c, fx + fw + side - 2, wallTop + side / 2, 2, wallBot - wallTop - side / 2, GOLD_D);
+  // front wall bricks
+  R(c, fx, wallTop, fw, wallBot - wallTop, th.wall);
+  const bd = shade(th.wall, 0.8), bl = shade(th.wall, 1.18);
+  for (let yy = wallTop + 4, r = 0; yy < wallBot - 2; yy += 6, r++) for (let xx = fx + (r % 2 ? 6 : 0); xx < fx + fw - 2; xx += 12) { R(c, xx, yy, 10, 1, bd); if (hash(xx, yy) < 0.25) R(c, xx + 2, yy - 3, 6, 1, bl); }
+  R(c, fx, wallTop, 3, wallBot - wallTop, GOLD); R(c, fx + fw - 3, wallTop, 3, wallBot - wallTop, GOLD_D); R(c, fx + fw - 3, wallTop, 1, wallBot - wallTop, GOLD);
+  // stepped roof
+  const steps = small ? 3 : 4, rd = shade(th.roof, 0.8), rl = shade(th.roof, 1.2);
+  for (let i = 0; i < steps; i++) {
+    const inset = 6 + i * (fw / (2 * steps + 2)), ry = wallTop - (i + 1) * (roofH - 6) / steps, rh = (roofH - 6) / steps + 1;
+    R(c, fx + inset, ry, fw - inset * 2 + side * (1 - i / steps), rh, i % 2 ? th.roof : rd);
+    for (let xx = fx + inset + 2; xx < fx + fw - inset; xx += 8) R(c, xx, ry + 2, 4, 1, rl);
+    R(c, fx + inset, ry, 2, rh, GOLD_D);
+  }
+  const apexY = wallTop - (roofH - 6) - 2;
+  R(c, x + fw / 2 + 2, apexY - 2, 8, 4, GOLD); 
+  flag(c, x + fw / 2 + 6, apexY - 1);
+  // cornice
+  R(c, fx - 4, wallTop - 4, fw + 8, 6, GOLD); R(c, fx - 4, wallTop + 2, fw + 8, 2, GOLD_D); R(c, fx - 4, wallTop - 4, fw + 8, 1, GOLD_L);
+  for (const cx of [fx - 6, fx + fw - 2]) { R(c, cx, wallTop - 8, 8, 8, GOLD_L); R(c, cx + 2, wallTop - 6, 4, 4, GOLD_D); }
+  // signboard
+  const sgW = Math.min(fw - 20, small ? fw - 12 : 200), sgH = small ? 18 : 28, sgX = fx + fw / 2 - sgW / 2, sgY = wallTop - sgH / 2 - (small ? 4 : 8);
+  R(c, sgX - 3, sgY - 3, sgW + 6, sgH + 6, GOLD_D); R(c, sgX - 2, sgY - 2, sgW + 4, sgH + 4, GOLD); R(c, sgX, sgY, sgW, sgH, NAVY);
+  for (const [qx, qy] of [[sgX - 3, sgY - 3], [sgX + sgW - 1, sgY - 3], [sgX - 3, sgY + sgH - 1], [sgX + sgW - 1, sgY + sgH - 1]]) R(c, qx, qy, 4, 4, GOLD_L);
+  pixelText(c, name.toUpperCase(), sgX + sgW / 2, sgY + sgH / 2 + 1, sgW - 10, small ? 9 : 14, GOLD_L);
+  // door + awning + steps
+  const dW = small ? 22 : 34, dH = small ? 26 : 38, dX = fx + fw / 2 - dW / 2, dY = wallBot - dH;
+  R(c, dX - 4, dY - 4, dW + 8, dH + 4, GOLD); R(c, dX - 2, dY - 2, dW + 4, dH + 2, GOLD_D);
+  R(c, dX, dY, dW, dH, '#3a2216'); R(c, dX + dW / 2 - 1, dY, 2, dH, GOLD_D);
+  for (const ox of [3, dW / 2 + 3]) { R(c, dX + ox, dY + 4, dW / 2 - 6, dH * 0.4, '#f6d27a'); R(c, dX + ox, dY + 4, dW / 2 - 6, 2, '#fff1b8'); }
+  R(c, dX + dW / 2 - 4, dY + dH * 0.6, 2, 3, GOLD_L); R(c, dX + dW / 2 + 2, dY + dH * 0.6, 2, 3, GOLD_L);
+  const aW = dW + (small ? 18 : 30), aX = fx + fw / 2 - aW / 2, aY = dY - (small ? 12 : 16), aH = small ? 8 : 12, sN = small ? 6 : 8;
+  for (let i = 0; i < sN; i++) { const col = i % 2 ? NAVY : GOLD; const sx = aX + (aW / sN) * i; R(c, sx, aY, aW / sN + 1, aH, col); R(c, sx + 1, aY + aH, aW / sN - 2, 3, col); }
+  R(c, aX - 2, aY - 2, aW + 4, 3, GOLD_D);
+  R(c, dX - 8, wallBot, dW + 16, 3, '#6a6080'); R(c, dX - 4, wallBot + 3, dW + 8, 3, '#857ca0');
+  // windows (upper row lit)
+  const winY = wallTop + (small ? 10 : 14), winW = small ? 14 : 22, winH = small ? 12 : 18;
+  const winXs = small ? [fx + 8, fx + fw - 8 - winW] : [fx + 12, fx + fw / 2 - winW / 2, fx + fw - 12 - winW];
+  for (const wx of winXs) {
+    if (!small && wx === fx + fw / 2 - winW / 2 && winY + winH > aY - 4) continue;
+    R(c, wx - 2, winY - 2, winW + 4, winH + 4, GOLD_D); R(c, wx, winY, winW, winH, '#f6c85a'); R(c, wx, winY, winW, 3, '#fff1b8'); R(c, wx + winW / 2 - 1, winY, 2, winH, GOLD_D); R(c, wx, winY + winH / 2, winW, 2, GOLD_D);
+  }
+  // paw banners beside door (non-small)
+  if (!small) {
+    const bW = 26, bH = Math.min(46, wallBot - winY - winH - 14), bY = winY + winH + 8;
+    for (const bx of [dX - 30 - bW, dX + dW + 30]) {
+      if (bx < fx + 6 || bx + bW > fx + fw - 6 || bH < 26) continue;
+      R(c, bx - 2, bY - 2, bW + 4, bH + 4, GOLD); R(c, bx, bY, bW, bH, NAVY);
+      paw(c, bx + bW / 2 - 5, bY + bH / 2 - 6, 2, GOLD_L);
+      R(c, bx, bY + bH - 4, bW, 2, th.accent);
+    }
+  }
+  // potted trees
+  pottedTree(c, dX - 12, wallBot + 4, small ? 0.7 : 1); pottedTree(c, dX + dW + 12, wallBot + 4, small ? 0.7 : 1);
+  if (!small) { pottedTree(c, fx + 10, y + h - plH + 2, 0.8); pottedTree(c, fx + fw - 6, y + h - plH + 2, 0.8); }
 }
 
 function building(c, b) {
-  const x = b.x * TILE, y = b.y * TILE, w = b.w * TILE, h = b.h * TILE;
-  const th = { cafe: ['#fbe7d0', '#e0735a', '#f7b6c2'], shop: ['#dfeefa', '#4f7fd0', '#ffd27a'], launch: ['#e9e2fb', '#6c4fd0', '#ffcf5a'], cars: ['#eef0f2', '#4a4f5c', '#e94f4f'] }[b.id];
-  c.fillStyle = 'rgba(0,0,0,0.18)'; rr(c, x + 6, y + 10, w, h, 10); c.fill();
-  // wall
-  c.fillStyle = th[0]; rr(c, x + 4, y + h * 0.35, w - 8, h * 0.65, 6); c.fill();
-  c.strokeStyle = 'rgba(0,0,0,0.12)'; c.lineWidth = 2; c.stroke();
-  // roof
-  c.fillStyle = th[1]; rr(c, x, y, w, h * 0.42, 10); c.fill();
-  c.fillStyle = 'rgba(255,255,255,0.14)'; for (let i = 0; i < w; i += 16) c.fillRect(x + i, y + 4, 8, h * 0.42 - 8);
-  if (b.id === 'launch') { c.fillStyle = '#b9a6ff'; c.beginPath(); c.arc(x + w / 2, y + 10, 34, Math.PI, 0); c.fill(); c.fillStyle = '#fff'; c.beginPath(); c.arc(x + w / 2, y + 2, 10, 0, 7); c.fill(); drawBoneIcon(c, x + w / 2, y + 2, 1.1, '#ffcf5a'); }
-  // awning
-  if (b.id === 'cafe' || b.id === 'shop') { const aw = h * 0.12; for (let i = 0; i < (w - 16) / 16; i++) { c.fillStyle = i % 2 ? '#fff' : th[2]; c.beginPath(); c.moveTo(x + 8 + i * 16, y + h * 0.42); c.lineTo(x + 24 + i * 16, y + h * 0.42); c.lineTo(x + 24 + i * 16, y + h * 0.42 + aw); c.arc(x + 16 + i * 16, y + h * 0.42 + aw, 8, 0, Math.PI); c.fill(); } }
-  // windows
-  for (const wx of [x + 18, x + w - 18 - 44]) { c.fillStyle = '#6d5a4a'; rr(c, wx - 3, y + h * 0.6 - 3, 50, 38, 5); c.fill(); c.fillStyle = '#a8def5'; rr(c, wx, y + h * 0.6, 44, 32, 4); c.fill(); c.fillStyle = 'rgba(255,255,255,0.5)'; c.fillRect(wx + 6, y + h * 0.6 + 4, 6, 24); }
-  // door
-  const dx = x + w / 2 - 16; c.fillStyle = '#7a5032'; rr(c, dx, y + h - 46, 32, 46, [12, 12, 0, 0]); c.fill(); c.fillStyle = '#ffd25a'; c.beginPath(); c.arc(dx + 25, y + h - 22, 2.5, 0, 7); c.fill();
-  // sign
-  c.font = 'bold 15px "Trebuchet MS",sans-serif'; c.textAlign = 'center'; const tw = c.measureText(b.name).width + 24;
-  c.fillStyle = '#3a2a22'; rr(c, x + w / 2 - tw / 2, y + h * 0.42 - 30, tw, 24, 8); c.fill(); c.fillStyle = th[2]; c.fillText(b.name, x + w / 2, y + h * 0.42 - 13);
-  if (b.id === 'cafe') { c.fillStyle = '#fff'; c.font = 'bold 11px sans-serif'; c.fillText('JOB: Barista ★', x + w / 2, y + 20); }
-  if (b.id === 'shop') { c.fillStyle = '#fff'; c.font = 'bold 11px sans-serif'; c.fillText('Furniture', x + w / 2, y + 20); }
-  if (b.id === 'launch') { c.fillStyle = '#fff'; c.font = 'bold 11px sans-serif'; c.fillText('DEMO · simulated tokens', x + w / 2, y + 52); }
-  if (b.id === 'cars') {
-    c.fillStyle = '#fff'; c.font = 'bold 11px sans-serif'; c.fillText('COMING SOON', x + w / 2, y + 20);
-    for (const [cx, col] of [[x - 2, '#e94f4f'], [x + w - 58, '#3fb6a8']]) { const cy = y + h + 36; c.fillStyle = 'rgba(0,0,0,0.2)'; rr(c, cx + 2, cy + 4, 60, 26, 10); c.fill(); c.fillStyle = col; rr(c, cx, cy, 60, 24, 10); c.fill(); c.fillStyle = '#bfe6f7'; rr(c, cx + 14, cy + 4, 30, 10, 4); c.fill(); c.fillStyle = '#222'; for (const wx of [cx + 12, cx + 48]) { c.beginPath(); c.arc(wx, cy + 24, 6, 0, 7); c.fill(); } }
-  }
+  const x = b.x * TILE, y = b.y * TILE, w = b.w * TILE, h = b.h * TILE, th = THEMES[b.id];
+  storefront(c, x, y, w, h, th, b.name);
+  // small tag plate under sign
+  c.font = `8px ${FONT}`; const tw = c.measureText(th.label.toUpperCase()).width + 10;
+  R(c, x + w / 2 - tw / 2 - 4, y + h - 10, tw, 9, NAVY); R(c, x + w / 2 - tw / 2 - 4, y + h - 2, tw, 1, GOLD);
+  c.fillStyle = th.accent; c.textAlign = 'center'; c.textBaseline = 'middle'; c.fillText(th.label.toUpperCase(), x + w / 2 - 4, y + h - 5);
+  if (b.id === 'cars') for (const [cx, col] of [[x - 2, '#b3202c'], [x + w - 62, '#2f6f8f']]) { const cy = y + h + 36; R(c, cx + 2, cy + 22, 60, 6, 'rgba(8,10,24,.35)'); R(c, cx, cy + 6, 60, 16, col); R(c, cx + 12, cy, 34, 8, col); R(c, cx + 15, cy + 2, 28, 5, '#bfe6f7'); R(c, cx, cy + 6, 60, 2, GOLD); for (const wx of [cx + 8, cx + 42]) { R(c, wx, cy + 18, 10, 8, INK); R(c, wx + 3, cy + 21, 4, 3, GOLD); } }
 }
 
-function npcHouse(c, h) {
-  const x = h.x * TILE, y = h.y * TILE, w = h.w * TILE, hh = h.h * TILE, I = NPC_INTERIORS[h.id];
-  house(c, x, y, w, hh, I.roof, WALLS[I.wall].color, `${h.owner}'s`);
-}
 export function house(c, x, y, w, h, roof, wallCol, label) {
-  // yard
-  c.fillStyle = '#9fd47f'; rr(c, x + 2, y + 2, w - 4, h - 4, 8); c.fill();
-  c.strokeStyle = '#fff8e8'; c.lineWidth = 3; c.setLineDash([6, 4]); rr(c, x + 3, y + 3, w - 6, h - 6, 8); c.stroke(); c.setLineDash([]);
-  const hx = x + 22, hy = y + 34, hw = w - 44, hh = h - 60;
-  c.fillStyle = 'rgba(0,0,0,0.18)'; rr(c, hx + 4, hy + 8, hw, hh, 6); c.fill();
-  c.fillStyle = wallCol; rr(c, hx, hy + hh * 0.35, hw, hh * 0.65, 4); c.fill();
-  c.fillStyle = roof; c.beginPath(); c.moveTo(hx - 10, hy + hh * 0.42); c.lineTo(hx + hw / 2, hy - 14); c.lineTo(hx + hw + 10, hy + hh * 0.42); c.closePath(); c.fill();
-  c.fillStyle = 'rgba(255,255,255,0.18)'; c.beginPath(); c.moveTo(hx + hw / 2, hy - 14); c.lineTo(hx + hw + 10, hy + hh * 0.42); c.lineTo(hx + hw / 2, hy + hh * 0.42); c.fill();
-  c.fillStyle = '#7a5032'; rr(c, hx + hw / 2 - 10, hy + hh - 28, 20, 28, [8, 8, 0, 0]); c.fill();
-  c.fillStyle = '#a8def5'; rr(c, hx + 10, hy + hh * 0.55, 22, 18, 3); c.fill(); rr(c, hx + hw - 32, hy + hh * 0.55, 22, 18, 3); c.fill();
-  // path + bushes
-  c.fillStyle = '#e8d9b8'; c.fillRect(hx + hw / 2 - 8, hy + hh, 16, y + h - hy - hh - 4);
-  if (label) { c.font = 'bold 11px "Trebuchet MS",sans-serif'; c.textAlign = 'center'; c.fillStyle = '#3a2a22'; c.fillText(label, x + w / 2, y + 16); }
+  // yard with hedge border
+  R(c, x + 2, y + 2, w - 4, h - 4, '#5d9a4a');
+  for (let i = x + 2; i < x + w - 2; i += 8) { R(c, i, y + 2, 6, 6, '#2f6a36'); R(c, i, y + 2, 6, 2, '#3f8446'); }
+  for (let j = y + 8; j < y + h - 2; j += 8) { R(c, x + 2, j, 6, 6, '#2f6a36'); R(c, x + w - 8, j, 6, 6, '#2f6a36'); }
+  const hx = x + 18, hy = y + 26, hw = w - 36, hh = h - 44;
+  R(c, x + w / 2 - 8, hy + hh, 16, y + h - hy - hh - 2, '#c8b48c');
+  storefront(c, hx, hy, hw, hh, { wall: wallCol, roof, accent: GOLD_L }, label || 'Home', { small: true });
+}
+function npcHouse(c, h) { const I = NPC_INTERIORS[h.id]; house(c, h.x * TILE, h.y * TILE, h.w * TILE, h.h * TILE, I.roof, shade(WALLS[I.wall].color, 0.7), `${h.owner}'s`); }
+
+function tree(c, x, y) {
+  R(c, x - 12, y + 10, 24, 5, 'rgba(8,20,16,0.3)'); R(c, x - 3, y, 6, 13, '#5a3a22'); R(c, x - 3, y, 2, 13, '#7a5232');
+  for (const [dx, dy, w, h, col] of [[-14, -10, 28, 12, '#1c4f2e'], [-12, -18, 24, 10, '#256a3a'], [-9, -25, 18, 8, '#2f8046'], [-5, -30, 10, 6, '#3d9a54'], [-10, -16, 6, 4, '#3d9a54'], [4, -12, 6, 3, '#174028'], [-3, -27, 4, 3, '#5cb86a']]) R(c, x + dx, y + dy, w, h, col);
 }
 
 export function prerenderMap() {
-  const cv = document.createElement('canvas'); cv.width = MAP_W * TILE; cv.height = MAP_H * TILE; const c = cv.getContext('2d');
+  const cv = document.createElement('canvas'); cv.width = MAP_W * TILE; cv.height = MAP_H * TILE; const c = cv.getContext('2d'); c.imageSmoothingEnabled = false;
   for (let y = 0; y < MAP_H; y++) for (let x = 0; x < MAP_W; x++) {
     const t = MAP[y][x], px = x * TILE, py = y * TILE, r = hash(x, y);
-    c.fillStyle = r < 0.5 ? '#8fcf6f' : '#93d374'; c.fillRect(px, py, TILE, TILE);
-    if (t === T.GRASS || t === T.TREE || t === T.FLOWER) { c.fillStyle = '#7fbf62'; for (let i = 0; i < 3; i++) { const a = hash(x + i * 7, y), b = hash(x, y + i * 9); c.fillRect(px + a * 28, py + b * 28, 2, 4); } }
-    if (t === T.FLOWER) { for (let i = 0; i < 3; i++) { const a = hash(x + i, y * 3), b = hash(x * 5, y + i); c.fillStyle = ['#fff', '#ffd25a', '#f59ab8'][i]; c.beginPath(); c.arc(px + 6 + a * 20, py + 6 + b * 20, 2.5, 0, 7); c.fill(); } }
-    if (t === T.ROAD) { c.fillStyle = '#5e6470'; c.fillRect(px, py, TILE, TILE); c.fillStyle = 'rgba(255,255,255,0.04)'; c.fillRect(px + r * 20, py + r * 10, 6, 3); }
-    if (t === T.WALK || t === T.PLAZA) { c.fillStyle = t === T.WALK ? '#d9d2c4' : '#e8dcc2'; c.fillRect(px, py, TILE, TILE); c.strokeStyle = 'rgba(0,0,0,0.08)'; c.strokeRect(px + 0.5, py + 0.5, TILE / 2, TILE / 2); c.strokeRect(px + 16.5, py + 16.5, TILE / 2 - 1, TILE / 2 - 1); }
-    if (t === T.WATER) { c.fillStyle = '#5bb8e0'; c.fillRect(px, py, TILE, TILE); c.strokeStyle = 'rgba(255,255,255,0.35)'; c.beginPath(); c.arc(px + 10 + r * 10, py + 16, 5, 3.4, 6); c.stroke(); }
-    if (t === T.PLOT) { c.fillStyle = '#c9a77a'; c.fillRect(px, py, TILE, TILE); c.fillStyle = 'rgba(0,0,0,0.05)'; c.fillRect(px + r * 24, py + hash(y, x) * 24, 5, 3); }
+    R(c, px, py, TILE, TILE, r < 0.5 ? '#4f8f45' : '#53944a');
+    if (t === T.GRASS || t === T.TREE || t === T.FLOWER || t === T.BUILDING || t === T.HOME) for (let i = 0; i < 4; i++) { const a = hash(x + i * 7, y), b = hash(x, y + i * 9); R(c, px + Math.floor(a * 14) * 2, py + Math.floor(b * 14) * 2, 2, 4, i % 2 ? '#3f7a3a' : '#66a85a'); }
+    if (t === T.FLOWER) for (let i = 0; i < 3; i++) { const a = hash(x + i, y * 3), b = hash(x * 5, y + i); const fx = px + 4 + Math.floor(a * 11) * 2, fy = py + 4 + Math.floor(b * 11) * 2; R(c, fx, fy, 4, 4, ['#f6efe0', GOLD_L, '#f08cb0'][i]); R(c, fx + 1, fy + 1, 2, 2, '#c9763a'); }
+    if (t === T.ROAD) { R(c, px, py, TILE, TILE, '#2e3448'); if (r < 0.6) R(c, px + Math.floor(r * 12) * 2, py + Math.floor(hash(y, x) * 12) * 2, 4, 2, '#394058'); }
+    if (t === T.WALK) { R(c, px, py, TILE, TILE, '#b9a888'); for (let j = 0; j < 4; j++) { R(c, px, py + j * 8, TILE, 1, '#9a8a6c'); R(c, px + ((j % 2) ? 4 : 12) + (x % 2) * 16, py + j * 8, 1, 8, '#9a8a6c'); } }
+    if (t === T.PLAZA) { R(c, px, py, TILE, TILE, '#c9b893'); R(c, px, py, TILE, 1, '#a8976f'); R(c, px, py, 1, TILE, '#a8976f'); R(c, px + 1, py + 1, TILE - 2, 1, '#dccca8'); if ((x + y) % 4 === 0) { R(c, px + 13, py + 13, 6, 6, GOLD); R(c, px + 15, py + 15, 2, 2, GOLD_D); } }
+    if (t === T.WATER) { R(c, px, py, TILE, TILE, '#1f5a86'); if (r < 0.7) { R(c, px + 4 + Math.floor(r * 8) * 2, py + 10 + (x % 3) * 4, 8, 2, '#4a8fc0'); R(c, px + 18 - Math.floor(r * 4) * 2, py + 22, 6, 2, '#2f75a6'); } }
+    if (t === T.PLOT) { R(c, px, py, TILE, TILE, '#8a6a46'); R(c, px + Math.floor(r * 12) * 2, py + Math.floor(hash(y, x) * 12) * 2, 4, 2, '#7a5c3c'); R(c, px + 6, py + 20, 2, 2, '#9c7c54'); }
   }
-  // road dashes
-  c.fillStyle = '#f5e7a8';
-  for (let x = 1; x < MAP_W - 1; x++) { c.fillRect(x * TILE + 4, 21 * TILE - 2, 16, 3); c.fillRect(x * TILE + 4, 32 * TILE - 2, 16, 3); }
-  for (let y = 6; y < 41; y++) if (y < 19 || (y > 22 && y < 30) || y > 33) c.fillRect(32 * TILE - 2, y * TILE + 4, 3, 16);
-  // pond edge softening
-  for (const [x0, y0, w, h] of [[5, 3, 9, 5], [37, 35, 18, 4]]) { c.strokeStyle = '#e6d3a3'; c.lineWidth = 6; rr(c, x0 * TILE, y0 * TILE, w * TILE, h * TILE, 18); c.stroke(); c.fillStyle = '#4fae8a'; for (let i = 0; i < w; i += 2) { c.beginPath(); c.ellipse((x0 + i + 1) * TILE, (y0 + 1) * TILE, 10, 6, 0, 0, 7); c.fill(); c.fillStyle = '#f59ab8'; c.beginPath(); c.arc((x0 + i + 1) * TILE + 3, (y0 + 1) * TILE - 2, 3, 0, 7); c.fill(); c.fillStyle = '#4fae8a'; } }
-  for (const b of BUILDINGS) building(c, b);
+  // road dashes (gold)
+  for (let x = 1; x < MAP_W - 1; x++) { R(c, x * TILE + 8, 21 * TILE - 2, 14, 4, GOLD); R(c, x * TILE + 8, 32 * TILE - 2, 14, 4, GOLD); }
+  for (let y = 6; y < 41; y++) if (y < 19 || (y > 22 && y < 30) || y > 33) R(c, 32 * TILE - 2, y * TILE + 8, 4, 14, GOLD);
+  // pond stone edges + lily pads
+  for (const [x0, y0, w, h] of [[5, 3, 9, 5], [37, 35, 18, 4]]) {
+    for (let i = 0; i < w * TILE; i += 8) { R(c, x0 * TILE + i, y0 * TILE - 4, 7, 6, (i / 8) % 2 ? '#8c8aa0' : '#a4a2b8'); R(c, x0 * TILE + i, (y0 + h) * TILE - 2, 7, 6, (i / 8) % 2 ? '#8c8aa0' : '#a4a2b8'); }
+    for (let j = 0; j < h * TILE; j += 8) { R(c, x0 * TILE - 4, y0 * TILE + j, 6, 7, '#9896ac'); R(c, (x0 + w) * TILE - 2, y0 * TILE + j, 6, 7, '#9896ac'); }
+    for (let i = 0; i < w; i += 2) { const lx = (x0 + i + 1) * TILE - 6, ly = (y0 + 1) * TILE - 4; R(c, lx, ly, 12, 8, '#3f8a4a'); R(c, lx + 2, ly + 2, 4, 2, '#5cb86a'); R(c, lx + 6, ly - 2, 4, 4, '#f08cb0'); }
+  }
   for (const h of NPC_HOMES) npcHouse(c, h);
-  for (let y = 0; y < MAP_H; y++) for (let x = 0; x < MAP_W; x++) if (MAP[y][x] === T.TREE) tree(c, x * TILE + 16, y * TILE + 14, 1.05);
-  // park bench + lamp posts
-  c.fillStyle = '#9c6a3c'; rr(c, 17 * TILE, 6 * TILE + 8, 56, 14, 4); c.fill();
-  for (const [lx, ly] of [[8, 18], [24, 18], [40, 23], [52, 18], [12, 29], [44, 29], [20, 33], [50, 33]]) { c.fillStyle = '#4a4f5c'; c.fillRect(lx * TILE + 14, ly * TILE - 8, 4, 30); c.fillStyle = '#ffe9a0'; c.beginPath(); c.arc(lx * TILE + 16, ly * TILE - 10, 6, 0, 7); c.fill(); }
-  c.font = 'bold 13px "Trebuchet MS",sans-serif'; c.textAlign = 'left'; c.fillStyle = '#5a4030'; c.fillText('Market Row — launched token stalls', 34 * TILE, 6 * TILE + 14);
-  c.fillText('Sakura Pond', 7 * TILE, 2 * TILE + 20);
+  for (const b of BUILDINGS) building(c, b);
+  for (let y = 0; y < MAP_H; y++) for (let x = 0; x < MAP_W; x++) if (MAP[y][x] === T.TREE) tree(c, x * TILE + 16, y * TILE + 14);
+  // bench + gold lamp posts
+  R(c, 17 * TILE, 6 * TILE + 8, 56, 6, '#7a4a2a'); R(c, 17 * TILE, 6 * TILE + 16, 56, 4, '#5a3420'); R(c, 17 * TILE + 4, 6 * TILE + 20, 4, 6, INK); R(c, 17 * TILE + 48, 6 * TILE + 20, 4, 6, INK);
+  for (const [lx, ly] of [[8, 18], [24, 18], [40, 23], [52, 18], [12, 29], [44, 29], [20, 33], [50, 33]]) { const X = lx * TILE + 14, Y = ly * TILE; R(c, X - 2, Y + 18, 8, 4, GOLD_D); R(c, X, Y - 10, 4, 30, NAVY_L); R(c, X + 1, Y - 10, 1, 30, '#3a4880'); R(c, X - 4, Y - 20, 12, 10, GOLD); R(c, X - 2, Y - 18, 8, 6, '#fff1b8'); R(c, X - 2, Y - 23, 8, 3, GOLD_D); }
+  const label = (txt, x, y) => { c.font = `10px ${FONT}`; const w = c.measureText(txt).width + 14; R(c, x - 2, y - 2, w + 4, 18, GOLD); R(c, x, y, w, 14, NAVY); c.textAlign = 'left'; c.textBaseline = 'middle'; c.fillStyle = GOLD_L; c.fillText(txt, x + 7, y + 7); };
+  label('MARKET ROW - LAUNCHED TOKEN STALLS', 34 * TILE, 6 * TILE + 2);
+  label('SAKURA POND', 7 * TILE, 2 * TILE + 6);
+  label('SAKURA LANE', 2 * TILE, 34 * TILE + 2);
   return cv;
 }
 
 export function drawPlots(c, state, t) {
   for (const p of PLOTS) {
     const x = p.x * TILE, y = p.y * TILE, w = p.w * TILE, h = p.h * TILE, home = state.plots[p.id];
-    if (home) house(c, x, y, w, h, home.roof, WALLS[home.wall].color, `${state.player.name}'s Home`);
+    if (home) house(c, x, y, w, h, home.roof, shade(WALLS[home.wall].color, 0.7), `${state.player.name}'s Home`);
     else {
-      c.strokeStyle = 'rgba(255,255,255,0.7)'; c.setLineDash([5, 5]); c.lineWidth = 2; c.strokeRect(x + 4, y + 4, w - 8, h - 8); c.setLineDash([]);
-      // fence posts
-      c.fillStyle = '#b8875a'; for (let i = 0; i <= 6; i++) { c.fillRect(x + i * 32 - 2 + (i === 6 ? -2 : 0), y, 5, 12); }
-      // sign
-      const sx = x + w / 2, sy = y + h / 2 + Math.sin(t * 2 + p.x) * 1.5;
-      c.fillStyle = '#7a5032'; c.fillRect(sx - 2, sy - 4, 5, 34);
-      c.fillStyle = '#fff3d6'; rr(c, sx - 40, sy - 28, 80, 34, 6); c.fill(); c.strokeStyle = '#7a5032'; c.lineWidth = 2; c.stroke();
-      c.fillStyle = '#c0392b'; c.font = 'bold 12px "Trebuchet MS",sans-serif'; c.textAlign = 'center'; c.fillText('For claim', sx, sy - 13);
-      c.fillStyle = '#5a4030'; c.font = '10px sans-serif'; c.fillText('300 bones', sx, sy);
+      for (let i = 0; i <= 6; i++) { const fx = x + i * 32 - 2 + (i === 6 ? -3 : 0); R(c, fx, y, 6, 14, '#7a5232'); R(c, fx, y, 6, 2, GOLD); }
+      R(c, x, y + 4, w, 3, '#9c6c40');
+      const sx = x + w / 2, sy = Math.round(y + h / 2 + Math.sin(t * 2 + p.x) * 1.5);
+      R(c, sx - 2, sy - 4, 5, 34, '#5a3a22');
+      R(c, sx - 44, sy - 32, 88, 36, GOLD); R(c, sx - 42, sy - 30, 84, 32, NAVY);
+      pixelText(c, 'FOR CLAIM', sx, sy - 21, 78, 10, GOLD_L); pixelText(c, '300 BONES', sx, sy - 8, 78, 8, '#f6e7b8', null);
     }
   }
 }
@@ -112,10 +192,15 @@ export function drawStalls(c, state, t) {
   state.tokens.forEach((tok, i) => {
     if (i >= STALL_SLOTS.length) return;
     const s = STALL_SLOTS[i], x = s.x * TILE, y = s.y * TILE;
-    c.fillStyle = 'rgba(0,0,0,0.18)'; rr(c, x + 6, y + 10, 84, 52, 6); c.fill();
-    c.fillStyle = '#c99a5a'; rr(c, x + 4, y + 26, 84, 34, 4); c.fill();
-    for (let k = 0; k < 6; k++) { c.fillStyle = k % 2 ? '#fff' : tok.color; c.fillRect(x + 4 + k * 14, y + 4, 14, 20); }
-    c.fillStyle = tok.color; c.beginPath(); c.arc(x + 46, y + 42, 12, 0, 7); c.fill(); c.fillStyle = '#fff'; c.font = 'bold 9px sans-serif'; c.textAlign = 'center'; c.fillText(tok.ticker.slice(0, 4), x + 46, y + 45);
-    c.fillStyle = '#3a2a22'; c.font = 'bold 11px "Trebuchet MS",sans-serif'; c.fillText('$' + tok.ticker + (tok.curve.graduated ? ' ★' : ''), x + 46, y - 3);
+    R(c, x + 6, y + 56, 84, 6, 'rgba(8,10,24,.3)');
+    R(c, x + 4, y + 28, 84, 30, '#6a4428'); R(c, x + 4, y + 28, 84, 3, GOLD); R(c, x + 4, y + 55, 84, 3, '#4a2e1a');
+    R(c, x + 6, y + 6, 3, 24, GOLD_D); R(c, x + 83, y + 6, 3, 24, GOLD_D);
+    for (let k = 0; k < 6; k++) { R(c, x + 4 + k * 14, y + 4, 14, 14, k % 2 ? '#f6efe0' : tok.color); R(c, x + 5 + k * 14, y + 18, 12, 3, k % 2 ? '#f6efe0' : tok.color); }
+    R(c, x + 2, y + 2, 88, 3, GOLD);
+    R(c, x + 34, y + 32, 24, 20, tok.color); R(c, x + 34, y + 32, 24, 2, '#ffffff55');
+    pixelText(c, tok.ticker.slice(0, 4), x + 46, y + 42, 22, 7, '#fff', INK);
+    c.font = `8px ${FONT}`; const lbl = '$' + tok.ticker + (tok.curve.graduated ? ' *' : ''); const lw = c.measureText(lbl).width + 8;
+    R(c, x + 46 - lw / 2, y - 12, lw, 12, NAVY); R(c, x + 46 - lw / 2, y - 1, lw, 1, GOLD);
+    c.fillStyle = GOLD_L; c.textAlign = 'center'; c.textBaseline = 'middle'; c.fillText(lbl, x + 46, y - 6);
   });
 }
