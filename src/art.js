@@ -1,17 +1,48 @@
 // All art drawn procedurally - original.
 import { shibaSprite } from './sprite.js';
 import { FURNITURE, footprint, WALLS, FLOORS } from './furniture.js';
+import { OUTFIT_ATLAS } from './outfit-atlas.js';
+import { OUTFITS } from './outfits.js';
 
 // Reference-art sprites (cropped from the user's own art by scripts/extract_art.py).
 export const ART = {};
 export const FASHION_ART = { suit_navy: 'fashion-suit', tux_black: 'fashion-tux', hoodie_maroon: 'fashion-hoodie', jacket_black: 'fashion-jacket', gown_white: 'fashion-gown', hawaiian: 'fashion-hawaiian' };
 const ART_FILES = ['tan', 'cream', 'red', 'dark', 'golden', 'gray'].map((k) => 'shiba-' + k).concat(Object.values(FASHION_ART), ['cafe', 'shop', 'fashion', 'launch', 'cars'].map((k) => 'building-' + k));
-export const artReady = typeof Image === 'undefined' ? Promise.resolve() : Promise.all(ART_FILES.map((n) => new Promise((res) => { const im = new Image(); im.onload = () => { ART[n] = im; res(); }; im.onerror = res; im.src = `assets/${n}.png`; })));
-// Which art sprite represents this avatar: plain coat (tee + jeans) uses the coat art; NPC presets use fashion art.
-export function artKey(coat, outfit, npcIndex = null) {
-  if (npcIndex != null) return Object.values(FASHION_ART)[[0, 3, 1, 2, 4, 5][npcIndex % 6]];
-  const o = outfit || {}; if (!Object.keys(o).length) return 'shiba-' + coat;
-  return null; // custom outfit layering -> code-drawn sprite
+// Layered outfit atlases (one per coat, built by scripts/build_outfit_atlas.py): base_{front,side,back} + item layers, 4 walk frames each.
+const ATLAS_FILES = Object.keys(OUTFIT_ATLAS.canvas).map((k) => 'outfits/' + k);
+export const artReady = typeof Image === 'undefined' ? Promise.resolve() : Promise.all(ART_FILES.concat(ATLAS_FILES).map((n) => new Promise((res) => { const im = new Image(); im.onload = () => { ART[n] = im; res(); }; im.onerror = () => { console.warn('art failed to load', n); res(); }; im.src = `assets/${n}.png`; })));
+// Every avatar (player, NPCs, previews) is drawn as layered art: coat base + equipped outfit layers.
+export function artKey(coat) { return 'layer:' + coat; }
+
+// Ordered atlas keys (base first, then item layers by manifest z) for coat/view/frame/equipped.
+export function outfitLayers(coat, view, frame, equipped = {}) {
+  const items = Object.values(equipped || {}).filter((id) => OUTFITS[id] && OUTFIT_ATLAS.items[id]);
+  const noBottom = items.some((id) => OUTFIT_ATLAS.items[id].replacesBottom);
+  const ids = items.filter((id) => !(noBottom && OUTFIT_ATLAS.items[id].slot === 'bottom')).sort((a, b) => OUTFIT_ATLAS.items[a].z - OUTFIT_ATLAS.items[b].z);
+  return ['base', ...ids].map((id) => `${id}|${view}|${frame}`).filter((k) => OUTFIT_ATLAS.frames[coat]?.[k]);
+}
+const layerCache = new Map();
+function layeredCanvas(coat, view, frame, equipped) {
+  const key = `${coat}|${view}|${frame}|${Object.values(equipped || {}).sort().join(',')}`;
+  let cv = layerCache.get(key); if (cv) return cv;
+  const atlas = ART['outfits/' + coat], [cw, ch] = OUTFIT_ATLAS.canvas[coat], fr = OUTFIT_ATLAS.frames[coat];
+  cv = Object.assign(document.createElement('canvas'), { width: cw, height: ch }); const c = cv.getContext('2d');
+  for (const k of outfitLayers(coat, view, frame, equipped)) { const [sx, sy, w, h, ox, oy] = fr[k]; c.drawImage(atlas, sx, sy, w, h, ox, oy, w, h); }
+  const b = fr[`base|${view}|0`]; cv.feet = b[5] + b[3]; // canvas row under the paws
+  layerCache.set(key, cv); if (layerCache.size > 400) layerCache.delete(layerCache.keys().next().value);
+  return cv;
+}
+function drawLayered(ctx, x, y, coat, outfit, { face, phase, moving, scale, name, shadow, badge, emote }) {
+  const view = face === 'up' ? 'back' : face === 'left' || face === 'right' ? 'side' : 'front';
+  const frame = moving ? Math.floor(phase / 1.6) % 4 : 0, cv = layeredCanvas(coat, view, frame, outfit);
+  const k = (64 * scale) / (cv.feet - 6), sit = emote === 'sit' ? 0.82 : 1; // ~64px tall at scale 1, matches the old art sprites
+  const w = cv.width * k, h = cv.height * k * sit, top = y + 12 - cv.feet * k * sit, bob = moving ? 0 : Math.sin(phase * 0.5) * 0.6;
+  ctx.save(); ctx.imageSmoothingEnabled = true; ctx.imageSmoothingQuality = 'high';
+  if (shadow) { ctx.fillStyle = 'rgba(10,14,30,0.3)'; ctx.beginPath(); ctx.ellipse(x, y + 11, w * 0.3, 4 * scale, 0, 0, 7); ctx.fill(); }
+  ctx.translate(Math.round(x), 0); if (face === 'left') ctx.scale(-1, 1);
+  ctx.drawImage(cv, Math.round(-w / 2), Math.round(top - bob), Math.round(w), Math.round(h));
+  ctx.restore();
+  if (name) nameTag(ctx, x, top, name, badge);
 }
 
 const rr = (ctx, x, y, w, h, r) => { ctx.beginPath(); ctx.roundRect(x, y, w, h, r); };
@@ -19,6 +50,9 @@ const rr = (ctx, x, y, w, h, r) => { ctx.beginPath(); ctx.roundRect(x, y, w, h, 
 // Pixel Shiba (see sprite.js). (x,y) = ground point under the feet-ish centre.
 export function drawShiba(ctx, x, y, { coat = 'tan', face = 'down', phase = 0, moving = false, scale = 1, name = null, outfit = null, shadow = true, badge = null, art = null, emote = null } = {}) {
   if (art && ART[art]) return drawArt(ctx, x, y, ART[art], { face, phase, moving, scale, name, shadow, badge, emote });
+  const lc = art?.startsWith?.('layer:') ? art.slice(6) : coat;
+  if (ART['outfits/' + lc] && OUTFIT_ATLAS.canvas[lc]) return drawLayered(ctx, x, y, lc, outfit || {}, { face, phase, moving, scale, name, shadow, badge, emote });
+  // last resort (atlas failed to load): procedural pixel sprite
   const px = Math.max(1, Math.round(2 * scale));
   const frame = moving ? Math.floor(phase / 1.6) % 4 : 0;
   const spr = shibaSprite(coat, face, frame, outfit || {});

@@ -10,7 +10,7 @@ import { mulberry32 } from './rng.js';
 import { spawnNpcs, updateNpc, NPC_OUTFITS } from './npc.js';
 import { npcHome } from './homes.js';
 import { drawShiba, drawFurniture, drawRoom, drawMenuIcon, drawBoneIcon, drawEmblem } from './art.js';
-import { ART, artReady, artKey, FASHION_ART } from './art.js';
+import { ART, artReady, artKey } from './art.js';
 import { makeAmbient, stepAmbient, throwBall, dayPhase, timeForHour, drawGroundLife, drawSkyLife, drawAtmosphere, drawEmote, lightsFor, addMail, unreadMail, EMOTES, DAY_LEN } from './ambient.js';
 import { initAudio, setMuted, isMuted, footstep, chirp, bork, blip } from './audio.js';
 import { MALL_ITEMS, quote, buyMallItem, ensureMall, rollPeriods, fmtK, FEE_LABEL, OWNER, OWNER_WALLET, POOL_WALLETS, POOL_RULES, FEE_BPS } from './mall.js';
@@ -48,7 +48,8 @@ function spriteCanvas(coat, outfit, w, h, scale, face = 'down', art) { const c =
 function titleScreen() {
   const wrap = $('#coats');
   wrap.innerHTML = Object.entries(COATS).map(([k, c]) => `<button class="coat ${k === chosenCoat ? 'sel' : ''}" data-coat="${k}"><span class="cimg"></span>${c.name}</button>`).join('');
-  wrap.querySelectorAll('.coat').forEach((b) => b.querySelector('.cimg').appendChild(spriteCanvas(b.dataset.coat, {}, 60, 76, 1)));
+  const thumbs = () => wrap.querySelectorAll('.coat').forEach((b) => b.querySelector('.cimg').replaceChildren(spriteCanvas(b.dataset.coat, {}, 60, 76, 1)));
+  thumbs(); artReady.then(thumbs); // redraw once the layered art atlases have loaded
   wrap.onclick = (e) => { const b = e.target.closest('.coat'); if (!b) return; chosenCoat = b.dataset.coat; wrap.querySelectorAll('.coat').forEach((x) => x.classList.toggle('sel', x === b)); };
   const saved = load(localStorage);
   if (saved) { $('#continue').hidden = false; $('#continue').onclick = () => startGame(saved); }
@@ -72,7 +73,7 @@ function titleScreen() {
 function startGame(s) {
   state = s; state.kibble ??= 20; ensureWardrobe(state); ensurePacks(state); ensureMall(state); state.clockSec ??= 0; lastEarned = state.stats.bonesEarned; mode = 'world';
   $('#title').hidden = true; $('#hud').hidden = false; $('#minimap-wrap').hidden = false;
-  mapImg = prerenderMap(); npcs = spawnNpcs(rng, 6); npcs.forEach((n, i) => { n.art = artKey(n.coat, n.outfit, i); }); amb = makeAmbient(42);
+  mapImg = prerenderMap(); npcs = spawnNpcs(rng, 6); npcs.forEach((n) => { n.art = artKey(n.coat); }); amb = makeAmbient(42);
   artReady.then(() => { mapImg = prerenderMap(); });
   document.fonts?.load('10px Silkscreen').then(() => { mapImg = prerenderMap(); }).catch(() => {});
   cam.x = state.player.x; cam.y = state.player.y; hud(); persist();
@@ -285,7 +286,7 @@ function renderFashion() {
     if (d.mall) continue;
     const own = w.owned.includes(id), on = w.equipped[d.slot] === id;
     const card = document.createElement('div'); card.className = 'card' + (on ? ' on' : ''); card.dataset.item = id;
-    if (FASHION_ART[id] && ART[FASHION_ART[id]]) { const im = new Image(); im.src = ART[FASHION_ART[id]].src; im.className = 'fashart'; im.alt = d.name; card.appendChild(im); } else card.appendChild(wearPreview(id));
+    card.appendChild(wearPreview(id)); // dressed layered-art preview of this item on your coat
     card.insertAdjacentHTML('beforeend', `<div><b>${d.name}</b></div><div class="small" style="margin:2px 0">${SLOT_NAMES[d.slot]}</div><div class="price">${own ? 'Owned' : d.price + ' bones'}</div>${own ? `<button class="btn ${on ? 'ghost' : 'green'}" data-equip="${id}">${on ? 'Wearing' : 'Wear'}</button>` : `<button class="btn" data-buyfit="${id}">Buy</button>`}`);
     grid.appendChild(card);
   }
@@ -562,7 +563,7 @@ function renderMall() {
     body.innerHTML = `${demo}<h2>President's Office</h2><div class="packhead"><span id="presimg"></span><div><h3 style="margin:0">${OWNER.name}</h3><div class="small">${OWNER.title}</div><div class="small">Owner wallet: <code>${OWNER_WALLET}</code> (placeholder — no real wallet connected)</div></div></div>${pools}
       <p class="sub">Fee routing per purchase: 1% → President's Treasury · 0.25% → daily pool · 0.5% → weekly pool · 0.25% → monthly pool. Pool wallets: ${Object.entries(POOL_WALLETS).map(([k, v]) => `${k} <code>${v}</code>`).join(' · ')}</p>
       <h3>Fee ledger</h3><div class="board">${m.ledger.map((l) => `<div class="post"><b>${esc(MALL_ITEMS[l.item]?.name || l.item)}</b> price ${fmtK(l.price)} · fee ${fmtK(l.fee)} = owner ${fmtK(l.owner)} + daily ${fmtK(l.daily)} + weekly ${fmtK(l.weekly)} + monthly ${fmtK(l.monthly)}</div>`).join('') || '<p class="small">No purchases yet.</p>'}</div>`;
-    $('#presimg').appendChild(spriteCanvas('golden', { top: 'gold_suit', hat: 'crown', neck: 'diamond_chain', bottom: 'slacks_black', feet: 'loafers' }, 72, 92, 1, 'down', null));
+    $('#presimg').appendChild(spriteCanvas('golden', { top: 'gold_suit', hat: 'crown', neck: 'diamond_chain', bottom: 'slacks_black', feet: 'loafers' }, 72, 92, 1));
     return;
   }
   const items = Object.entries(MALL_ITEMS).filter(([, it]) => cat === 'all' || it.cat === cat);
@@ -570,7 +571,7 @@ function renderMall() {
   const grid = $('#mallgrid');
   for (const [id, it] of items) {
     const q = quote(id), card = document.createElement('div'); card.className = 'card';
-    if (it.grants.outfit) card.appendChild(spriteCanvas(state.player.coat, { ...state.wardrobe.equipped, [OUTFITS[it.grants.outfit].slot]: it.grants.outfit }, 72, 92, 1, 'down', null));
+    if (it.grants.outfit) card.appendChild(spriteCanvas(state.player.coat, { ...state.wardrobe.equipped, [OUTFITS[it.grants.outfit].slot]: it.grants.outfit }, 72, 92, 1));
     else if (it.grants.furniture) card.appendChild(iconCanvas((x) => drawFurniture(x, it.grants.furniture, 14, 4, 36, 0)));
     else card.appendChild(iconCanvas((x) => { const col = it.grants.car === 'limo' ? '#d4a640' : '#b3202c'; x.fillStyle = col; x.fillRect(4, 22, 56, 14); x.fillRect(16, 14, 30, 9); x.fillStyle = '#bfe6f7'; x.fillRect(19, 16, 24, 6); x.fillStyle = '#111'; x.fillRect(10, 34, 9, 8); x.fillRect(44, 34, 9, 8); }));
     const own = m.owned.includes(id);
