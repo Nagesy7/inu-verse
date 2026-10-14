@@ -3,6 +3,10 @@ export const SLOTS = ['hat', 'eyes', 'neck', 'top', 'bottom', 'feet'];
 export const SLOT_NAMES = { hat: 'Hat', eyes: 'Eyewear', neck: 'Neck', top: 'Top', bottom: 'Bottoms', feet: 'Shoes' };
 // look: drawing hints consumed by src/sprite.js
 export const OUTFITS = {
+  // free limited drops from President Inu visits (also on the City Board)
+  pres_scarf:   { slot: 'neck', name: "President's Scarf", price: 0, drop: true, look: { kind: 'scarf', c: '#c8282e', d: '#8e1a20', accent: '#e3b341' } },
+  pres_pin:     { slot: 'neck', name: 'Golden Seal Pin', price: 0, drop: true, look: { kind: 'pin', c: '#e3b341', d: '#9c7424' } },
+  pres_cap:     { slot: 'hat', name: 'Visit Day Cap', price: 0, drop: true, look: { kind: 'cap', c: '#1f2d5c', d: '#141e40', band: '#e3b341' } },
   cap_red:      { slot: 'hat', name: 'Red Cap', price: 60, look: { kind: 'cap', c: '#c8282e', d: '#8e1a20' } },
   top_hat:      { slot: 'hat', name: 'Top Hat', price: 140, look: { kind: 'tophat', c: '#1b1b22', d: '#0c0c10', band: '#d4a640' } },
   shades:       { slot: 'eyes', name: 'Sunglasses', price: 50, look: { c: '#15151c', frame: '#15151c' } },
@@ -43,6 +47,7 @@ export const owns = (s, id) => !!s.wardrobe?.owned?.includes(id);
 export function buyOutfit(s, id) {
   const d = OUTFITS[id]; if (!d) return fail('Unknown item');
   if (d.mall) return fail('Sold at Kibble Mall');
+  if (d.drop) return fail('Free drop from President Inu visits - not for sale');
   const w = ensureWardrobe(s);
   if (w.owned.includes(id)) return fail('Already owned');
   if (s.bones < d.price) return fail('Not enough bones');

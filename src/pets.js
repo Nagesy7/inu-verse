@@ -30,8 +30,8 @@ export function followStep(f, tx, ty, dt) { const dx = tx - f.x, dy = ty - f.y, 
 
 // ---------- pixel sprites (native 16x16, 2 frames) ----------
 const cache = new Map();
-export function petSprite(species, frame = 0) { const k = species + frame; let cv = cache.get(k); if (cv) return cv;
-  cv = document.createElement('canvas'); cv.width = 16; cv.height = 16; const c = cv.getContext('2d'), [a, b, e] = PETS[species].pal, I = '#141a2e', P = (x, y, w, h, col) => { c.fillStyle = col; c.fillRect(x, y, w, h); }, f = frame;
+export function petSprite(species, frame = 0, pal = null) { const k = species + frame + (pal ? pal.join('') : ''); let cv = cache.get(k); if (cv) return cv;
+  cv = document.createElement('canvas'); cv.width = 16; cv.height = 16; const c = cv.getContext('2d'), [a, b, e] = pal || PETS[species].pal, I = '#141a2e', P = (x, y, w, h, col) => { c.fillStyle = col; c.fillRect(x, y, w, h); }, f = frame;
   const legs = (xs, y) => xs.forEach((x, i) => P(x, y + ((i + f) % 2 ? 0 : -1), 2, 2, b));
   switch (species) {
     case 'kitten': P(3, 7, 9, 6, I); P(4, 8, 7, 4, a); P(9, 3, 6, 6, I); P(10, 4, 4, 4, a); P(10, 2, 2, 2, I); P(13, 2, 2, 2, I); P(11, 5, 1, 1, I); P(13, 5, 1, 1, I); P(1, 5 + f, 2, 4, a); P(5, 9, 4, 1, b); legs([4, 9], 13); break;

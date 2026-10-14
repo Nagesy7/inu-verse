@@ -31,6 +31,8 @@ import { renderField, renderFarm, renderLot, renderBizBoard } from './farmui.js'
 import * as REL from './relations.js';
 import { startJob } from './jobui.js';
 import { renderCity } from './flyui.js';
+import { renderMatchmaker } from './pairui.js';
+import * as PAIR from './pairing.js';
 import { ensureFly, featuredOf, statusGlow, poolsOf, FEATURED_SLOTS, claimPresDrop } from './flywheels.js';
 import { makeTown, townHour, lineFor, playerDid, friendsOf, rivalsOf } from './townai.js';
 import { mountCreator, drawPreview, profileOfChoices } from './creatorui.js';
@@ -181,9 +183,12 @@ function farmTick(dt) { const day = gameDay(); tickFarm(state, dt, { season: sea
     if (r?.sold && panel?.kind === 'lot') openPanel('lot', panel); } }
 const LOTS_POS = Object.fromEntries(BIZ_LOTS.map((l) => [l.id, [l.x + 3.5, l.y + l.h + 0.6]]));
 const pupF = [];
-function stepPups(dt) { const P = state.pups || []; while (pupF.length < P.length) pupF.push({ x: state.player.x, y: state.player.y, dir: 1, phase: 0, moving: false }); let lead = drive ? null : state.player;
+function stepPups(dt) { const P = allPups(); while (pupF.length < P.length) pupF.push({ x: state.player.x, y: state.player.y, dir: 1, phase: 0, moving: false }); let lead = drive ? null : state.player;
   P.forEach((p, i) => { const f = pupF[i]; if (!lead) return; followStep(f, lead.x - player.dir * 20, lead.y + 6, dt); lead = f; }); }
-function pupActors() { if (drive) return []; return (state.pups || []).map((p, i) => { const f = pupF[i]; if (!f) return null; const st = REL.stageOfPup(p, gameDay()); return { x: f.x, y: f.y, coat: p.coat.base, outfit: {}, face: f.dir > 0 ? 'right' : 'left', phase: f.phase, moving: f.moving, name: `${p.name} (${st})`, pupScale: REL.PUP_SCALE[st], pupHex: p.coat.hex, pupPatch: p.coat.patch, art: artKey(p.coat.base, {}) }; }).filter(Boolean); }
+function allPups() { return [...(state.pups || []), ...(PAIR.ensurePair(state).breedPups || []).map((p) => ({ ...p, coat: { base: 'tan', hex: p.look.coat, patch: p.look.accent || '#fff' }, look: p.look, custom: true }))]; }
+function pupActors() { if (drive) return []; return allPups().map((p, i) => { const f = pupF[i]; if (!f) return null; const st = p.born != null ? (REL.stageOfPup({ born: p.born }, gameDay()) || 'pup') : 'pup';
+  if (p.custom) return { x: f.x, y: f.y, face: f.dir > 0 ? 'right' : 'left', phase: f.phase, moving: f.moving, name: `${p.name}${p.rare ? ' ★' : ''}`, pupScale: REL.PUP_SCALE[st] || 0.8, profile: { look: { ...p.look, size: 'small' } }, customPup: true };
+  return { x: f.x, y: f.y, coat: p.coat.base, outfit: {}, face: f.dir > 0 ? 'right' : 'left', phase: f.phase, moving: f.moving, name: `${p.name} (${st})`, pupScale: REL.PUP_SCALE[st], pupHex: p.coat.hex, pupPatch: p.coat.patch, art: artKey(p.coat.base, {}) }; }).filter(Boolean); }
 const DATE_SPOTS = { cafe: [5.5, 19.5], fountain: [32, 67.4], pond: [11, 95.5], dinner: [32, 59.5] };
 let scene = null, confetti = [];
 function npcByName(n) { return npcs.find((x) => x.name === n); }
@@ -206,6 +211,8 @@ const ROOM_WALL_PREVIEW = 2;
 globalThis.__open = (k, o) => openPanel(k, o || {});
 globalThis.__rel = { build: (id) => enterBuild(id, false), claim: (id) => claimPlot(state, id), place: (...a) => placeFurniture(state, ...a), start: startScene, wedding: startWedding, get scene() { return scene; } };
 globalThis.__farm = { tick: (s) => farmTick(s), get fish() { return fish; } };
+function playDuo(id, partner) { if (panel) closePanel(); keys.clear(); startJob(id, { state, rng, day: gameDay, blip, rustle, fanfare, done: (r) => { const d = PAIR.finishDuo(state, id, partner, r, gameDay()); hud(); persist(); toast(`Duo with ${partner.name}! x${d.mult} · team ${d.team} (+${d.bonus} Bones)`, 'good'); }, closed: () => keys.clear() }); }
+globalThis.__playDuo = playDuo;
 function playJob(id) { if (panel) closePanel(); keys.clear(); startJob(id, { state, rng, day: gameDay, blip, rustle, fanfare, done: (r) => { hud(); persist(); if ((r.pb || r.rankUp) && state.town) playerDid(state.town, `You ${r.rankUp ? 'made ' + r.rank + ' as a' : 'set a new best as a'} ${JOB_DEFS[id].name.toLowerCase()} worker.`); toast(`${JOB_DEFS[id].name}: +${r.total} bones${r.pb ? ' · new best!' : ''}${r.rankUp ? ` · rank ${r.rank}!` : ''}`, 'good'); }, closed: () => keys.clear() }); }
 globalThis.__playJob = playJob;
 if (globalThis.kibblePay) setProfileStore(kibblePayProfileStore(globalThis.kibblePay)); // real SIWS-signed profile when the SDK is present
@@ -316,7 +323,7 @@ function updateWorld(dt) {
   else if (pk) { pr.hidden = false; pr.innerHTML = `<kbd${tch ? ' class="ta"' : ''}>${tch ? 'A' : 'E'}</kbd>Drive your ${esc(CAR_MODELS[carOf(state, pk.id)?.model]?.name || 'car')}`; setA('DRIVE'); }
   else if (pup?.workerRef) { pr.hidden = false; const v = pup.workerRef.chatted ? `Play ${JOB_DEFS[WORKER_JOB[pup.workerRef.job]].name} with` : 'Chat with'; pr.innerHTML = tch ? `<kbd class="ta">A</kbd>${v} ${esc(pup.name)}` : `<kbd>E</kbd>${v} ${esc(pup.name)}`; setA('TALK'); }
   else if (pup) { pr.hidden = false; const v = REL.PEOPLE[pup.name] && !pup.pet ? `Talk to ${esc(pup.name)} ${'♥'.repeat(REL.hearts(REL.ensureRel(state)[pup.name]))}` : `Pet ${esc(pup.name)}`; pr.innerHTML = tch ? `<kbd class="ta">A</kbd>${v}` : `<kbd>E</kbd>${v} · <kbd>T</kbd> throw ball`; setA(REL.PEOPLE[pup.name] && !pup.pet ? 'TALK' : 'PET'); }
-  else if (it) { pr.hidden = false; const verb = { building: 'Enter', plot: state.plots[it.id] ? 'Enter' : 'Inspect', visit: 'Visit', stall: 'View', clubhouse: myPack(state) ? 'Decorate' : 'Open', mall: 'Enter', field: 'Tend', farm: 'Use', lot: 'Visit', biz: 'Read', chapel: 'Enter' }[it.kind] || 'Use'; pr.innerHTML = `<kbd${tch ? ' class="ta"' : ''}>${tch ? 'A' : 'E'}</kbd>${verb} ${esc(it.name)}`; pr.dataset.target = it.id; setA(verb.toUpperCase()); }
+  else if (it) { pr.hidden = false; const verb = { matchmaker: 'Browse', building: 'Enter', plot: state.plots[it.id] ? 'Enter' : 'Inspect', visit: 'Visit', stall: 'View', clubhouse: myPack(state) ? 'Decorate' : 'Open', mall: 'Enter', field: 'Tend', farm: 'Use', lot: 'Visit', biz: 'Read', chapel: 'Enter' }[it.kind] || 'Use'; pr.innerHTML = `<kbd${tch ? ' class="ta"' : ''}>${tch ? 'A' : 'E'}</kbd>${verb} ${esc(it.name)}`; pr.dataset.target = it.id; setA(verb.toUpperCase()); }
   else { pr.hidden = true; setA(''); }
 }
 
@@ -352,7 +359,7 @@ function renderWorld() {
     if (a.me) { ctx.fillStyle = 'rgba(242,204,104,0.45)'; ctx.fillRect(-20, 9, 40, 4); ctx.fillRect(-14, 7, 28, 8); }
     if (a.petSpecies) { drawPetActor(ctx, a); ctx.restore(); continue; }
     if (a.president) { drawPresident(ctx, a); if (a.emote) drawEmote(ctx, 0, -14, a.emote.kind, time); ctx.restore(); continue; }
-    if (a.pupScale) { drawShiba(ctx, 0, 0, { coat: a.coat, outfit: a.outfit, face: a.face, phase: a.phase, moving: a.moving, name: a.name, scale: a.pupScale, art: a.art }); ctx.fillStyle = a.pupPatch; ctx.fillRect(-7 * a.pupScale, -30 * a.pupScale, 14 * a.pupScale, 4 * a.pupScale); ctx.fillStyle = a.pupHex; ctx.fillRect(-7 * a.pupScale, -26 * a.pupScale, 14 * a.pupScale, 3 * a.pupScale); ctx.restore(); continue; }
+    if (a.pupScale) { if (a.customPup) drawProfileShiba(ctx, 0, 0, a.profile, { face: a.face, phase: a.phase, moving: a.moving, name: a.name, scale: a.pupScale }); else { drawShiba(ctx, 0, 0, { coat: a.coat, outfit: a.outfit, face: a.face, phase: a.phase, moving: a.moving, name: a.name, scale: a.pupScale, art: a.art }); ctx.fillStyle = a.pupPatch; ctx.fillRect(-7 * a.pupScale, -30 * a.pupScale, 14 * a.pupScale, 4 * a.pupScale); ctx.fillStyle = a.pupHex; ctx.fillRect(-7 * a.pupScale, -26 * a.pupScale, 14 * a.pupScale, 3 * a.pupScale); } ctx.restore(); continue; }
     if (a.me) { const gl = statusGlow(state); if (gl) drawFlair(ctx, gl, time); }
     if (a.profile) { drawProfileShiba(ctx, 0, 0, a.profile, { face: a.face, phase: a.phase, moving: a.moving, name: a.name, scale: 1.5, badge: a.badge }); if (a.emote) drawEmote(ctx, 0, -110, a.emote.kind, time); }
     else drawShiba(ctx, 0, 0, { coat: a.coat, outfit: a.outfit, face: a.face, phase: a.phase, moving: a.moving, name: a.name, scale: 1.5, badge: a.badge, art: a.art, emote: a.emote?.kind });
@@ -388,14 +395,14 @@ function drawPresident(c, a) { // navy suit, gold tie (recoloured), sash, sungla
   if (a.coffee) { c.fillStyle = '#141a2e'; c.fillRect(17, -40, 12, 16); c.fillStyle = '#f4f1ea'; c.fillRect(18, -39, 10, 14); c.fillStyle = '#8a5a30'; c.fillRect(18, -34, 10, 4); c.fillStyle = '#141a2e'; c.fillRect(17, -42, 12, 3); }
   const tagY = cv.top - 138 - 14; c.font = '8px Silkscreen, monospace'; c.textAlign = 'center'; c.textBaseline = 'middle'; const tw = Math.ceil(c.measureText('PRESIDENT INU').width) + 14;
   c.fillStyle = '#121a36'; c.fillRect(-tw / 2 - 2, tagY - 8, tw + 4, 16); c.fillStyle = '#d4a640'; c.fillRect(-tw / 2, tagY - 6, tw, 12); c.fillStyle = '#ffe08a'; c.fillRect(-tw / 2, tagY - 6, tw, 1); c.fillStyle = '#121a36'; c.fillText('PRESIDENT INU', 0, tagY + 1); }
-function petActors() { const pet = activePet(state); if (!pet || drive) return []; return [{ x: petF.x, y: petF.y, petSpecies: pet.species, petName: pet.name, dir: petF.dir, moving: petF.moving, phase: petF.phase, love: petF.love }]; }
-function drawPetActor(c, a) { const spr = petSprite(a.petSpecies, Math.floor(a.phase / 2.5) % 2), hop = a.moving ? -Math.abs(Math.sin(a.phase)) * 4 : 0;
+function petActors() { const pet = activePet(state); if (!pet || drive) return []; return [{ x: petF.x, y: petF.y, petSpecies: pet.species, petPal: pet.burn ? pet.pal : null, petName: pet.name, dir: petF.dir, moving: petF.moving, phase: petF.phase, love: petF.love }]; }
+function drawPetActor(c, a) { const spr = petSprite(a.petSpecies, Math.floor(a.phase / 2.5) % 2, a.petPal), hop = a.moving ? -Math.abs(Math.sin(a.phase)) * 4 : 0;
   c.fillStyle = 'rgba(10,14,30,.3)'; c.beginPath(); c.ellipse(0, 10, 18, 5, 0, 0, 7); c.fill(); c.save(); if (a.dir < 0) c.scale(-1, 1); c.drawImage(spr, -24, -36 + hop, 48, 48); c.restore();
   if (a.love > 0) { c.fillStyle = '#ff5a8a'; const y = -44 - (2 - a.love) * 10; c.fillRect(-6, y, 4, 4); c.fillRect(2, y, 4, 4); c.fillRect(-6, y + 2, 12, 4); c.fillRect(-4, y + 6, 8, 2); c.fillRect(-2, y + 8, 4, 2); }
   c.font = '8px Silkscreen, monospace'; c.textAlign = 'center'; c.textBaseline = 'middle'; const tw = Math.ceil(c.measureText(a.petName).width) + 8; c.fillStyle = '#121a36'; c.fillRect(-tw / 2, -54, tw, 11); c.fillStyle = '#f6e7b8'; c.fillText(a.petName, 0, -48); }
-function carWorldProps() { const out = [], g = ensureGarage(state), col = (c) => CAR_COLORS[c.color] || '#c8323c';
-  if (drive) { const p = state.player, c = drive.car; out.push({ y: p.y + 10, d: (x) => { drawCar(x, p.x, p.y + 12, { col: col(c), kind: CAR_MODELS[c.model].kind, dir: drive.dir }); if (honkT > 0.2) { x.fillStyle = '#fff6c8'; x.font = '8px Silkscreen, monospace'; x.textAlign = 'center'; x.fillText('HONK!', p.x, p.y - 34); } } }); }
-  if (g.parked) { const pk = g.parked, c = carOf(state, pk.id); if (c) out.push({ y: pk.y + 10, d: (x) => drawCar(x, pk.x, pk.y + 12, { col: col(c), kind: CAR_MODELS[c.model].kind, dir: pk.dir || 'east' }) }); }
+function carWorldProps() { const out = [], g = ensureGarage(state), col = (c) => CAR_COLORS[c.color] || (c.color === 'gold' ? '#e3b341' : c.color === 'midnight' ? '#1a1a28' : '#c8323c');
+  if (drive) { const p = state.player, c = drive.car; out.push({ y: p.y + 10, d: (x) => { drawCar(x, p.x, p.y + 12, { col: col(c), kind: CAR_MODELS[c.model]?.kind || 'supercar', dir: drive.dir, glow: c.glow }); if (honkT > 0.2) { x.fillStyle = '#fff6c8'; x.font = '8px Silkscreen, monospace'; x.textAlign = 'center'; x.fillText('HONK!', p.x, p.y - 34); } } }); }
+  if (g.parked) { const pk = g.parked, c = carOf(state, pk.id); if (c) out.push({ y: pk.y + 10, d: (x) => drawCar(x, pk.x, pk.y + 12, { col: col(c), kind: CAR_MODELS[c.model]?.kind || 'supercar', glow: c.glow, dir: pk.dir || 'east' }) }); }
   const free = (c) => (!drive || drive.car.id !== c.id) && (!g.parked || g.parked.id !== c.id), home = [g.cars.find((c) => c.id === g.active), ...g.cars].find((c) => c && free(c)); // car on the driveway apron in front of each home you own
   if (home) for (const p of PLOTS) if (state.plots[p.id]) out.push({ y: (p.y + p.h + 1) * TILE - 4, d: (x) => drawCar(x, (p.x + 1.4) * TILE, (p.y + p.h + 1) * TILE - 4, { col: col(home), kind: CAR_MODELS[home.model].kind, dir: 'east' }) });
   return out; }
@@ -439,6 +446,7 @@ function interact(it) {
   else if (it.kind === 'farm') openPanel('farm', { id: it.id });
   else if (it.kind === 'lot') openPanel('lot', { id: it.id });
   else if (it.kind === 'biz') openPanel('bizboard');
+  else if (it.kind === 'matchmaker') openPanel('matchmaker');
   else if (it.kind === 'clubhouse') { if (myPack(state)) enterBuild('clubhouse', false); else openPanel('packs'); }
 }
 
@@ -452,6 +460,7 @@ function openPanel(kind, opts = {}) {
   if (kind === 'friend') return renderFriend(relCtx(), opts.name);
   if (kind === 'chapel') return renderChapel(relCtx());
   if (kind === 'salon') return renderSalon();
+  if (kind === 'matchmaker') return renderMatchmaker({ ...farmCtx(), tab: opts.tab, weekFrac: ((state.clockSec / DAY_LEN) % WEEK_DAYS) / WEEK_DAYS, open: (t) => openPanel('matchmaker', { tab: t }), startDuo: (partner, jobId) => { if (!partner) return toast('No partner', 'bad'); closePanel(); playDuo(jobId, partner); } });
   if (kind === 'city') return renderCity({ ...farmCtx(), tab: opts.tab, nowH: state.clockSec / (DAY_LEN / 24), dayFrac: (state.clockSec % DAY_LEN) / DAY_LEN, trend, presOn: pres.on && pres.stage === 'visit', presKey: 'visit' + pres.n, open: (t) => openPanel('city', { tab: t }) });
   if (kind === 'furn') return renderFurnStore(relCtx(), opts.store);
   if (kind === 'plot') {
@@ -487,7 +496,7 @@ function renderDealer() { const body = $('#panel-body'), lux = panel.dealer === 
   grid.onclick = (e) => { const sw = e.target.closest('[data-col]'); if (sw) { panel.col[sw.dataset.car] = sw.dataset.col; return renderDealer(); }
     const b = e.target.closest('[data-buycar]'); if (!b) return; const id = b.dataset.buycar, r = buyCar(state, id, panel.col[id] || (lux ? 'Gold' : 'Red'));
     if (r.ok) { toast(`You bought a ${r.car.color} ${CAR_MODELS[id].name}! Find it in your Garage.`, 'good'); hud(); persist(); renderDealer(); } else toast(r.reason, 'bad'); }; }
-function petIcon(sp) { return iconCanvas((x) => { x.imageSmoothingEnabled = false; x.drawImage(petSprite(sp, 0), 12, 4, 40, 40); }, 64, 48); }
+function petIcon(sp, pal = null) { return iconCanvas((x) => { x.imageSmoothingEnabled = false; x.drawImage(petSprite(sp, 0, pal), 12, 4, 40, 40); }, 64, 48); }
 function renderPets() { const body = $('#panel-body'), st = ensurePets(state);
   body.innerHTML = `<h2>Pawsome Pets</h2><p class="sub">Companions that follow you around. Common pets cost bones (${Math.floor(state.bones)}); exotic pets cost demo $KIBBLE (${state.kibble.toFixed(2)}) with the ${FEE_LABEL}, sent to the treasury via the ${wallet().simulated ? 'simulated' : 'live'} wallet.</p>
    <label class="small">Name your new pet: <input id="petname" maxlength="16" placeholder="e.g. Biscuit"></label><div class="grid" id="petgrid"></div>`;
@@ -500,9 +509,9 @@ function renderGarage() { const body = $('#panel-body'), g = ensureGarage(state)
   body.innerHTML = `<h2>Garage & Pets</h2><p class="sub">Spawn a car to drive it (WASD / stick, <b>H</b> or <b>B</b> to honk, <b>E</b> / <b>A</b> to park). Your active car shows on your home driveway.</p>
    <b>Cars</b><div class="grid" id="gcars"></div><b>Pets</b><div class="grid" id="gpets"></div>`;
   const gc = $('#gcars'); if (!g.cars.length) gc.innerHTML = '<p class="small">No cars yet - visit Zoomies Motors (Market Row) or Zoomies Luxury Autos (Kibble Mall).</p>';
-  for (const c of g.cars) { const card = document.createElement('div'); card.className = 'card'; card.appendChild(carIcon(c.model, c.color)); card.insertAdjacentHTML('beforeend', `<b>${c.color} ${CAR_MODELS[c.model].name}</b>${g.active === c.id ? '<small>Home car</small>' : ''}<button class="btn green" data-drive="${c.id}">Drive</button><button class="btn ghost" data-home="${c.id}">Set as home car</button>`); gc.appendChild(card); }
+  for (const c of g.cars) { const card = document.createElement('div'); card.className = 'card'; card.appendChild(carIcon(c.model, c.color)); card.insertAdjacentHTML('beforeend', `<b>${c.burn ? `${c.name} #${c.n}` : `${c.color} ${CAR_MODELS[c.model].name}`}</b>${g.active === c.id ? '<small>Home car</small>' : ''}<button class="btn green" data-drive="${c.id}">Drive</button><button class="btn ghost" data-home="${c.id}">Set as home car</button>`); gc.appendChild(card); }
   const gp = $('#gpets'); if (!st.owned.length) gp.innerHTML = '<p class="small">No pets yet - visit Pawsome Pets in the Kibble Mall district.</p>';
-  for (const p of st.owned) { const card = document.createElement('div'); card.className = 'card'; card.appendChild(petIcon(p.species)); card.insertAdjacentHTML('beforeend', `<b>${esc(p.name)}</b><small>${PETS[p.species].name}${st.active === p.id ? ' · following' : ''}</small><button class="btn green" data-walk="${p.id}">${st.active === p.id ? 'Leave at home' : 'Take for a walk'}</button><button class="btn ghost" data-rename="${p.id}">Rename</button>`); gp.appendChild(card); }
+  for (const p of st.owned) { const card = document.createElement('div'); card.className = 'card'; card.appendChild(petIcon(p.species, p.burn ? p.pal : null)); card.insertAdjacentHTML('beforeend', `<b>${esc(p.name)}</b><small>${p.burn ? "Limited burn edition" : PETS[p.species].name}${st.active === p.id ? ' · following' : ''}</small><button class="btn green" data-walk="${p.id}">${st.active === p.id ? 'Leave at home' : 'Take for a walk'}</button><button class="btn ghost" data-rename="${p.id}">Rename</button>`); gp.appendChild(card); }
   body.onclick = (e) => { const t = e.target.closest('button'); if (!t) return;
     if (t.dataset.drive) spawnCar(t.dataset.drive);
     else if (t.dataset.home) { g.active = t.dataset.home; persist(); renderGarage(); }
@@ -536,7 +545,7 @@ function renderFashion() {
   const body = $('#panel-body'), w = state.wardrobe;
   body.innerHTML = `<h2>Fetch Fashion</h2><p class="sub">Hats, suits, gowns and bling for discerning dogs. Bought clothes go to your <b>Wardrobe</b>. Preview shows the item on you.</p><div class="row" style="justify-content:flex-start;margin:0 0 10px"><button class="btn alt" id="open-wardrobe">Open wardrobe</button></div><div class="grid" id="fashgrid"></div>`;
   const grid = $('#fashgrid');
-  for (const [id, d] of Object.entries(OUTFITS)) {
+  for (const [id, d] of Object.entries(OUTFITS)) { if (d.drop && !state.wardrobe.owned.includes(id)) continue;
     if (d.mall) continue;
     const own = w.owned.includes(id), on = w.equipped[d.slot] === id;
     const card = document.createElement('div'); card.className = 'card' + (on ? ' on' : ''); card.dataset.item = id;

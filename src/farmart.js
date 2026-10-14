@@ -1,6 +1,6 @@
 // Original pixel art for the farmland district + business lots (procedural, crisp integer rects).
 import { CHAPEL } from './world.js';
-import { TILE, FIELDS, BARN, POND, MARKET, CRAFT, PEN, ORCHARD, FARM_SIGNS, LOTS } from './world.js';
+import { TILE, FIELDS, BARN, POND, MARKET, CRAFT, PEN, ORCHARD, FARM_SIGNS, LOTS, MATCHMAKER } from './world.js';
 import { CROPS, ensureFarm, stageOf, COSMETICS } from './farm.js';
 import { ensureBiz, TYPES, rivalAt, PREMIUM_LOOKS } from './biz.js';
 const N = 16, INK = '#141a2e';
@@ -33,6 +33,8 @@ export function farmStatic() { const out = [{ y: (CHAPEL.y + CHAPEL.h) * TILE - 
   out.push({ y: (POND.y - 1) * TILE, d: (c) => { const x = (POND.x + 5) * TILE, y = (POND.y - 1) * TILE; R(c, x + 18, y - 26, 3, 30, '#6a4422'); R(c, x + 20, y - 26, 26, 1, '#ddd'); R(c, x + 45, y - 26, 1, 22, '#ddd'); R(c, x + 43, y - 4, 5, 4, '#e8344a'); } });
   for (const [k, s] of Object.entries(FARM_SIGNS)) out.push({ y: s.y * TILE + 30, d: (c) => { const x = s.x * TILE - 20, y = s.y * TILE - 18; R(c, x + 30, y + 30, 4, 18, '#6a4422'); R(c, x - 2, y - 2, 76, 36, INK); R(c, x, y, 72, 32, k === 'farmboard' ? '#3f7a3a' : '#5a3a8a'); R(c, x, y, 72, 2, '#e8c95a');
     txt(c, k === 'farmboard' ? 'TOP FARMER' : 'TOP BUSINESS', x + 36, y + 13, 6, '#ffe7a3'); txt(c, 'WEEKLY PRIZES', x + 36, y + 25, 5, '#fff'); } });
+  out.push({ y: MATCHMAKER.y * TILE + 30, d: (c) => { const x = MATCHMAKER.x * TILE - 20, y = MATCHMAKER.y * TILE - 18; R(c, x + 30, y + 30, 4, 18, '#6a4422'); R(c, x - 2, y - 2, 76, 36, INK); R(c, x, y, 72, 32, '#c45a7a'); R(c, x, y, 72, 2, '#ffe7a3');
+    txt(c, 'MATCHMAKER', x + 36, y + 13, 6, '#ffe7a3'); txt(c, 'DUOS · PUPS · LOVE', x + 36, y + 25, 5, '#fff'); } });
   out.push({ y: 80 * TILE + 30, d: (c) => { const x = 27 * TILE, y = 80 * TILE - 6; R(c, x + 10, y + 18, 4, 18, '#6a4422'); R(c, x + 74, y + 18, 4, 18, '#6a4422'); R(c, x, y, 88, 22, INK); R(c, x + 1, y + 1, 86, 20, '#a8744a'); txt(c, 'FARMLAND  v', x + 44, y + 14, 8, '#fff1d0'); } });
   return out; }
 function barnDraw(c, look) { const x = BARN.x * TILE, y = BARN.y * TILE, w = BARN.w * TILE, h = BARN.h * TILE, wall = look === 'barn_blue' ? '#3a5aa8' : look === 'barn_gold' ? '#b8323a' : '#b8323a', trim = look === 'barn_gold' ? '#ffd23a' : '#f4ead2';
@@ -70,7 +72,10 @@ function storefront(c, L, m, rival, t) { const x = L.x * TILE, y = L.y * TILE, w
   if (m?.decor?.planters) for (const px of [x - 2, x + w - 12]) { R(c, px, y + h - 14, 14, 12, '#8a5a2a'); R(c, px + 1, y + h - 22, 12, 9, '#4caf50'); R(c, px + 4, y + h - 22, 3, 3, '#ff8fb6'); }
   if (m?.decor?.neon) { const on = 0.6 + Math.sin(t * 4) * 0.4; c.globalAlpha = on; R(c, x + 74, y + 58, 26, 10, '#ff4fd8'); c.globalAlpha = 1; txt(c, 'OPEN', x + 87, y + 66, 5, '#fff'); }
   if (m?.decor?.bench) { R(c, x + 12, y + h + 2, 40, 4, '#a8744a'); R(c, x + 14, y + h + 6, 3, 4, '#6a4422'); R(c, x + 47, y + h + 6, 3, 4, '#6a4422'); }
-  if (m?.staff) for (let k = 0; k < m.staff; k++) R(c, x + 18 + k * 14, y + 64, 8, 10, '#e8a23a'); }
+  if (m?.staff) for (let k = 0; k < m.staff; k++) R(c, x + 18 + k * 14, y + 64, 8, 10, '#e8a23a');
+  // burn-for-status skins: sakura petals + gold leaf trim (visible beyond the base look)
+  if (m?.looks?.store_sakura) { for (let i = 0; i < 5; i++) { R(c, x + 8 + i * 14 + Math.sin(t + i) * 2, y + 8, 4, 4, '#ff8fb6'); R(c, x + 10 + i * 14, y + 10, 2, 2, '#fff'); } R(c, x - 4, y + 30, w + 8, 3, '#ffb0c8'); }
+  if (m?.looks?.store_gold) { R(c, x - 4, y - 10, w + 8, 3, '#e3b341'); R(c, x - 4, y + h - 2, w + 8, 3, '#e3b341'); for (let i = 0; i < 3; i++) R(c, x + 20 + i * 24, y - 18, 8, 8, '#ffd23a'); } }
 export function farmDynamic(state, t) { const out = []; if (!state) return out; const f = ensureFarm(state), b = ensureBiz(state);
   out.push({ y: (BARN.y + BARN.h) * TILE - 1, d: (c) => barnDraw(c, f.look.barn) }); out.push({ y: (BARN.y + BARN.h + 1) * TILE, d: (c) => tractor(c, (BARN.x + BARN.w + 0.3) * TILE, (BARN.y + BARN.h + 1) * TILE - 4, f.look.tractor) });
   FIELDS.forEach((F, i) => { const fl = f.fields[i], st = stageOf(fl); if (!st) return; for (let r = 0; r < F.h; r++) out.push({ y: (F.y + r) * TILE + 26, d: (c) => { for (let k = 0; k < F.w * 2; k++) crop(c, F.x * TILE + 8 + k * 16, (F.y + r) * TILE + 26, fl.crop, st, t); } });

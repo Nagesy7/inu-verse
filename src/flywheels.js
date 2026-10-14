@@ -16,7 +16,7 @@ export const STATUS = {
 };
 export const PRES_DROPS = [
   { id: 'pres_scarf', name: "President's Scarf", slot: 'neck' },
-  { id: 'pres_pin', name: 'Golden Seal Pin', slot: 'acc' },
+  { id: 'pres_pin', name: 'Golden Seal Pin', slot: 'neck' },
   { id: 'pres_cap', name: 'Visit Day Cap', slot: 'hat' },
 ];
 export function ensureFly(s) { s.fly ||= {}; const f = s.fly;
@@ -33,11 +33,18 @@ export function burnForStatus(s, id) { const S = STATUS[id]; if (!S) return { ok
   const w = wallet(); if (!w.burnSync) return { ok: false, reason: 'Wallet cannot burn yet' };
   const buy = w.burnSync({ state: s, itemId: 'burn:' + id, amountU: priceU }); if (!buy.ok) return buy;
   const f = ensureFly(s); f.burns[id] = (f.burns[id] || 0) + 1; f.owned[id] = { n: f.burns[id], at: Date.now() }; f.burnedTotal += S.burn;
+  if (S.kind === 'car') grantBurnCar(s, id, S); if (S.kind === 'storefront') grantBurnStore(s, id); if (S.kind === 'pet') grantBurnPet(s, id, S);
   return { ok: true, n: f.burns[id], left: remaining(s, id), glow: S.glow, burnedU: buy.burnedU }; }
+function grantBurnCar(s, id, S) { s.garage ||= { cars: [], active: null, parked: null }; if (s.garage.cars.find((c) => c.burnId === id)) return;
+  const car = { id: 'burn-' + id, model: 'supercar', color: id.endsWith('02') ? 'Black' : 'Gold', burn: true, burnId: id, n: ensureFly(s).owned[id].n, glow: S.glow, name: S.name }; s.garage.cars.push(car); s.garage.active ??= car.id; }
+function grantBurnStore(s, id) { if (!s.biz?.mine) return; s.biz.mine.looks ||= {}; s.biz.mine.looks[id] = true; s.biz.mine.look = id === 'store_gold' ? 'gold' : 'sakura'; }
+function grantBurnPet(s, id, S) { s.pets ||= { owned: [], active: null }; if (s.pets.owned.find((p) => p.burnId === id)) return;
+  const pet = { id: 'burn-' + id, species: 'redpanda', name: S.name, exotic: true, burn: true, burnId: id, glow: S.glow, pal: [S.glow, '#3a2418', '#fff1e0'] }; s.pets.owned.push(pet); s.pets.active ??= pet.id; }
 export function statusGlow(s) { const f = ensureFly(s); for (const id of Object.keys(f.owned || {})) if (STATUS[id]?.glow) return STATUS[id].glow; return null; }
 export function poolsOf(s) { const m = ensureMall(s); return { daily: m.pools.daily, weekly: m.pools.weekly, monthly: m.pools.monthly, treasury: m.treasury }; }
 export function claimPresDrop(s, visitKey) { const f = ensureFly(s); if (f.drops[visitKey]) return { ok: false, reason: 'Already claimed this visit' };
   const drop = PRES_DROPS[Math.abs(hash(visitKey)) % PRES_DROPS.length]; f.drops[visitKey] = drop.id;
-  f.cosmetics ||= []; if (!f.cosmetics.includes(drop.id)) f.cosmetics.push(drop.id); // collectible badge set (shown on the City Board + shared profile)
+  f.cosmetics ||= []; if (!f.cosmetics.includes(drop.id)) f.cosmetics.push(drop.id);
+  s.wardrobe ||= { owned: [], equipped: {} }; if (!s.wardrobe.owned.includes(drop.id)) s.wardrobe.owned.push(drop.id); // wearable; player can equip from Wardrobe
   return { ok: true, drop }; }
 const hash = (s) => { let h = 2166136261; for (const c of String(s)) h = Math.imul(h ^ c.charCodeAt(0), 16777619); return h >>> 0; };

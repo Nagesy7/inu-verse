@@ -10,7 +10,7 @@ test('six starter coats only', () => {
   assert.equal(newGame({ coat: 'golden' }).player.coat, 'golden');
 });
 test('catalog covers required clothing and valid slots', () => {
-  for (const d of Object.values(OUTFITS)) { assert.ok(SLOTS.includes(d.slot)); assert.ok(d.price > 0); }
+  for (const d of Object.values(OUTFITS)) { assert.ok(SLOTS.includes(d.slot)); assert.ok(d.price > 0 || d.drop); }
   for (const id of ['cap_red', 'suit_navy', 'tux_black', 'hoodie_maroon', 'jacket_black', 'gown_white', 'hawaiian', 'shades', 'chain_gold', 'sneakers_red']) assert.ok(OUTFITS[id], id);
 });
 test('buy deducts bones, rejects duplicates and insufficient funds', () => {

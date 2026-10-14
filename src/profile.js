@@ -20,7 +20,7 @@ const slotOf = (id) => { const d = OUTFITS[id]; if (!d) return null; const L = d
 export function profileFromState(s) { const P = s.player, eq = s.wardrobe?.equipped || {};
   return normalizeProfile({ v: PROFILE_VERSION, wallet: walletOf(s), name: P.name, pronouns: P.pronouns, look: P.look, trait: P.trait,
     outfit: Object.fromEntries(['hat', 'eyes', 'neck', 'top', 'bottom', 'feet'].map((k) => [k, eq[k] ? slotOf(eq[k]) : null])), cosmetics: [...(s.wardrobe?.owned || []), ...(s.fly?.cosmetics || []), ...Object.keys(s.fly?.owned || {})].slice(0, 64),
-    pets: (s.pups || []).map((p, i) => ({ id: p.id || 'pup' + i, name: p.name, coat: p.coatHex || p.color, rare: !!p.rare, game: 'inu-verse' })) }, walletOf(s)); }
+    pets: [...(s.pups || []).map((p, i) => ({ id: p.id || 'pup' + i, name: p.name, coat: p.coat?.hex || p.coatHex || p.color, rare: !!p.rare, game: 'inu-verse' })), ...(s.pair?.breedPups || []).map((p) => ({ id: p.id, name: p.name, coat: p.look?.coat, rare: !!p.rare, game: 'inu-verse' }))].slice(0, 12) }, walletOf(s)); }
 // avatar-ready profile (cached per frame by the caller); null for legacy saves that keep the atlas look
 export const hasCustomLook = (s) => !!s?.player?.look;
 export async function saveProfile(s) { if (!hasCustomLook(s)) return null; try { return await store.put(profileFromState(s)); } catch { return null; } }

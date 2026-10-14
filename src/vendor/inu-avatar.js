@@ -43,7 +43,7 @@ function sprite(profile, face, frame, outline) {
   if (O.bottom && !O.top?.full) { P(4, 14 + bob, 8, 2, autoCol(O.bottom)); P(4, 16, 2, 1, autoCol(O.bottom)); P(10, 16, 2, 1, autoCol(O.bottom)); }
   if (O.top) { const c = autoCol(O.top), d = O.top.d || shade(c, 0.7); P(4, 9 + bob, 8, O.top.full ? 8 : 5, c); P(4, 13 + bob, 8, 1, d); if (!back && O.top.kind === "suit") P(7, 9 + bob, 2, 4, "#f4f1ea"); if (O.top.accent && !back) P(9, 10 + bob, 1, 1, O.top.accent); }
   if (O.feet) { P(4, 18, 2, 1, autoCol(O.feet)); P(10, 18, 2, 1, autoCol(O.feet)); }
-  if (O.neck && !back) P(5, 9 + bob, 6, 1, autoCol(O.neck));
+  if (O.neck && !back) { if (O.neck.kind === 'scarf') { P(4, 9 + bob, 8, 2, autoCol(O.neck)); P(3, 10 + bob, 2, 4, autoCol(O.neck)); } else if (O.neck.kind === 'pin') P(9, 10 + bob, 2, 2, autoCol(O.neck)); else P(5, 9 + bob, 6, 1, autoCol(O.neck)); }
   if (back) tail();
   // head
   const hx = side ? 5 : 3, hy = 2 + bob;

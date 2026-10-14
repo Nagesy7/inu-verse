@@ -70,8 +70,8 @@ export function bizHour(s, hour, rng, spouseHelp = 0) { const b = ensureBiz(s), 
   s.bones += rev; m.today.revenue += rev; m.today.sold += sold; m.today.shoppers += shoppers; return { shoppers, sold, rev }; }
 // end of in-game day: wages + rent, close the ledger row. Returns the row.
 export function bizDay(s, day) { const b = ensureBiz(s), m = b.mine; if (!m) return null; const L = lotById(m.lot), t = m.today;
-  const due = m.staff * STAFF_WAGE + L.rent; let unpaid = false;
-  if (s.bones >= due) { t.wages = m.staff * STAFF_WAGE; t.rent = L.rent; s.bones -= due; payRent(b, L, t.rent); m.paidThrough = day + 1; m.unpaid = 0; }
+  const paidStaff = Math.max(0, m.staff - (s.spouse || s.p2p?.partner ? 1 : 0)), due = paidStaff * STAFF_WAGE + L.rent; let unpaid = false; // joint shop perk: partner staffs one slot free
+  if (s.bones >= due) { t.wages = paidStaff * STAFF_WAGE; t.rent = L.rent; s.bones -= due; payRent(b, L, t.rent); m.paidThrough = day + 1; m.unpaid = 0; }
   else { unpaid = true; t.wages = 0; t.rent = 0; m.unpaid = (m.unpaid || 0) + 1; } // Bones never go below zero: nothing is charged, the debt counts as an unpaid day
   const row = { ...t, profit: t.revenue - t.cogs - t.wages - t.rent, unpaid, due, unpaidDays: m.unpaid }; b.ledger.unshift(row); b.ledger.length = Math.min(b.ledger.length, 14); b.weekProfit += row.profit; m.today = blankDay(day + 1);
   if (m.unpaid >= UNPAID_LIMIT) { const lot = m.lot; closeBiz(s); row.closed = true; row.lot = lot; } return row; }

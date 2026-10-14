@@ -56,12 +56,13 @@ export function carSprite(col, view = 'side', kind = 'sedan') {
   const k = col + view + kind; let s = cache.get(k); if (!s) { s = view === 'side' ? side(col, kind) : top(col, kind, view); cache.set(k, s); } return s;
 }
 // Draw a car whose ground contact is (x, base): x = centre, base = bottom of wheels (side) / bottom of bumper (front/back).
-export function drawCar(c, x, base, { col = '#c8323c', dir = 'east', kind = 'sedan', alpha = 1 } = {}) {
+export function drawCar(c, x, base, { col = '#c8323c', dir = 'east', kind = 'sedan', alpha = 1, glow = null } = {}) {
   const view = dir === 'south' ? 'front' : dir === 'north' ? 'back' : 'side', spr = carSprite(col, view, kind);
   const w = spr.width * U, h = spr.height * U, X = Math.round(x - w / 2), Y = Math.round(base - h);
   c.save(); c.globalAlpha = alpha; c.fillStyle = 'rgba(16,24,48,.32)';
   if (view === 'side') { c.fillRect(X + 4, Math.round(base) - 4, w - 6, 4); c.fillRect(X + 8, Math.round(base), w - 14, 2); }
   else { c.fillRect(X + 4, Y + 6, w - 4, h - 4); }
   if (dir === 'west') { c.translate(X + w, Y); c.scale(-1, 1); c.drawImage(spr, 0, 0, w, h); } else c.drawImage(spr, X, Y, w, h);
+  if (glow) { c.globalAlpha = 0.45; c.fillStyle = glow; c.fillRect(X - 4, Math.round(base) - 6, w + 8, 8); c.fillRect(X + 4, Y - 4, w - 8, 4); c.globalAlpha = 1; }
   c.restore();
 }
