@@ -1,0 +1,15 @@
+import test from 'node:test'; import assert from 'node:assert/strict';
+const E = await import('../src/engage.js'); const { newGame } = await import('../src/game.js'); const { FURNITURE } = await import('../src/furniture.js'); const PK = await import('../src/packs.js');
+const S = (n = 'T') => newGame({ name: n });
+test('referral: valid code unlocks twins for both sides, no self/duplicate use', () => { const a = S('Ann'), b = S('Bob'); const ca = E.ensureEngage(a).code; assert.match(ca, /^INU-[A-Z0-9]{4}$/);
+  assert.equal(E.applyReferral(a, ca).ok, false); assert.equal(E.applyReferral(b, 'nope').ok, false);
+  const r = E.applyReferral(b, ca, 3); assert.ok(r.ok); for (const id of E.TWIN_OUTFITS) assert.ok(b.wardrobe.owned.includes(id)); assert.equal(E.applyReferral(b, ca).ok, false);
+  assert.ok(E.claimReferralCredit(a, E.ensureEngage(b).code).ok); for (const id of E.TWIN_OUTFITS) assert.ok(a.wardrobe.owned.includes(id)); assert.equal(E.claimReferralCredit(a, E.ensureEngage(b).code).ok, false); });
+test('season pass: XP only from play, tiers claim once, cosmetics + trophy, resets after 4 weeks', () => { const s = S(); s.kibble = 9999; assert.equal(E.addSeasonXp(s, 'buy', 0), 0);
+  for (let i = 0; i < 40; i++) E.addSeasonXp(s, 'job', 1); assert.ok(E.ensureEngage(s).season.xp >= 280); for (const t of E.claimableTiers(s)) assert.ok(E.claimTier(s, t.id).ok);
+  assert.equal(E.claimTier(s, 's_hat').ok, false); assert.ok(s.wardrobe.owned.includes('jacket_black')); assert.equal(s.inventory.trophy_season, 1); assert.ok(FURNITURE.trophy_season);
+  assert.equal(E.seasonWeek(s, 22), 3); assert.ok(E.maybeResetSeason(s, 28)); assert.equal(E.ensureEngage(s).season.xp, 0); assert.equal(E.ensureEngage(s).season.id, 's2'); });
+test('collections: complete a set -> badge + home trophy, once', () => { const s = S(); s.pets = { owned: [{ species: 'kitten' }, { species: 'bunny' }], active: null }; assert.equal(E.checkCollections(s).length, 0);
+  s.pets.owned.push({ species: 'redpanda' }); const u = E.checkCollections(s); assert.equal(u[0].id, 'packpup'); assert.ok(E.badgesOf(s).includes('🐾')); assert.equal(s.inventory.trophy_pet, 1); assert.equal(E.checkCollections(s).length, 0);
+  s.wardrobe.owned.push('gown_white', 'tux_black', 'shades', 'chain_gold'); assert.equal(E.checkCollections(s)[0].id, 'fashionista'); });
+test('packs already provide clubhouse, Bones contributions and a pack leaderboard', () => { const s = S(); s.bones = 2000; assert.ok(PK.createPack(s, { name: 'Test Pack', tag: 'TP' }).ok); assert.ok(PK.contribute(s, 100).ok); assert.ok(PK.myPack(s).clubhouse); assert.ok(PK.leaderboard(s).some((r) => r.mine && r.score > 0)); });
