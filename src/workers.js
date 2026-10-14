@@ -16,10 +16,14 @@ export const WORKERS = [
 ];
 export const GIGS = { sweeper: 'Help sweep the sidewalk', gardener: 'Rake up the clippings', 'window cleaner': 'Hold the ladder steady', 'road crew': 'Carry the cones', electrician: 'Pass the light bulbs', painter: 'Mix the paint', 'bin collector': 'Wheel the bins out', 'pond cleaner': 'Scoop the leaves', 'billboard repair': 'Hand up the new poster' };
 export const GIG_PAY = 15;
+// one in-game hour off mid-shift, staggered per worker so the crew is never all on break at once
+export const breakHour = (w) => { const len = (w.hours[1] - w.hours[0] + 24) % 24; return (w.hours[0] + Math.floor(len / 2) + (w.id ? (parseInt(w.id.slice(1)) || 0) % 3 - 1 : 0)) % 24; };
+export const onBreak = (w, hour) => Math.floor(hour) === breakHour(w);
 export const onDuty = (w, hour) => (w.hours[0] <= w.hours[1] ? hour >= w.hours[0] && hour < w.hours[1] : hour >= w.hours[0] || hour < w.hours[1]);
 export function makeCrew() { return WORKERS.map((w) => ({ ...w, i: 0, dir: 1, x: w.route[0][0], y: w.route[0][1], work: 0, phase: 0, moving: false, face: 'right', on: false })); }
 export function stepCrew(crew, dt, hour, onSwap) {
   for (const w of crew) { w.on = onDuty(w, hour); if (!w.on) continue; w.phase += dt * 6;
+    w.onBreak = onBreak(w, hour); if (w.onBreak) { w.moving = false; w.face = 'down'; continue; } // tea break: down tools mid-shift
     if (w.work > 0) { w.work -= dt; w.moving = false; if (w.work <= 0 && w.billboard) onSwap?.(); continue; }
     const nxt = w.route[w.i + w.dir] ? w.i + w.dir : (w.dir = -w.dir, w.i + w.dir); const [tx, ty] = w.route[nxt] || w.route[0], dx = tx - w.x, dy = ty - w.y, d = Math.hypot(dx, dy), st = 22 * dt;
     if (d <= st) { w.x = tx; w.y = ty; w.i = nxt; w.work = 3 + (w.i % 2) * 2; } else { w.x += (dx / d) * st; w.y += (dy / d) * st; w.moving = true; w.face = Math.abs(dx) > Math.abs(dy) ? (dx > 0 ? 'right' : 'left') : (dy > 0 ? 'down' : 'up'); } }

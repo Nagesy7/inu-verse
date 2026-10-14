@@ -30,6 +30,7 @@ import { ensureBiz, bizHour, bizDay, rollBizWeek } from './biz.js';
 import { renderField, renderFarm, renderLot, renderBizBoard } from './farmui.js';
 import * as REL from './relations.js';
 import { startJob } from './jobui.js';
+import { makeTown, townHour, lineFor, playerDid, friendsOf, rivalsOf } from './townai.js';
 import { mountCreator, drawPreview, profileOfChoices } from './creatorui.js';
 import { applyCreation, defaultChoices, restyle, SALON_PRICE } from './creator.js';
 import { profileFromState, hasCustomLook, saveProfile, loadProfile, setProfileStore, kibblePayProfileStore, profileStore } from './profile.js';
@@ -46,7 +47,7 @@ const $ = (s) => document.querySelector(s);
 const cv = $('#game'), ctx = cv.getContext('2d');
 const rng = mulberry32((Date.now() & 0xffff) + 1);
 let lastEarned = 0, amb = null, dayOffset = 0, stepAcc = 0, mailAcc = 0, photo = false;
-let state = null, mapImg = null, npcs = [], mode = 'title';
+let state = null, mapImg = null, npcs = [], mode = 'title', townH = -1, presWas = false;
 const cam = { x: 0, y: 0 };
 let drive = null; const petF = { x: 0, y: 0, dir: 1, phase: 0, moving: false }; let honkT = 0; // driving state (runtime) + pet follower
 const pres = makePresident(7); // President Inu's seeded visit schedule
@@ -106,7 +107,7 @@ function titleScreen() {
   requestAnimationFrame(loop);
 }
 
-function startGame(s) { loadProfile(s).catch(() => {}); seedTokens(s, rng); REL.ensureRel(s); ensureFarm(s); ensureBiz(s); s.clockSec ??= 0; catchUp(s, Date.now(), { season: seasonOf(Math.floor(s.clockSec / DAY_LEN)), rain: false }); hourIdx = Math.floor(s.clockSec / (DAY_LEN / 24));
+function startGame(s) { loadProfile(s).catch(() => {}); s.town ||= makeTown(rng); townH = -1; seedTokens(s, rng); REL.ensureRel(s); ensureFarm(s); ensureBiz(s); s.clockSec ??= 0; catchUp(s, Date.now(), { season: seasonOf(Math.floor(s.clockSec / DAY_LEN)), rain: false }); hourIdx = Math.floor(s.clockSec / (DAY_LEN / 24));
   state = s; state.kibble ??= 20; ensureWardrobe(state); ensurePacks(state); ensureMall(state); state.clockSec ??= 0; lastEarned = state.stats.bonesEarned; mode = 'world';
   $('#title').hidden = true; $('#hud').hidden = false; $('#minimap-wrap').hidden = false;
   mapImg = prerenderMap(); npcs = spawnNpcs(rng, 6); npcs.forEach((n) => { n.art = artKey(n.coat); }); amb = makeAmbient(42);
@@ -193,14 +194,14 @@ function startWedding(name, guests) { if (panel) closePanel(); const cx = (CHAPE
   fanfare(); scene = { who: name, lines: [`Friends gather at the Park Chapel...`, `${name}: I promise to share every bone with you.`, `You: And I promise to always throw the ball.`, `Everyone: Hooray! Just married!`], i: -1, t: 99, wedding: true }; }
 function confettiProps(dt) { if (!confetti.length) return []; return [{ y: 1e9, d: (c) => { for (const p of confetti) { c.fillStyle = p.col; c.fillRect(p.x + Math.sin(p.ph) * 6, p.y, 4, 3); } } }]; }
 function stepConfetti(dt) { for (const p of confetti) { p.y += p.vy * dt; p.ph += dt * 4; p.life -= dt; if (p.y > (CHAPEL_POS.y + CHAPEL_POS.h + 3) * TILE) p.y -= 200; } confetti = confetti.filter((p) => p.life > 0); }
-function relCtx() { const c = farmCtx(); return Object.assign(c, { panel, say: (n, l) => feel.say(n, l, textBlip), emote: (n, k) => { const x = npcByName(n); if (x) x.emote = { kind: k, t: 2.5 }; }, scene: startScene, wedding: startWedding, coatOf: (n) => npcByName(n)?.coat || 'cream', rng, drawFurniture,
+function relCtx() { const c = farmCtx(); return Object.assign(c, { townLine: (n) => (state.town?.folk[n] ? { line: lineFor(state.town, n, rng), f: state.town.folk[n], friends: friendsOf(state.town, n), rivals: rivalsOf(state.town, n) } : null), panel, say: (n, l) => feel.say(n, l, textBlip), emote: (n, k) => { const x = npcByName(n); if (x) x.emote = { kind: k, t: 2.5 }; }, scene: startScene, wedding: startWedding, coatOf: (n) => npcByName(n)?.coat || 'cream', rng, drawFurniture,
   preview: (cv, ids) => { if (!cv) return; const x = cv.getContext('2d'), home = { wall: ROOM_WALL_PREVIEW, floor: 2, items: [] }; let uid = 1; for (const id of ids) { let done = false; for (let y = 0; y < ROOM_H && !done; y++) for (let xx = 0; xx < ROOM_W && !done; xx++) if (canPlace(home, id, xx, y, 0)) { home.items.push({ uid: uid++, id, x: xx, y, rot: 0 }); done = true; } }
     x.clearRect(0, 0, cv.width, cv.height); drawRoom(x, home, 10, 70, 50, ROOM_W, ROOM_H - 3 > 0 ? 4 : ROOM_H); } }); }
 const ROOM_WALL_PREVIEW = 2;
 globalThis.__open = (k, o) => openPanel(k, o || {});
 globalThis.__rel = { build: (id) => enterBuild(id, false), claim: (id) => claimPlot(state, id), place: (...a) => placeFurniture(state, ...a), start: startScene, wedding: startWedding, get scene() { return scene; } };
 globalThis.__farm = { tick: (s) => farmTick(s), get fish() { return fish; } };
-function playJob(id) { if (panel) closePanel(); keys.clear(); startJob(id, { state, rng, day: gameDay, blip, rustle, fanfare, done: (r) => { hud(); persist(); toast(`${JOB_DEFS[id].name}: +${r.total} bones${r.pb ? ' · new best!' : ''}${r.rankUp ? ` · rank ${r.rank}!` : ''}`, 'good'); }, closed: () => keys.clear() }); }
+function playJob(id) { if (panel) closePanel(); keys.clear(); startJob(id, { state, rng, day: gameDay, blip, rustle, fanfare, done: (r) => { hud(); persist(); if ((r.pb || r.rankUp) && state.town) playerDid(state.town, `You ${r.rankUp ? 'made ' + r.rank + ' as a' : 'set a new best as a'} ${JOB_DEFS[id].name.toLowerCase()} worker.`); toast(`${JOB_DEFS[id].name}: +${r.total} bones${r.pb ? ' · new best!' : ''}${r.rankUp ? ` · rank ${r.rank}!` : ''}`, 'good'); }, closed: () => keys.clear() }); }
 globalThis.__playJob = playJob;
 if (globalThis.kibblePay) setProfileStore(kibblePayProfileStore(globalThis.kibblePay)); // real SIWS-signed profile when the SDK is present
 globalThis.__profile = { store: profileStore, setProfileStore, kibblePayProfileStore, mine: () => profileFromState(state), creator: () => creator };
@@ -283,8 +284,10 @@ function updateWorld(dt) {
   farmTick(dt); if (state.bones < 0) state.bones = 0;
   stepCrew(crew, dt, dayPhase(time + dayOffset).hour, () => { adIdx++; });
   stepScene(dt); stepConfetti(dt); stepPups(dt);
-  for (const n of npcs) { if (state.spouse?.name === n.name && !scene) { const H = state.spouse.helps === 'biz' && state.biz?.mine ? LOTS_POS[state.biz.mine.lot] : [17.5, 92.6]; if (H && Math.hypot(n.x - H[0] * TILE, n.y - H[1] * TILE) > 64) { n.x = H[0] * TILE; n.y = H[1] * TILE; n.path = []; } n.wait = Math.max(n.wait || 0, 1); }
-    if (amb.ball?.dog === n && amb.ball.state !== 'air') continue; if (n.wag > 0) { n.wag -= dt; n.moving = true; n.phase += dt * 20; continue; } if (n.emote) { n.emote.t -= dt; if (n.emote.t <= 0) n.emote = null; } updateNpc(n, dt, rng); }
+  { const h = Math.floor(dayPhase(time + dayOffset).hour), pOn = pres.on && pres.stage !== 'away', replan = pOn !== presWas; presWas = pOn; if (state.town && (h !== townH || replan)) { const fresh = h !== townH; townH = h; for (const e of townHour(state.town, { rng, hour: h, day: gameDay(), president: pOn ? pres : null, replan: !fresh })) {
+      if (e.kind === 'shopClosed' || e.kind === 'shopOpened' || e.kind === 'job' || e.kind === 'friends' || e.kind === 'rivals') toast(state.town.log[0]?.text || '', ''); } } }
+  for (const n of npcs) { const tf = state.town?.folk[n.name]; if (state.spouse?.name === n.name && !scene) { const H = state.spouse.helps === 'biz' && state.biz?.mine ? LOTS_POS[state.biz.mine.lot] : [17.5, 92.6]; if (H && Math.hypot(n.x - H[0] * TILE, n.y - H[1] * TILE) > 64) { n.x = H[0] * TILE; n.y = H[1] * TILE; n.path = []; } n.wait = Math.max(n.wait || 0, 1); }
+    if (amb.ball?.dog === n && amb.ball.state !== 'air') continue; if (n.wag > 0) { n.wag -= dt; n.moving = true; n.phase += dt * 20; continue; } if (n.emote) { n.emote.t -= dt; if (n.emote.t <= 0) n.emote = null; } const arr = updateNpc(n, dt, rng, scene || state.spouse?.name === n.name ? null : tf?.goal); if (tf) { if (arr && !tf.arrived && tf.act !== 'nap' && rng() < 0.3) n.emote = { kind: tf.mood === 'grumpy' ? 'angry' : tf.mood === 'happy' ? 'happy' : 'note', t: 1.6 }; tf.arrived = arr; } }
   { const pet = activePet(state); if (pet && !drive) { if (!petF.id || petF.id !== pet.id) Object.assign(petF, { id: pet.id, x: p.x - 20, y: p.y + 4 }); followStep(petF, p.x - player.dir * 22, p.y + 2, dt); if (petF.love > 0) petF.love -= dt; } else if (drive) Object.assign(petF, { x: p.x, y: p.y }); }
   if (honkT > 0) honkT -= dt;
   if (player.emote) { player.emote.t -= dt; if (player.emote.kind === 'zoomies') { const a = player.emote.t * 5; moveBody(p, Math.cos(a) * 150 * dt, Math.sin(a) * 150 * dt); player.moving = true; player.phase += dt * 20; player.face = Math.cos(a + 1.57) > 0 ? 'right' : 'left'; } if (player.emote.t <= 0) player.emote = null; }
@@ -447,7 +450,7 @@ function openPanel(kind, opts = {}) {
     const p = PLOTS.find((x) => x.id === opts.plotId);
     body.innerHTML = `<h2>Empty plot ${p.id.toUpperCase()}</h2><p class="sub">A sunny ${p.w}×${p.h} lot on Bone Street. Claim it to build and decorate your own home.</p>
       <p><b>Cost:</b> ${PLOT_COST} bones · You have ${Math.floor(state.bones)}</p><div class="row" style="justify-content:flex-start"><button class="btn green" id="claim">Claim plot for ${PLOT_COST} bones</button></div>`;
-    $('#claim').onclick = () => { const r = claimPlot(state, p.id); if (r.ok) { toast('Plot claimed! Your new home is ready.', 'good'); hud(); persist(); closePanel(); enterBuild(p.id, false); } else toast(r.reason, 'bad'); };
+    $('#claim').onclick = () => { const r = claimPlot(state, p.id); if (r.ok) { state.town && playerDid(state.town, 'You moved into a new home on Bone Street.');  toast('Plot claimed! Your new home is ready.', 'good'); hud(); persist(); closePanel(); enterBuild(p.id, false); } else toast(r.reason, 'bad'); };
   } else if (kind === 'shop') renderShop();
   else if (kind === 'cafe') renderCafe();
   else if (kind === 'launch') renderLaunch();

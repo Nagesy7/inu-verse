@@ -20,7 +20,13 @@ export function spawnNpcs(rng, n = 6) {
   }
   return out;
 }
-export function updateNpc(n, dt, rng) {
+// goal = [tx, ty] from the town AI: walk there and hang about. Returns true once standing at the goal.
+export function updateNpc(n, dt, rng, goal) {
+  if (goal) { const sx = Math.floor(n.x / TILE), sy = Math.floor(n.y / TILE);
+    if (n.goalKey !== goal[0] + ',' + goal[1]) { n.goalKey = goal[0] + ',' + goal[1]; n.path = []; n.stuck = 0; }
+    if (sx === goal[0] && sy === goal[1] && !n.path.length) { n.moving = false; n.wait -= dt; if (n.wait <= 0) { n.wait = 2 + rng() * 4; n.face = ['down', 'left', 'right', 'down'][Math.floor(rng() * 4)]; } return true; }
+    if (!n.path.length) { const p = n.stuck < 3 ? findPath(sx, sy, goal[0], goal[1]) : null; if (p && p.length > 1) n.path = p.slice(1); else { n.stuck++; if (n.stuck >= 3) { n.x = (goal[0] + 0.5) * TILE; n.y = (goal[1] + 0.5) * TILE; } return false; } }
+  }
   if (!n.path.length) {
     n.moving = false; n.wait -= dt;
     if (n.wait <= 0) {
@@ -33,9 +39,9 @@ export function updateNpc(n, dt, rng) {
     return;
   }
   const [tx, ty] = n.path[0];
-  const gx = (tx + 0.5) * TILE, gy = (ty + 0.5) * TILE, dx = gx - n.x, dy = gy - n.y, d = Math.hypot(dx, dy), sp = 34 * dt;
+  const gx = (tx + 0.5) * TILE, gy = (ty + 0.5) * TILE, dx = gx - n.x, dy = gy - n.y, d = Math.hypot(dx, dy), sp = (goal ? 46 : 34) * dt;
   if (d <= sp) { n.x = gx; n.y = gy; n.path.shift(); } else { n.x += (dx / d) * sp; n.y += (dy / d) * sp; }
   if (Math.abs(dx) > 1) n.dir = dx > 0 ? 1 : -1;
   n.face = Math.abs(dx) > Math.abs(dy) ? (dx > 0 ? 'right' : 'left') : (dy > 0 ? 'down' : 'up');
-  n.moving = true; n.phase += dt * 10;
+  n.moving = true; n.phase += dt * 10; return false;
 }
