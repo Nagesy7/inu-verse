@@ -69,8 +69,12 @@ export function bizHour(s, hour, rng, spouseHelp = 0) { const b = ensureBiz(s), 
   s.bones += rev; m.today.revenue += rev; m.today.sold += sold; m.today.shoppers += shoppers; return { shoppers, sold, rev }; }
 // end of in-game day: wages + rent, close the ledger row. Returns the row.
 export function bizDay(s, day) { const b = ensureBiz(s), m = b.mine; if (!m) return null; const L = lotById(m.lot), t = m.today;
-  t.wages = m.staff * STAFF_WAGE; t.rent = L.rent; s.bones -= t.wages + t.rent; payRent(b, L, t.rent); m.paidThrough = day + 1;
-  const row = { ...t, profit: t.revenue - t.cogs - t.wages - t.rent }; b.ledger.unshift(row); b.ledger.length = Math.min(b.ledger.length, 14); b.weekProfit += row.profit; m.today = blankDay(day + 1); return row; }
+  const due = m.staff * STAFF_WAGE + L.rent; let unpaid = false;
+  if (s.bones >= due) { t.wages = m.staff * STAFF_WAGE; t.rent = L.rent; s.bones -= due; payRent(b, L, t.rent); m.paidThrough = day + 1; m.unpaid = 0; }
+  else { unpaid = true; t.wages = 0; t.rent = 0; m.unpaid = (m.unpaid || 0) + 1; } // Bones never go below zero: nothing is charged, the debt counts as an unpaid day
+  const row = { ...t, profit: t.revenue - t.cogs - t.wages - t.rent, unpaid, due, unpaidDays: m.unpaid }; b.ledger.unshift(row); b.ledger.length = Math.min(b.ledger.length, 14); b.weekProfit += row.profit; m.today = blankDay(day + 1);
+  if (m.unpaid >= UNPAID_LIMIT) { const lot = m.lot; closeBiz(s); row.closed = true; row.lot = lot; } return row; }
+export const UNPAID_LIMIT = 3;
 export function rivalProfit(name, week, frac) { return Math.floor((150 + h32(name + 'biz' + week) * 1200) * Math.max(0.05, frac)); }
 export function bizBoard(s, frac = 1) { const b = ensureBiz(s); const rows = [...(b.mine ? [{ id: 'you', name: `${b.mine.name} (${s.player?.name || 'you'})`, score: b.weekProfit, me: true }] : []), ...RIVAL_BIZ.map((r) => ({ id: r.lot, name: `${r.name} (${r.owner})`, score: rivalProfit(r.name, b.week, frac) })), ...OTHER_OWNERS.map((n) => ({ id: n, name: n, score: rivalProfit(n, b.week, frac) }))];
   return rows.sort((a, c) => c.score - a.score).map((r, i) => ({ ...r, rank: i + 1, prize: i < 3 ? Math.floor(b.pool * [0.5, 0.3, 0.2][i]) : 0 })); }

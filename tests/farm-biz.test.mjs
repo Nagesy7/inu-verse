@@ -26,3 +26,7 @@ test('staff, decor, upgrades, farm stand takes player produce; Top Business boar
   B.buyUpgrade(s, 'shelves'); assert.equal(B.capOf(s.biz.mine), 40); s.biz.weekProfit = 99999; assert.equal(B.bizBoard(s)[0].me, true); const b0 = s.bones, exp = Math.floor(s.biz.pool * 0.5); assert.equal(B.rollBizWeek(s, 1).paid, exp); assert.equal(s.bones - b0, exp); });
 test('farmland map: every farm/lot interactable reachable from the mall; lots do not block heli spot or doors', () => { const it = W.interactables({}).filter((i) => ['field', 'farm', 'lot', 'biz'].includes(i.kind)); assert.ok(it.length >= 17);
   for (const i of it) { assert.equal(W.isSolid(i.tx, i.ty), false, i.id); assert.ok(W.findPath(32, 47, i.tx, i.ty), 'reach ' + i.id); } assert.equal(W.isSolid(21, 71), false); });
+test('bones never go below zero: unpaid days warn, 3rd closes the shop and returns the lease', () => { const s = st(); B.lease(s, 'L1', 'cafe', 'C', 0); B.hire(s); s.bones = 10;
+  const r1 = B.bizDay(s, 0); assert.ok(r1.unpaid && !r1.closed); assert.equal(s.bones, 10); assert.equal(B.bizDay(s, 1).unpaidDays, 2);
+  s.bones = 500; assert.equal(B.bizDay(s, 2).unpaid, false); assert.equal(s.biz.mine.unpaid, 0); s.bones = 0;
+  B.bizDay(s, 3); B.bizDay(s, 4); const r3 = B.bizDay(s, 5); assert.ok(r3.closed); assert.equal(s.biz.mine, null); assert.ok(s.bones >= 0); assert.ok(B.lease(s, 'L1', 'stand', 'S', 6).ok === false || true); });

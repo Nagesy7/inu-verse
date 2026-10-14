@@ -157,7 +157,7 @@ function farmCtx() { const day = gameDay(); return { state, body: $('#panel-body
 function farmTick(dt) { const day = gameDay(); tickFarm(state, dt, { season: seasonOf(day), rain: amb.rain > 0.3 }); ensureFarm(state).lastReal = Date.now();
   if (fish.state === 'wait') { fish.t += dt; if (fish.t >= fish.biteAt) { fish.state = 'bite'; fish.t = 0; blip(1200); if (panel?.kind === 'farm' && panel.id === 'pond') openPanel('farm', panel); } } else if (fish.state === 'bite') { fish.t += dt; if (fish.t > 1.5) { fish.state = 'idle'; if (panel?.kind === 'farm' && panel.id === 'pond') { toast('It got away!'); openPanel('farm', panel); } } }
   const hk = hourKey(); while (hourIdx < hk) { hourIdx++; marketHour(state); const r = bizHour(state, hourIdx % 24, rng, state.spouse?.helps === 'biz' ? 2 : 0);
-    if (hourIdx % 24 === 0) { const row = bizDay(state, Math.floor(hourIdx / 24) - 1); if (row) toast(`Shop ledger: day profit ${row.profit} bones`, row.profit >= 0 ? 'good' : 'bad');
+    if (hourIdx % 24 === 0) { const row = bizDay(state, Math.floor(hourIdx / 24) - 1); if (row?.closed) toast(`3 unpaid days: your shop closed and the lease on ${row.lot} was handed back.`, 'bad'); else if (row?.unpaid) toast(`Warning: couldn't cover rent + wages (${row.due} bones). Unpaid day ${row.unpaidDays}/3 — the shop closes after 3.`, 'bad'); else if (row) toast(`Shop ledger: day profit ${row.profit} bones`, row.profit >= 0 ? 'good' : 'bad');
       const wk = Math.floor(Math.floor(hourIdx / 24) / WEEK_DAYS); const a = rollFarmWeek(state, wk), b = rollBizWeek(state, wk); if (a?.paid) toast(`Top Farmer #${a.rank}: +${a.paid} bones!`, 'good'); if (b?.paid) toast(`Top Business #${b.rank}: +${b.paid} bones!`, 'good'); }
     if (r?.sold && panel?.kind === 'lot') openPanel('lot', panel); } }
 globalThis.__open = (k, o) => openPanel(k, o || {});
@@ -238,7 +238,7 @@ function updateWorld(dt) {
     if (PRES_Q && !presForced) { presForced = true; startVisit(pres, PRES_KINDS.includes(PRES_Q) ? PRES_Q : null, { dayLen: DAY_LEN }); }
     updatePresident(pres, dt, { nowH, dayLen: DAY_LEN, npcs, rng, toast: (s) => toast(s, 'good'), banner: presBanner, fanfare, snack: () => toast('President Inu bought a taiyaki from the snack cart!', 'good') }); }
   adT += dt; if (adT > 8 || !trend.length) { adT = 0; adRot++; trend = trending(state, 6); }
-  farmTick(dt);
+  farmTick(dt); if (state.bones < 0) state.bones = 0;
   stepCrew(crew, dt, dayPhase(time + dayOffset).hour, () => { adIdx++; });
   for (const n of npcs) { if (amb.ball?.dog === n && amb.ball.state !== 'air') continue; if (n.wag > 0) { n.wag -= dt; n.moving = true; n.phase += dt * 20; continue; } if (n.emote) { n.emote.t -= dt; if (n.emote.t <= 0) n.emote = null; } updateNpc(n, dt, rng); }
   { const pet = activePet(state); if (pet && !drive) { if (!petF.id || petF.id !== pet.id) Object.assign(petF, { id: pet.id, x: p.x - 20, y: p.y + 4 }); followStep(petF, p.x - player.dir * 22, p.y + 2, dt); if (petF.love > 0) petF.love -= dt; } else if (drive) Object.assign(petF, { x: p.x, y: p.y }); }
