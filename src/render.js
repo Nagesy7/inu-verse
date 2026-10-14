@@ -166,11 +166,15 @@ function drawBuildingArt(c, id, fx, fy, fw, fh) {
 // Varied entrances: the art's centre door becomes a shop window; a new door is drawn left/right of centre or as a side porch.
 const sampleCv = {};
 function artPixel(id, ix, iy) { const im = BIMG[id]; if (!sampleCv[id]) { const [cv, x] = mk(im.width, im.height); x.drawImage(im, 0, 0); sampleCv[id] = x; } const d = sampleCv[id].getImageData(Math.max(0, Math.min(im.width - 1, ix | 0)), Math.max(0, Math.min(im.height - 1, iy | 0)), 1, 1).data; return `rgb(${d[0]},${d[1]},${d[2]})`; }
+// most common colour along the patch's outer edge (top strip + both side columns) = the wall colour around the old door
+function wallColour(id, ix0, ix1, iy0, iy1) { artPixel(id, 0, 0); const x = sampleCv[id], im = BIMG[id], cnt = new Map(); let best = null, bn = 0;
+  const add = (px, py) => { const d = x.getImageData(Math.max(0, Math.min(im.width - 1, px | 0)), Math.max(0, Math.min(im.height - 1, py | 0)), 1, 1).data, k = (d[0] >> 3) + ',' + (d[1] >> 3) + ',' + (d[2] >> 3), e = cnt.get(k) || { n: 0, c: `rgb(${d[0]},${d[1]},${d[2]})` }; e.n++; cnt.set(k, e); if (e.n > bn) { bn = e.n; best = e.c; } };
+  for (let px = ix0; px <= ix1; px++) { add(px, iy0 - 1); add(px, iy0 - 3); } for (let py = iy0; py < iy1; py++) { add(ix0 - 2, py); add(ix1 + 2, py); } return best; }
 function doorFace(c, dcx, base, accent) { // front double door with striped awning + steps (world px)
   R(c, dcx - 22, base - 6, 44, 6, '#b8b0a2'); R(c, dcx - 22, base - 6, 44, 2, '#e8e2d6'); R(c, dcx - 18, base - 10, 36, 4, '#cfc8ba');
   R(c, dcx - 17, base - 54, 34, 44, INK); for (const s of [-1, 1]) { const x = dcx + (s < 0 ? -15 : 1); R(c, x, base - 52, 14, 42, '#8a5a30'); R(c, x + 2, base - 50, 10, 16, '#fff3c0'); R(c, x + 2, base - 50, 3, 6, '#ffffff'); R(c, x + 2, base - 30, 10, 2, '#5e3c22'); R(c, x + (s < 0 ? 10 : 2), base - 28, 2, 6, GOLD_L); }
   for (let i = 0; i < 6; i++) R(c, dcx - 24 + i * 8, base - 64, 8, 10, i % 2 ? '#f4f1ea' : accent); R(c, dcx - 24, base - 56, 48, 2, INK); for (let i = 0; i < 6; i++) R(c, dcx - 24 + i * 8 + 2, base - 54, 4, 2, i % 2 ? '#f4f1ea' : accent); }
-function shopWindow(c, cx, base, wall) { R(c, cx - 26, base - 70, 52, 66, wall); R(c, cx - 26, base - 4, 52, 4, '#b8b0a2');
+function shopWindow(c, cx, base, wall) { R(c, cx - 26, base - 70, 52, 66, wall); for (let y = base - 70, r = 0; y < base - 4; y += 8, r++) { R(c, cx - 26, y + 7, 52, 1, 'rgba(0,0,0,.16)'); for (let x = cx - 26 + (r % 2 ? 8 : 0); x < cx + 26; x += 16) R(c, x, y, 1, 8, 'rgba(0,0,0,.12)'); } // brick courses R(c, cx - 26, base - 4, 52, 4, '#b8b0a2');
   R(c, cx - 21, base - 58, 42, 40, INK); R(c, cx - 19, base - 56, 38, 36, GOLD_D); R(c, cx - 17, base - 54, 34, 32, '#cfeefa'); R(c, cx - 15, base - 52, 4, 12, '#ffffff');
   R(c, cx - 10, base - 34, 8, 10, '#c8323c'); R(c, cx + 2, base - 38, 10, 14, GOLD); R(c, cx + 4, base - 35, 6, 2, '#fff6ea'); R(c, cx - 19, base - 22, 38, 3, GOLD); R(c, cx - 21, base - 18, 42, 8, '#5e3c22'); for (let x = cx - 18; x < cx + 18; x += 5) R(c, x, base - 21, 3, 3, x % 2 ? '#ff7080' : '#ffd84a'); }
 function sidePorch(c, b, side) { const base = (b.y + b.h) * TILE, x = side === 'left' ? b.x * TILE - 30 : (b.x + b.w) * TILE + 2, im = BIMG[b.id];
@@ -182,7 +186,7 @@ function sidePorch(c, b, side) { const base = (b.y + b.h) * TILE, x = side === '
   R(c, side === 'left' ? x + 28 : x - 2, base - 56, 2, 52, 'rgba(16,24,48,.3)'); }
 function drawDoors(c, b) { const d = DOORS[b.id], im = BIMG[b.id]; if (!d || !im) return;
   const base = (b.y + b.h) * TILE, cx = (b.x + b.w / 2) * TILE, k = Math.max(1, Math.floor((b.w * TILE) / im.width)), x0 = b.x * TILE + Math.round((b.w * TILE - im.width * k) / 2), y0 = base - im.height * k;
-  const wall = artPixel(b.id, (cx - 1.4 * TILE - x0) / k, (base - 30 - y0) / k), th = THEMES[b.id] || THEMES.shop;
+  const wall = wallColour(b.id, (cx - 26 - x0) / k, (cx + 26 - x0) / k, (base - 74 - y0) / k, (base - 4 - y0) / k), th = THEMES[b.id] || THEMES.shop;
   if (d.side === 'front' && Math.abs((b.x + d.dx + 0.5) * TILE - cx) < 24) return; // already centred
   shopWindow(c, cx, base, wall);
   if (d.side === 'front') doorFace(c, (b.x + d.dx + 0.5) * TILE, base, th.accent === '#fff1b0' ? '#c8323c' : (th.accent || '#c8323c')); }
