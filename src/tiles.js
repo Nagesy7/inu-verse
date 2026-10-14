@@ -1,12 +1,12 @@
 // Hand-built 16px pixel tileset (original art), drawn at 2x with nearest-neighbour.
 // Ground is pre-rendered once into a native-res canvas; props are tiny native sprites y-sorted with actors.
-import { TILE, MAP_W, MAP_H, MAP, T, BRIDGES } from './world.js';
+import { TILE, MAP_W, MAP_H, MAP, T, BRIDGES, ROADS, AVENUE, STATUE } from './world.js';
 
 export const N = 16, SCALE = TILE / N; // native tile px, display zoom (2)
 export const PAL = {
   ink: '#141a2e', g0: '#2f6e3a', g1: '#3f8a40', g2: '#52a349', g3: '#6cbd55', g4: '#9bdc6e',
   sand: '#ead9a0', sandD: '#c9b278', w0: '#24539a', w1: '#2f6cbd', w2: '#4b8fe0', w3: '#8cc6f4', foam: '#e8f7ff',
-  road: '#4a4f63', roadL: '#565c72', roadD: '#3c4052', line: '#f2dc8a',
+  road: '#474b5c', roadL: '#545a6c', roadD: '#3b3e4d', roadW: '#5b6072', oil: '#2e303b', line: '#f0f0ea', yel: '#f2c84a',
   walk: '#dcd3bc', walkL: '#efe8d4', walkD: '#b5aa90', curb: '#a9a3b8', curbD: '#6e6884',
   brick: '#d6b383', brickL: '#ead0a4', brickD: '#a8845a', mortar: '#b8966a',
   dirt: '#a8764a', dirtD: '#835a36', dirtL: '#c09062',
@@ -38,10 +38,13 @@ function flowers(c, px, py, x, y) {
   for (let i = 0; i < n; i++) { const fx = px + 2 + (hash(x, y, 50 + i) * 11 | 0), fy = py + 2 + (hash(x, y, 60 + i) * 11 | 0), [pc, cc] = cols[(hash(x, y, 70 + i) * cols.length) | 0];
     P(c, fx, fy + 3, PAL.g0, 3, 1); P(c, fx + 1, fy + 2, PAL.g1); P(c, fx + 1, fy - 1, pc); P(c, fx, fy, pc); P(c, fx + 2, fy, pc); P(c, fx + 1, fy + 1, pc); P(c, fx + 1, fy, cc); }
 }
-function road(c, px, py, x, y) {
+function road(c, px, py, x, y) { // asphalt: base + speckle + soft wear patches + occasional crack / oil stain
   P(c, px, py, PAL.road, N, N);
-  for (let i = 0; i < 7; i++) P(c, px + (hash(x, y, i) * N | 0), py + (hash(y, x, i) * N | 0), hash(x, y, i + 9) < 0.5 ? PAL.roadL : PAL.roadD);
-  if (hash(x, y, 77) < 0.08) { P(c, px + 5, py + 8, PAL.roadD, 4, 1); P(c, px + 8, py + 9, PAL.roadD, 3, 1); } // crack
+  if (hash(x >> 1, y >> 1, 41) < 0.3) for (let i = 0; i < 14; i++) P(c, px + (hash(x, y, i + 200) * 13 | 0), py + (hash(x, y, i + 230) * 14 | 0), PAL.roadW, 3, 2); // worn lighter patch
+  for (let i = 0; i < 22; i++) P(c, px + (hash(x, y, i) * N | 0), py + (hash(y, x, i) * N | 0), hash(x, y, i + 9) < 0.5 ? PAL.roadL : PAL.roadD);
+  const h = hash(x, y, 77);
+  if (h < 0.06) { const ox = px + 3 + (hash(x, y, 78) * 6 | 0), oy = py + 4 + (hash(x, y, 79) * 6 | 0); P(c, ox, oy, PAL.roadD, 3, 1); P(c, ox + 3, oy + 1, PAL.roadD, 2, 1); P(c, ox + 5, oy + 2, PAL.roadD, 1, 2); P(c, ox + 1, oy - 1, PAL.roadD); }
+  else if (h < 0.1) { const ox = px + 4 + (hash(x, y, 80) * 5 | 0), oy = py + 5 + (hash(x, y, 81) * 5 | 0); P(c, ox, oy + 1, PAL.oil, 6, 2); P(c, ox + 1, oy, PAL.oil, 4, 4); P(c, ox + 2, oy + 1, '#3a3550', 1, 1); }
 }
 function walk(c, px, py, x, y) {
   P(c, px, py, PAL.walk, N, N);
@@ -78,16 +81,55 @@ function edges(c, px, py, x, y) {
     if (fr(n) && fr(w)) P(c, px, py, PAL.g2, 2, 2); if (fr(n) && fr(e)) P(c, px + N - 2, py, PAL.g2, 2, 2);
     if (fr(s) && fr(w)) P(c, px, py + N - 2, PAL.g2, 2, 2); if (fr(s) && fr(e)) P(c, px + N - 2, py + N - 2, PAL.g2, 2, 2);
   }
-  if (t === T.WALK) { // curbs where sidewalk meets road
-    if (n === T.ROAD) { P(c, px, py, PAL.curb, N, 2); P(c, px, py + 2, PAL.walkD, N, 1); }
-    if (s === T.ROAD) { P(c, px, py + N - 3, PAL.walkL, N, 1); P(c, px, py + N - 2, PAL.curb, N, 1); P(c, px, py + N - 1, PAL.curbD, N, 1); }
-    if (w === T.ROAD) { P(c, px, py, PAL.curb, 2, N); P(c, px + 2, py, PAL.walkD, 1, N); }
-    if (e === T.ROAD) { P(c, px + N - 2, py, PAL.curb, 1, N); P(c, px + N - 1, py, PAL.curbD, 1, N); }
+  if (t === T.WALK && !isBridge(x, y)) { // raised curb lip where sidewalk meets road (lit top, face, shadow on the road)
+    const R = (q) => q === T.ROAD;
+    if (R(s)) { P(c, px, py + N - 3, PAL.walkL, N, 1); P(c, px, py + N - 2, PAL.curb, N, 1); P(c, px, py + N - 1, PAL.curbD, N, 1); }
+    if (R(n)) { P(c, px, py, PAL.curbD, N, 1); P(c, px, py + 1, PAL.curb, N, 1); P(c, px, py + 2, PAL.walkL, N, 1); }
+    if (R(w)) { P(c, px, py, PAL.curbD, 1, N); P(c, px + 1, py, PAL.curb, 1, N); P(c, px + 2, py, PAL.walkL, 1, N); }
+    if (R(e)) { P(c, px + N - 3, py, PAL.walkL, 1, N); P(c, px + N - 2, py, PAL.curb, 1, N); P(c, px + N - 1, py, PAL.curbD, 1, N); }
+    // rounded corners: sidewalk tile with road on two orthogonal sides gets a quarter-circle curb
+    for (const [sx, sy] of [[-1, -1], [1, -1], [-1, 1], [1, 1]]) { if (!R(at(x + sx, y)) || !R(at(x, y + sy))) continue;
+      const cx = sx > 0 ? px : px + N, cy = sy > 0 ? py : py + N, r = N - 2; // circle centre in the far corner
+      for (let yy = 0; yy < N; yy++) for (let xx = 0; xx < N; xx++) { const d = Math.hypot(px + xx + 0.5 - cx, py + yy + 0.5 - cy);
+        if (d > r + 0.5) P(c, px + xx, py + yy, PAL.road, 1, 1); else if (d > r - 0.5) P(c, px + xx, py + yy, sy > 0 ? PAL.curbD : PAL.curb); else if (d > r - 1.5) P(c, px + xx, py + yy, sy > 0 ? PAL.curb : PAL.walkL); } }
   }
-  if (t === T.ROAD) { // shadow cast by curb onto road
-    if (n === T.WALK) P(c, px, py, 'rgba(20,20,40,.35)', N, 2); if (w === T.WALK) P(c, px, py, 'rgba(20,20,40,.25)', 1, N);
+  if (t === T.ROAD) { // shadow cast by the raised curb onto the road
+    if (n === T.WALK && !isBridge(x, y - 1)) P(c, px, py, 'rgba(14,14,30,.4)', N, 2);
+    if (w === T.WALK) P(c, px, py, 'rgba(14,14,30,.3)', 2, N); if (e === T.WALK) P(c, px + N - 1, py, 'rgba(14,14,30,.18)', 1, N);
   }
   if (t === T.PLAZA && (n === T.WALK || n === T.ROAD)) P(c, px, py, PAL.brickD, N, 1);
+}
+
+// ---- road furniture painted into the ground: lines, crossings, stop lines, drains, manholes, mall roundabout ----
+const isAve = (x) => x >= AVENUE && x < AVENUE + 3, isStreet = (y) => ROADS.some((r) => y >= r && y < r + 3);
+function grate(c, x, y, w, h) { P(c, x, y, PAL.ink, w, h); for (let i = 1; i < w - 1; i += 2) P(c, x + i, y + 1, '#5d6274', 1, h - 2); P(c, x, y, '#6e7386', w, 1); }
+function manhole(c, cx, cy) { for (let yy = -3; yy <= 3; yy++) { const hw = Math.round(Math.sqrt(12.25 - yy * yy)); P(c, cx - hw, cy + yy, PAL.ink, hw * 2, 1); if (Math.abs(yy) < 3) P(c, cx - hw + 1, cy + yy, yy % 2 ? '#5a5f70' : '#6a7082', hw * 2 - 2, 1); } P(c, cx - 1, cy - 3, '#80869a', 2, 1); }
+function roadMarkings(c) {
+  const W = PAL.line, X0 = AVENUE * N, X1 = (AVENUE + 3) * N;
+  for (const r of ROADS) { const y0 = r * N, y1 = (r + 3) * N, mid = y0 + 24;
+    for (let x = 1; x < MAP_W - 1; x++) { if (at(x, r) !== T.ROAD || (x >= AVENUE - 2 && x <= AVENUE + 4)) continue; const px = x * N;
+      P(c, px, y0 + 3, W, N, 1); P(c, px, y1 - 4, W, N, 1); // crisp white edge lines
+      P(c, px + 4, mid - 1, W, 8, 2); // dashed white centre
+      if (x % 7 === 3) { grate(c, px + 5, y0 + 1, 6, 3); grate(c, px + 5, y1 - 3, 6, 3); } // drain grates at the curb
+      if (x % 11 === 6) manhole(c, px + 8, y0 + 12 + (x % 2) * 24); }
+    // zebra crossings either side of the avenue + stop lines before them (right-hand traffic)
+    for (const zx of [AVENUE - 2, AVENUE + 4]) for (let i = 0; i < 11; i++) P(c, zx * N + 2, y0 + 3 + i * 4, '#f4f2ea', 12, 2);
+    P(c, (AVENUE - 2) * N - 3, mid, W, 2, 24); P(c, (AVENUE + 5) * N + 1, y0, W, 2, 24);
+  }
+  for (let y = 6; y < 45; y++) { if (at(AVENUE, y) !== T.ROAD || isStreet(y) || isStreet(y - 1) || isStreet(y + 1)) continue; const py = y * N;
+    P(c, X0 + 3, py, W, 1, N); P(c, X1 - 4, py, W, 1, N); // edge lines
+    P(c, X0 + 22, py, PAL.yel, 1, N); P(c, X0 + 25, py, PAL.yel, 1, N); // double yellow centre on the avenue
+    if (y % 6 === 2) { grate(c, X0 + 1, py + 5, 3, 6); grate(c, X1 - 3, py + 5, 3, 6); }
+    if (y % 9 === 4) manhole(c, X0 + 12 + (y % 2) * 24, py + 8); }
+  for (const r of ROADS) { if (at(AVENUE, r - 2) !== T.ROAD) continue; // avenue zebras + stop lines at each junction
+    for (const zy of [r - 1, r + 3]) { if (at(AVENUE, zy) !== T.ROAD) continue; for (let i = 0; i < 11; i++) P(c, X0 + 3 + i * 4, zy * N + 2, '#f4f2ea', 2, 12); }
+    P(c, X0, (r - 2) * N + N - 3, W, 24, 2); if (at(AVENUE, r + 4) === T.ROAD) P(c, X0 + 24, (r + 4) * N + 1, W, 24, 2); }
+  // Kibble Mall roundabout plaza: paved ring of gold mosaic around the statue
+  const cx = (STATUE.x + 1) * N, cy = STATUE.y * N + 10;
+  for (let yy = -44; yy <= 44; yy++) for (let xx = -44; xx <= 44; xx++) { const d = Math.hypot(xx, yy), tx = Math.floor((cx + xx) / N), ty = Math.floor((cy + yy) / N);
+    if (d > 44 || at(tx, ty) !== T.PLAZA) continue;
+    const col = d > 42 ? PAL.brickD : d > 39 ? (Math.floor(Math.atan2(yy, xx) * 12) % 2 ? PAL.gold : PAL.goldL) : d > 37 ? PAL.brickD : d > 20 ? ((Math.floor(d / 4) + Math.floor((Math.atan2(yy, xx) + 4) * 6)) % 2 ? '#e6dcc4' : '#d2c6a8') : d > 18 ? PAL.brickD : '#7cbf5a';
+    P(c, cx + xx, cy + yy, col); }
 }
 
 // soft pixel drop shadow (ellipse) at native res
@@ -113,11 +155,7 @@ export function buildGround(extra) {
     P(c, x0, y0, PAL.woodD, 2, h); P(c, x0 + w - 2, y0, PAL.woodD, 2, h); P(c, x0, y0, PAL.woodL, 1, h);
     for (let yy = 0; yy < h; yy += 8) { P(c, x0 - 1, y0 + yy, PAL.ink, 3, 3); P(c, x0 + w - 2, y0 + yy, PAL.ink, 3, 3); }
   }
-  // lane markings (dashed, cream) on the 2-wide roads
-  for (let x = 1; x < MAP_W - 1; x++) for (const ry of [21, 32, 44]) if (at(x, ry) === T.ROAD && at(x, ry - 1) === T.ROAD) P(c, x * N + 4, ry * N - 1, PAL.line, 8, 2);
-  for (let y = 6; y < 46; y++) if (at(31, y) === T.ROAD && at(32, y) === T.ROAD && at(30, y) === T.WALK) P(c, 32 * N - 1, y * N + 4, PAL.line, 2, 8);
-  // zebra crossings where the avenue meets the streets
-  for (const ry of [20, 31, 43]) for (const xx of [29, 34]) for (let i = 0; i < 8; i++) P(c, xx * N + 2, ry * N + i * 4, '#e8e4d8', 12, 2);
+  roadMarkings(c);
   if (extra) extra(c);
   return cv;
 }
@@ -179,8 +217,19 @@ function fence() { const [cv, c] = mk(16, 12);
 function mailbox() { const [cv, c] = mk(10, 18);
   P(c, 4, 8, PAL.woodD, 2, 10); P(c, 0, 1, PAL.ink, 10, 8); P(c, 1, 2, '#c8323c', 8, 6); P(c, 1, 2, '#e85a5a', 8, 1); P(c, 1, 7, '#8e1a20', 8, 1); P(c, 2, 0, PAL.ink, 6, 1); return cv; }
 function rail() { const [cv, c] = mk(16, 4); P(c, 0, 0, PAL.ink, 16, 4); P(c, 0, 1, PAL.woodL, 16, 1); P(c, 0, 2, PAL.wood, 16, 1); for (const x of [0, 8]) P(c, x, 0, PAL.woodD, 2, 4); return cv; }
+function streetTree() { const [cv, c] = mk(20, 40); // young tree in a stone planter box
+  const blob = (cx, cy, r, col) => { for (let yy = -r; yy <= r; yy++) { const hw = Math.round(Math.sqrt(r * r - yy * yy)); P(c, cx - hw, cy + yy, col, hw * 2 + 1, 1); } };
+  P(c, 9, 18, PAL.barkD, 3, 14); P(c, 10, 18, PAL.bark, 1, 14);
+  blob(10, 11, 10, PAL.ink); blob(10, 11, 9, PAL.leaf1); blob(9, 9, 7, PAL.leaf2); blob(8, 7, 4, PAL.leaf3); P(c, 6, 4, PAL.leaf4, 2, 1); P(c, 13, 14, PAL.leaf0, 3, 1);
+  P(c, 1, 30, PAL.ink, 18, 10); P(c, 2, 31, '#b9b3c6', 16, 8); P(c, 2, 31, '#d8d3e2', 16, 1); P(c, 2, 37, PAL.curbD, 16, 2); P(c, 4, 31, PAL.dirtD, 12, 2); P(c, 5, 31, PAL.dirt, 3, 1);
+  return cv; }
+function trafficLight(lit) { const [cv, c] = mk(10, 36); // lit: 0 red, 1 amber, 2 green
+  P(c, 3, 33, PAL.iron, 5, 3); P(c, 4, 10, PAL.iron, 2, 24); P(c, 4, 10, PAL.ironL, 1, 24);
+  P(c, 1, 0, PAL.ink, 8, 12); P(c, 2, 1, '#2a2f44', 6, 10);
+  [['#ff4a3a', '#5a1e1e'], ['#ffc23a', '#5a4a1e'], ['#5ef08a', '#1e4a2c']].forEach(([on, off], i) => P(c, 3, 2 + i * 3, i === lit ? on : off, 4, 2));
+  return cv; }
 export function sprites() {
-  if (!SPR.tree) Object.assign(SPR, { tree: tree('green'), sakura: tree('sakura'), lamp: lamp(), bench: bench(), sign: sign(), crate: crate(), bush: bush(null), bushP: bush('#ff8fb6'), bushY: bush('#ffd84a'), hedge: hedge(), fence: fence(), mailbox: mailbox(), rail: rail() });
+  if (!SPR.tree) Object.assign(SPR, { tree: tree('green'), sakura: tree('sakura'), lamp: lamp(), bench: bench(), sign: sign(), crate: crate(), bush: bush(null), bushP: bush('#ff8fb6'), bushY: bush('#ffd84a'), hedge: hedge(), fence: fence(), mailbox: mailbox(), rail: rail(), streetTree: streetTree(), light0: trafficLight(0), light1: trafficLight(1), light2: trafficLight(2) });
   return SPR;
 }
 export { hash, mk, P };

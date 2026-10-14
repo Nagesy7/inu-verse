@@ -2,6 +2,7 @@ export const TILE = 32, MAP_W = 64, MAP_H = 70;
 export const T = { GRASS: 0, ROAD: 1, WALK: 2, BUILDING: 3, WATER: 4, TREE: 5, PLOT: 6, FLOWER: 7, PLAZA: 8, HOME: 9 };
 const SOLID = new Set([T.BUILDING, T.WATER, T.TREE, T.PLOT, T.HOME]);
 
+export const ROADS = [20, 31, 42], AVENUE = 31; // first row of each 3-row street; first column of the 3-col avenue
 export const BUILDINGS = [
   { id: 'cafe', name: 'Shiba Sips Café', x: 3, y: 12, w: 8, h: 6 },
   { id: 'shop', name: 'Paws & Pillows', x: 13, y: 12, w: 9, h: 6 },
@@ -38,10 +39,10 @@ export function buildMap() {
   const fill = (x0, y0, w, h, t) => { for (let y = y0; y < y0 + h; y++) for (let x = x0; x < x0 + w; x++) if (g[y] && g[y][x] !== undefined) g[y][x] = t; };
   // decorative flowers (deterministic)
   for (let y = 0; y < MAP_H; y++) for (let x = 0; x < MAP_W; x++) if (((x * 73856093) ^ (y * 19349663)) % 23 === 0) g[y][x] = T.FLOWER;
-  fill(1, 19, MAP_W - 2, 1, T.WALK); fill(1, 20, MAP_W - 2, 2, T.ROAD); fill(1, 22, MAP_W - 2, 1, T.WALK);
-  fill(1, 30, MAP_W - 2, 1, T.WALK); fill(1, 31, MAP_W - 2, 2, T.ROAD); fill(1, 33, MAP_W - 2, 1, T.WALK);
-  fill(30, 6, 1, 40, T.WALK); fill(31, 6, 2, 40, T.ROAD); fill(33, 6, 1, 40, T.WALK);
-  fill(33, 6, 29, 4, T.PLAZA);
+  // streets: 3-tile (96px) roads = two 1.5-tile lanes, sidewalks either side
+  for (const r of ROADS) { fill(1, r - 1, MAP_W - 2, 1, T.WALK); fill(1, r, MAP_W - 2, 3, T.ROAD); fill(1, r + 3, MAP_W - 2, 1, T.WALK); }
+  fill(AVENUE - 1, 6, 1, 40, T.WALK); fill(AVENUE, 6, 3, 39, T.ROAD); fill(AVENUE + 3, 6, 1, 40, T.WALK);
+  fill(34, 6, 28, 4, T.PLAZA);
   fill(5, 3, 9, 5, T.WATER);
   for (const b of BUILDINGS) { fill(b.x, b.y, b.w, b.h, T.BUILDING); fill(b.x - 1, b.y + b.h, b.w + 2, 1, T.PLAZA); }
   for (const p of PLOTS) fill(p.x, p.y, p.w, p.h, T.PLOT);
@@ -50,8 +51,7 @@ export function buildMap() {
   fill(37, 35, 18, 4, T.WATER);
   for (const b of BRIDGES) fill(b.x, b.y, b.w, b.h, T.WALK);
   // south: Kibble Mall district
-  fill(1, 42, MAP_W - 2, 1, T.WALK); fill(1, 43, MAP_W - 2, 2, T.ROAD); fill(1, 45, MAP_W - 2, 1, T.WALK);
-  fill(31, 42, 2, 1, T.ROAD); // avenue joins the south road
+  fill(AVENUE, 41, 3, 4, T.ROAD); // avenue joins the south road
   fill(7, 46, 50, 22, T.PLAZA);
   for (const b of MALL_BUILDINGS) fill(b.x, b.y, b.w, b.h, T.BUILDING);
   fill(STATUE.x, STATUE.y, 2, 1, T.BUILDING); fill(LEADERS.x, LEADERS.y, LEADERS.w, LEADERS.h, T.BUILDING);
@@ -68,6 +68,7 @@ export const DECOR = [];
 { const ok = (x, y) => [T.GRASS, T.FLOWER, T.PLAZA].includes(MAP[y]?.[x]);
   for (const b of [...BUILDINGS, ...MALL_BUILDINGS]) { if (ok(b.x - 1, b.y + b.h - 1)) DECOR.push({ x: b.x - 1, y: b.y + b.h - 1, kind: 'bushP' }); if (ok(b.x + b.w, b.y + b.h - 1)) DECOR.push({ x: b.x + b.w, y: b.y + b.h - 1, kind: 'bushY' }); }
   for (const h of NPC_HOMES) for (const dx of [0, 1, 4, 5]) DECOR.push({ x: h.x + dx, y: h.y + h.h, kind: 'hedge' });
+  for (const [xs, y] of [[[2, 12, 21, 38, 46, 61], 19], [[8, 15, 22, 41, 48, 55], 23], [[8, 15, 22, 36, 42, 52, 58], 34]]) for (const x of xs) if (MAP[y][x] === T.WALK) DECOR.push({ x, y, kind: 'planter' }); // street trees
   for (const [x, y] of [[49, 18], [50, 18], [58, 18], [59, 18], [44, 66], [45, 66], [54, 66], [55, 66]]) DECOR.push({ x, y, kind: 'car' }); } // showroom display cars
 const DECOR_SET = new Set(DECOR.map((d) => d.y * MAP_W + d.x));
 export const isSolid = (tx, ty) => tx < 0 || ty < 0 || tx >= MAP_W || ty >= MAP_H || SOLID.has(MAP[ty][tx]) || DECOR_SET.has(ty * MAP_W + tx);

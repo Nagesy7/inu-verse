@@ -4,7 +4,7 @@ import { TILE, MAP_W, MAP_H, MAP, T, BUILDINGS, PLOTS, MALL_BUILDINGS, NPC_HOMES
 import { mulberry32 } from './rng.js';
 
 export const DAY_LEN = 720; // seconds per in-game day (~12 real minutes)
-export const LAMP_TILES = [[8, 18], [24, 18], [40, 23], [52, 18], [12, 29], [44, 29], [20, 33], [50, 33], [13, 46], [50, 46], [24, 56], [40, 56], [29, 5], [45, 34]];
+export const LAMP_TILES = [[8, 18], [24, 18], [40, 23], [52, 18], [12, 29], [44, 29], [20, 34], [50, 34], [13, 46], [50, 46], [24, 56], [40, 56], [29, 5], [45, 34]];
 export const LAMPS = LAMP_TILES.map(([x, y]) => ({ x: x * TILE + 16, y: y * TILE - 34, gy: y * TILE + 22 }));
 export const PONDS = [[5, 3, 9, 5], [37, 35, 18, 4]];
 export const EMOTES = { wave: 'HI!', sit: 'SIT', zoomies: 'ZOOM', dance: '♪♫', heart: 'heart', bork: 'BORK!' };
@@ -38,7 +38,7 @@ export function makeAmbient(seed = 7) {
   A.cars = [
     { dir: 'east', row: 20, x: 3 * TILE, v: 110, col: '#c8323c' }, { dir: 'west', row: 20, x: 40 * TILE, v: 95, col: '#2f6fbd', kind: 'coupe' },
     { dir: 'east', row: 31, x: 50 * TILE, v: 100, col: '#3f9450' }, { dir: 'west', row: 31, x: 12 * TILE, v: 120, col: '#e3b341' },
-    { dir: 'east', row: 43, x: 20 * TILE, v: 90, col: '#f2efe6', kind: 'coupe' }, { dir: 'west', row: 43, x: 55 * TILE, v: 105, col: '#8e2452' },
+    { dir: 'east', row: 42, x: 20 * TILE, v: 90, col: '#f2efe6', kind: 'coupe' }, { dir: 'west', row: 42, x: 55 * TILE, v: 105, col: '#8e2452' },
     { dir: 'south', y: 8 * TILE, v: 85, col: '#e07a2c' }, { dir: 'north', y: 40 * TILE, v: 80, col: '#4a5478', kind: 'coupe' }];
   for (const c of A.cars) { if (c.row != null) c.y = c.dir === 'east' ? LANES.east(c.row) : LANES.west(c.row); else c.x = c.dir === 'south' ? LANES.south() : LANES.north(); }
   A.rain = 0; A.rainTarget = 0; A.weatherT = 90; A.drops = []; A.petals = Array.from({ length: 30 }, () => ({ x: rng() * 1600, y: rng() * 1000, p: rng() * 9 }));

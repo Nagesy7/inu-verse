@@ -1,0 +1,13 @@
+import { chromium } from 'playwright';
+const URL = process.env.URL || 'http://localhost:8642/', b = await chromium.launch(), page = await b.newPage({ viewport: { width: 1280, height: 800 } }), errs = [];
+page.on('pageerror', (e) => errs.push(e.message));
+await page.goto(URL); await page.evaluate(() => localStorage.clear()); await page.reload(); await page.waitForTimeout(700); await page.click('#start'); await page.waitForTimeout(1300);
+const tp = (x, y) => page.evaluate(([x, y]) => { const s = __inu.state; s.player.x = x * 32; s.player.y = y * 32; __inu.cam.x = s.player.x; __inu.cam.y = s.player.y; document.querySelectorAll('.toast').forEach((t) => t.remove()); }, [x, y]);
+await page.evaluate(() => { const C = __inu.amb.cars; C[0].x = 25 * 32; C[1].x = 38 * 32; C[6].y = 15 * 32; C[7].y = 28 * 32; for (const c of C) c.v0 = c.v, c.v = 0; });
+await tp(32.5, 21.5); await page.waitForTimeout(800); await page.screenshot({ path: 'proof/roads-01-main-junction.png' });
+await page.screenshot({ path: 'proof/roads-02-junction-closeup.png', clip: { x: 340, y: 200, width: 600, height: 400 } });
+await tp(14, 22.5); await page.waitForTimeout(600); await page.screenshot({ path: 'proof/roads-03-street-planters-drains.png' });
+await tp(32.5, 13); await page.waitForTimeout(600); await page.screenshot({ path: 'proof/roads-04-avenue-double-yellow.png' });
+await tp(32, 56); await page.waitForTimeout(600); await page.screenshot({ path: 'proof/roads-05-mall-roundabout.png' });
+await page.evaluate(() => { for (const c of __inu.amb.cars) c.v = c.v0; }); await tp(20, 32.5); await page.waitForTimeout(1500); await page.screenshot({ path: 'proof/roads-06-traffic-moving.png' });
+console.log('errors', JSON.stringify(errs)); await b.close();

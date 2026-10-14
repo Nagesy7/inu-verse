@@ -201,10 +201,10 @@ export function prerenderMap() {
     props.push(sp(spr, x * TILE + 16 - 32, (y + 1) * TILE - 88 + 2, (y + 1) * TILE - 4));
   }
   for (const [lx, ly] of LAMP_TILES) props.push(sp(S.lamp, lx * TILE + 4, ly * TILE + 24 - 68, ly * TILE + 24));
-  for (const [bx, by] of [[17, 6], [11, 8], [38, 33.5], [50, 33.5], [22, 52], [41, 52], [28, 47]]) props.push(sp(S.bench, bx * TILE, by * TILE + 4, by * TILE + 28));
-  for (const [cx, cy] of [[61, 6], [61, 7], [60.6, 6.5], [33.2, 9.2], [26.4, 19.0]]) props.push(sp(S.crate, cx * TILE, cy * TILE, cy * TILE + 28));
+  for (const [bx, by] of [[17, 6], [11, 8], [39, 34.2], [50, 34.2], [22, 52], [41, 52], [28, 47]]) props.push(sp(S.bench, bx * TILE, by * TILE + 4, by * TILE + 28));
+  for (const [cx, cy] of [[61, 6], [61, 7], [60.6, 6.5], [34.3, 9.2], [26.4, 19.0]]) props.push(sp(S.crate, cx * TILE, cy * TILE, cy * TILE + 28));
   // flowering bushes flanking each shop door, hedges at NPC home fronts
-  for (const d of DECOR) if (d.kind !== 'car') props.push(d.kind === 'hedge' ? sp(S.hedge, d.x * TILE, d.y * TILE + 4, d.y * TILE + 30) : sp(S[d.kind], d.x * TILE - 2, d.y * TILE + 4, d.y * TILE + 30));
+  for (const d of DECOR) if (d.kind === 'planter') props.push(sp(S.streetTree, d.x * TILE - 8, d.y * TILE + 28 - S.streetTree.height * 2, d.y * TILE + 28)); else if (d.kind !== 'car') props.push(d.kind === 'hedge' ? sp(S.hedge, d.x * TILE, d.y * TILE + 4, d.y * TILE + 30) : sp(S[d.kind], d.x * TILE - 2, d.y * TILE + 4, d.y * TILE + 30));
   for (const h of NPC_HOMES) props.push(sp(S.mailbox, (h.x + 5) * TILE + 6, (h.y + h.h + 1) * TILE - 34, (h.y + h.h + 1) * TILE - 2));
   // buildings (square front-facing art; legacy procedural storefront if the PNG is missing)
   for (const b of [...BUILDINGS, ...MALL_BUILDINGS]) props.push({ y: (b.y + b.h) * TILE - 1, d: (c) => { if (!drawBuildingArt(c, b.id, b.x, b.y, b.w, b.h)) legacyBuilding(c, b); } });
@@ -229,6 +229,9 @@ export function prerenderMap() {
 // Dynamic, y-sortable drawables: claimed homes, unclaimed plots, stalls, clubhouse.
 export function dynamicProps(state, t, pack) {
   const out = [], S = sprites();
+  { const ph = t % 12, st = ph < 5 ? 2 : ph < 6 ? 1 : 0, av = ph >= 6 && ph < 11 ? 2 : ph >= 11 ? 1 : 0; // main junction traffic lights
+    for (const [lx, ly, street] of [[30, 19, 0], [34, 19, 1], [30, 23, 1], [34, 23, 0]]) { const spr = S['light' + (street ? st : av)], X = lx * TILE + (lx < 31 ? 16 : 4), B = ly * TILE + (ly < 20 ? 22 : 28);
+      out.push({ y: B, d: (c) => c.drawImage(spr, X, B - spr.height * 2, spr.width * 2, spr.height * 2) }); } }
   PLOTS.forEach((p, i) => {
     const x = p.x * TILE, y = p.y * TILE, w = p.w * TILE, h = p.h * TILE, home = state.plots[p.id];
     if (home) {
