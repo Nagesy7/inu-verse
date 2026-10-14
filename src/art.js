@@ -2,10 +2,23 @@
 import { shibaSprite } from './sprite.js';
 import { FURNITURE, footprint, WALLS, FLOORS } from './furniture.js';
 
+// Reference-art sprites (cropped from the user's own art by scripts/extract_art.py).
+export const ART = {};
+export const FASHION_ART = { suit_navy: 'fashion-suit', tux_black: 'fashion-tux', hoodie_maroon: 'fashion-hoodie', jacket_black: 'fashion-jacket', gown_white: 'fashion-gown', hawaiian: 'fashion-hawaiian' };
+const ART_FILES = ['tan', 'cream', 'red', 'dark', 'golden', 'gray'].map((k) => 'shiba-' + k).concat(Object.values(FASHION_ART), ['cafe', 'shop', 'fashion', 'launch', 'cars'].map((k) => 'building-' + k));
+export const artReady = typeof Image === 'undefined' ? Promise.resolve() : Promise.all(ART_FILES.map((n) => new Promise((res) => { const im = new Image(); im.onload = () => { ART[n] = im; res(); }; im.onerror = res; im.src = `assets/${n}.png`; })));
+// Which art sprite represents this avatar: plain coat (tee + jeans) uses the coat art; NPC presets use fashion art.
+export function artKey(coat, outfit, npcIndex = null) {
+  if (npcIndex != null) return Object.values(FASHION_ART)[[0, 3, 1, 2, 4, 5][npcIndex % 6]];
+  const o = outfit || {}; if (!Object.keys(o).length) return 'shiba-' + coat;
+  return null; // custom outfit layering -> code-drawn sprite
+}
+
 const rr = (ctx, x, y, w, h, r) => { ctx.beginPath(); ctx.roundRect(x, y, w, h, r); };
 
 // Pixel Shiba (see sprite.js). (x,y) = ground point under the feet-ish centre.
-export function drawShiba(ctx, x, y, { coat = 'tan', face = 'down', phase = 0, moving = false, scale = 1, name = null, outfit = null, shadow = true } = {}) {
+export function drawShiba(ctx, x, y, { coat = 'tan', face = 'down', phase = 0, moving = false, scale = 1, name = null, outfit = null, shadow = true, badge = null, art = null, emote = null } = {}) {
+  if (art && ART[art]) return drawArt(ctx, x, y, ART[art], { face, phase, moving, scale, name, shadow, badge, emote });
   const px = Math.max(1, Math.round(2 * scale));
   const frame = moving ? Math.floor(phase / 1.6) % 4 : 0;
   const spr = shibaSprite(coat, face, frame, outfit || {});
@@ -16,10 +29,56 @@ export function drawShiba(ctx, x, y, { coat = 'tan', face = 'down', phase = 0, m
   ctx.restore();
   if (name) {
     ctx.save(); ctx.font = '8px Silkscreen, monospace'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
-    const tw = Math.ceil(ctx.measureText(name).width) + 8, ty = dy - 10;
+    const tw = Math.ceil(ctx.measureText(name).width) + 8, ty = dy - 8;
     ctx.fillStyle = '#121a36'; ctx.fillRect(Math.round(x - tw / 2), ty - 6, tw, 12); ctx.fillStyle = '#d4a640'; ctx.fillRect(Math.round(x - tw / 2), ty + 5, tw, 1);
-    ctx.fillStyle = '#f6e7b8'; ctx.fillText(name, Math.round(x), ty); ctx.restore();
+    ctx.fillStyle = '#f6e7b8'; ctx.fillText(name, Math.round(x), ty);
+    if (badge) { // Pack badge: banner-coloured tag with emblem, above the name
+      const bt = `[${badge.tag}]`, bw = Math.ceil(ctx.measureText(bt).width) + 18, bx = Math.round(x - bw / 2), byy = ty - 20;
+      ctx.fillStyle = '#121a36'; ctx.fillRect(bx - 1, byy - 1, bw + 2, 13); ctx.fillStyle = badge.color; ctx.fillRect(bx, byy, bw, 11);
+      ctx.fillStyle = 'rgba(0,0,0,.25)'; ctx.fillRect(bx, byy + 9, bw, 2);
+      drawEmblem(ctx, badge.emblem, bx + 2, byy + 1, 1.6, '#fff6e0');
+      ctx.fillStyle = '#121a36'; ctx.fillText(bt, Math.round(bx + 11 + (bw - 11) / 2) + 1, byy + 6); ctx.fillStyle = '#fff6e0'; ctx.fillText(bt, Math.round(bx + 11 + (bw - 11) / 2), byy + 5);
+    }
+    ctx.restore();
   }
+}
+
+// Pixel emblems for Pack banners. (x,y) top-left, s = pixel unit (shape is ~5x5 units).
+export function drawEmblem(ctx, kind, x, y, s, col) {
+  const P = { paw: [[0, 1], [2, 0], [4, 1], [1, 3], [2, 3], [3, 3], [1, 4], [2, 4], [3, 4], [0, 3], [4, 3]],
+    bone: [[0, 0], [0, 1], [1, 1], [1, 2], [2, 2], [3, 2], [3, 3], [4, 3], [4, 4], [3, 4], [1, 0], [0, 2], [4, 2]],
+    star: [[2, 0], [2, 1], [0, 2], [1, 2], [2, 2], [3, 2], [4, 2], [1, 3], [2, 3], [3, 3], [1, 4], [3, 4]],
+    heart: [[0, 1], [1, 0], [3, 0], [4, 1], [1, 1], [2, 1], [3, 1], [0, 2], [1, 2], [2, 2], [3, 2], [4, 2], [1, 3], [2, 3], [3, 3], [2, 4]] }[kind] || [];
+  ctx.fillStyle = col; for (const [px, py] of P) ctx.fillRect(Math.round(x + px * s), Math.round(y + py * s), Math.ceil(s), Math.ceil(s));
+}
+
+// Draw a reference-art sprite: ~3 tiles tall at scale 1.5; walk = bob + squash + flip.
+function drawArt(ctx, x, y, im, { face, phase, moving, scale, name, shadow, badge, emote }) {
+  const H = Math.round(64 * scale), W = Math.round(im.width * H / im.height);
+  const bob = moving ? Math.abs(Math.sin(phase * 0.9)) * 3 * scale : Math.sin(phase * 0.5) * 0.6;
+  const sq = moving ? 1 + Math.sin(phase * 1.8) * 0.035 : 1, sit = emote === 'sit' ? 0.82 : 1;
+  const h = H * sit / sq, w = W * sq, flip = face === 'left';
+  const top = y + 12 - h - bob;
+  ctx.save(); ctx.imageSmoothingEnabled = false;
+  if (shadow) { ctx.fillStyle = 'rgba(10,14,30,0.3)'; ctx.beginPath(); ctx.ellipse(x, y + 11, w * 0.32, 4 * scale, 0, 0, 7); ctx.fill(); }
+  ctx.translate(Math.round(x), 0); if (flip) ctx.scale(-1, 1);
+  if (face === 'up') ctx.filter = 'brightness(0.82)';
+  ctx.drawImage(im, Math.round(-w / 2), Math.round(top), Math.round(w), Math.round(h));
+  ctx.restore();
+  if (name) nameTag(ctx, x, top, name, badge);
+}
+function nameTag(ctx, x, dy, name, badge) {
+  ctx.save(); ctx.font = '8px Silkscreen, monospace'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+  const tw = Math.ceil(ctx.measureText(name).width) + 8, ty = Math.round(dy - 8);
+  ctx.fillStyle = '#121a36'; ctx.fillRect(Math.round(x - tw / 2), ty - 6, tw, 12); ctx.fillStyle = '#d4a640'; ctx.fillRect(Math.round(x - tw / 2), ty + 5, tw, 1);
+  ctx.fillStyle = '#f6e7b8'; ctx.fillText(name, Math.round(x), ty);
+  if (badge) {
+    const bt = `[${badge.tag}]`, bw = Math.ceil(ctx.measureText(bt).width) + 18, bx = Math.round(x - bw / 2), byy = ty - 20;
+    ctx.fillStyle = '#121a36'; ctx.fillRect(bx - 1, byy - 1, bw + 2, 13); ctx.fillStyle = badge.color; ctx.fillRect(bx, byy, bw, 11);
+    ctx.fillStyle = 'rgba(0,0,0,.25)'; ctx.fillRect(bx, byy + 9, bw, 2); drawEmblem(ctx, badge.emblem, bx + 2, byy + 1, 1.6, '#fff6e0');
+    ctx.fillStyle = '#121a36'; ctx.fillText(bt, Math.round(bx + 11 + (bw - 11) / 2) + 1, byy + 6); ctx.fillStyle = '#fff6e0'; ctx.fillText(bt, Math.round(bx + 11 + (bw - 11) / 2), byy + 5);
+  }
+  ctx.restore();
 }
 
 export function drawBoneIcon(ctx, x, y, s = 1, color = '#fff6e0') {
@@ -47,6 +106,9 @@ export function drawFurniture(ctx, id, x, y, cell, rot, alpha = 1) {
   ctx.shadowColor = 'rgba(0,0,0,0.25)'; ctx.shadowOffsetY = d.layer === 'obj' ? 4 : 0; ctx.shadowBlur = d.layer === 'obj' ? 4 : 0;
   const dark = (c, a = 0.18) => { ctx.fillStyle = c; ctx.fill(); ctx.shadowColor = 'transparent'; ctx.fillStyle = `rgba(0,0,0,${a})`; };
   switch (id) {
+    case 'gold_throne': rr(ctx, L + 2, T, IW - 4, IH, 6); dark('#b8862a'); ctx.fillStyle = '#e3b341'; rr(ctx, L + 4, T + IH * 0.35, IW - 8, IH * 0.6, 5); ctx.fill(); ctx.fillStyle = '#c8282e'; rr(ctx, L + 7, T + IH * 0.45, IW - 14, IH * 0.4, 4); ctx.fill(); ctx.fillStyle = '#fff1b0'; for (const k of [-1, 0, 1]) ctx.fillRect(k * IW * 0.25 - 2, T + 1, 4, 5); break;
+    case 'gold_statue': ctx.fillStyle = '#6a5a4a'; rr(ctx, L + 2, T + IH * 0.6, IW - 4, IH * 0.4, 3); ctx.fill(); ctx.shadowColor = 'transparent'; ctx.fillStyle = '#e3b341'; ctx.beginPath(); ctx.arc(0, -IH * 0.05, IW * 0.28, 0, 7); ctx.fill(); ctx.beginPath(); ctx.moveTo(-IW * 0.28, -IH * 0.15); ctx.lineTo(-IW * 0.2, -IH * 0.42); ctx.lineTo(-IW * 0.05, -IH * 0.25); ctx.moveTo(IW * 0.28, -IH * 0.15); ctx.lineTo(IW * 0.2, -IH * 0.42); ctx.lineTo(IW * 0.05, -IH * 0.25); ctx.fill(); ctx.fillStyle = '#fff1b0'; ctx.fillRect(-IW * 0.12, -IH * 0.12, 3, 3); break;
+    case 'gold_lamp': ctx.fillStyle = '#9c7424'; ctx.beginPath(); ctx.arc(0, 0, IW * 0.4, 0, 7); ctx.fill(); ctx.shadowColor = 'transparent'; ctx.fillStyle = '#ffe7a3'; ctx.beginPath(); ctx.arc(0, 0, IW * 0.28, 0, 7); ctx.fill(); ctx.fillStyle = '#e3b341'; ctx.fillRect(-2, -IH * 0.4, 4, IH * 0.15); break;
     case 'bed': rr(ctx, L, T, IW, IH, 8); dark('#8a5a34'); ctx.fillStyle = '#fff'; rr(ctx, L + 6, T + 6, IW - 12, IH * 0.24, 8); ctx.fill(); ctx.fillStyle = d.color; rr(ctx, L + 3, T + IH * 0.36, IW - 6, IH * 0.62, 6); ctx.fill(); ctx.fillStyle = 'rgba(255,255,255,0.35)'; for (let i = 0; i < 3; i++) ctx.fillRect(L + 3, T + IH * (0.45 + i * 0.17), IW - 6, 3); break;
     case 'sofa': rr(ctx, L, T, IW, IH, 10); dark(d.color); ctx.fillStyle = 'rgba(0,0,0,0.18)'; rr(ctx, L, T, IW, IH * 0.35, 10); ctx.fill(); ctx.fillStyle = 'rgba(255,255,255,0.25)'; for (let i = 1; i < 3; i++) ctx.fillRect(L + (IW / 3) * i - 1, T + IH * 0.4, 2, IH * 0.55); break;
     case 'table': rr(ctx, L, T, IW, IH, 10); dark(d.color); ctx.fillStyle = 'rgba(255,255,255,0.2)'; rr(ctx, L + 6, T + 6, IW - 12, IH - 12, 6); ctx.fill(); ctx.fillStyle = '#fff'; ctx.beginPath(); ctx.arc(0, 0, 8, 0, 7); ctx.fill(); ctx.fillStyle = '#c08a5a'; ctx.beginPath(); ctx.arc(0, 0, 5, 0, 7); ctx.fill(); break;

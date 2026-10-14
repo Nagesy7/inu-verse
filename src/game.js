@@ -1,4 +1,5 @@
 import { PLOTS, PLOT_COST, TILE } from './world.js';
+import { ensurePacks } from './packs.js';
 import { FURNITURE, WALLS, FLOORS, canPlace } from './furniture.js';
 
 export const START_BONES = 500, START_KIBBLE = 20, BONES_PER_KIBBLE = 25, SELL_BACK = 0.5;
@@ -15,12 +16,14 @@ const COAT_ALIASES = { sesame: 'tan', black: 'dark' };
 export const normalizeCoat = (c) => (COATS[c] ? c : COATS[COAT_ALIASES[c]] ? COAT_ALIASES[c] : 'tan');
 
 export function newGame({ name = 'Inu', coat = 'tan' } = {}) {
-  return {
+  const s = {
     v: 1, player: { name: String(name).slice(0, 14) || 'Inu', coat: normalizeCoat(coat), x: 31.5 * TILE, y: 23.5 * TILE },
     bones: START_BONES, kibble: START_KIBBLE, plots: {}, inventory: {}, tokens: [], uid: 1,
     stats: { shifts: 0, bonesEarned: 0, served: 0 }, simTime: 0,
     wardrobe: { owned: [], equipped: {} },
+    packs: null,
   };
+  ensurePacks(s); s.mall = { v: 1, treasury: 0, pools: { daily: 0, weekly: 0, monthly: 0 }, owned: [], cars: [], ledger: [], winners: [], period: { day: 0 }, activity: { dayBones: 0, weekDecor: 0 } }; return s;
 }
 
 const ok = (extra = {}) => ({ ok: true, ...extra });

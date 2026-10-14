@@ -1,5 +1,6 @@
 // Pixel-art world rendering: chunky gold-trimmed buildings, navy/gold palette.
-import { TILE, MAP_W, MAP_H, MAP, T, BUILDINGS, PLOTS, NPC_HOMES, STALL_SLOTS } from './world.js';
+import { TILE, MAP_W, MAP_H, MAP, T, BUILDINGS, PLOTS, NPC_HOMES, STALL_SLOTS, CLUBHOUSE, MALL_BUILDINGS, LEADERS } from './world.js';
+import { drawEmblem, ART } from './art.js';
 import { NPC_INTERIORS } from './homes.js';
 import { WALLS } from './furniture.js';
 
@@ -40,6 +41,12 @@ const THEMES = {
   fashion: { wall: '#5a2352', roof: '#3f1739', accent: '#f0a6dc', label: 'Clothing' },
   launch:  { wall: '#22377a', roof: '#18275a', accent: '#7fb4ff', label: 'Demo tokens' },
   cars:    { wall: '#2a2a33', roof: '#1c1c24', accent: '#c9c9d6', label: 'Coming soon' },
+  mall:    { wall: '#6a4a14', roof: '#3a2a0a', accent: '#fff1b0', label: 'Luxury - demo KIBBLE' },
+  jewel:   { wall: '#24305c', roof: '#121a36', accent: '#cfe8ff', label: 'Jewelry' },
+  designer:{ wall: '#5a2352', roof: '#3f1739', accent: '#f0a6dc', label: 'Designer outfits' },
+  goldden: { wall: '#7a4a24', roof: '#4a2a14', accent: '#f2cc68', label: 'Gold furniture' },
+  luxauto: { wall: '#1c1c24', roof: '#0c0c12', accent: '#e3b341', label: 'Car previews' },
+  office:  { wall: '#2a1a4a', roof: '#1a1030', accent: '#f2cc68', label: "President Inu" },
 };
 
 // Chunky pseudo-isometric storefront filling footprint (x,y,w,h); flag pokes above.
@@ -114,6 +121,13 @@ export function storefront(c, x, y, w, h, th, name, { small = false } = {}) {
 
 function building(c, b) {
   const x = b.x * TILE, y = b.y * TILE, w = b.w * TILE, h = b.h * TILE, th = THEMES[b.id];
+  const im = ART['building-' + b.id];
+  if (im) { // reference-art building, bottom-aligned on its footprint
+    const H = Math.min(h + 4 * TILE, (w + TILE) * im.height / im.width), W = H * im.width / im.height;
+    R(c, x + 4, y + h - 6, w - 8, 10, 'rgba(8,10,24,0.35)');
+    c.drawImage(im, Math.round(x + w / 2 - W / 2), Math.round(y + h + 10 - H), Math.round(W), Math.round(H));
+    return;
+  }
   storefront(c, x, y, w, h, th, b.name);
   // small tag plate under sign
   c.font = `8px ${FONT}`; const tw = c.measureText(th.label.toUpperCase()).width + 10;
@@ -162,6 +176,12 @@ export function prerenderMap() {
   }
   for (const h of NPC_HOMES) npcHouse(c, h);
   for (const b of BUILDINGS) building(c, b);
+  for (const b of MALL_BUILDINGS) building(c, b);
+  { // Leaderboards hall board
+    const x = LEADERS.x * TILE, y = LEADERS.y * TILE - 20; R(c, x + 6, y + 40, 4, 44, GOLD_D); R(c, x + 86, y + 40, 4, 44, GOLD_D);
+    R(c, x - 4, y - 4, 104, 68, GOLD); R(c, x, y, 96, 60, NAVY); pixelText(c, 'LEADERBOARDS', x + 48, y + 10, 90, 8, GOLD_L);
+    for (let i = 0; i < 3; i++) { R(c, x + 8, y + 22 + i * 12, 80, 8, NAVY_L); R(c, x + 10, y + 24 + i * 12, [60, 46, 34][i], 4, [GOLD_L, '#c9d0dc', '#c8783a'][i]); }
+  }
   for (let y = 0; y < MAP_H; y++) for (let x = 0; x < MAP_W; x++) if (MAP[y][x] === T.TREE) tree(c, x * TILE + 16, y * TILE + 14);
   // bench + gold lamp posts
   R(c, 17 * TILE, 6 * TILE + 8, 56, 6, '#7a4a2a'); R(c, 17 * TILE, 6 * TILE + 16, 56, 4, '#5a3420'); R(c, 17 * TILE + 4, 6 * TILE + 20, 4, 6, INK); R(c, 17 * TILE + 48, 6 * TILE + 20, 4, 6, INK);
@@ -170,6 +190,7 @@ export function prerenderMap() {
   label('MARKET ROW - LAUNCHED TOKEN STALLS', 34 * TILE, 6 * TILE + 2);
   label('SAKURA POND', 7 * TILE, 2 * TILE + 6);
   label('SAKURA LANE', 2 * TILE, 34 * TILE + 2);
+  label('KIBBLE MALL DISTRICT - OWNED BY PRESIDENT INU - DEMO KIBBLE ONLY', 9 * TILE, 46 * TILE + 6);
   return cv;
 }
 
@@ -203,4 +224,34 @@ export function drawStalls(c, state, t) {
     R(c, x + 46 - lw / 2, y - 12, lw, 12, NAVY); R(c, x + 46 - lw / 2, y - 1, lw, 1, GOLD);
     c.fillStyle = GOLD_L; c.textAlign = 'center'; c.textBaseline = 'middle'; c.fillText(lbl, x + 46, y - 6);
   });
+}
+
+// Pack clubhouse: your Pack's hall with its banner flying from a tall pole, or an empty lot sign.
+export function drawClubhouse(c, state, t, pack) {
+  const b = CLUBHOUSE, x = b.x * TILE, y = b.y * TILE, w = b.w * TILE, h = b.h * TILE;
+  if (!pack) {
+    R(c, x + 2, y + 2, w - 4, h - 4, '#6a8a4a');
+    for (let i = 0; i <= b.w; i++) { const fx = x + i * 32 - 2 - (i === b.w ? 3 : 0); R(c, fx, y + h - 18, 6, 14, '#7a5232'); R(c, fx, y + h - 18, 6, 2, GOLD); }
+    R(c, x, y + h - 14, w, 3, '#9c6c40');
+    const sx = x + w / 2, sy = y + h / 2 + 4; R(c, sx - 2, sy, 5, 30, '#5a3a22');
+    R(c, sx - 70, sy - 30, 140, 40, GOLD); R(c, sx - 68, sy - 28, 136, 36, NAVY);
+    pixelText(c, 'PACK CLUBHOUSE', sx, sy - 18, 128, 10, GOLD_L); pixelText(c, 'FOUND OR JOIN A PACK', sx, sy - 4, 128, 7, '#f6e7b8', null);
+    return;
+  }
+  const ch = pack.clubhouse;
+  house(c, x, y, w, h, ch.roof || pack.color, shade(WALLS[ch.wall]?.color || '#f3e6cf', 0.7), `${pack.name}`);
+  // banner pole + waving banner in pack colour with emblem and tag
+  const px = x + w - 30, top = y - 22;
+  R(c, px - 2, top, 4, h - 6, GOLD_D); R(c, px - 1, top, 1, h - 6, GOLD_L); R(c, px - 4, top - 5, 8, 6, GOLD_L); R(c, px - 6, y + h - 12, 12, 4, GOLD_D);
+  const bw = 46, bh = 30;
+  for (let i = 0; i < bw; i += 2) {
+    const wave = Math.round(Math.sin(t * 4 - i * 0.18) * 2 * (i / bw));
+    R(c, px + 2 + i, top + 2 + wave, 2, bh, pack.color);
+    R(c, px + 2 + i, top + 2 + wave, 2, 2, shade(pack.color, 1.3)); R(c, px + 2 + i, top + bh + wave, 2, 2, shade(pack.color, 0.6));
+    if (i % 8 === 0) R(c, px + 2 + i, top + bh + 2 + wave, 2, 3, GOLD);
+  }
+  const wv = Math.round(Math.sin(t * 4 - 10 * 0.18) * 2 * 0.4);
+  R(c, px + 9, top + 6 + wv, 14, 14, '#fff6e0'); drawEmblem(c, pack.emblem, px + 10, top + 7 + wv, 2.4, pack.color);
+  pixelText(c, pack.tag, px + 35, top + 14 + wv, 20, 8, '#fff6e0', INK);
+  R(c, x + w / 2 - 50, y + h - 2, 100, 12, NAVY); pixelText(c, 'PACK CLUBHOUSE', x + w / 2, y + h + 4, 96, 7, GOLD_L, null);
 }

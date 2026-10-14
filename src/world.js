@@ -1,4 +1,4 @@
-export const TILE = 32, MAP_W = 64, MAP_H = 42;
+export const TILE = 32, MAP_W = 64, MAP_H = 70;
 export const T = { GRASS: 0, ROAD: 1, WALK: 2, BUILDING: 3, WATER: 4, TREE: 5, PLOT: 6, FLOWER: 7, PLAZA: 8, HOME: 9 };
 const SOLID = new Set([T.BUILDING, T.WATER, T.TREE, T.PLOT, T.HOME]);
 
@@ -9,6 +9,17 @@ export const BUILDINGS = [
   { id: 'launch', name: 'Launch Hall', x: 35, y: 11, w: 12, h: 7 },
   { id: 'cars', name: 'Zoomies Motors', x: 50, y: 12, w: 10, h: 6 },
 ];
+// Kibble Mall district (south). Owned by President Inu. Stores open the Mall panel filtered by category.
+export const MALL_BUILDINGS = [
+  { id: 'mall', name: 'Kibble Mall', x: 25, y: 50, w: 14, h: 8, cat: 'all' },
+  { id: 'jewel', name: 'Gilded Collar Jewelers', x: 10, y: 49, w: 8, h: 6, cat: 'jewelry' },
+  { id: 'designer', name: 'Royal Paws Designer', x: 46, y: 49, w: 8, h: 6, cat: 'outfit' },
+  { id: 'goldden', name: 'Golden Den Furniture', x: 10, y: 60, w: 8, h: 6, cat: 'furniture' },
+  { id: 'luxauto', name: 'Zoomies Luxury Autos', x: 46, y: 60, w: 8, h: 6, cat: 'car' },
+  { id: 'office', name: "President's Office", x: 27, y: 62, w: 10, h: 5, cat: 'office' },
+];
+export const STATUE = { x: 31, y: 59 };
+export const LEADERS = { x: 20, y: 56 }; // leaderboard hall board (3x2 tiles) // President Inu statue in the Mall plaza (tile)
 export const PLOT_COST = 300;
 export const PLOTS = [2, 9, 16, 23, 35, 42, 49, 56].map((x, i) => ({ id: 'p' + (i + 1), x, y: 24, w: 6, h: 6 }));
 export const NPC_HOMES = [
@@ -17,6 +28,8 @@ export const NPC_HOMES = [
   { id: 'h3', owner: 'Hana', x: 16, y: 35, w: 6, h: 5 },
   { id: 'h4', owner: 'Taro', x: 23, y: 35, w: 6, h: 5 },
 ];
+// Pack clubhouse lot (north of Market Row). Shows the clubhouse of the Pack you belong to.
+export const CLUBHOUSE = { id: 'clubhouse', x: 47, y: 1, w: 9, h: 5 };
 export const STALL_SLOTS = Array.from({ length: 9 }, (_, i) => ({ x: 34 + i * 3, y: 7 }));
 
 export function buildMap() {
@@ -26,13 +39,19 @@ export function buildMap() {
   for (let y = 0; y < MAP_H; y++) for (let x = 0; x < MAP_W; x++) if (((x * 73856093) ^ (y * 19349663)) % 23 === 0) g[y][x] = T.FLOWER;
   fill(1, 19, MAP_W - 2, 1, T.WALK); fill(1, 20, MAP_W - 2, 2, T.ROAD); fill(1, 22, MAP_W - 2, 1, T.WALK);
   fill(1, 30, MAP_W - 2, 1, T.WALK); fill(1, 31, MAP_W - 2, 2, T.ROAD); fill(1, 33, MAP_W - 2, 1, T.WALK);
-  fill(30, 6, 1, 35, T.WALK); fill(31, 6, 2, 35, T.ROAD); fill(33, 6, 1, 35, T.WALK);
+  fill(30, 6, 1, 40, T.WALK); fill(31, 6, 2, 40, T.ROAD); fill(33, 6, 1, 40, T.WALK);
   fill(33, 6, 29, 4, T.PLAZA);
   fill(5, 3, 9, 5, T.WATER);
   for (const b of BUILDINGS) { fill(b.x, b.y, b.w, b.h, T.BUILDING); fill(b.x - 1, b.y + b.h, b.w + 2, 1, T.PLAZA); }
   for (const p of PLOTS) fill(p.x, p.y, p.w, p.h, T.PLOT);
   for (const h of NPC_HOMES) fill(h.x, h.y, h.w, h.h, T.HOME);
+  fill(CLUBHOUSE.x, CLUBHOUSE.y, CLUBHOUSE.w, CLUBHOUSE.h, T.HOME);
   fill(37, 35, 18, 4, T.WATER);
+  // south: Kibble Mall district
+  fill(1, 42, MAP_W - 2, 1, T.WALK); fill(1, 43, MAP_W - 2, 2, T.ROAD); fill(1, 45, MAP_W - 2, 1, T.WALK);
+  fill(7, 46, 50, 22, T.PLAZA);
+  for (const b of MALL_BUILDINGS) fill(b.x, b.y, b.w, b.h, T.BUILDING);
+  fill(STATUE.x, STATUE.y, 2, 1, T.BUILDING); fill(LEADERS.x, LEADERS.y, 3, 2, T.BUILDING);
   // trees: border + some park trees
   for (let y = 0; y < MAP_H; y++) for (let x = 0; x < MAP_W; x++) if (x === 0 || y === 0 || x === MAP_W - 1 || y === MAP_H - 1) g[y][x] = T.TREE;
   for (const [x, y] of [[2, 2], [16, 3], [19, 5], [22, 2], [25, 7], [3, 9], [27, 3], [15, 9], [61, 14], [60, 24], [34, 38], [57, 36], [58, 39], [35, 35]])
@@ -47,11 +66,15 @@ export const isSolid = (tx, ty) => tx < 0 || ty < 0 || tx >= MAP_W || ty >= MAP_
 export function interactables(state) {
   const list = [];
   for (const b of BUILDINGS) list.push({ kind: 'building', id: b.id, name: b.name, tx: b.x + Math.floor(b.w / 2), ty: b.y + b.h });
+  for (const b of MALL_BUILDINGS) list.push({ kind: 'mall', id: b.id, name: b.name, cat: b.cat, tx: b.x + Math.floor(b.w / 2), ty: b.y + b.h });
+  list.push({ kind: 'mall', id: 'board', name: 'Mall prize-pool board', cat: 'board', tx: STATUE.x + 3, ty: STATUE.y });
+  list.push({ kind: 'mall', id: 'leaders', name: 'Leaderboards Hall', cat: 'leaders', tx: LEADERS.x + 1, ty: LEADERS.y + 2 });
   for (const p of PLOTS) {
     const owned = !!state?.plots?.[p.id];
     list.push({ kind: 'plot', id: p.id, name: owned ? 'Your Home' : 'Plot for claim', tx: p.x + 3, ty: p.y - 1 });
   }
   for (const h of NPC_HOMES) list.push({ kind: 'visit', id: h.id, name: `${h.owner}'s Home`, tx: h.x + 3, ty: h.y - 1 });
+  list.push({ kind: 'clubhouse', id: CLUBHOUSE.id, name: state?.packs?.joined ? 'Pack Clubhouse' : 'Pack Clubhouse lot', tx: CLUBHOUSE.x + 4, ty: CLUBHOUSE.y + CLUBHOUSE.h });
   (state?.tokens || []).forEach((tok, i) => { const s = STALL_SLOTS[i % STALL_SLOTS.length]; list.push({ kind: 'stall', id: tok.id, name: `$${tok.ticker} stall`, tx: s.x + 1, ty: s.y + 2 }); });
   return list;
 }

@@ -81,3 +81,17 @@ details summary{cursor:pointer}
 .slot{margin-bottom:10px}.slot>b{display:block;margin-bottom:4px}.slot-items{display:flex;gap:6px;flex-wrap:wrap}.slot-items .btn{font-size:11px;padding:5px 8px}
 ul{line-height:1.7;font-size:12px}
 @media(max-width:700px){.cafe,.launch,.wardrobe{grid-template-columns:1fr}.stats{grid-template-columns:repeat(2,1fr)}.coats{grid-template-columns:repeat(3,1fr)}}
+
+/* Packs */
+.tagchip{display:inline-block;padding:1px 5px;color:#fff6e0;border:2px solid var(--ink);font-size:11px;text-shadow:1px 1px 0 #0006}
+.packlist{display:grid;gap:8px}.packrow{display:flex;align-items:center;gap:10px}
+.packhead{display:flex;gap:12px;align-items:center;margin-bottom:10px}
+.members{display:grid;gap:6px;max-height:300px;overflow:auto}.member{display:flex;gap:8px;align-items:center;background:var(--navy2);border:2px solid var(--goldd);padding:4px 8px}
+.board{display:grid;gap:6px;margin-top:10px;max-height:360px;overflow:auto}.post{background:var(--navy2);border-left:4px solid var(--gold);padding:6px 10px;font-size:13px}.post.sys{border-color:#7fb4ff;opacity:.85;font-style:italic}.post.mine{border-color:#3fa66a}
+table.cup{width:100%;border-collapse:collapse;font-size:13px}table.cup td,table.cup th{padding:6px;border-bottom:2px solid var(--navy3);text-align:left}table.cup tr.mine{background:rgba(242,204,104,.15);outline:2px solid var(--gold)}
+
+#emotes{position:fixed;bottom:90px;left:50%;transform:translateX(-50%);display:flex;gap:6px;z-index:6;background:var(--navy);border:3px solid var(--gold);padding:8px}
+#photobar{display:none;position:fixed;top:10px;right:10px;z-index:7;gap:8px;align-items:center;background:var(--navy);border:3px solid var(--gold);padding:6px 10px;color:var(--goldl)}
+body.photo #hud,body.photo #minimap-wrap,body.photo #prompt,body.photo #emotes,body.photo #toast{display:none!important}body.photo #photobar{display:flex}
+.fashart{height:92px;image-rendering:pixelated;display:block;margin:0 auto}
+.poolrules,.lbgrid{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:8px;margin:8px 0}.checkout{background:var(--navy);border:2px solid var(--goldd);padding:4px;margin:4px 0;font-size:11px}code{color:#a9c4ff}

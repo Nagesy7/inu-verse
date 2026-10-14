@@ -12,10 +12,15 @@ export const OUTFITS = {
   chain_gold:   { slot: 'neck', name: 'Gold Chain', price: 150, look: { kind: 'chain', c: '#f0c24b' } },
   suit_navy:    { slot: 'top', name: 'Navy Suit Jacket', price: 220, look: { kind: 'suit', c: '#1f2d5c', d: '#141e40', shirt: '#f4f1ea', pin: '#e3b341' } },
   tux_black:    { slot: 'top', name: 'Black Tuxedo', price: 260, look: { kind: 'suit', c: '#1a1a20', d: '#0e0e12', shirt: '#ffffff', pin: '#e3b341' } },
-  hoodie_maroon:{ slot: 'top', name: 'Maroon Paw Hoodie', price: 120, look: { kind: 'hoodie', c: '#7c1e2c', d: '#58131e', accent: '#e3b341' } },
-  jacket_black: { slot: 'top', name: 'Black Jacket', price: 160, look: { kind: 'jacket', c: '#202026', d: '#121216', accent: '#e3b341' } },
+  hoodie_maroon:{ slot: 'top', name: 'Maroon Paw Hoodie', price: 120, look: { kind: 'hoodie', c: '#7c1e2c', d: '#58131e', accent: '#e3b341', hair: { c: '#a8321e', d: '#6e1c10', l: '#d0502c' } } },
+  jacket_black: { slot: 'top', name: 'Black Jacket', price: 160, look: { kind: 'jacket', c: '#202026', d: '#121216', accent: '#e3b341', hair: { c: '#3a2418', d: '#22140c', l: '#5a3a26' } } },
   hawaiian:     { slot: 'top', name: 'Hawaiian Shirt', price: 90, look: { kind: 'hawaiian', c: '#1c2a52', d: '#121c3a', accent: '#e3b341' } },
-  gown_white:   { slot: 'top', name: 'White & Gold Gown', price: 300, full: true, look: { kind: 'gown', c: '#f6f1e4', d: '#d9cfb8', accent: '#e3b341' } },
+  gown_white:   { slot: 'top', name: 'White & Gold Gown', price: 300, full: true, look: { kind: 'gown', c: '#f6f1e4', d: '#d9cfb8', accent: '#e3b341', hair: { long: true, c: '#e9c25a', d: '#b88a2a', l: '#f8e08a' } } },
+  gold_suit:    { slot: 'top', name: 'Gold Designer Suit', price: 999, mall: true, look: { kind: 'suit', c: '#d4a640', d: '#9c7424', shirt: '#121a36', pin: '#ffffff' } },
+  velvet_gown:  { slot: 'top', name: 'Midnight Velvet Gown', price: 999, mall: true, full: true, look: { kind: 'gown', c: '#24305c', d: '#121a36', accent: '#f2cc68', hair: { long: true, c: '#3a2418', d: '#22140c', l: '#6a4a30' } } },
+  crown:        { slot: 'hat', name: 'Little Gold Crown', price: 999, mall: true, look: { kind: 'tophat', c: '#e3b341', d: '#9c7424', band: '#d8425a' } },
+  diamond_chain:{ slot: 'neck', name: 'Diamond Paw Chain', price: 999, mall: true, look: { kind: 'chain', c: '#cfe8ff' } },
+  plat_shades:  { slot: 'eyes', name: 'Platinum Shades', price: 999, mall: true, look: { c: '#15151c', frame: '#dfe4ea' } },
   slacks_navy:  { slot: 'bottom', name: 'Navy Slacks', price: 90, look: { c: '#1f2d5c', d: '#141e40' } },
   slacks_black: { slot: 'bottom', name: 'Black Slacks', price: 90, look: { c: '#1a1a20', d: '#0e0e12' } },
   jeans_ripped: { slot: 'bottom', name: 'Ripped Jeans', price: 70, look: { c: '#4a6fa5', d: '#34507c', rip: '#c9d6e8' } },
@@ -37,6 +42,7 @@ export function ensureWardrobe(s) {
 export const owns = (s, id) => !!s.wardrobe?.owned?.includes(id);
 export function buyOutfit(s, id) {
   const d = OUTFITS[id]; if (!d) return fail('Unknown item');
+  if (d.mall) return fail('Sold at Kibble Mall');
   const w = ensureWardrobe(s);
   if (w.owned.includes(id)) return fail('Already owned');
   if (s.bones < d.price) return fail('Not enough bones');

@@ -1,38 +1,90 @@
-[2026-10-14T11:13:34.010Z] screenshot proof/verse-01-title.png
-[2026-10-14T11:13:34.037Z] coat choices: Classic Tan | Cream / White | Reddish-Brown | Dark Brown | Light Golden | Gray
-[2026-10-14T11:13:34.076Z] screenshot proof/style-01-character-creation.png
-[2026-10-14T11:13:34.475Z] screenshot proof/verse-02-avatar.png
-[2026-10-14T11:13:35.380Z] started: bones=500 kibble=20 pos=1008,752
-[2026-10-14T11:13:36.792Z] walked with keys: pos=1145,677 (moved 156px)
-[2026-10-14T11:13:36.962Z] screenshot proof/verse-03-walk.png
-[2026-10-14T11:13:38.354Z] screenshot proof/style-02-neighbourhood.png
-[2026-10-14T11:13:45.153Z] arrived at café via click-to-move
-[2026-10-14T11:13:49.579Z] screenshot proof/verse-04-cafe.png
-[2026-10-14T11:14:45.603Z] shift result: +399 bones (served clicks 17)
-[2026-10-14T11:14:45.718Z] screenshot proof/verse-05-cafe-paid.png
-[2026-10-14T11:14:45.756Z] bones after job: 899
-[2026-10-14T11:14:53.664Z] screenshot proof/verse-06-plot.png
-[2026-10-14T11:14:54.208Z] claimed: plots=p5 bones=599 mode=build
-[2026-10-14T11:15:00.770Z] screenshot proof/verse-07-shop.png
-[2026-10-14T11:15:00.773Z] bought: inv={"sofa":1,"plant":1,"lamp":1,"rug":1} bones=414
-[2026-10-14T11:15:06.431Z] entered home build mode
-[2026-10-14T11:15:07.234Z] placed items: rug,sofa,plant,lamp
-[2026-10-14T11:15:07.289Z] screenshot proof/verse-08-home.png
-[2026-10-14T11:15:14.035Z] after buy: you hold 91.30M $STAR, holders 3, mcap 41.59
-[2026-10-14T11:15:14.125Z] screenshot proof/verse-09-launch.png
-[2026-10-14T11:15:14.577Z] after selling 50%: kibble=20.954 hold=45.65M
-[2026-10-14T11:15:14.676Z] screenshot proof/verse-10-launch-sell.png
-[2026-10-14T11:15:18.911Z] screenshot proof/verse-11-market-row.png
-[2026-10-14T11:15:25.233Z] screenshot proof/style-03-launch-hall-exterior.png
-[2026-10-14T11:15:25.235Z] proof top-up: +1500 bones for fashion demo
-[2026-10-14T11:15:30.171Z] screenshot proof/style-04-fetch-fashion-exterior.png
-[2026-10-14T11:15:32.283Z] fashion: spent 1070 bones; owned=["hawaiian","chinos","gold_shades","chain_gold","sneakers_red","cap_red","suit_navy","gown_white"]
-[2026-10-14T11:15:32.374Z] screenshot proof/style-05-fashion-shop.png
-[2026-10-14T11:15:32.572Z] equipped: {"top":"hawaiian","eyes":"gold_shades","neck":"chain_gold","feet":"sneakers_red","hat":"cap_red","bottom":"chinos"}
-[2026-10-14T11:15:32.676Z] screenshot proof/style-06-wardrobe.png
-[2026-10-14T11:15:33.796Z] screenshot proof/style-07-outfit-in-world.png
-[2026-10-14T11:15:34.772Z] screenshot proof/style-08-title-with-saved-outfit.png
-[2026-10-14T11:15:35.384Z] reload persistence: continue=true plots=p5 bones=744 tokens=3 outfit={"top":"hawaiian","eyes":"gold_shades","neck":"chain_gold","feet":"sneakers_red","hat":"cap_red","bottom":"chinos"}
-[2026-10-14T11:15:41.593Z] screenshot proof/style-09-sakura-lane-npc-outfits.png
-[2026-10-14T11:15:48.568Z] screenshot proof/verse-12-visit-home.png
-[2026-10-14T11:15:48.569Z] page errors: none
+[2026-10-14T11:34:48.729Z] screenshot proof/verse-01-title.png
+[2026-10-14T11:34:48.788Z] screenshot proof/sprite-01-six-coats-closeup.png
+[2026-10-14T11:34:48.839Z] screenshot proof/sprite-02-outfits-closeup.png
+[2026-10-14T11:34:48.847Z] coat choices: Classic Tan | Cream / White | Reddish-Brown | Dark Brown | Light Golden | Gray
+[2026-10-14T11:34:48.892Z] screenshot proof/style-01-character-creation.png
+[2026-10-14T11:34:49.327Z] screenshot proof/verse-02-avatar.png
+[2026-10-14T11:34:50.325Z] started: bones=500 kibble=20 pos=1008,752
+[2026-10-14T11:34:51.765Z] walked with keys: pos=1143,677 (moved 154px)
+[2026-10-14T11:34:52.027Z] screenshot proof/verse-03-walk.png
+[2026-10-14T11:34:53.526Z] screenshot proof/style-02-neighbourhood.png
+[2026-10-14T11:34:53.825Z] screenshot proof/sprite-03-world-scale.png (characters ~3 tiles tall next to buildings)
+[2026-10-14T11:35:00.823Z] arrived at café via click-to-move
+[2026-10-14T11:35:06.186Z] screenshot proof/verse-04-cafe.png
+[2026-10-14T11:36:01.465Z] shift result: +359 bones (served clicks 17)
+[2026-10-14T11:36:01.664Z] screenshot proof/verse-05-cafe-paid.png
+[2026-10-14T11:36:01.875Z] bones after job: 859
+[2026-10-14T11:36:09.942Z] screenshot proof/verse-06-plot.png
+[2026-10-14T11:36:10.504Z] claimed: plots=p5 bones=559 mode=build
+[2026-10-14T11:36:18.060Z] screenshot proof/verse-07-shop.png
+[2026-10-14T11:36:18.082Z] bought: inv={"sofa":1,"plant":1,"lamp":1,"rug":1} bones=374
+[2026-10-14T11:36:24.130Z] entered home build mode
+[2026-10-14T11:36:24.969Z] placed items: rug,sofa,plant,lamp
+[2026-10-14T11:36:25.019Z] screenshot proof/verse-08-home.png
+[2026-10-14T11:36:33.298Z] after buy: you hold 96.66M $STAR, holders 2, mcap 34.17
+[2026-10-14T11:36:33.504Z] screenshot proof/verse-09-launch.png
+[2026-10-14T11:36:34.216Z] after selling 50%: kibble=20.557 hold=48.33M
+[2026-10-14T11:36:34.510Z] screenshot proof/verse-10-launch-sell.png
+[2026-10-14T11:36:39.340Z] screenshot proof/verse-11-market-row.png
+[2026-10-14T11:36:45.978Z] screenshot proof/style-03-launch-hall-exterior.png
+[2026-10-14T11:36:45.989Z] proof top-up: +1500 bones for fashion demo
+[2026-10-14T11:36:51.059Z] screenshot proof/style-04-fetch-fashion-exterior.png
+[2026-10-14T11:36:54.808Z] fashion: spent 1070 bones; owned=["hawaiian","chinos","gold_shades","chain_gold","sneakers_red","cap_red","suit_navy","gown_white"]
+[2026-10-14T11:36:55.011Z] screenshot proof/style-05-fashion-shop.png
+[2026-10-14T11:36:56.399Z] equipped: {"top":"hawaiian","eyes":"gold_shades","neck":"chain_gold","feet":"sneakers_red","hat":"cap_red","bottom":"chinos"}
+[2026-10-14T11:36:56.623Z] screenshot proof/style-06-wardrobe.png
+[2026-10-14T11:36:58.094Z] screenshot proof/style-07-outfit-in-world.png
+[2026-10-14T11:36:59.088Z] screenshot proof/style-08-title-with-saved-outfit.png
+[2026-10-14T11:36:59.788Z] reload persistence: continue=true plots=p5 bones=704 tokens=3 outfit={"top":"hawaiian","eyes":"gold_shades","neck":"chain_gold","feet":"sneakers_red","hat":"cap_red","bottom":"chinos"}
+[2026-10-14T11:37:06.072Z] screenshot proof/style-09-sakura-lane-npc-outfits.png
+[2026-10-14T11:37:13.116Z] screenshot proof/verse-12-visit-home.png
+[2026-10-14T11:37:13.398Z] screenshot proof/packs-01-find-a-pack.png
+[2026-10-14T11:37:13.723Z] joined: {"id":"pk_bark","name":"Bone Street Barkers","tag":"BARK","members":4,"treasury":352,"items":6,"pool":{},"board":8,"owner":"npc_kuro"}
+[2026-10-14T11:37:13.875Z] screenshot proof/packs-02-joined-npc-pack.png
+[2026-10-14T11:37:14.441Z] screenshot proof/packs-03-pack-board.png
+[2026-10-14T11:37:14.892Z] after leave: joined=null bark members=3
+[2026-10-14T11:37:14.907Z] proof top-up: +1200 bones for Pack demo
+[2026-10-14T11:37:15.171Z] screenshot proof/packs-04-found-a-pack.png
+[2026-10-14T11:37:15.443Z] founded: {"id":"pk_18","name":"Shiba Squad","tag":"SQD","members":1,"treasury":0,"items":0,"pool":{},"board":1,"owner":"you"} cost=400 bones
+[2026-10-14T11:37:16.242Z] after contribute + 3 simulated recruits: {"id":"pk_18","name":"Shiba Squad","tag":"SQD","members":4,"treasury":700,"items":0,"pool":{},"board":4,"owner":"you"}
+[2026-10-14T11:37:16.391Z] screenshot proof/packs-05-my-pack.png
+[2026-10-14T11:37:31.073Z] walked to clubhouse, entered Pack build mode
+[2026-10-14T11:37:32.034Z] pool after treasury buys: {"id":"pk_18","name":"Shiba Squad","tag":"SQD","members":4,"treasury":85,"items":0,"pool":{"sofa":1,"rug":1,"plant":2,"lamp":1,"tv":1,"arcade":1},"board":4,"owner":"you"}
+[2026-10-14T11:37:33.433Z] clubhouse after decorating: {"id":"pk_18","name":"Shiba Squad","tag":"SQD","members":4,"treasury":85,"items":5,"pool":{"lamp":1,"arcade":1},"board":4,"owner":"you"} my decor=5
+[2026-10-14T11:37:33.484Z] screenshot proof/packs-06-clubhouse-decorate.png
+[2026-10-14T11:37:35.778Z] screenshot proof/packs-07-clubhouse-banner-and-badge.png
+[2026-10-14T11:37:36.577Z] screenshot proof/packs-08-kibble-cup-leaderboard.png
+[2026-10-14T11:37:36.599Z] leaderboard: ["1 Moonlight Zoomies [ZOOM] 5 562","2 Sakura Sniffers [SNIF] 4 547","3 Bone Street Barkers [BARK] 3 418","4 Shiba Squad [SQD] 4 95"]
+[2026-10-14T11:37:37.128Z] screenshot proof/packs-09-my-pack-board.png
+[2026-10-14T11:37:38.756Z] reload persistence (packs): {"id":"pk_18","name":"Shiba Squad","tag":"SQD","members":4,"treasury":85,"items":5,"pool":{"lamp":1,"arcade":1},"board":4,"owner":"you"}
+[2026-10-14T11:37:39.687Z] screenshot proof/alive-01-day.png
+[2026-10-14T11:37:40.222Z] screenshot proof/alive-02-sunset.png
+[2026-10-14T11:37:40.721Z] screenshot proof/alive-03-night.png
+[2026-10-14T11:37:42.107Z] screenshot proof/wildlife-04-night-fireflies-lamp-moths.png
+[2026-10-14T11:37:43.625Z] screenshot proof/alive-04-rain.png
+[2026-10-14T11:37:45.893Z] screenshot proof/alive-05-emote-dance.png
+[2026-10-14T11:37:45.910Z] emote near Mochi npc emote: ["heart",null,null,null,null,null]
+[2026-10-14T11:37:48.103Z] screenshot proof/alive-06-pet-npc.png
+[2026-10-14T11:37:49.111Z] screenshot proof/alive-07-ball-fetch.png
+[2026-10-14T11:37:53.123Z] ball after fetch: null
+[2026-10-14T11:37:54.024Z] screenshot proof/alive-08-photo-mode.png
+[2026-10-14T11:37:54.293Z] photo mode download: inu-verse-1791977874222.png
+[2026-10-14T11:37:56.506Z] screenshot proof/wildlife-01-pond-ducks-pups-busker-free.png
+[2026-10-14T11:37:58.739Z] screenshot proof/wildlife-02-busker-and-plaza.png
+[2026-10-14T11:37:59.899Z] screenshot proof/wildlife-03a-birds-on-ground.png
+[2026-10-14T11:38:00.674Z] screenshot proof/wildlife-03b-birds-flutter-away.png
+[2026-10-14T11:38:00.702Z] birds flying: 1
+[2026-10-14T11:38:02.948Z] screenshot proof/mall-01-district-mall-statue.png
+[2026-10-14T11:38:04.953Z] screenshot proof/mall-02-presidents-office-and-president-inu.png
+[2026-10-14T11:38:04.970Z] proof top-up: +200 demo KIBBLE for Mall demo
+[2026-10-14T11:38:07.650Z] mall buys: spent 72.9300 KIBBLE; treasury=715000u pools={"daily":178750,"weekly":357500,"monthly":178750} (u = 1e-6 KIBBLE); ledger fees=190000,800000,200000,240000
+[2026-10-14T11:38:07.849Z] screenshot proof/mall-03-kibble-mall-checkout.png
+[2026-10-14T11:38:09.403Z] screenshot proof/mall-04-district-jeweler.png
+[2026-10-14T11:38:11.010Z] screenshot proof/mall-05-prize-pool-board.png
+[2026-10-14T11:38:12.628Z] screenshot proof/mall-06-leaderboards-inu-verse.png
+[2026-10-14T11:38:13.239Z] screenshot proof/mall-07-leaderboards-inu-empires-soon.png
+[2026-10-14T11:38:13.861Z] screenshot proof/mall-08-leaderboards-inu-quest-soon.png
+[2026-10-14T11:38:15.387Z] screenshot proof/mall-09-presidents-office-ledger.png
+[2026-10-14T11:38:16.263Z] after one in-game day: winners=[{"pool":"daily","winner":"Kabosu","id":"you","score":359,"amount":178750,"day":1}] pools={"daily":0,"weekly":357500,"monthly":178750}
+[2026-10-14T11:38:17.566Z] screenshot proof/mall-10-board-after-daily-payout.png
+[2026-10-14T11:38:17.857Z] page errors: none

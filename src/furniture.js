@@ -11,6 +11,9 @@ export const FURNITURE = {
   kennel:   { name: 'Kennel',        w: 2, h: 2, price: 80,  color: '#c0623b', layer: 'obj' },
   shelf:    { name: 'Bookshelf',     w: 2, h: 1, price: 70,  color: '#8a5a34', layer: 'obj' },
   bowl:     { name: 'Food Bowl',     w: 1, h: 1, price: 15,  color: '#e05a4f', layer: 'obj' },
+  gold_throne: { name: 'Golden Throne', w: 1, h: 1, price: 250, color: '#e3b341', layer: 'obj', mall: true },
+  gold_statue: { name: 'Mini Shiba Statue', w: 1, h: 1, price: 190, color: '#d4a640', layer: 'obj', mall: true },
+  gold_lamp:   { name: 'Gilded Lamp', w: 1, h: 1, price: 75, color: '#f2cc68', layer: 'obj', mall: true },
   arcade:   { name: 'Inu Arcade',    w: 1, h: 1, price: 150, color: '#6c5ce7', layer: 'obj' },
 };
 export const WALLS = [

@@ -22,13 +22,20 @@
   <div class="chip inu">$KIBBLE <span id="kibble">0</span></div>
   <div class="spacer"></div>
   <button id="btn-phantom" class="btn phantom" title="Wallet support is not built yet">Connect Phantom <small>(coming soon)</small></button>
+  <button id="btn-pack" class="btn alt">Pack</button>
   <button id="btn-wardrobe" class="btn alt">Wardrobe</button>
+  <span class="chip" id="clock">--:--</span>
+  <button id="btn-emote" class="btn alt" title="G">Emote</button>
+  <button id="btn-photo" class="btn alt" title="P">Photo</button>
+  <button id="btn-mute" class="btn ghost" title="M">Sound on</button>
   <button id="btn-help" class="btn ghost">?</button>
 </div>
 <div id="prompt" hidden></div>
-<div id="minimap-wrap" hidden><canvas id="minimap" width="192" height="126"></canvas></div>
+<div id="minimap-wrap" hidden><canvas id="minimap" width="128" height="140"></canvas></div>
 <div id="buildbar" hidden></div>
 <div id="panel" class="overlay" hidden><div class="panel-card"><button class="close" id="panel-close">×</button><div id="panel-body"></div></div></div>
+<div id="emotes" hidden><button class="btn" data-emote="wave">1 Wave</button><button class="btn" data-emote="sit">2 Sit</button><button class="btn" data-emote="zoomies">3 Zoomies</button><button class="btn" data-emote="dance">4 Dance</button><button class="btn" data-emote="heart">5 Heart</button></div>
+<div id="photobar"><b>PHOTO MODE</b><button class="btn green" id="photo-save">Save PNG</button><button class="btn ghost" id="photo-exit">Exit (P)</button></div>
 <div id="toast"></div>
 <script type="module" src="src/main.js"></script>
 </body></html>
