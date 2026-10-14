@@ -24,6 +24,9 @@ import { MALL_ITEMS, quote, buyMallItem, ensureMall, rollPeriods, fmtK, FEE_LABE
 import { GAMES, boardRows, poolEntries } from './leaderboards.js';
 import { makeCrew, stepCrew, takeGig, drawVest, drawTool, drawCones } from './workers.js';
 import { trending, adProps, adAt } from './coinads.js';
+import { ensureFarm, tickFarm, seasonOf, marketHour, rollFarmWeek, catchUp, fishCatch, WEEK_DAYS } from './farm.js';
+import { ensureBiz, bizHour, bizDay, rollBizWeek } from './biz.js';
+import { renderField, renderFarm, renderLot, renderBizBoard } from './farmui.js';
 import { prerenderMap, dynamicProps, buildingsReady } from './render.js';
 import { N, SCALE, drawWater } from './tiles.js';
 import { feel } from './feel.js';
@@ -91,7 +94,7 @@ function titleScreen() {
   requestAnimationFrame(loop);
 }
 
-function startGame(s) { seedTokens(s, rng);
+function startGame(s) { seedTokens(s, rng); ensureFarm(s); ensureBiz(s); s.clockSec ??= 0; catchUp(s, Date.now(), { season: seasonOf(Math.floor(s.clockSec / DAY_LEN)), rain: false }); hourIdx = Math.floor(s.clockSec / (DAY_LEN / 24));
   state = s; state.kibble ??= 20; ensureWardrobe(state); ensurePacks(state); ensureMall(state); state.clockSec ??= 0; lastEarned = state.stats.bonesEarned; mode = 'world';
   $('#title').hidden = true; $('#hud').hidden = false; $('#minimap-wrap').hidden = false;
   mapImg = prerenderMap(); npcs = spawnNpcs(rng, 6); npcs.forEach((n) => { n.art = artKey(n.coat); }); amb = makeAmbient(42);
@@ -147,6 +150,18 @@ function clickWorldTile(tx, ty) {
 $('#prompt').onclick = () => { const it = nearestInteractable(state, state.player.x, state.player.y); const pup = nearPup(); if (pup && !it) petPup(pup); else if (it) interact(it); };
 addEventListener('pointerdown', () => initAudio(), { once: true });
 document.addEventListener('pointerdown', (e) => { if (e.target.closest('button,.btn,.coat,[data-buy],[data-inv]')) { initAudio(); uiClick(); } });
+let hourIdx = 0; const fish = { state: 'idle', t: 0, biteAt: 0 };
+const gameDay = () => Math.floor((state.clockSec || 0) / DAY_LEN), hourKey = () => Math.floor((state.clockSec || 0) / (DAY_LEN / 24));
+function farmCtx() { const day = gameDay(); return { state, body: $('#panel-body'), toast, hud, persist, rerender: () => openPanel(panel.kind, panel), season: seasonOf(day), rain: amb.rain > 0.3, day, hourKey: hourKey(), weekFrac: ((state.clockSec / DAY_LEN) % WEEK_DAYS) / WEEK_DAYS, fish,
+  cast: () => { fish.state = 'wait'; fish.t = 0; fish.biteAt = 1.2 + rng() * 2.5; }, reel: () => { if (fish.state !== 'bite') { fish.state = 'idle'; return { ok: false, reason: 'Too early — it swam off' }; } const r = fishCatch(state, rng(), fish.t); fish.state = 'idle'; if (r.ok) toast(`Caught a ${r.item === 'koi' ? 'GOLDEN KOI!' : r.item}!`, 'good'); return r; } }; }
+function farmTick(dt) { const day = gameDay(); tickFarm(state, dt, { season: seasonOf(day), rain: amb.rain > 0.3 }); ensureFarm(state).lastReal = Date.now();
+  if (fish.state === 'wait') { fish.t += dt; if (fish.t >= fish.biteAt) { fish.state = 'bite'; fish.t = 0; blip(1200); if (panel?.kind === 'farm' && panel.id === 'pond') openPanel('farm', panel); } } else if (fish.state === 'bite') { fish.t += dt; if (fish.t > 1.5) { fish.state = 'idle'; if (panel?.kind === 'farm' && panel.id === 'pond') { toast('It got away!'); openPanel('farm', panel); } } }
+  const hk = hourKey(); while (hourIdx < hk) { hourIdx++; marketHour(state); const r = bizHour(state, hourIdx % 24, rng, state.spouse?.helps === 'biz' ? 2 : 0);
+    if (hourIdx % 24 === 0) { const row = bizDay(state, Math.floor(hourIdx / 24) - 1); if (row) toast(`Shop ledger: day profit ${row.profit} bones`, row.profit >= 0 ? 'good' : 'bad');
+      const wk = Math.floor(Math.floor(hourIdx / 24) / WEEK_DAYS); const a = rollFarmWeek(state, wk), b = rollBizWeek(state, wk); if (a?.paid) toast(`Top Farmer #${a.rank}: +${a.paid} bones!`, 'good'); if (b?.paid) toast(`Top Business #${b.rank}: +${b.paid} bones!`, 'good'); }
+    if (r?.sold && panel?.kind === 'lot') openPanel('lot', panel); } }
+globalThis.__open = (k, o) => openPanel(k, o || {});
+globalThis.__farm = { tick: (s) => farmTick(s), get fish() { return fish; } };
 const crew = makeCrew(); let adIdx = 0, adRot = 0, adT = 0, trend = []; globalThis.__ads = () => ({ trend, adRot, adIdx }); globalThis.__crew = crew;
 function crewActors() { return crew.filter((w) => w.on).map((w) => ({ x: w.x, y: w.y, coat: w.coat, outfit: {}, face: w.face, phase: w.phase, moving: w.moving, name: w.name, worker: w, art: artKey(w.coat, {}) })); }
 function crewProps() { const out = []; for (const w of crew) { if (!w.on) continue; if (w.cones) out.push({ y: w.cones[0][1] * TILE, d: (x) => drawCones(x, w) }); if (w.truck) out.push({ y: w.y - 30, d: (x) => drawCar(x, w.x - 40, w.y - 36, { col: '#2f8a4a', kind: 'pickup', dir: w.face === 'left' ? 'west' : 'east' }) }); }
@@ -223,6 +238,7 @@ function updateWorld(dt) {
     if (PRES_Q && !presForced) { presForced = true; startVisit(pres, PRES_KINDS.includes(PRES_Q) ? PRES_Q : null, { dayLen: DAY_LEN }); }
     updatePresident(pres, dt, { nowH, dayLen: DAY_LEN, npcs, rng, toast: (s) => toast(s, 'good'), banner: presBanner, fanfare, snack: () => toast('President Inu bought a taiyaki from the snack cart!', 'good') }); }
   adT += dt; if (adT > 8 || !trend.length) { adT = 0; adRot++; trend = trending(state, 6); }
+  farmTick(dt);
   stepCrew(crew, dt, dayPhase(time + dayOffset).hour, () => { adIdx++; });
   for (const n of npcs) { if (amb.ball?.dog === n && amb.ball.state !== 'air') continue; if (n.wag > 0) { n.wag -= dt; n.moving = true; n.phase += dt * 20; continue; } if (n.emote) { n.emote.t -= dt; if (n.emote.t <= 0) n.emote = null; } updateNpc(n, dt, rng); }
   { const pet = activePet(state); if (pet && !drive) { if (!petF.id || petF.id !== pet.id) Object.assign(petF, { id: pet.id, x: p.x - 20, y: p.y + 4 }); followStep(petF, p.x - player.dir * 22, p.y + 2, dt); if (petF.love > 0) petF.love -= dt; } else if (drive) Object.assign(petF, { x: p.x, y: p.y }); }
@@ -292,7 +308,7 @@ function renderWorld() {
   const it = !panel && nearestInteractable(state, state.player.x, state.player.y); if (it) feel.bubble(ctx, (it.tx + 0.5) * TILE, (it.ty) * TILE - 6, time);
   ctx.restore();
   drawAtmosphere(ctx, amb, phase, { x: vw / 2 - ox, y: vh / 2 - oy }, vw, vh, lightsFor(state, phase, homeId()));
-  $('#clock').textContent = `${String(Math.floor(phase.hour)).padStart(2, '0')}:${String(Math.floor((phase.hour % 1) * 60)).padStart(2, '0')} ${amb.rain > 0.3 ? 'rain' : phase.label}`;
+  $('#clock').textContent = `${String(Math.floor(phase.hour)).padStart(2, '0')}:${String(Math.floor((phase.hour % 1) * 60)).padStart(2, '0')} ${amb.rain > 0.3 ? 'rain' : phase.label} · ${seasonOf(gameDay())}`;
   if (!vignette || vignette.width !== SW || vignette.height !== SH) { vignette = document.createElement('canvas'); vignette.width = SW; vignette.height = SH; const v = vignette.getContext('2d'), g = v.createRadialGradient(SW / 2, SH / 2, SH * 0.45, SW / 2, SH / 2, SH * 1.05); g.addColorStop(0, 'rgba(18,26,54,0)'); g.addColorStop(1, 'rgba(12,16,34,0.38)'); v.fillStyle = g; v.fillRect(0, 0, SW, SH); }
   ctx.setTransform(dpr, 0, 0, dpr, 0, 0); ctx.drawImage(vignette, 0, 0);
   minimap(-ox, -oy, vw, vh);
@@ -361,12 +377,20 @@ function interact(it) {
   else if (it.kind === 'mall' && it.cat === 'car') openPanel('dealer', { dealer: 'luxauto' });
   else if (it.kind === 'mall' && it.cat === 'pets') openPanel('pets');
   else if (it.kind === 'mall') openPanel('mall', { cat: it.cat, store: it.id });
+  else if (it.kind === 'field') openPanel('field', { i: it.i });
+  else if (it.kind === 'farm') openPanel('farm', { id: it.id });
+  else if (it.kind === 'lot') openPanel('lot', { id: it.id });
+  else if (it.kind === 'biz') openPanel('bizboard');
   else if (it.kind === 'clubhouse') { if (myPack(state)) enterBuild('clubhouse', false); else openPanel('packs'); }
 }
 
 function openPanel(kind, opts = {}) {
   if (!panel) { feel.fade(); uiOpen(); } panel = { kind, ...opts }; $('#panel').hidden = false; $('#prompt').hidden = true; keys.clear();
-  const body = $('#panel-body');
+  const body = $('#panel-body'); body.onclick = null;
+  if (kind === 'field') return renderField(farmCtx(), opts.i);
+  if (kind === 'farm') return renderFarm(farmCtx(), opts.id);
+  if (kind === 'lot') return renderLot(farmCtx(), opts.id);
+  if (kind === 'bizboard') return renderBizBoard(farmCtx());
   if (kind === 'plot') {
     const p = PLOTS.find((x) => x.id === opts.plotId);
     body.innerHTML = `<h2>Empty plot ${p.id.toUpperCase()}</h2><p class="sub">A sunny ${p.w}×${p.h} lot on Bone Street. Claim it to build and decorate your own home.</p>

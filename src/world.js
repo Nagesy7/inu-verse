@@ -1,4 +1,4 @@
-export const TILE = 32, MAP_W = 64, MAP_H = 82;
+export const TILE = 32, MAP_W = 64, MAP_H = 106;
 export const T = { GRASS: 0, ROAD: 1, WALK: 2, BUILDING: 3, WATER: 4, TREE: 5, PLOT: 6, FLOWER: 7, PLAZA: 8, HOME: 9 };
 const SOLID = new Set([T.BUILDING, T.WATER, T.TREE, T.PLOT, T.HOME]);
 
@@ -41,6 +41,17 @@ export const CLUBHOUSE = { id: 'clubhouse', x: 47, y: 1, w: 9, h: 5 };
 export const BRIDGES = [{ x: 9, y: 3, w: 2, h: 5 }, { x: 46, y: 35, w: 2, h: 4 }]; // walkable plank bridges over the ponds
 export const STALL_SLOTS = Array.from({ length: 9 }, (_, i) => ({ x: 34 + i * 3, y: 7 }));
 
+// Farmland district (south of the mall) + business lots. See farm.js / biz.js for the economy.
+export const FIELDS = [4, 11, 18, 25].map((x, i) => ({ id: 'f' + i, i, x, y: 88, w: 6, h: 4 }));
+export const BARN = { id: 'barn', name: 'Big Barn', x: 38, y: 87, w: 8, h: 5 };
+export const POND = { x: 6, y: 97, w: 10, h: 5 };
+export const MARKET = { id: 'market', name: 'Farmers Market', x: 20, y: 97, w: 6, h: 3 };
+export const CRAFT = { id: 'craft', name: 'Crafting Station', x: 28, y: 97, w: 4, h: 3 };
+export const PEN = { x: 38, y: 96, w: 10, h: 7 };
+export const ORCHARD = [[49, 88], [52, 88], [55, 88], [58, 88], [50, 91], [53, 91], [56, 91], [59, 91], [49, 94], [52, 94], [55, 94], [58, 94]];
+export const FARM_SIGNS = { farmboard: { x: 34, y: 87 }, bizboard: { x: 47, y: 78 } };
+export { LOTS } from './biz.js';
+import { LOTS as BIZ_LOTS } from './biz.js';
 export function buildMap() {
   const g = Array.from({ length: MAP_H }, () => new Array(MAP_W).fill(T.GRASS));
   const fill = (x0, y0, w, h, t) => { for (let y = y0; y < y0 + h; y++) for (let x = x0; x < x0 + w; x++) if (g[y] && g[y][x] !== undefined) g[y][x] = t; };
@@ -62,6 +73,12 @@ export function buildMap() {
   fill(7, 46, 50, 34, T.PLAZA);
   for (const b of MALL_BUILDINGS) fill(b.x, b.y, b.w, b.h, T.BUILDING);
   fill(STATUE.x, STATUE.y, 2, 1, T.BUILDING); fill(LEADERS.x, LEADERS.y, LEADERS.w, LEADERS.h, T.BUILDING);
+  // farmland: walk from the plaza, a farm lane, fields, barn, pond, market, crafting, animal pen, orchard, lots
+  fill(30, 80, 4, 6, T.WALK); fill(2, 86, 60, 1, T.WALK); fill(2, 95, 60, 1, T.WALK); fill(34, 87, 2, 18, T.WALK); fill(2, 103, 60, 1, T.WALK);
+  for (const f of FIELDS) fill(f.x, f.y, f.w, f.h, T.GRASS);
+  fill(POND.x, POND.y, POND.w, POND.h, T.WATER);
+  for (const b of [BARN, MARKET, CRAFT]) fill(b.x, b.y, b.w, b.h, T.BUILDING);
+  for (const l of BIZ_LOTS) { fill(l.x, l.y, l.w, l.h, T.BUILDING); if (!l.prime) fill(l.x - 1, l.y + l.h, l.w + 2, 1, T.WALK); }
   // trees: border + some park trees
   for (let y = 0; y < MAP_H; y++) for (let x = 0; x < MAP_W; x++) if (x === 0 || y === 0 || x === MAP_W - 1 || y === MAP_H - 1) g[y][x] = T.TREE;
   for (const [x, y] of [[2, 2], [16, 3], [19, 5], [22, 2], [25, 7], [3, 9], [27, 3], [15, 9], [61, 14], [60, 24], [34, 38], [57, 36], [58, 39], [35, 35]])
@@ -82,7 +99,10 @@ export const DECOR = [];
   for (const x0 of [26, 35]) for (let y = 61; y < 69; y++) for (let x = x0; x < x0 + 3; x++) DECOR.push({ x, y, kind: 'parterre' });
   for (const [x, y, k] of [[25, 59, 'topSpiral'], [38, 59, 'topSpiral'], [25, 65, 'topBall'], [38, 65, 'topBall'], [25, 70, 'topDog'], [38, 70, 'topDog']]) DECOR.push({ x, y, kind: k });
   for (const [x, y] of [[23, 60], [40, 60], [23, 66], [40, 66], [23, 72], [40, 72]]) DECOR.push({ x, y, kind: 'palm' });
-  for (const x of [42, 43]) DECOR.push({ x, y: 58, kind: 'car' }); } // showroom display cars + valet limo
+  for (const x of [42, 43]) DECOR.push({ x, y: 58, kind: 'car' });
+  for (const [x, y] of ORCHARD) DECOR.push({ x, y, kind: 'orchard' });
+  for (let x = PEN.x; x < PEN.x + PEN.w; x++) for (const y of [PEN.y, PEN.y + PEN.h - 1]) if (!(y === PEN.y && (x === 42 || x === 43))) DECOR.push({ x, y, kind: 'fence' });
+  for (let y = PEN.y + 1; y < PEN.y + PEN.h - 1; y++) for (const x of [PEN.x, PEN.x + PEN.w - 1]) DECOR.push({ x, y, kind: 'fence' }); } // showroom display cars + valet limo
 const DECOR_SET = new Set(DECOR.map((d) => d.y * MAP_W + d.x));
 export const isSolid = (tx, ty) => tx < 0 || ty < 0 || tx >= MAP_W || ty >= MAP_H || SOLID.has(MAP[ty][tx]) || DECOR_SET.has(ty * MAP_W + tx);
 
@@ -99,6 +119,16 @@ export function interactables(state) {
   }
   for (const h of NPC_HOMES) list.push({ kind: 'visit', id: h.id, name: `${h.owner}'s Home`, tx: h.x + 3, ty: h.y + h.h });
   list.push({ kind: 'clubhouse', id: CLUBHOUSE.id, name: state?.packs?.joined ? 'Pack Clubhouse' : 'Pack Clubhouse lot', tx: CLUBHOUSE.x + 4, ty: CLUBHOUSE.y + CLUBHOUSE.h });
+  for (const f of FIELDS) list.push({ kind: 'field', id: f.id, i: f.i, name: `Field ${f.i + 1}`, tx: f.x + 3, ty: f.y + f.h });
+  list.push({ kind: 'farm', id: 'barn', name: 'Big Barn (seeds, animals, looks)', tx: BARN.x + 4, ty: BARN.y + BARN.h });
+  list.push({ kind: 'farm', id: 'market', name: 'Farmers Market', tx: MARKET.x + 3, ty: MARKET.y + MARKET.h });
+  list.push({ kind: 'farm', id: 'craft', name: 'Crafting Station', tx: CRAFT.x + 2, ty: CRAFT.y + CRAFT.h });
+  list.push({ kind: 'farm', id: 'pond', name: 'Fishing Pond', tx: POND.x + 5, ty: POND.y - 2 });
+  list.push({ kind: 'farm', id: 'pen', name: 'Animal Pen', tx: 42, ty: PEN.y - 1 });
+  list.push({ kind: 'farm', id: 'orchard', name: 'Orchard', tx: 54, ty: 92 });
+  list.push({ kind: 'farm', id: 'farmboard', name: 'Top Farmer board', tx: FARM_SIGNS.farmboard.x, ty: FARM_SIGNS.farmboard.y + 1 });
+  list.push({ kind: 'biz', id: 'bizboard', name: 'Top Business board', tx: FARM_SIGNS.bizboard.x, ty: FARM_SIGNS.bizboard.y + 1 });
+  for (const l of BIZ_LOTS) list.push({ kind: 'lot', id: l.id, name: l.name, tx: l.x + 3, ty: l.y + l.h });
   (state?.tokens || []).forEach((tok, i) => { const s = STALL_SLOTS[i % STALL_SLOTS.length]; list.push({ kind: 'stall', id: tok.id, name: `$${tok.ticker} stall`, tx: s.x + 1, ty: s.y + 2 }); });
   return list;
 }

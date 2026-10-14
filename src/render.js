@@ -4,6 +4,7 @@ import { TILE, MAP_W, MAP_H, MAP, T, BUILDINGS, PLOTS, NPC_HOMES, STALL_SLOTS, C
 import { N, SCALE, PAL, buildGround, sprites, shadowEllipse, hash, mk, P } from './tiles.js';
 import { LAMP_TILES, unreadMail } from './ambient.js';
 import { drawCar } from './cars.js';
+import { farmGround, farmStatic, farmDynamic } from './farmart.js';
 import { luxuryGround, luxuryProps, luxuryDynamic, drawMallFacade } from './luxury.js';
 import { drawEmblem, ART } from './art.js';
 import { NPC_INTERIORS } from './homes.js';
@@ -224,7 +225,7 @@ function groundExtras(c) {
 
 export function prerenderMap() {
   const S = sprites(), props = [];
-  const ground = buildGround((c) => { groundExtras(c); luxuryGround(c); });
+  const ground = buildGround((c) => { groundExtras(c); luxuryGround(c); farmGround(c); });
   // trees: sakura near the ponds/Sakura Lane, green elsewhere
   for (let y = 0; y < MAP_H; y++) for (let x = 0; x < MAP_W; x++) if (MAP[y][x] === T.TREE) {
     const sak = (x < 29 && y < 11) || (y > 33 && y < 42 && x < 30) || (x > 33 && y > 33 && y < 41) ? hash(x, y, 5) < 0.75 : hash(x, y, 5) < 0.12, spr = sak ? S.sakura : S.tree;
@@ -234,7 +235,7 @@ export function prerenderMap() {
   for (const [bx, by] of [[17, 6], [11, 8], [39, 34.2], [50, 34.2], [22, 52], [41, 52], [28, 47]]) props.push(sp(S.bench, bx * TILE, by * TILE + 4, by * TILE + 28));
   for (const [cx, cy] of [[61, 6], [61, 7], [60.6, 6.5], [34.3, 9.2], [26.4, 19.0]]) props.push(sp(S.crate, cx * TILE, cy * TILE, cy * TILE + 28));
   // flowering bushes flanking each shop door, hedges at NPC home fronts
-  const LUX = new Set(['car', 'fountain', 'parterre', 'topSpiral', 'topBall', 'topDog', 'palm']); // luxury kinds are drawn by luxury.js
+  const LUX = new Set(['car', 'fountain', 'parterre', 'topSpiral', 'topBall', 'topDog', 'palm', 'orchard', 'fence']); // luxury kinds are drawn by luxury.js
   for (const d of DECOR) {
     if (d.kind === 'planter') props.push({ y: d.y * TILE + 28, d: (c) => c.drawImage(S.streetTree, d.x * TILE - 14, d.y * TILE + 28 - S.streetTree.height * 3, 60, S.streetTree.height * 3) }); // street trees at 3x
     else if (!LUX.has(d.kind)) props.push(d.kind === 'hedge' ? sp(S.hedge, d.x * TILE, d.y * TILE + 4, d.y * TILE + 30) : sp(S[d.kind], d.x * TILE - 2, d.y * TILE + 4, d.y * TILE + 30)); }
@@ -242,7 +243,7 @@ export function prerenderMap() {
   // buildings (square front-facing art; legacy procedural storefront if the PNG is missing)
   for (const b of [...BUILDINGS, ...MALL_BUILDINGS]) props.push({ y: (b.y + b.h) * TILE - 1, d: (c) => { if (b.id === 'mall') return drawMallFacade(c, pixelText); if (!drawBuildingArt(c, b.id, b.x, b.y, b.w, b.h)) legacyBuilding(c, b); else drawDoors(c, b); } });
   for (const b of [...BUILDINGS, ...MALL_BUILDINGS]) if (DOORS[b.id] && DOORS[b.id].side !== 'front') props.push({ y: (b.y + b.h) * TILE - 26, d: (c) => sidePorch(c, b, DOORS[b.id].side) });
-  props.push(...luxuryProps());
+  props.push(...luxuryProps(), ...farmStatic());
   for (const h of NPC_HOMES) props.push({ y: (h.y + h.h) * TILE - 1, d: (c) => { if (!drawBuildingArt(c, HOUSE_ART[h.id], h.x, h.y, h.w, h.h)) legacyNpcHouse(c, h); plaque(c, `${h.owner.toUpperCase()}'S`, (h.x + 1.5) * TILE, (h.y + h.h) * TILE - 22); } });
   props.push({ y: (LEADERS.y + LEADERS.h) * TILE - 1, d: (c) => { if (drawBuildingArt(c, 'leaders', LEADERS.x, LEADERS.y, LEADERS.w, LEADERS.h)) return;
     const x = LEADERS.x * TILE, y = LEADERS.y * TILE - 20; R(c, x + 6, y + 40, 4, 44, GOLD_D); R(c, x + 86, y + 40, 4, 44, GOLD_D);
@@ -264,6 +265,7 @@ export function prerenderMap() {
 // Dynamic, y-sortable drawables: claimed homes, unclaimed plots, stalls, clubhouse.
 export function dynamicProps(state, t, pack) {
   const out = [], S = sprites();
+  out.push(...farmDynamic(state, t));
   out.push(...luxuryDynamic(t, (globalThis.__inuNight || 0) > 0.3));
   { const ph = t % 12, st = ph < 5 ? 2 : ph < 6 ? 1 : 0, av = ph >= 6 && ph < 11 ? 2 : ph >= 11 ? 1 : 0; // main junction traffic lights
     for (const [lx, ly, street] of [[30, 19, 0], [34, 19, 1], [30, 23, 1], [34, 23, 0]]) { const spr = S['light' + (street ? st : av)], X = lx * TILE + (lx < 31 ? 16 : 4), B = ly * TILE + (ly < 20 ? 22 : 28);
