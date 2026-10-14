@@ -111,7 +111,8 @@ addEventListener('keydown', (e) => {
   if (mode === 'build' && k === 'r') rotateSel();
 });
 addEventListener('keyup', (e) => keys.delete(e.key.toLowerCase()));
-const screenToWorld = (sx, sy) => ({ x: sx + cam.x - innerWidth / 2, y: sy + cam.y - innerHeight / 2 });
+export const ZOOM = 2; // world zoom vs. the Shibas: the town renders 2x bigger, the dogs keep their on-screen size
+const screenToWorld = (sx, sy) => ({ x: (sx - innerWidth / 2) / ZOOM + cam.x, y: (sy - innerHeight / 2) / ZOOM + cam.y });
 
 cv.addEventListener('mousemove', (e) => { if (mode === 'build') build.hover = roomCell(e.clientX, e.clientY); });
 cv.addEventListener('click', (e) => {
@@ -174,7 +175,7 @@ function updateWorld(dt) {
     if (keys.has('a') || keys.has('arrowleft')) dx -= 1; if (keys.has('d') || keys.has('arrowright')) dx += 1;
   }
   if (!panel && (touch.x || touch.y)) { dx = touch.x; dy = touch.y; }
-  const speed = 150;
+  const speed = 92; // world px/s (world is zoomed 2x, so ~184 screen px/s)
   if (dx || dy) { player.path = []; player.target = null; const l = Math.hypot(dx, dy); moveBody(p, (dx / l) * speed * dt, (dy / l) * speed * dt); if (dx) player.dir = dx > 0 ? 1 : -1; player.face = dx ? (dx > 0 ? 'right' : 'left') : (dy > 0 ? 'down' : 'up'); player.moving = true; }
   else if (player.path.length) {
     const [tx, ty] = player.path[0], gx = (tx + 0.5) * TILE, gy = (ty + 0.5) * TILE, ddx = gx - p.x, ddy = gy - p.y, d = Math.hypot(ddx, ddy), st = speed * dt;
@@ -184,18 +185,18 @@ function updateWorld(dt) {
   } else player.moving = false;
   if (player.moving) player.phase += dt * 12; else player.phase += dt * 2;
   for (const n of npcs) { if (amb.ball?.dog === n && amb.ball.state !== 'air') continue; if (n.wag > 0) { n.wag -= dt; n.moving = true; n.phase += dt * 20; continue; } if (n.emote) { n.emote.t -= dt; if (n.emote.t <= 0) n.emote = null; } updateNpc(n, dt, rng); }
-  if (player.emote) { player.emote.t -= dt; if (player.emote.kind === 'zoomies') { const a = player.emote.t * 5; moveBody(p, Math.cos(a) * 260 * dt, Math.sin(a) * 260 * dt); player.moving = true; player.phase += dt * 20; player.face = Math.cos(a + 1.57) > 0 ? 'right' : 'left'; } if (player.emote.t <= 0) player.emote = null; }
+  if (player.emote) { player.emote.t -= dt; if (player.emote.kind === 'zoomies') { const a = player.emote.t * 5; moveBody(p, Math.cos(a) * 150 * dt, Math.sin(a) * 150 * dt); player.moving = true; player.phase += dt * 20; player.face = Math.cos(a + 1.57) > 0 ? 'right' : 'left'; } if (player.emote.t <= 0) player.emote = null; }
   for (const e of stepAmbient(amb, dt, p, npcs)) { if (e.kind === 'flush') chirp(); if (e.kind === 'fetched') toast(`${e.who} brought the ball back!`, 'good'); }
   if (rng() < dt * 0.08) chirp();
   if (player.moving) { stepAcc += dt; if (stepAcc > 0.26) { stepAcc = 0; const tt = MAP[Math.floor(p.y / TILE)]?.[Math.floor(p.x / TILE)]; if (tt === T.GRASS || tt === T.FLOWER) { feel.rustle(p.x, p.y + 10); rustle(); } else { feel.dust(p.x, p.y + 11); footstep(); } } }
   feel.step(dt);
   mailAcc += dt; if (mailAcc > 45) { mailAcc = 0; if (rng() < 0.6 && addMail(state, rng)) { toast('New note in your mailbox!', 'good'); persist(); } }
   // smooth camera
-  const k = 1 - Math.pow(0.004, dt), lead = player.moving ? 18 : 0, fx = { left: -1, right: 1 }[player.face] || 0, fy = { up: -1, down: 1 }[player.face] || 0;
+  const k = 1 - Math.pow(0.004, dt), lead = player.moving ? 10 : 0, fx = { left: -1, right: 1 }[player.face] || 0, fy = { up: -1, down: 1 }[player.face] || 0;
   cam.x += (p.x + fx * lead - cam.x) * k; cam.y += (p.y + fy * lead * 0.6 - cam.y) * k;
-  const hw = innerWidth / 2, hh = innerHeight / 2;
+  const hw = innerWidth / 2 / ZOOM, hh = innerHeight / 2 / ZOOM;
   cam.x = Math.max(hw, Math.min(MAP_W * TILE - hw, cam.x)); cam.y = Math.max(hh, Math.min(MAP_H * TILE - hh, cam.y));
-  if (MAP_W * TILE < innerWidth) cam.x = MAP_W * TILE / 2; if (MAP_H * TILE < innerHeight) cam.y = MAP_H * TILE / 2;
+  if (MAP_W * TILE < innerWidth / ZOOM) cam.x = MAP_W * TILE / 2; if (MAP_H * TILE < innerHeight / ZOOM) cam.y = MAP_H * TILE / 2;
   const it = !panel && nearestInteractable(state, p.x, p.y);
   const pr = $('#prompt');
   const pup = !panel && !it && nearPup();
@@ -206,8 +207,8 @@ function updateWorld(dt) {
 }
 
 function renderWorld() {
-  const dpr = devicePixelRatio, vw = innerWidth, vh = innerHeight; ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
-  ctx.imageSmoothingEnabled = false; ctx.fillStyle = '#141a2e'; ctx.fillRect(0, 0, vw, vh);
+  const dpr = devicePixelRatio, SW = innerWidth, SH = innerHeight, vw = SW / ZOOM, vh = SH / ZOOM; ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+  ctx.imageSmoothingEnabled = false; ctx.fillStyle = '#141a2e'; ctx.fillRect(0, 0, SW, SH); ctx.setTransform(dpr * ZOOM, 0, 0, dpr * ZOOM, 0, 0); // world drawn at ZOOM; Shibas drawn back at 1/ZOOM so they keep their on-screen size
   // integer camera snapped to the native pixel grid (2px) so tiles never shimmer
   const ox = Math.round((vw / 2 - cam.x) / SCALE) * SCALE, oy = Math.round((vh / 2 - cam.y) / SCALE) * SCALE;
   const G = mapImg.ground, sx = Math.max(0, -ox / SCALE), sy = Math.max(0, -oy / SCALE), sw = Math.min(G.width - sx, Math.ceil(vw / SCALE) + 1), sh = Math.min(G.height - sy, Math.ceil(vh / SCALE) + 1);
@@ -226,15 +227,16 @@ function renderWorld() {
   for (const p of mapImg.props) if (p.y > Tp && p.y < Bt) list.push(p);
   for (const p of dyn) if (!p.flat) list.push(p);
   for (const p of carProps(amb)) list.push(p);
-  for (const a of actors) if (a.x > L && a.x < Rt && a.y > Tp && a.y < Bt) list.push({ y: a.y + 12, a });
+  for (const a of actors) if (a.x > L && a.x < Rt && a.y > Tp && a.y < Bt) list.push({ y: a.y + 6, a });
   list.sort((p, q) => p.y - q.y);
   for (const it of list) {
     if (!it.a) { it.d(ctx); continue; }
     const a = it.a;
     if (a.statue) { ctx.fillStyle = '#6a6080'; ctx.fillRect(Math.round(a.x - 34), Math.round(a.y - 4), 68, 18); ctx.fillStyle = '#d4a640'; ctx.fillRect(Math.round(a.x - 38), Math.round(a.y - 8), 76, 5); ctx.fillStyle = '#121a36'; ctx.font = '8px Silkscreen, monospace'; ctx.textAlign = 'center'; ctx.fillText('PRESIDENT INU', Math.round(a.x), Math.round(a.y + 8)); ctx.save(); ctx.filter = 'sepia(1) saturate(2.6) brightness(1.05)'; drawShiba(ctx, a.x, a.y - 10, { art: a.art, scale: 2, shadow: false }); ctx.restore(); continue; }
-    if (a.me) { ctx.fillStyle = 'rgba(242,204,104,0.45)'; ctx.fillRect(Math.round(a.x - 20), Math.round(a.y + 9), 40, 4); ctx.fillRect(Math.round(a.x - 14), Math.round(a.y + 7), 28, 8); }
-    drawShiba(ctx, a.x, a.y, { coat: a.coat, outfit: a.outfit, face: a.face, phase: a.phase, moving: a.moving, name: a.name, scale: 1.5, badge: a.badge, art: a.art, emote: a.emote?.kind });
-    if (a.emote) drawEmote(ctx, a.x, a.y + (a.name ? -14 : 0), a.emote.kind, time);
+    ctx.save(); ctx.translate(Math.round(a.x * ZOOM) / ZOOM, Math.round(a.y * ZOOM) / ZOOM); ctx.scale(1 / ZOOM, 1 / ZOOM);
+    if (a.me) { ctx.fillStyle = 'rgba(242,204,104,0.45)'; ctx.fillRect(-20, 9, 40, 4); ctx.fillRect(-14, 7, 28, 8); }
+    drawShiba(ctx, 0, 0, { coat: a.coat, outfit: a.outfit, face: a.face, phase: a.phase, moving: a.moving, name: a.name, scale: 1.5, badge: a.badge, art: a.art, emote: a.emote?.kind });
+    if (a.emote) drawEmote(ctx, 0, a.name ? -14 : 0, a.emote.kind, time); ctx.restore();
   }
   feel.drawAir(ctx);
   drawSkyLife(ctx, amb, phase);
@@ -242,8 +244,8 @@ function renderWorld() {
   ctx.restore();
   drawAtmosphere(ctx, amb, phase, { x: vw / 2 - ox, y: vh / 2 - oy }, vw, vh, lightsFor(state, phase, homeId()));
   $('#clock').textContent = `${String(Math.floor(phase.hour)).padStart(2, '0')}:${String(Math.floor((phase.hour % 1) * 60)).padStart(2, '0')} ${amb.rain > 0.3 ? 'rain' : phase.label}`;
-  if (!vignette || vignette.width !== vw || vignette.height !== vh) { vignette = document.createElement('canvas'); vignette.width = vw; vignette.height = vh; const v = vignette.getContext('2d'), g = v.createRadialGradient(vw / 2, vh / 2, vh * 0.45, vw / 2, vh / 2, vh * 1.05); g.addColorStop(0, 'rgba(18,26,54,0)'); g.addColorStop(1, 'rgba(12,16,34,0.38)'); v.fillStyle = g; v.fillRect(0, 0, vw, vh); }
-  ctx.drawImage(vignette, 0, 0);
+  if (!vignette || vignette.width !== SW || vignette.height !== SH) { vignette = document.createElement('canvas'); vignette.width = SW; vignette.height = SH; const v = vignette.getContext('2d'), g = v.createRadialGradient(SW / 2, SH / 2, SH * 0.45, SW / 2, SH / 2, SH * 1.05); g.addColorStop(0, 'rgba(18,26,54,0)'); g.addColorStop(1, 'rgba(12,16,34,0.38)'); v.fillStyle = g; v.fillRect(0, 0, SW, SH); }
+  ctx.setTransform(dpr, 0, 0, dpr, 0, 0); ctx.drawImage(vignette, 0, 0);
   minimap(-ox, -oy, vw, vh);
 }
 
@@ -255,7 +257,7 @@ function streetPups() {
     { x: 35.5 * TILE, y: 67.6 * TILE, coat: 'golden', outfit: { top: 'gold_suit', hat: 'crown', neck: 'diamond_chain', bottom: 'slacks_black', feet: 'loafers' }, face: 'down', phase: t * 2, moving: false, name: 'President Inu' },
     { x: (STATUE.x + 1) * TILE, y: (STATUE.y + 0.9) * TILE, coat: 'golden', art: 'shiba-golden', statue: true, face: 'down', phase: 0, moving: false },
     { x: 9 * TILE + chase, y: 9.3 * TILE, coat: 'cream', art: 'shiba-cream', face: Math.cos(t * 0.9) > 0 ? 'right' : 'left', phase: t * 14, moving: true },
-    { x: 9 * TILE + chase - 46 * Math.sign(Math.cos(t * 0.9)), y: 9.5 * TILE, coat: 'red', art: 'shiba-red', face: Math.cos(t * 0.9) > 0 ? 'right' : 'left', phase: t * 14 + 2, moving: true }];
+    { x: 9 * TILE + chase - 24 * Math.sign(Math.cos(t * 0.9)), y: 9.5 * TILE, coat: 'red', art: 'shiba-red', face: Math.cos(t * 0.9) > 0 ? 'right' : 'left', phase: t * 14 + 2, moving: true }];
 }
 
 function minimap(vx, vy, vw, vh) {

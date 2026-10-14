@@ -121,7 +121,7 @@ export function findPath(sx, sy, tx, ty) {
 }
 
 // Move a circle-ish body with axis-separated collision
-export function moveBody(b, dx, dy, r = 10) {
+export function moveBody(b, dx, dy, r = 6) {
   const blocked = (x, y) => isSolid(Math.floor((x - r) / TILE), Math.floor((y - r) / TILE)) || isSolid(Math.floor((x + r) / TILE), Math.floor((y - r) / TILE)) ||
     isSolid(Math.floor((x - r) / TILE), Math.floor((y + r * 0.6) / TILE)) || isSolid(Math.floor((x + r) / TILE), Math.floor((y + r * 0.6) / TILE));
   if (!blocked(b.x + dx, b.y)) b.x += dx;

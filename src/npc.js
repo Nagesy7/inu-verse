@@ -33,7 +33,7 @@ export function updateNpc(n, dt, rng) {
     return;
   }
   const [tx, ty] = n.path[0];
-  const gx = (tx + 0.5) * TILE, gy = (ty + 0.5) * TILE, dx = gx - n.x, dy = gy - n.y, d = Math.hypot(dx, dy), sp = 55 * dt;
+  const gx = (tx + 0.5) * TILE, gy = (ty + 0.5) * TILE, dx = gx - n.x, dy = gy - n.y, d = Math.hypot(dx, dy), sp = 34 * dt;
   if (d <= sp) { n.x = gx; n.y = gy; n.path.shift(); } else { n.x += (dx / d) * sp; n.y += (dy / d) * sp; }
   if (Math.abs(dx) > 1) n.dir = dx > 0 ? 1 : -1;
   n.face = Math.abs(dx) > Math.abs(dy) ? (dx > 0 ? 'right' : 'left') : (dy > 0 ? 'down' : 'up');

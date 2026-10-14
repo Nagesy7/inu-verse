@@ -1,7 +1,7 @@
-// One car model for the whole game, at world scale: 2.5 tiles long (80px), one 48px lane wide (40px across), 2x chunky pixels.
+// One car model for the whole game, at world scale: 2.25 tiles long (72 world px = 144 screen px at ZOOM 2), one 48px lane wide (40px across), 2x chunky pixels.
 // Views: 'side' (east/west travel, flipped for west), 'front' (driving toward camera = south), 'back' (driving away = north).
 import { TILE, ROADS, AVENUE } from './world.js';
-export const CAR_LEN = 80, CAR_W = 40, U = 2, LANE = 48; // world px; U = one native pixel
+export const CAR_LEN = 72, CAR_W = 40, U = 2, LANE = 48; // world px; U = one native pixel
 export const LANES = { // 3-tile roads = two 48px lanes, right-hand traffic
   rows: ROADS, avenue: AVENUE, // horizontal roads occupy rows r..r+2; avenue occupies cols 31-33
   east: (r) => r * TILE + 2 * LANE - 4, west: (r) => r * TILE + LANE - 6, // side-view baseline (wheel contact) inside the lane
@@ -14,18 +14,18 @@ function mk(w, h) { const cv = document.createElement('canvas'); cv.width = w; c
 const P = (c, x, y, w, h, col) => { c.fillStyle = col; c.fillRect(x, y, w, h); };
 
 function side(col, kind) { // 40 x 20 native, nose at the right, wheels touch y=20
-  const [cv, c] = mk(40, 20), L = shade(col, 1.3), D = shade(col, 0.68), [cx0, cx1, cy] = kind === 'coupe' ? [14, 27, 4] : [10, 30, 2];
+  const [cv, c] = mk(36, 20), L = shade(col, 1.3), D = shade(col, 0.68), [cx0, cx1, cy] = kind === 'coupe' ? [12, 24, 4] : [9, 27, 2];
   P(c, cx0, cy - 1, cx1 - cx0, 1, INK); P(c, cx0 - 1, cy, 1, 10 - cy, INK); P(c, cx1, cy, 1, 10 - cy, INK); // cabin outline
   P(c, cx0, cy, cx1 - cx0, 10 - cy, col); P(c, cx0, cy, cx1 - cx0, 1, L);
   P(c, cx0 + 1, cy + 1, cx1 - cx0 - 2, 8 - cy, GLASS); P(c, cx0 + 1, cy + 1, 4, 1, GLASS_L); P(c, cx0 + 2, cy + 2, 1, 2, GLASS_L);
   P(c, Math.round((cx0 + cx1) / 2), cy + 1, 1, 8 - cy, col); // B-pillar
   if (kind === 'limo') P(c, cx0 + 5, cy + 1, 1, 8 - cy, col);
-  P(c, 1, 9, 38, 1, INK); P(c, 0, 10, 1, 7, INK); P(c, 39, 10, 1, 7, INK); P(c, 1, 17, 38, 1, INK); // body outline
-  P(c, 1, 10, 38, 7, col); P(c, 1, 10, 38, 1, L); P(c, 1, 15, 38, 2, D); P(c, 5, 13, 30, 1, D); // body, highlight, crease
-  P(c, 17, 11, 3, 1, CHROME); P(c, 27, 11, 3, 1, CHROME); // door handles
-  P(c, 37, 11, 2, 2, HEAD); P(c, 1, 11, 2, 2, TAIL); P(c, 35, 15, 4, 1, CHROME); P(c, 1, 15, 4, 1, CHROME); // lamps + bumpers
-  for (const wx of [6, 27]) { P(c, wx - 1, 12, 9, 1, D); P(c, wx, 13, 7, 7, INK); P(c, wx + 1, 14, 5, 5, TIRE); P(c, wx + 2, 15, 3, 3, HUB); P(c, wx + 3, 16, 1, 1, INK); } // wheels + arches
-  if (kind === 'limo') P(c, 1, 12, 38, 1, '#fff1b0');
+  P(c, 1, 9, 34, 1, INK); P(c, 0, 10, 1, 7, INK); P(c, 35, 10, 1, 7, INK); P(c, 1, 17, 34, 1, INK); // body outline
+  P(c, 1, 10, 34, 7, col); P(c, 1, 10, 34, 1, L); P(c, 1, 15, 34, 2, D); P(c, 5, 13, 26, 1, D); // body, highlight, crease
+  P(c, 15, 11, 3, 1, CHROME); P(c, 23, 11, 3, 1, CHROME); // door handles
+  P(c, 33, 11, 2, 2, HEAD); P(c, 1, 11, 2, 2, TAIL); P(c, 31, 15, 4, 1, CHROME); P(c, 1, 15, 4, 1, CHROME); // lamps + bumpers
+  for (const wx of [5, 24]) { P(c, wx - 1, 12, 9, 1, D); P(c, wx, 13, 7, 7, INK); P(c, wx + 1, 14, 5, 5, TIRE); P(c, wx + 2, 15, 3, 3, HUB); P(c, wx + 3, 16, 1, 1, INK); } // wheels + arches
+  if (kind === 'limo') P(c, 1, 12, 34, 1, '#fff1b0');
   return cv;
 }
 function top(col, kind, view) { // 20 x 40 native (16 body + wheel nubs), front at the bottom for 'front'

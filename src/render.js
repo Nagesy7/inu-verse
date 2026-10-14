@@ -198,13 +198,13 @@ export function prerenderMap() {
   // trees: sakura near the ponds/Sakura Lane, green elsewhere
   for (let y = 0; y < MAP_H; y++) for (let x = 0; x < MAP_W; x++) if (MAP[y][x] === T.TREE) {
     const sak = (x < 29 && y < 11) || (y > 33 && y < 42 && x < 30) || (x > 33 && y > 33 && y < 41) ? hash(x, y, 5) < 0.75 : hash(x, y, 5) < 0.12, spr = sak ? S.sakura : S.tree;
-    props.push(sp(spr, x * TILE + 16 - 32, (y + 1) * TILE - 88 + 2, (y + 1) * TILE - 4));
+    props.push({ y: (y + 1) * TILE - 4, d: (c) => c.drawImage(spr, x * TILE + 16 - 48, (y + 1) * TILE - 132 + 3, spr.width * 3, spr.height * 3) }); // park trees at 3 native px (2.4x a Shiba)
   }
   for (const [lx, ly] of LAMP_TILES) props.push(sp(S.lamp, lx * TILE + 4, ly * TILE + 24 - 68, ly * TILE + 24));
   for (const [bx, by] of [[17, 6], [11, 8], [39, 34.2], [50, 34.2], [22, 52], [41, 52], [28, 47]]) props.push(sp(S.bench, bx * TILE, by * TILE + 4, by * TILE + 28));
   for (const [cx, cy] of [[61, 6], [61, 7], [60.6, 6.5], [34.3, 9.2], [26.4, 19.0]]) props.push(sp(S.crate, cx * TILE, cy * TILE, cy * TILE + 28));
   // flowering bushes flanking each shop door, hedges at NPC home fronts
-  for (const d of DECOR) if (d.kind === 'planter') props.push(sp(S.streetTree, d.x * TILE - 8, d.y * TILE + 28 - S.streetTree.height * 2, d.y * TILE + 28)); else if (d.kind !== 'car') props.push(d.kind === 'hedge' ? sp(S.hedge, d.x * TILE, d.y * TILE + 4, d.y * TILE + 30) : sp(S[d.kind], d.x * TILE - 2, d.y * TILE + 4, d.y * TILE + 30));
+  for (const d of DECOR) if (d.kind === 'planter') props.push({ y: d.y * TILE + 28, d: (c) => c.drawImage(S.streetTree, d.x * TILE - 14, d.y * TILE + 28 - S.streetTree.height * 3, 60, S.streetTree.height * 3) }); // street trees at 3x else if (d.kind !== 'car') props.push(d.kind === 'hedge' ? sp(S.hedge, d.x * TILE, d.y * TILE + 4, d.y * TILE + 30) : sp(S[d.kind], d.x * TILE - 2, d.y * TILE + 4, d.y * TILE + 30));
   for (const h of NPC_HOMES) props.push(sp(S.mailbox, (h.x + 5) * TILE + 6, (h.y + h.h + 1) * TILE - 34, (h.y + h.h + 1) * TILE - 2));
   // buildings (square front-facing art; legacy procedural storefront if the PNG is missing)
   for (const b of [...BUILDINGS, ...MALL_BUILDINGS]) props.push({ y: (b.y + b.h) * TILE - 1, d: (c) => { if (!drawBuildingArt(c, b.id, b.x, b.y, b.w, b.h)) legacyBuilding(c, b); } });
