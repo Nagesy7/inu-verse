@@ -1,3 +1,4 @@
+import { perk } from './traits.js';
 // Friendship (10 hearts), dating, marriage, player-to-player marriage (simulated locally, backend-shaped) and pups.
 // Wholesome only. Pure logic: no DOM.
 import { ensureFarm, GOODS } from './farm.js';
@@ -24,24 +25,24 @@ export const SCENES = {
 };
 export function ensureRel(s) { s.rel ||= {}; for (const n in PEOPLE) s.rel[n] ||= { pts: 0, chatDay: -1, giftDay: -1, dateDay: -1, status: 'friend', seen: [], quest: null, questsDone: 0 };
   s.giftInv ||= {}; s.pups ||= []; s.p2p ||= { partner: null, pending: null, joint: null, outbox: [], blocked: [], muted: [], reports: [], history: [] }; return s.rel; }
-const addPts = (r, n) => { const before = hearts(r); r.pts = Math.max(0, Math.min(MAX_PTS, r.pts + n)); const after = hearts(r); const scene = after > before && SCENES[after] && !r.seen.includes(after) ? after : null; if (scene) r.seen.push(scene); return scene; };
-export function chat(s, name, day) { const r = ensureRel(s)[name]; if (!r) return { ok: false }; if (r.chatDay === day) return { ok: true, repeat: true, gain: 0 }; r.chatDay = day; const scene = addPts(r, 20); return { ok: true, gain: 20, scene }; }
+const addPts = (r, n, s) => { const before = hearts(r); if (n > 0) n = Math.round(n * perk(s, 'hearts')); r.pts = Math.max(0, Math.min(MAX_PTS, r.pts + n)); const after = hearts(r); const scene = after > before && SCENES[after] && !r.seen.includes(after) ? after : null; if (scene) r.seen.push(scene); return scene; };
+export function chat(s, name, day) { const r = ensureRel(s)[name]; if (!r) return { ok: false }; if (r.chatDay === day) return { ok: true, repeat: true, gain: 0 }; r.chatDay = day; const scene = addPts(r, 20, s); return { ok: true, gain: 20, scene }; }
 export function reaction(name, item) { const P = PEOPLE[name]; return P.loves.includes(item) ? 'loved' : P.likes.includes(item) ? 'liked' : P.dislikes.includes(item) ? 'disliked' : 'neutral'; }
 export const REACT = { loved: { pts: 80, emote: 'heart', line: 'I LOVE this! How did you know?!' }, liked: { pts: 45, emote: 'happy', line: 'Aww, thank you! I like this.' }, neutral: { pts: 20, emote: 'note', line: 'Oh, thanks!' }, disliked: { pts: -20, emote: 'angry', line: 'Hmm... not really my thing.' } };
 const takeItem = (s, item) => { const f = ensureFarm(s); if (f.inv[item] > 0) { f.inv[item]--; if (!f.inv[item]) delete f.inv[item]; return true; } if (s.giftInv[item] > 0) { s.giftInv[item]--; if (!s.giftInv[item]) delete s.giftInv[item]; return true; } return false; };
 export const giftables = (s) => { const f = ensureFarm(s), out = {}; for (const [k, n] of Object.entries(f.inv)) out[k] = n; for (const [k, n] of Object.entries(s.giftInv || {})) if (k !== 'rose_bone' && k !== 'promise_collar') out[k] = (out[k] || 0) + n; return out; };
 export function gift(s, name, item, day) { const r = ensureRel(s)[name]; if (!r) return { ok: false }; if (r.giftDay === day) return { ok: false, reason: `You already gave ${name} a gift today` }; if (!takeItem(s, item)) return { ok: false, reason: 'You do not have that' };
-  r.giftDay = day; const kind = reaction(name, item), R = REACT[kind], scene = addPts(r, R.pts); return { ok: true, kind, emote: R.emote, line: R.line, gain: R.pts, scene }; }
+  r.giftDay = day; const kind = reaction(name, item), R = REACT[kind], scene = addPts(r, R.pts, s); return { ok: true, kind, emote: R.emote, line: R.line, gain: R.pts, scene }; }
 export function buyGift(s, id) { const g = GIFT_SHOP[id]; if (!g) return { ok: false }; if (s.bones < g.price) return { ok: false, reason: `Need ${g.price} bones` }; s.bones -= g.price; ensureRel(s); s.giftInv[id] = (s.giftInv[id] || 0) + 1; return { ok: true }; }
 // quests: unlock at 1 heart, one at a time
 export function questOf(s, name) { const r = ensureRel(s)[name]; if (hearts(r) < 1) return null; if (!r.quest) { const [item, n] = PEOPLE[name].quest; r.quest = { item, n: n + r.questsDone, reward: 40 + r.questsDone * 10 }; } return r.quest; }
 export function completeQuest(s, name) { const r = ensureRel(s)[name], q = questOf(s, name); if (!q) return { ok: false, reason: 'No quest yet' }; const f = ensureFarm(s); if ((f.inv[q.item] || 0) < q.n) return { ok: false, reason: `Bring ${q.n} ${GOODS[q.item]?.name || q.item}` };
-  f.inv[q.item] -= q.n; if (!f.inv[q.item]) delete f.inv[q.item]; s.bones += q.reward; r.questsDone++; r.quest = null; const scene = addPts(r, 60); return { ok: true, reward: q.reward, scene }; }
+  f.inv[q.item] -= q.n; if (!f.inv[q.item]) delete f.inv[q.item]; s.bones += q.reward; r.questsDone++; r.quest = null; const scene = addPts(r, 60, s); return { ok: true, reward: q.reward, scene }; }
 export const spouseName = (s) => s.spouse?.name || null;
 export function askOut(s, name) { const r = ensureRel(s)[name]; if (hearts(r) < 8) return { ok: false, reason: `Need 8 hearts with ${name}` }; if (r.status !== 'friend') return { ok: false, reason: 'Already dating' }; if (Object.values(s.rel).some((x) => x.status !== 'friend') || s.p2p.partner) return { ok: false, reason: 'You are already seeing someone' };
   if (!(s.giftInv.rose_bone > 0)) return { ok: false, reason: 'You need a Rose Bone' }; s.giftInv.rose_bone--; r.status = 'dating'; return { ok: true }; }
 export function goOnDate(s, name, place, day) { const r = ensureRel(s)[name], D = DATES[place]; if (!D) return { ok: false }; if (!['dating', 'engaged', 'married'].includes(r.status)) return { ok: false, reason: 'You are not dating' }; if (r.dateDay === day) return { ok: false, reason: 'One date a day' };
-  if (s.bones < D.cost) return { ok: false, reason: `Need ${D.cost} bones` }; s.bones -= D.cost; r.dateDay = day; r.dates = (r.dates || 0) + 1; addPts(r, 40); return { ok: true, scene: [`You and ${name}: ${D.name}.`, `${name}: Today was perfect.`] }; }
+  if (s.bones < D.cost) return { ok: false, reason: `Need ${D.cost} bones` }; s.bones -= D.cost; r.dateDay = day; r.dates = (r.dates || 0) + 1; addPts(r, 40, s); return { ok: true, scene: [`You and ${name}: ${D.name}.`, `${name}: Today was perfect.`] }; }
 export function propose(s, name) { const r = ensureRel(s)[name]; if (r.status !== 'dating') return { ok: false, reason: 'Date first' }; if (hearts(r) < 10) return { ok: false, reason: 'Need 10 hearts' }; if (!(s.giftInv.promise_collar > 0)) return { ok: false, reason: 'You need a Promise Collar' };
   s.giftInv.promise_collar--; r.status = 'engaged'; return { ok: true }; }
 export function wedding(s, name, day, helps = 'farm') { const r = ensureRel(s)[name]; if (r.status !== 'engaged') return { ok: false, reason: 'Not engaged' }; r.status = 'married'; s.spouse = { name, kind: 'npc', since: day, helps }; return { ok: true, guests: Object.keys(PEOPLE).filter((n) => n !== name) }; }

@@ -1,3 +1,4 @@
+import { perk } from './traits.js';
 // Farmland district: fields, orchard, animals, fishing, crafting, a supply/demand market and the weekly Top Farmer board.
 // Bones are the farm economy. Rare seeds + barn/tractor cosmetics are $KIBBLE (via the shared wallet adapter, 2% split).
 // Pure logic (no DOM) so it can be unit tested and later moved to a backend.
@@ -56,7 +57,7 @@ export function seasonMult(crop, season) { return CROPS[crop].seasons.includes(s
 export function tickFarm(s, dt, env) {
   const f = ensureFarm(s);
   for (const fl of f.fields) { if (!fl.crop || fl.grown >= 1) continue; const wet = fl.watered > 0 || env.rain ? 1.5 : 1;
-    fl.grown = Math.min(1, fl.grown + (dt / CROPS[fl.crop].grow) * seasonMult(fl.crop, env.season) * wet); if (fl.watered > 0) fl.watered = Math.max(0, fl.watered - dt); }
+    fl.grown = Math.min(1, fl.grown + (dt / CROPS[fl.crop].grow) * seasonMult(fl.crop, env.season) * wet * perk(s, 'grow')); if (fl.watered > 0) fl.watered = Math.max(0, fl.watered - dt); }
   for (const k in ANIMALS) { const A = ANIMALS[k], n = f.animals[k]; if (!n) continue; f.animalT[k] += dt * (f.fed > 0 ? 1 : 0.3);
     while (f.animalT[k] >= A.every) { f.animalT[k] -= A.every; f.pen[A.product] = Math.min(A.max * n, (f.pen[A.product] || 0) + n); } }
   if (f.fed > 0) f.fed = Math.max(0, f.fed - dt);

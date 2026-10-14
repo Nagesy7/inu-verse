@@ -1,3 +1,4 @@
+import { perk } from './traits.js';
 // Player businesses: lease a shopfront lot for Bones, stock it, price it, decorate it, hire staff and run a daily ledger.
 // Prime lots by the mall are owned by President Inu; their rent is paid to the President's treasury ledger.
 // Pure logic (no DOM). NPC shoppers are a demand model evaluated once per in-game hour.
@@ -65,7 +66,7 @@ export function bizHour(s, hour, rng, spouseHelp = 0) { const b = ensureBiz(s), 
   const shoppers = Math.round(footAt(hour) * L.foot * appeal(m) * (4 + m.staff * 1.5 + spouseHelp) * (0.75 + rng() * 0.5)); let rev = 0, sold = 0;
   const service = 6 + m.staff * 5 + spouseHelp * 3; // max customers served per hour
   for (let i = 0; i < shoppers && sold < service; i++) { const items = Object.keys(m.stock).filter((k) => m.stock[k] > 0); if (!items.length) break; const it = items[Math.floor(rng() * items.length)], p = priceIn(m, it);
-    if (rng() < buyChance(p, refOf(m, it))) { m.stock[it]--; if (!m.stock[it]) delete m.stock[it]; rev += p; sold++; } }
+    if (rng() < buyChance(p, refOf(m, it)) * perk(s, 'sales')) { m.stock[it]--; if (!m.stock[it]) delete m.stock[it]; rev += p; sold++; } }
   s.bones += rev; m.today.revenue += rev; m.today.sold += sold; m.today.shoppers += shoppers; return { shoppers, sold, rev }; }
 // end of in-game day: wages + rent, close the ledger row. Returns the row.
 export function bizDay(s, day) { const b = ensureBiz(s), m = b.mine; if (!m) return null; const L = lotById(m.lot), t = m.today;

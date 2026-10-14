@@ -1,0 +1,4 @@
+const J = await import('../src/jobs.js'); const M = await import('../src/minigames.js'); const { mulberry32 } = await import('../src/rng.js');
+export function human(id, seed = 7, lag = 0.25, fps = 30) { const g = M.createGame(id, J.JOBS[id], mulberry32(seed)); const r = mulberry32(seed + 99); const q = []; let t = 0, k = 0;
+  while (!g.done && k++ < 20000) { t += 1 / fps; const a = g.auto(); const timing = ['slide', 'timing'].includes(J.JOBS[id].game); if (timing) { if (a.tap && !q.length) q.push({ at: t + (r() + r() + r() - 1.5) * 0.12 + 0.06, a }); } else q.push({ at: t + lag, a }); let inp = {}; while (q.length && q[0].at <= t) inp = q.shift().a; if (inp.x != null) inp = { ...inp, x: inp.x + (r() - 0.5) * 16, y: inp.y + (r() - 0.5) * 16 }; if (r() < 0.1) inp = {}; g.update(1 / fps, inp); }
+  return g; }

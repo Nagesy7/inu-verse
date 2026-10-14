@@ -1,3 +1,4 @@
+import { drawInuAvatar } from './vendor/inu-avatar.js';
 // All art drawn procedurally - original.
 import { shibaSprite } from './sprite.js';
 import { FURNITURE, footprint, WALLS, FLOORS } from './furniture.js';
@@ -45,6 +46,10 @@ function drawLayered(ctx, x, y, coat, outfit, { face, phase, moving, scale, name
   if (name) nameTag(ctx, x, top, name, badge);
 }
 
+// Custom (character-creator) Shibas: shared cross-game renderer, sized to match the layered atlas (~64px at scale 1)
+export function drawProfileShiba(ctx, x, y, profile, { face = 'down', phase = 0, moving = false, scale = 1, name = null, shadow = true, badge = null } = {}) {
+  const frame = moving ? Math.floor(phase / 1.6) % 4 : 0, r = drawInuAvatar(ctx, profile, x, y + 12, { scale: scale * 1.6, face, frame, shadow });
+  if (name) nameTag(ctx, x, y + 12 - r.h, name, badge); }
 const rr = (ctx, x, y, w, h, r) => { ctx.beginPath(); ctx.roundRect(x, y, w, h, r); };
 
 // Pixel Shiba (see sprite.js). (x,y) = ground point under the feet-ish centre.

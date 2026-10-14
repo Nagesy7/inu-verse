@@ -58,23 +58,23 @@ const GAMES = {
       c.lineWidth = 6; for (const k of g.done4) { c.strokeStyle = g.cols[k]; c.beginPath(); c.moveTo(60, ly(k)); c.lineTo(W - 60, ly(g.Rr.indexOf(k))); c.stroke(); } R(c, W / 2 - 20, 30, 40, 30, g.done4.length === 4 ? '#ffe66a' : '#4a4f5e'); }; },
   // bin run: move the truck hopper to catch falling bags; avoid the cats
   catch(g) { g.px = W / 2; g.items = []; g.spawn = 0;
-    g.update = (dt, inp) => { if (inp.down) g.px += clamp(inp.x - g.px, -320 * dt, 320 * dt); g.px += ((inp.right ? 1 : 0) - (inp.left ? 1 : 0)) * 280 * dt; g.px = clamp(g.px, 30, W - 30); g.spawn -= dt;
-      if (g.spawn <= 0) { g.spawn = Math.max(0.35, 0.9 - g.t / 80); g.items.push({ x: 20 + g.rng() * (W - 40), y: 40, v: 120 + g.t * 3, cat: g.rng() < 0.18 }); }
-      for (const it of g.items) { it.y += it.v * dt; if (it.y > 420 && it.y < 440 && Math.abs(it.x - g.px) < 36 && !it.gone) { it.gone = true; if (it.cat) g.miss(it.x, 420); else g.hit(10, it.x, 420); } if (it.y > H && !it.gone) { it.gone = true; if (!it.cat) g.miss(it.x, H - 20); } } g.items = g.items.filter((i) => !i.gone); };
+    g.update = (dt, inp) => { if (inp.down) g.px += clamp(inp.x - g.px, -460 * dt, 460 * dt); g.px += ((inp.right ? 1 : 0) - (inp.left ? 1 : 0)) * 380 * dt; g.px = clamp(g.px, 30, W - 30); g.spawn -= dt;
+      if (g.spawn <= 0) { g.spawn = Math.max(0.55, 1 - g.t / 90); g.items.push({ x: 20 + g.rng() * (W - 40), y: 40, v: 120 + g.t * 3, cat: g.rng() < 0.15 }); }
+      for (const it of g.items) { const py = it.y; it.y += it.v * dt; if (py <= 432 && it.y > 420 && Math.abs(it.x - g.px) < 40 && !it.gone) { it.gone = true; if (it.cat) g.miss(it.x, 420); else g.hit(10, it.x, 420); } if (it.y > H && !it.gone) { it.gone = true; if (!it.cat) g.miss(it.x, H - 20); } } g.items = g.items.filter((i) => !i.gone); };
     g.auto = () => { const b = g.items.filter((i) => !i.cat && i.y < 430).sort((a, b2) => b2.y - a.y)[0]; return b ? { down: true, x: b.x, y: 430 } : {}; };
     g.draw = (c) => { R(c, 0, 0, W, H, '#cfe6f0'); R(c, 0, 450, W, 30, '#5a5d64'); for (const it of g.items) { if (it.cat) { R(c, it.x - 10, it.y - 8, 20, 16, '#f2a64a'); R(c, it.x - 10, it.y - 12, 5, 5, '#f2a64a'); R(c, it.x + 5, it.y - 12, 5, 5, '#f2a64a'); } else { R(c, it.x - 10, it.y - 10, 20, 20, '#2a2a33'); R(c, it.x - 3, it.y - 14, 6, 5, '#2a2a33'); } }
       R(c, g.px - 36, 424, 72, 24, '#2f8a4a'); R(c, g.px - 36, 424, 72, 4, '#5ac07a'); txt(c, 'BAGS IN, CATS OUT', W / 2, 30, 9, '#141a2e'); }; },
   // billboard: a poster panel slides across; tap to stop it in line with the frame
   slide(g) { g.n = 0; g.x = 0; g.v = 1; const reset = () => { g.x = g.v > 0 ? -140 : W; }; reset();
-    g.update = (dt, inp) => { const sp = 160 + g.t * 4; g.x += g.v * sp * dt; if (g.x > W + 10 || g.x < -150) { g.miss(W / 2, 200); g.v = -g.v; reset(); } if (inp.tap || inp.act) { const err = Math.abs(g.x - (W / 2 - 70)); if (err < 30) { g.hit(err < 8 ? 18 : err < 18 ? 13 : 9, W / 2, 160); g.n++; } else g.miss(W / 2, 200); g.v = -g.v; reset(); } };
-    g.auto = () => (Math.abs(g.x - (W / 2 - 70)) < 5 ? { tap: true } : {});
+    g.update = (dt, inp) => { const sp = 140 + g.t * 3; g.x += g.v * sp * dt; if (g.x > W + 10 || g.x < -150) { g.miss(W / 2, 200); g.v = -g.v; reset(); } if (inp.tap || inp.act) { const err = Math.abs(g.x - (W / 2 - 70)); if (err < 34) { g.hit(err < 8 ? 18 : err < 18 ? 13 : 9, W / 2, 160); g.n++; } else g.miss(W / 2, 200); g.v = -g.v; reset(); } };
+    g.auto = () => (Math.abs(g.x - (W / 2 - 70)) < 7 ? { tap: true } : {});
     g.draw = (c) => { R(c, 0, 0, W, H, '#8ab0d8'); R(c, W / 2 - 76, 150, 152, 112, '#141a2e'); R(c, W / 2 - 72, 154, 144, 104, '#2a3358'); R(c, W / 2 - 40, 262, 6, 160, '#4a4f5e'); R(c, W / 2 + 34, 262, 6, 160, '#4a4f5e');
       R(c, g.x, 156, 140, 100, ['#ffcf3a', '#ff7aa8', '#5fd3ff', '#9cf06b'][g.n % 4]); txt(c, '$KIBBLE', g.x + 70, 212, 12, '#141a2e'); txt(c, 'TAP WHEN ALIGNED', W / 2, 120, 10, '#fff'); }; },
   // delivery: three lanes; swipe/arrow to change lane; grab parcels, dodge puddles + cones
   dodge(g) { g.lane = 1; g.obs = []; g.sp = 0; const lx = (l) => 60 + l * 120;
     g.update = (dt, inp) => { if (inp.tap) g.lane = inp.x < W / 3 ? 0 : inp.x > (2 * W) / 3 ? 2 : 1; if (inp.leftP) g.lane = Math.max(0, g.lane - 1); if (inp.rightP) g.lane = Math.min(2, g.lane + 1);
-      g.sp -= dt; if (g.sp <= 0) { g.sp = Math.max(0.45, 1 - g.t / 60); const l = Math.floor(g.rng() * 3); g.obs.push({ l, y: -20, parcel: g.rng() < 0.55 }); }
-      for (const o of g.obs) { o.y += (200 + g.t * 4) * dt; if (!o.gone && o.y > 380 && o.y < 410 && o.l === g.lane) { o.gone = true; if (o.parcel) g.hit(10, lx(o.l), 380); else g.miss(lx(o.l), 380); } if (o.y > H) o.gone = true; } g.obs = g.obs.filter((o) => !o.gone); };
+      g.sp -= dt; if (g.sp <= 0) { g.sp = Math.max(0.45, 1 - g.t / 60); const l = Math.floor(g.rng() * 3); g.obs.push({ l, y: -20, parcel: g.rng() < 0.6 }); }
+      for (const o of g.obs) { const py = o.y; o.y += (190 + g.t * 3) * dt; if (!o.gone && py <= 400 && o.y > 385 && o.l === g.lane) { o.gone = true; if (o.parcel) g.hit(10, lx(o.l), 380); else g.miss(lx(o.l), 380); } if (o.y > H) o.gone = true; } g.obs = g.obs.filter((o) => !o.gone); };
     g.auto = () => { const near = g.obs.filter((o) => o.y < 400 && o.y > 200).sort((a, b) => b.y - a.y); const p = near.find((o) => o.parcel), bad = new Set(near.filter((o) => !o.parcel && o.y > 300).map((o) => o.l)); let l = p && !bad.has(p.l) ? p.l : [0, 1, 2].find((k) => !bad.has(k)) ?? g.lane; return { tap: true, x: lx(l), y: 300 }; };
     g.draw = (c) => { R(c, 0, 0, W, H, '#4a5060'); for (let l = 1; l < 3; l++) for (let y = (g.t * 200) % 60 - 60; y < H; y += 60) R(c, l * 120 - 2, y, 4, 30, '#f2e6a0');
       for (const o of g.obs) { if (o.parcel) { R(c, lx(o.l) - 14, o.y - 14, 28, 28, '#c08a4a'); R(c, lx(o.l) - 2, o.y - 14, 4, 28, '#8a5a2a'); } else { R(c, lx(o.l) - 12, o.y - 16, 24, 28, '#ff6a1e'); R(c, lx(o.l) - 9, o.y - 6, 18, 4, '#fff'); } }

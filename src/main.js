@@ -30,6 +30,11 @@ import { ensureBiz, bizHour, bizDay, rollBizWeek } from './biz.js';
 import { renderField, renderFarm, renderLot, renderBizBoard } from './farmui.js';
 import * as REL from './relations.js';
 import { startJob } from './jobui.js';
+import { mountCreator, drawPreview, profileOfChoices } from './creatorui.js';
+import { applyCreation, defaultChoices, restyle, SALON_PRICE } from './creator.js';
+import { profileFromState, hasCustomLook, saveProfile, loadProfile, setProfileStore, kibblePayProfileStore, profileStore } from './profile.js';
+import { TRAITS } from './traits.js';
+import { drawProfileShiba } from './art.js';
 import { WORKER_JOB, JOBS as JOB_DEFS, ensureJobs, rankOf } from './jobs.js';
 import { renderFriend, renderChapel, renderFurnStore } from './relui.js';
 import { prerenderMap, dynamicProps, buildingsReady } from './render.js';
@@ -65,41 +70,43 @@ function toast(msg, cls = '') { // de-duplicated: an identical visible toast is 
   for (const e of document.querySelectorAll('#toast .toast')) if (e.dataset.msg === msg) { clearTimeout(e._t); e._t = setTimeout(() => e.remove(), 2200); return; }
   if ($('#toast').children.length >= 4) $('#toast').firstElementChild.remove();
   const d = document.createElement('div'); d.dataset.msg = msg; d.className = 'toast ' + cls; d.textContent = msg; $('#toast').appendChild(d); d._t = setTimeout(() => d.remove(), 2200); }
-function persist() { if (state) { save(state, localStorage); } }
+let profSaveT = 0;
+function persist() { if (state) { save(state, localStorage); if (hasCustomLook(state) && Date.now() - profSaveT > 15000) { profSaveT = Date.now(); saveProfile(state); } } }
 function hud() { $('#bones').textContent = Math.floor(state.bones); $('#kibble').textContent = state.kibble.toFixed(2); $('#hud-name').textContent = state.player.name; }
 
 function resize() { cv.width = Math.round(innerWidth * devicePixelRatio); cv.height = Math.round(innerHeight * devicePixelRatio); vignette = null; document.body.classList.toggle('landscape', innerWidth > innerHeight); document.body.classList.toggle('short', innerHeight < 520); }
 addEventListener('resize', resize); addEventListener('orientationchange', () => setTimeout(resize, 60)); window.visualViewport?.addEventListener('resize', resize); resize();
 
 // ---------------- Title ----------------
-let chosenCoat = 'tan';
+let creator = null;
+let profCache = { key: '', p: null };
+// player look: shared-profile avatar for created characters; legacy saves keep the atlas coat
+const myProfile = () => { const key = JSON.stringify([state.player.look, state.wardrobe.equipped, state.player.name]); if (profCache.key !== key) profCache = { key, p: profileFromState(state) }; return profCache.p; };
+function playerCanvas(w, h, scale) { if (!hasCustomLook(state)) return spriteCanvas(state.player.coat, state.wardrobe.equipped, w, h, scale); const c = document.createElement('canvas'); c.width = w; c.height = h; const x = c.getContext('2d'); x.imageSmoothingEnabled = false; drawProfileShiba(x, w / 2, h - 16, myProfile(), { scale }); return c; }
+
 function spriteCanvas(coat, outfit, w, h, scale, face = 'down', art) { const c = document.createElement('canvas'); c.width = w; c.height = h; const x = c.getContext('2d'); x.imageSmoothingEnabled = false; drawShiba(x, w / 2, h - 16, { coat, outfit, scale, face, art: art !== undefined ? art : artKey(coat, outfit) }); return c; }
 function titleScreen() {
-  const wrap = $('#coats');
-  wrap.innerHTML = Object.entries(COATS).map(([k, c]) => `<button class="coat ${k === chosenCoat ? 'sel' : ''}" data-coat="${k}"><span class="cimg"></span>${c.name}</button>`).join('');
-  const thumbs = () => wrap.querySelectorAll('.coat').forEach((b) => b.querySelector('.cimg').replaceChildren(spriteCanvas(b.dataset.coat, {}, 60, 76, 1)));
-  thumbs(); artReady.then(thumbs); // redraw once the layered art atlases have loaded
-  wrap.onclick = (e) => { const b = e.target.closest('.coat'); if (!b) return; chosenCoat = b.dataset.coat; wrap.querySelectorAll('.coat').forEach((x) => x.classList.toggle('sel', x === b)); };
+  creator = mountCreator($('#creator'), { choices: { ...defaultChoices(), name: $('#name').value } });
   const saved = load(localStorage);
   if (saved) { $('#continue').hidden = false; $('#continue').onclick = () => startGame(saved); }
-  $('#start').onclick = () => { const s = newGame({ name: $('#name').value.trim() || 'Inu', coat: chosenCoat }); seedTokens(s, rng); startGame(s); toast(`Welcome to Inu Verse, ${s.player.name}!`, 'good'); };
+  $('#start').onclick = () => { const ch = { ...creator.choices, name: $('#name').value.trim() || 'Inu' }; const s = newGame({ name: ch.name, coat: 'tan' });
+    applyCreation(s, ch, { ensureFarm, ensureJobs, ensureRel: REL.ensureRel }); seedTokens(s, rng); startGame(s); saveProfile(s); toast(`Welcome to Inu Verse, ${s.player.name}! ${TRAITS[s.player.trait].name}: ${TRAITS[s.player.trait].desc}.`, 'good'); };
   const pv = $('#preview'), pc = pv.getContext('2d');
   const faces = ['down', 'right', 'up', 'left'];
   const loop = (t) => {
     if (mode !== 'title') return; pc.imageSmoothingEnabled = false; pc.clearRect(0, 0, pv.width, pv.height);
-    const face = faces[Math.floor(t / 1600) % 4];
-    const pads = saved ? [[pv.width * 0.3, chosenCoat, {}, 'NEW'], [pv.width * 0.72, saved.player.coat, saved.wardrobe?.equipped, saved.player.name.toUpperCase()]] : [[pv.width / 2, chosenCoat, {}, null]];
-    for (const [x, coat, outfit, lbl] of pads) {
+    const prof = profileOfChoices({ ...creator.choices, name: $('#name').value });
+    if (saved) { drawPreview(pc, prof, pv.width * 0.3, t, 'NEW'); const x = pv.width * 0.72, face = faces[Math.floor(t / 1600) % 4];
       pc.fillStyle = '#d4a640'; pc.fillRect(x - 54, 150, 108, 10); pc.fillStyle = '#8f6a22'; pc.fillRect(x - 54, 158, 108, 4); pc.fillStyle = '#24305c'; pc.fillRect(x - 50, 152, 100, 5);
-      drawShiba(pc, x, 140, { art: artKey(coat, outfit), coat, outfit, scale: 2, phase: t / 90, moving: true, face, shadow: false });
-      if (lbl) { pc.font = '8px Silkscreen, monospace'; pc.textAlign = 'center'; pc.fillStyle = '#f2cc68'; pc.fillText(lbl, x, 172); }
-    }
+      if (saved.player.look) drawProfileShiba(pc, x, 138, profileFromState(saved), { scale: 1.1, phase: t / 90, moving: true, face, shadow: false }); else drawShiba(pc, x, 140, { art: artKey(saved.player.coat, saved.wardrobe?.equipped), coat: saved.player.coat, outfit: saved.wardrobe?.equipped, scale: 2, phase: t / 90, moving: true, face, shadow: false });
+      pc.font = '8px Silkscreen, monospace'; pc.textAlign = 'center'; pc.fillStyle = '#f2cc68'; pc.fillText(saved.player.name.toUpperCase(), x, 172); }
+    else drawPreview(pc, prof, pv.width / 2, t, null);
     requestAnimationFrame(loop);
   };
   requestAnimationFrame(loop);
 }
 
-function startGame(s) { seedTokens(s, rng); REL.ensureRel(s); ensureFarm(s); ensureBiz(s); s.clockSec ??= 0; catchUp(s, Date.now(), { season: seasonOf(Math.floor(s.clockSec / DAY_LEN)), rain: false }); hourIdx = Math.floor(s.clockSec / (DAY_LEN / 24));
+function startGame(s) { loadProfile(s).catch(() => {}); seedTokens(s, rng); REL.ensureRel(s); ensureFarm(s); ensureBiz(s); s.clockSec ??= 0; catchUp(s, Date.now(), { season: seasonOf(Math.floor(s.clockSec / DAY_LEN)), rain: false }); hourIdx = Math.floor(s.clockSec / (DAY_LEN / 24));
   state = s; state.kibble ??= 20; ensureWardrobe(state); ensurePacks(state); ensureMall(state); state.clockSec ??= 0; lastEarned = state.stats.bonesEarned; mode = 'world';
   $('#title').hidden = true; $('#hud').hidden = false; $('#minimap-wrap').hidden = false;
   mapImg = prerenderMap(); npcs = spawnNpcs(rng, 6); npcs.forEach((n) => { n.art = artKey(n.coat); }); amb = makeAmbient(42);
@@ -195,6 +202,8 @@ globalThis.__rel = { build: (id) => enterBuild(id, false), claim: (id) => claimP
 globalThis.__farm = { tick: (s) => farmTick(s), get fish() { return fish; } };
 function playJob(id) { if (panel) closePanel(); keys.clear(); startJob(id, { state, rng, day: gameDay, blip, rustle, fanfare, done: (r) => { hud(); persist(); toast(`${JOB_DEFS[id].name}: +${r.total} bones${r.pb ? ' · new best!' : ''}${r.rankUp ? ` · rank ${r.rank}!` : ''}`, 'good'); }, closed: () => keys.clear() }); }
 globalThis.__playJob = playJob;
+if (globalThis.kibblePay) setProfileStore(kibblePayProfileStore(globalThis.kibblePay)); // real SIWS-signed profile when the SDK is present
+globalThis.__profile = { store: profileStore, setProfileStore, kibblePayProfileStore, mine: () => profileFromState(state), creator: () => creator };
 const crew = makeCrew(); let adIdx = 0, adRot = 0, adT = 0, trend = []; globalThis.__ads = () => ({ trend, adRot, adIdx }); globalThis.__crew = crew;
 function crewActors() { return crew.filter((w) => w.on).map((w) => ({ x: w.x, y: w.y, coat: w.coat, outfit: {}, face: w.face, phase: w.phase, moving: w.moving, name: w.name, worker: w, art: artKey(w.coat, {}) })); }
 function crewProps() { const out = []; for (const w of crew) { if (!w.on) continue; if (w.cones) out.push({ y: w.cones[0][1] * TILE, d: (x) => drawCones(x, w) }); if (w.truck) out.push({ y: w.y - 30, d: (x) => drawCar(x, w.x - 40, w.y - 36, { col: '#2f8a4a', kind: 'pickup', dir: w.face === 'left' ? 'west' : 'east' }) }); }
@@ -318,7 +327,7 @@ function renderWorld() {
   for (const d of dyn) if (d.flat) d.d(ctx);
   drawGroundLife(ctx, amb, phase); feel.drawGround(ctx);
   if (player.clickMark && player.path.length) { const m = player.clickMark, k = Math.round(10 + Math.sin(time * 6) * 2); ctx.fillStyle = '#f2cc68'; for (const [ax, ay] of [[-k, 0], [k - 4, 0], [0, -k / 2], [0, k / 2 - 2]]) ctx.fillRect(Math.round(m.x + ax), Math.round(m.y + 6 + ay), 4, 3); }
-  const actors = [...npcs.map((n) => ({ ...n, npc: true, badge: badgeOf(packOfName(state, n.name)) })), ...(drive ? [] : [{ x: state.player.x, y: state.player.y, coat: state.player.coat, outfit: state.wardrobe.equipped, face: player.face, phase: player.phase, moving: player.moving, name: state.player.name, me: true, badge: badgeOf(myPack(state)), emote: player.emote, art: artKey(state.player.coat, state.wardrobe.equipped) }]), ...streetPups(), ...presActors(), ...petActors(), ...crewActors(), ...pupActors()];
+  const actors = [...npcs.map((n) => ({ ...n, npc: true, badge: badgeOf(packOfName(state, n.name)) })), ...(drive ? [] : [{ x: state.player.x, y: state.player.y, coat: state.player.coat, outfit: state.wardrobe.equipped, face: player.face, phase: player.phase, moving: player.moving, name: state.player.name, me: true, badge: badgeOf(myPack(state)), emote: player.emote, art: artKey(state.player.coat, state.wardrobe.equipped), profile: hasCustomLook(state) ? myProfile() : null }]), ...streetPups(), ...presActors(), ...petActors(), ...crewActors(), ...pupActors()];
   // one depth-sorted list: static props (culled), dynamic props and actors, by ground y
   const L = -ox - 200, Rt = -ox + vw + 200, Tp = -oy - 60, Bt = -oy + vh + 400, list = [];
   for (const p of mapImg.props) if (p.y > Tp && p.y < Bt) list.push(p);
@@ -335,7 +344,8 @@ function renderWorld() {
     if (a.petSpecies) { drawPetActor(ctx, a); ctx.restore(); continue; }
     if (a.president) { drawPresident(ctx, a); if (a.emote) drawEmote(ctx, 0, -14, a.emote.kind, time); ctx.restore(); continue; }
     if (a.pupScale) { drawShiba(ctx, 0, 0, { coat: a.coat, outfit: a.outfit, face: a.face, phase: a.phase, moving: a.moving, name: a.name, scale: a.pupScale, art: a.art }); ctx.fillStyle = a.pupPatch; ctx.fillRect(-7 * a.pupScale, -30 * a.pupScale, 14 * a.pupScale, 4 * a.pupScale); ctx.fillStyle = a.pupHex; ctx.fillRect(-7 * a.pupScale, -26 * a.pupScale, 14 * a.pupScale, 3 * a.pupScale); ctx.restore(); continue; }
-    drawShiba(ctx, 0, 0, { coat: a.coat, outfit: a.outfit, face: a.face, phase: a.phase, moving: a.moving, name: a.name, scale: 1.5, badge: a.badge, art: a.art, emote: a.emote?.kind });
+    if (a.profile) { drawProfileShiba(ctx, 0, 0, a.profile, { face: a.face, phase: a.phase, moving: a.moving, name: a.name, scale: 1.5, badge: a.badge }); if (a.emote) drawEmote(ctx, 0, -110, a.emote.kind, time); }
+    else drawShiba(ctx, 0, 0, { coat: a.coat, outfit: a.outfit, face: a.face, phase: a.phase, moving: a.moving, name: a.name, scale: 1.5, badge: a.badge, art: a.art, emote: a.emote?.kind });
     if (a.worker) { drawVest(ctx, a.face); drawTool(ctx, a.worker); }
     if (a.emote) drawEmote(ctx, 0, a.name ? -14 : 0, a.emote.kind, time); ctx.restore();
   }
@@ -431,6 +441,7 @@ function openPanel(kind, opts = {}) {
   if (kind === 'bizboard') return renderBizBoard(farmCtx());
   if (kind === 'friend') return renderFriend(relCtx(), opts.name);
   if (kind === 'chapel') return renderChapel(relCtx());
+  if (kind === 'salon') return renderSalon();
   if (kind === 'furn') return renderFurnStore(relCtx(), opts.store);
   if (kind === 'plot') {
     const p = PLOTS.find((x) => x.id === opts.plotId);
@@ -529,11 +540,21 @@ function renderFashion() {
   };
   $('#open-wardrobe').onclick = () => openPanel('wardrobe');
 }
+function renderSalon() {
+  const body = $('#panel-body'), L = state.player.look || {}, base = { ...defaultChoices(), ...L, name: state.player.name, pronouns: state.player.pronouns || 'they/them' };
+  body.innerHTML = `<h2>Paw Salon & Mirror</h2><p class="sub">Restyle coat, pattern, eyes, ears, tail, markings, size, name and pronouns for <b>${SALON_PRICE} Bones</b>. Your look is saved to your shared Inu profile, so it follows you to other Inu games.${hasCustomLook(state) ? '' : ' <b>Your classic look is kept until you restyle.</b>'}</p>
+    <div class="wardrobe"><div><canvas id="salonpv" width="200" height="180" style="background:var(--navy2);border:3px solid var(--goldd)"></canvas><label class="lbl">Name <input id="salonname" maxlength="14" value="${state.player.name.replace(/"/g, '')}"></label>
+    <button class="btn" id="salonbuy">Restyle - ${SALON_PRICE} Bones</button></div><div id="salonc" class="creator"></div></div>`;
+  const cr = mountCreator($('#salonc'), { choices: base, tabs: ['look', 'you'] }), pv = $('#salonpv'), pc = pv.getContext('2d');
+  const loop = (t) => { if (panel?.kind !== 'salon' || !pv.isConnected) return; pc.clearRect(0, 0, 200, 180); pc.imageSmoothingEnabled = false; drawPreview(pc, { ...profileOfChoices({ ...cr.choices, outfit: null }), outfit: profileFromState(state).outfit }, 100, t, null); requestAnimationFrame(loop); }; requestAnimationFrame(loop);
+  $('#salonbuy').onclick = () => { const r = restyle(state, { ...cr.choices, name: $('#salonname').value.trim() || state.player.name }); if (!r.ok) return toast(r.reason, 'bad'); blip(); persist(); saveProfile(state); toast('Fresh new look! Saved to your Inu profile.', 'good'); closePanel(); };
+}
 function renderWardrobe() {
   const body = $('#panel-body'), w = state.wardrobe;
   body.innerHTML = `<h2>Wardrobe</h2><p class="sub">Equip the clothes you own. One item per slot; gowns replace bottoms.${w.owned.length ? '' : ' <b>Nothing yet - visit Fetch Fashion!</b>'}</p>
-    <div class="wardrobe"><div class="mirror" id="mirror"></div><div id="slots"></div></div>`;
-  const m = $('#mirror'); m.appendChild(spriteCanvas(state.player.coat, w.equipped, 168, 220, 3));
+    <div class="wardrobe"><div class="mirror" id="mirror"></div><div id="slots"></div></div><p><button class="btn alt" id="tosalon">Mirror: restyle look (${SALON_PRICE} Bones)</button></p>`;
+  $('#tosalon').onclick = () => openPanel('salon');
+  const m = $('#mirror'); m.appendChild(playerCanvas(168, 220, 3));
   m.insertAdjacentHTML('beforeend', `<div class="mname">${esc(state.player.name)}</div><div class="small">${COATS[state.player.coat].name}</div>`);
   $('#slots').innerHTML = SLOTS.map((slot) => { const items = w.owned.filter((id) => OUTFITS[id].slot === slot);
     return `<div class="slot"><b>${SLOT_NAMES[slot]}</b><div class="slot-items"><button class="btn ${w.equipped[slot] ? 'ghost' : 'alt'}" data-unequip="${slot}">${slot === 'top' ? 'Cream tee' : slot === 'bottom' ? 'Navy jeans' : 'None'}</button>${items.map((id) => `<button class="btn ${w.equipped[slot] === id ? 'alt' : 'ghost'}" data-wear="${id}">${OUTFITS[id].name}</button>`).join('')}</div></div>`; }).join('');
@@ -694,7 +715,7 @@ function renderBuild() {
     const bx = ox + ROOM_W * cell - cell * 1.6, by0 = oy - cell * 1.5; ctx.fillStyle = pk.color; ctx.fillRect(bx, by0, cell * 1.4, cell * 1.2); ctx.fillStyle = '#d4a640'; ctx.fillRect(bx, by0 + cell * 1.2, cell * 1.4, 4); drawEmblem(ctx, pk.emblem, bx + cell * 0.35, by0 + cell * 0.2, cell * 0.14, '#fff6e0'); }
   if (!build.pack && !build.readOnly && state.spouse) { const sp = npcByName(state.spouse.name); drawShiba(ctx, ox + cell * 1.2, oy - cell * 0.2, { coat: sp?.coat || 'cream', outfit: sp?.outfit || {}, scale: 1.5, name: state.spouse.name }); (state.pups || []).forEach((p, i) => drawShiba(ctx, ox + cell * (2.4 + i), oy - cell * 0.1, { coat: p.coat.base, outfit: {}, scale: REL.PUP_SCALE[REL.stageOfPup(p, gameDay())] })); }
   if (!build.pack && !build.readOnly) { const pet = activePet(state); if (pet) { ctx.save(); ctx.imageSmoothingEnabled = false; ctx.drawImage(petSprite(pet.species, Math.floor(time * 2) % 2), ox + ROOM_W * cell - cell * 1.6, oy - cell * 0.55, cell * 0.8, cell * 0.8); ctx.restore(); } }
-  else { const ni = +build.plotId.slice(1) - 1; drawShiba(ctx, ox + ROOM_W * cell - cell * 0.6, oy - cell * 0.2, { coat: build.readOnly ? ['tan', 'dark', 'cream', 'red'][ni] : state.player.coat, outfit: build.readOnly ? NPC_OUTFITS[ni] : state.wardrobe.equipped, scale: 1.5 }); }
+  else { const ni = +build.plotId.slice(1) - 1; if (!build.readOnly && hasCustomLook(state)) drawProfileShiba(ctx, ox + ROOM_W * cell - cell * 0.6, oy - cell * 0.2, myProfile(), { scale: 1.5 }); else drawShiba(ctx, ox + ROOM_W * cell - cell * 0.6, oy - cell * 0.2, { coat: build.readOnly ? ['tan', 'dark', 'cream', 'red'][ni] : state.player.coat, outfit: build.readOnly ? NPC_OUTFITS[ni] : state.wardrobe.equipped, scale: 1.5 }); }
   ctx.fillStyle = '#f2cc68'; ctx.font = '18px Silkscreen, monospace'; ctx.textAlign = 'center';
   ctx.fillText(build.pack ? `${myPack(state).name} [${myPack(state).tag}] Clubhouse — decorate together` : build.readOnly ? `${NPC_HOMES.find((x) => x.id === build.plotId).owner}'s Home` : `${state.player.name}'s Home — Build & Decorate`, innerWidth / 2, 70);
 }
