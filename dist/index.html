@@ -1,0 +1,47 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover,user-scalable=no">
+<title>Inu Verse</title><link rel="preload" href="/assets/Silkscreen-W9-u5Upq.ttf" as="font" type="font/ttf" crossorigin>
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><circle cx='16' cy='18' r='12' fill='%23d98b45'/><path d='M6 12 9 2 14 9zM26 12 23 2 18 9z' fill='%23d98b45'/><ellipse cx='18' cy='22' rx='7' ry='5' fill='%23fff6ea'/></svg>">
+  <script type="module" crossorigin src="/assets/index-0L8MKmkM.js"></script>
+  <link rel="stylesheet" crossorigin href="/assets/index-BfTz35Iq.css">
+</head><body>
+<canvas id="game"></canvas>
+<div id="title" class="overlay">
+  <div class="title-card">
+    <h1 class="logo">Inu <span>Verse</span></h1>
+    <p class="tag">A cosy neighbourhood for the Inu games network</p>
+    <canvas id="preview" width="300" height="180"></canvas>
+    <label class="lbl">Your Inu's name <input id="name" maxlength="14" value="Kabosu"></label>
+    <div class="lbl">Coat colour</div>
+    <div id="coats" class="coats"></div>
+    <div class="row"><button id="start" class="btn big">Start new life</button><button id="continue" class="btn big alt" hidden>Continue</button></div>
+    <p class="small">WASD / arrows or click to walk · E to interact · Progress saves in your browser</p>
+  </div>
+</div>
+<div id="hud" hidden>
+  <div class="chip who"><span id="hud-name"></span></div>
+  <div class="chip"><i class="ic bone"></i><span id="bones">0</span><small>bones</small></div>
+  <div class="chip inu"><i class="ic kib"></i><span id="kibble">0</span><small>KIBBLE</small></div>
+  <div class="spacer"></div>
+  <button id="btn-phantom" class="btn phantom" title="Wallet support is not built yet">Connect Phantom <small>(coming soon)</small></button>
+  <button id="btn-pack" class="btn alt">Pack</button>
+  <button id="btn-wardrobe" class="btn alt">Wardrobe</button>
+  <button id="btn-garage" class="btn alt">Garage</button>
+  <span class="chip" id="clock">--:--</span>
+  <button id="btn-emote" class="btn alt" title="G">Emote</button>
+  <button id="btn-photo" class="btn alt" title="P">Photo</button>
+  <button id="btn-mute" class="btn ghost" title="M">Sound on</button>
+  <button id="btn-help" class="btn ghost">?</button>
+</div>
+<div id="prompt" hidden></div>
+<div id="minimap-wrap" hidden><canvas id="minimap" width="128" height="140"></canvas></div>
+<div id="buildbar" hidden></div>
+<div id="panel" class="overlay" hidden><div class="panel-card"><button class="close" id="panel-close">×</button><div id="panel-body"></div></div></div>
+<div id="emotes" hidden><button class="btn" data-emote="wave">1 Wave</button><button class="btn" data-emote="sit">2 Sit</button><button class="btn" data-emote="zoomies">3 Zoomies</button><button class="btn" data-emote="dance">4 Dance</button><button class="btn" data-emote="heart">5 Heart</button></div>
+<div id="photobar"><b>PHOTO MODE</b><button class="btn green" id="photo-save">Save PNG</button><button class="btn ghost" id="photo-exit">Exit (P)</button></div>
+<div id="toast"></div>
+<div id="dialog" hidden><div class="dname"></div><div class="dtext"></div><i class="dnext"></i></div>
+<div id="zoomctl" style="position:fixed;left:10px;top:76px;z-index:30;display:flex;flex-direction:column;gap:4px;align-items:center"><button id="zin" class="btn alt" title="Zoom in (+ / wheel)" style="min-width:36px">+</button><small id="zlevel" style="color:#f2cc68;font:8px Silkscreen,monospace;text-shadow:0 1px 0 #000">1x</small><button id="zout" class="btn alt" title="Zoom out (- / wheel)" style="min-width:36px">&minus;</button></div>
+<div id="touch"><div id="stick"><div id="knob"></div></div><div id="tbtns"><button id="btn-b" class="tb b">B</button><button id="btn-a" class="tb a">A</button><button id="btn-menu" class="tb m">&#9776;</button></div></div>
+<div id="fade"></div>
+</body></html>
