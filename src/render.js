@@ -2,6 +2,7 @@
 import { TILE, MAP_W, MAP_H, MAP, T, BUILDINGS, PLOTS, NPC_HOMES, STALL_SLOTS, CLUBHOUSE, MALL_BUILDINGS, LEADERS, BRIDGES, DECOR } from './world.js';
 import { N, SCALE, PAL, buildGround, sprites, shadowEllipse, hash, mk, P } from './tiles.js';
 import { LAMP_TILES, unreadMail } from './ambient.js';
+import { drawCar } from './cars.js';
 import { drawEmblem, ART } from './art.js';
 import { NPC_INTERIORS } from './homes.js';
 import { WALLS } from './furniture.js';
@@ -134,7 +135,6 @@ function legacyBuilding(c, b) {
   c.font = `8px ${FONT}`; const tw = c.measureText(th.label.toUpperCase()).width + 10;
   R(c, x + w / 2 - tw / 2 - 4, y + h - 10, tw, 9, NAVY); R(c, x + w / 2 - tw / 2 - 4, y + h - 2, tw, 1, GOLD);
   c.fillStyle = th.accent; c.textAlign = 'center'; c.textBaseline = 'middle'; c.fillText(th.label.toUpperCase(), x + w / 2 - 4, y + h - 5);
-  if (b.id === 'cars') for (const [cx, col] of [[x - 2, '#b3202c'], [x + w - 62, '#2f6f8f']]) { const cy = y + h + 36; R(c, cx + 2, cy + 22, 60, 6, 'rgba(8,10,24,.35)'); R(c, cx, cy + 6, 60, 16, col); R(c, cx + 12, cy, 34, 8, col); R(c, cx + 15, cy + 2, 28, 5, '#bfe6f7'); R(c, cx, cy + 6, 60, 2, GOLD); for (const wx of [cx + 8, cx + 42]) { R(c, wx, cy + 18, 10, 8, INK); R(c, wx + 3, cy + 21, 4, 3, GOLD); } }
 }
 
 export function house(c, x, y, w, h, roof, wallCol, label) {
@@ -204,7 +204,7 @@ export function prerenderMap() {
   for (const [bx, by] of [[17, 6], [11, 8], [38, 33.5], [50, 33.5], [22, 52], [41, 52], [28, 47]]) props.push(sp(S.bench, bx * TILE, by * TILE + 4, by * TILE + 28));
   for (const [cx, cy] of [[61, 6], [61, 7], [60.6, 6.5], [33.2, 9.2], [26.4, 19.0]]) props.push(sp(S.crate, cx * TILE, cy * TILE, cy * TILE + 28));
   // flowering bushes flanking each shop door, hedges at NPC home fronts
-  for (const d of DECOR) props.push(d.kind === 'hedge' ? sp(S.hedge, d.x * TILE, d.y * TILE + 4, d.y * TILE + 30) : sp(S[d.kind], d.x * TILE - 2, d.y * TILE + 4, d.y * TILE + 30));
+  for (const d of DECOR) if (d.kind !== 'car') props.push(d.kind === 'hedge' ? sp(S.hedge, d.x * TILE, d.y * TILE + 4, d.y * TILE + 30) : sp(S[d.kind], d.x * TILE - 2, d.y * TILE + 4, d.y * TILE + 30));
   for (const h of NPC_HOMES) props.push(sp(S.mailbox, (h.x + 5) * TILE + 6, (h.y + h.h + 1) * TILE - 34, (h.y + h.h + 1) * TILE - 2));
   // buildings (square front-facing art; legacy procedural storefront if the PNG is missing)
   for (const b of [...BUILDINGS, ...MALL_BUILDINGS]) props.push({ y: (b.y + b.h) * TILE - 1, d: (c) => { if (!drawBuildingArt(c, b.id, b.x, b.y, b.w, b.h)) legacyBuilding(c, b); } });
@@ -219,6 +219,9 @@ export function prerenderMap() {
     k.font = `8px ${FONT}`; k.textAlign = 'center'; k.textBaseline = 'middle'; k.fillStyle = '#3a2210'; k.fillText(txt, w / 2, 11); k.fillStyle = '#fff1d0'; k.fillText(txt, w / 2, 10);
     props.push({ y: ty * TILE + 30, d: (c) => c.drawImage(cv, Math.round(tx * TILE), ty * TILE - 4) }); };
   signpost('MARKET ROW - TOKEN STALLS', 34, 5); signpost('SAKURA POND', 14.5, 2); signpost('SAKURA LANE', 2, 41); signpost('KIBBLE MALL DISTRICT', 9, 46); signpost('DEMO KIBBLE ONLY', 49, 46);
+  // dealership + luxury showroom display cars on the forecourt (same model/scale as traffic)
+  for (const [tx, ty, col, kind, dir] of [[50.2, 18.9, '#c8323c', 'sedan', 'east'], [58.8, 18.9, '#2f6fbd', 'coupe', 'west'], [45.4, 66.9, '#e3b341', 'limo', 'east'], [55.0, 66.9, '#141a2e', 'coupe', 'west']])
+    props.push({ y: ty * TILE, d: (c) => drawCar(c, tx * TILE, ty * TILE, { col, kind, dir }) });
   props.sort((a, b) => a.y - b.y);
   return { ground, props };
 }

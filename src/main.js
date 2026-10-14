@@ -11,6 +11,8 @@ import { spawnNpcs, updateNpc, NPC_OUTFITS } from './npc.js';
 import { npcHome } from './homes.js';
 import { drawShiba, drawFurniture, drawRoom, drawMenuIcon, drawBoneIcon, drawEmblem } from './art.js';
 import { ART, artReady, artKey } from './art.js';
+import { carProps } from './ambient.js';
+import { drawCar } from './cars.js';
 import { makeAmbient, stepAmbient, throwBall, dayPhase, timeForHour, drawGroundLife, drawSkyLife, drawAtmosphere, drawEmote, lightsFor, addMail, unreadMail, EMOTES, DAY_LEN } from './ambient.js';
 import { initAudio, setMuted, isMuted, footstep, chirp, bork, blip, uiClick, uiOpen, uiClose, textBlip, rustle } from './audio.js';
 import { MALL_ITEMS, quote, buyMallItem, ensureMall, rollPeriods, fmtK, FEE_LABEL, OWNER, OWNER_WALLET, POOL_WALLETS, POOL_RULES, FEE_BPS } from './mall.js';
@@ -223,6 +225,7 @@ function renderWorld() {
   const L = -ox - 200, Rt = -ox + vw + 200, Tp = -oy - 60, Bt = -oy + vh + 400, list = [];
   for (const p of mapImg.props) if (p.y > Tp && p.y < Bt) list.push(p);
   for (const p of dyn) if (!p.flat) list.push(p);
+  for (const p of carProps(amb)) list.push(p);
   for (const a of actors) if (a.x > L && a.x < Rt && a.y > Tp && a.y < Bt) list.push({ y: a.y + 12, a });
   list.sort((p, q) => p.y - q.y);
   for (const it of list) {
@@ -617,7 +620,7 @@ function renderMall() {
     const q = quote(id), card = document.createElement('div'); card.className = 'card';
     if (it.grants.outfit) card.appendChild(spriteCanvas(state.player.coat, { ...state.wardrobe.equipped, [OUTFITS[it.grants.outfit].slot]: it.grants.outfit }, 72, 92, 1));
     else if (it.grants.furniture) card.appendChild(iconCanvas((x) => drawFurniture(x, it.grants.furniture, 14, 4, 36, 0)));
-    else card.appendChild(iconCanvas((x) => { const col = it.grants.car === 'limo' ? '#d4a640' : '#b3202c'; x.fillStyle = col; x.fillRect(4, 22, 56, 14); x.fillRect(16, 14, 30, 9); x.fillStyle = '#bfe6f7'; x.fillRect(19, 16, 24, 6); x.fillStyle = '#111'; x.fillRect(10, 34, 9, 8); x.fillRect(44, 34, 9, 8); }));
+    else card.appendChild(iconCanvas((x) => drawCar(x, 32, 40, { col: it.grants.car === 'limo' ? '#e3b341' : '#c8323c', kind: it.grants.car === 'limo' ? 'limo' : 'coupe', dir: 'east' })));
     const own = m.owned.includes(id);
     card.insertAdjacentHTML('beforeend', `<div><b>${it.name}</b></div><div class="checkout"><div>Price <b>${fmtK(q.price)}</b></div><div class="small">2% fee ${fmtK(q.fee)} (1% owner ${fmtK(q.owner)} · pools ${fmtK(q.daily + q.weekly + q.monthly)})</div><div>Total <b>${fmtK(q.total)}</b> KIBBLE</div></div>${own && !it.grants.furniture ? '<div class="price">Owned</div>' : `<button class="btn" data-mbuy="${id}">Buy</button>`}`);
     grid.appendChild(card);

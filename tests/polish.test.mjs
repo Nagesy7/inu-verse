@@ -28,3 +28,10 @@ test('bridges are walkable; ducks never sit on a bridge', () => {
   for (const b of BRIDGES) assert.equal(isSolid(b.x, b.y), false);
   const A = makeAmbient(3); for (let i = 0; i < 2000; i++) { stepAmbient(A, 0.05, { x: 0, y: 0 }); for (const k of A.ducks) { const x = k.cx + Math.cos(k.a) * k.rx, y = k.cy + Math.sin(k.a) * k.ry; for (const b of BRIDGES) assert.ok(!(x > b.x * 32 - 12 && x < (b.x + b.w) * 32 + 12 && y > b.y * 32 - 8 && y < (b.y + b.h) * 32 + 8), 'duck on bridge'); } }
 });
+test('traffic stays in its lane and on the road (2 tiles long, <= 1 lane wide)', async () => {
+  const { CAR_LEN, CAR_W } = await import('../src/cars.js'); assert.equal(CAR_LEN, 64); assert.ok(CAR_W <= 32);
+  const { MAP, T } = await import('../src/world.js'); const A = makeAmbient(5);
+  for (let i = 0; i < 400; i++) { stepAmbient(A, 0.1, { x: -999, y: -999 });
+    for (const c of A.cars) { if (c.row != null) { const laneTop = c.y - 32; assert.ok(laneTop >= c.row * 32 && c.y <= (c.row + 2) * 32, 'side car within road rows'); }
+      else { assert.ok(c.x - CAR_W / 2 >= 31 * 32 && c.x + CAR_W / 2 <= 33 * 32, 'avenue car within road cols'); const ty = Math.floor((c.y - 1) / 32); assert.equal(MAP[ty][31], T.ROAD); } } }
+});

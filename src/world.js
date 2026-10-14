@@ -51,6 +51,7 @@ export function buildMap() {
   for (const b of BRIDGES) fill(b.x, b.y, b.w, b.h, T.WALK);
   // south: Kibble Mall district
   fill(1, 42, MAP_W - 2, 1, T.WALK); fill(1, 43, MAP_W - 2, 2, T.ROAD); fill(1, 45, MAP_W - 2, 1, T.WALK);
+  fill(31, 42, 2, 1, T.ROAD); // avenue joins the south road
   fill(7, 46, 50, 22, T.PLAZA);
   for (const b of MALL_BUILDINGS) fill(b.x, b.y, b.w, b.h, T.BUILDING);
   fill(STATUE.x, STATUE.y, 2, 1, T.BUILDING); fill(LEADERS.x, LEADERS.y, LEADERS.w, LEADERS.h, T.BUILDING);
@@ -66,7 +67,8 @@ export const MAP = buildMap();
 export const DECOR = [];
 { const ok = (x, y) => [T.GRASS, T.FLOWER, T.PLAZA].includes(MAP[y]?.[x]);
   for (const b of [...BUILDINGS, ...MALL_BUILDINGS]) { if (ok(b.x - 1, b.y + b.h - 1)) DECOR.push({ x: b.x - 1, y: b.y + b.h - 1, kind: 'bushP' }); if (ok(b.x + b.w, b.y + b.h - 1)) DECOR.push({ x: b.x + b.w, y: b.y + b.h - 1, kind: 'bushY' }); }
-  for (const h of NPC_HOMES) for (const dx of [0, 1, 4, 5]) DECOR.push({ x: h.x + dx, y: h.y + h.h, kind: 'hedge' }); }
+  for (const h of NPC_HOMES) for (const dx of [0, 1, 4, 5]) DECOR.push({ x: h.x + dx, y: h.y + h.h, kind: 'hedge' });
+  for (const [x, y] of [[49, 18], [50, 18], [58, 18], [59, 18], [44, 66], [45, 66], [54, 66], [55, 66]]) DECOR.push({ x, y, kind: 'car' }); } // showroom display cars
 const DECOR_SET = new Set(DECOR.map((d) => d.y * MAP_W + d.x));
 export const isSolid = (tx, ty) => tx < 0 || ty < 0 || tx >= MAP_W || ty >= MAP_H || SOLID.has(MAP[ty][tx]) || DECOR_SET.has(ty * MAP_W + tx);
 

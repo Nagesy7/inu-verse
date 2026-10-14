@@ -9,6 +9,7 @@ export const LAMPS = LAMP_TILES.map(([x, y]) => ({ x: x * TILE + 16, y: y * TILE
 export const PONDS = [[5, 3, 9, 5], [37, 35, 18, 4]];
 export const EMOTES = { wave: 'HI!', sit: 'SIT', zoomies: 'ZOOM', dance: '♪♫', heart: 'heart', bork: 'BORK!' };
 import { drawEmblem } from './art.js';
+import { drawCar, LANES, CAR_LEN } from './cars.js';
 
 // t seconds since start -> { hour 0-24, dark 0..1, tint [r,g,b,a], label }
 export function dayPhase(t) {
@@ -33,7 +34,13 @@ export function makeAmbient(seed = 7) {
   A.butterflies = spots([T.FLOWER], rng, 9).map(([x, y]) => ({ hx: (x + .5) * TILE, hy: (y + .5) * TILE, p: rng() * 9, col: rng.pick(['#f6efe0', '#f2cc68', '#f08cb0', '#9fd0ff']) }));
   A.squirrels = spots([T.TREE], rng, 40).filter(([x, y]) => x > 0 && y > 0 && x < MAP_W - 1 && y < MAP_H - 1).slice(0, 3).map(([x, y]) => ({ x: (x + .5) * TILE, y: (y + 1.2) * TILE, hx: (x + .5) * TILE, p: rng() * 9 }));
   A.fireflies = Array.from({ length: 40 }, () => ({ x: rng() * MAP_W * TILE, y: rng() * MAP_H * TILE, p: rng() * 9 }));
-  A.cars = [{ x: 0, y: 20.5 * TILE, vx: 120, col: '#b3202c' }, { x: MAP_W * TILE, y: 31.5 * TILE, vx: -100, col: '#2f6f8f' }, { x: 31.5 * TILE, y: 0, vy: 90, col: '#d4a640', vert: true }];
+  // street traffic: two lanes per road, right-hand traffic (east in the lower lane, west in the upper; south on the avenue's west lane)
+  A.cars = [
+    { dir: 'east', row: 20, x: 3 * TILE, v: 110, col: '#c8323c' }, { dir: 'west', row: 20, x: 40 * TILE, v: 95, col: '#2f6fbd', kind: 'coupe' },
+    { dir: 'east', row: 31, x: 50 * TILE, v: 100, col: '#3f9450' }, { dir: 'west', row: 31, x: 12 * TILE, v: 120, col: '#e3b341' },
+    { dir: 'east', row: 43, x: 20 * TILE, v: 90, col: '#f2efe6', kind: 'coupe' }, { dir: 'west', row: 43, x: 55 * TILE, v: 105, col: '#8e2452' },
+    { dir: 'south', y: 8 * TILE, v: 85, col: '#e07a2c' }, { dir: 'north', y: 40 * TILE, v: 80, col: '#4a5478', kind: 'coupe' }];
+  for (const c of A.cars) { if (c.row != null) c.y = c.dir === 'east' ? LANES.east(c.row) : LANES.west(c.row); else c.x = c.dir === 'south' ? LANES.south() : LANES.north(); }
   A.rain = 0; A.rainTarget = 0; A.weatherT = 90; A.drops = []; A.petals = Array.from({ length: 30 }, () => ({ x: rng() * 1600, y: rng() * 1000, p: rng() * 9 }));
   A.puddles = spots([T.WALK, T.PLAZA, T.ROAD], rng, 14).map(([x, y]) => ({ x: (x + .5) * TILE, y: (y + .5) * TILE, w: 10 + rng.int(14) }));
   A.ball = null; A.notes = [];
@@ -52,7 +59,10 @@ export function stepAmbient(A, dt, player, npcs = []) {
   }
   for (const f of A.flyers) { f.x += f.vx * dt; f.y += f.vy * dt; if (f.x > MAP_W * TILE + 80) { f.x = -80; f.y = r() * MAP_H * TILE; } }
   for (const k of A.ducks) k.a += k.s * dt;
-  for (const c of A.cars) { if (c.vert) { c.y += c.vy * dt; if (c.y > MAP_H * TILE + 60) c.y = -60; } else { c.x += c.vx * dt; if (c.vx > 0 && c.x > MAP_W * TILE + 60) c.x = -60; if (c.vx < 0 && c.x < -60) c.x = MAP_W * TILE + 60; } }
+  for (const c of A.cars) { const d = c.v * dt, lo = 6 * TILE + CAR_LEN, hi = 45 * TILE; // avenue is a 6..45 cul-de-sac: wrap with a fade at each end
+    if (c.dir === 'east') { c.x += d; if (c.x > MAP_W * TILE + 80) c.x = -80; } else if (c.dir === 'west') { c.x -= d; if (c.x < -80) c.x = MAP_W * TILE + 80; }
+    else if (c.dir === 'south') { c.y += d; if (c.y > hi) c.y = lo; } else { c.y -= d; if (c.y < lo) c.y = hi; }
+    c.alpha = c.row != null ? 1 : Math.max(0, Math.min(1, (c.y - lo) / 40, (hi - c.y) / 40)); }
   A.weatherT -= dt; if (A.weatherT < 0) { A.rainTarget = A.rainTarget ? 0 : (r() < 0.45 ? 1 : 0); A.weatherT = 60 + r() * 120; }
   A.rain += Math.sign(A.rainTarget - A.rain) * Math.min(Math.abs(A.rainTarget - A.rain), dt * 0.2);
   if (A.ball) {
@@ -101,7 +111,6 @@ export function drawGroundLife(c, A, phase) {
   // street life: food cart + busker spot + cars
   drawCart(c, 27 * TILE, 18.6 * TILE, t);
   for (const n of A.notes) { c.globalAlpha = Math.min(1, n.life); c.fillStyle = '#f2cc68'; c.font = '14px sans-serif'; c.fillText(n.ch, n.x, n.y); c.globalAlpha = 1; }
-  for (const car of A.cars) drawCar(c, car);
   if (A.ball) { const B = A.ball; R(c, B.x - 4, B.y + 2, 8, 3, 'rgba(0,0,0,.25)'); R(c, B.x - 4, B.y - 4 - B.z, 8, 8, '#d8f040'); R(c, B.x - 2, B.y - 3 - B.z, 3, 2, '#fff'); }
 }
 function drawCart(c, x, y, t) {
@@ -111,12 +120,8 @@ function drawCart(c, x, y, t) {
   for (const wx of [x + 8, x + 40]) { R(c, wx, y + 14, 9, 9, '#1a1420'); R(c, wx + 3, y + 17, 3, 3, '#d4a640'); }
   if (Math.sin(t * 2) > 0) R(c, x + 20, y - 34 - (t * 10 % 8), 3, 3, 'rgba(255,255,255,.6)');
 }
-function drawCar(c, car) {
-  const { x, y, col } = car;
-  if (car.vert) { R(c, x - 9, y - 18, 18, 36, col); R(c, x - 7, y - 10, 14, 8, '#bfe6f7'); R(c, x - 11, y - 12, 3, 8, '#111'); R(c, x + 8, y - 12, 3, 8, '#111'); R(c, x - 11, y + 6, 3, 8, '#111'); R(c, x + 8, y + 6, 3, 8, '#111'); return; }
-  const f = car.vx > 0 ? 1 : -1; R(c, x - 22, y + 8, 44, 4, 'rgba(8,10,24,.35)'); R(c, x - 22, y - 6, 44, 14, col); R(c, x - 12, y - 14, 24, 9, col); R(c, x - 9, y - 12, 18, 6, '#bfe6f7');
-  R(c, x + f * 20 - 2, y - 3, 4, 3, '#fff1b0'); for (const wx of [x - 16, x + 8]) R(c, wx, y + 5, 8, 7, '#111');
-}
+// traffic as depth-sortable drawables (y = ground contact)
+export const carProps = (A) => A.cars.map((car) => ({ y: car.y, car: true, d: (c) => drawCar(c, car.x, car.y, car) }));
 export function drawSkyLife(c, A, phase) {
   const t = A.t;
   for (const b of A.birds) if (b.state === 'fly') { const w = Math.sin(t * 20) > 0 ? 3 : -2; R(c, b.x - 3, b.y + 4, 6, 2, 'rgba(0,0,0,.18)'); R(c, b.x - 5, b.y - b.z + w, 4, 2, b.col); R(c, b.x + 1, b.y - b.z + w, 4, 2, b.col); R(c, b.x - 1, b.y - b.z, 3, 3, b.col); }
