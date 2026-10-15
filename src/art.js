@@ -3,6 +3,7 @@ import { drawInuAvatar } from './vendor/inu-avatar.js';
 import { shibaSprite } from './sprite.js';
 import { hires } from './hires.js';
 import { shadeSprite, patternLayer, mkCanvas, roundCorners, addNeck } from './detail.js';
+import { conformLayer, sealInterior, layerBoundary, eraseSeams, closeGaps, findGaps, findHoles, findAlphaDips, findDarkSeams } from './seams.js';
 // Shared Shiba (vendor/inu-avatar.js, synced from kibble-pay) drawn at 4x its native 18x22 pixel density (Scale2x twice).
 // Same signature + return value as drawInuAvatar; the vendored file and other games are untouched.
 const avHi = new WeakMap();
@@ -36,24 +37,42 @@ export function outfitLayers(coat, view, frame, equipped = {}) {
   return ['base', ...ids].map((id) => `${id}|${view}|${frame}`).filter((k) => OUTFIT_ATLAS.frames[coat]?.[k]);
 }
 const layerCache = new Map();
-function layeredCanvas(coat, view, frame, equipped) {
+function layeredCanvas(coat, view, frame, equipped, audit = null) {
   const key = `${coat}|${view}|${frame}|${Object.values(equipped || {}).sort().join(',')}`;
-  let cv = layerCache.get(key); if (cv) return cv;
+  let cv = audit ? null : layerCache.get(key); if (cv) return cv;
   const atlas = ART['outfits/' + coat], [cw, ch] = OUTFIT_ATLAS.canvas[coat], fr = OUTFIT_ATLAS.frames[coat];
-  cv = Object.assign(document.createElement('canvas'), { width: cw, height: ch }); const c = cv.getContext('2d');
-  let baseOnly = null; const D = !globalThis.__noDetail; // detail pass: fur + form shading on the coat, material patterns per outfit layer, rim light on the whole look
+  cv = Object.assign(document.createElement('canvas'), { width: cw, height: ch }); const c = cv.getContext('2d', { willReadFrequently: true });
+  const D = !globalThis.__noDetail, LEG = !!globalThis.__legacyLayers; let baseOnly = null; const mask = new Uint8Array(cw * ch);
+  // Pipeline: pattern each layer -> conform it onto what is below (no dark rims / seam lines where layers meet) ->
+  // seal holes + interior alpha -> round silhouette -> neck -> shade the whole figure once (so no per-layer edge shading).
   for (const k of outfitLayers(coat, view, frame, equipped)) { const [sx, sy, w, h, ox, oy] = fr[k], id = k.split('|')[0];
     if (!D) { c.drawImage(atlas, sx, sy, w, h, ox, oy, w, h); continue; }
-    const t = mkCanvas(w + 4, h + 4), tc = t.getContext('2d'); tc.drawImage(atlas, sx, sy, w, h, 2, 2, w, h);
-    if (id === 'base') { shadeSprite(t, { r: 3, light: 0.2, dark: 0.24, grad: 0.1, bands: [0.16, 0.2] }); baseOnly = mkCanvas(cw, ch); baseOnly.getContext('2d').drawImage(atlas, sx, sy, w, h, ox, oy, w, h); }
-    else { patternLayer(tc, id, [2, 2, w, h], view); shadeSprite(t, { r: 2, light: 0.18, dark: 0.28, grad: 0.1, bands: [0.14, 0.22] }); }
-    c.drawImage(t, ox - 2, oy - 2); }
+    const t = mkCanvas(cw, ch), tc = t.getContext('2d', { willReadFrequently: true }); tc.drawImage(atlas, sx, sy, w, h, ox, oy, w, h);
+    if (id === 'base') { if (LEG) shadeSprite(t, { r: 3, light: 0.2, dark: 0.24, grad: 0.1, bands: [0.16, 0.2] }); baseOnly = mkCanvas(cw, ch); baseOnly.getContext('2d').drawImage(atlas, sx, sy, w, h, ox, oy, w, h); c.drawImage(t, 0, 0); continue; }
+    const pt = mkCanvas(w + 4, h + 4), ptc = pt.getContext('2d'); ptc.drawImage(t, ox - 2, oy - 2, w + 4, h + 4, 0, 0, w + 4, h + 4); patternLayer(ptc, id, [2, 2, w, h], view);
+    if (LEG) shadeSprite(pt, { r: 2, light: 0.18, dark: 0.28, grad: 0.1, bands: [0.14, 0.22] });
+    tc.clearRect(0, 0, cw, ch); tc.drawImage(pt, ox - 2, oy - 2);
+    const under = c.getImageData(0, 0, cw, ch).data, item = tc.getImageData(0, 0, cw, ch).data;
+    if (mask) layerBoundary(item, under, cw, ch, mask, [ox - 2, oy - 2, w + 4, h + 4]);
+    c.drawImage(t, 0, 0);
+    if (!LEG) { const comp = c.getImageData(0, 0, cw, ch); conformLayer(comp.data, item, under, cw, ch, [ox - 2, oy - 2, w + 4, h + 4]); c.putImageData(comp, 0, 0); } }
   const b = fr[`base|${view}|0`]; let feet = b[5] + b[3]; // canvas row under the paws
-  if (D && baseOnly) { roundCorners(cv, 2); const nk = addNeck(cv, baseOnly, 5); cv = nk.cv; feet += nk.n; } // soft silhouette + visible neck
+  let nk = null;
+  if (D && baseOnly) { if (!LEG) { const im = c.getImageData(0, 0, cw, ch); sealInterior(im.data, cw, ch); c.putImageData(im, 0, 0); }
+    roundCorners(cv, 2); nk = addNeck(cv, baseOnly, 5, LEG ? '#1a1420' : null); cv = nk.cv; feet += nk.n;
+    if (!LEG) { const x = cv.getContext('2d', { willReadFrequently: true }), W = cv.width, H = cv.height, im = x.getImageData(0, 0, W, H); closeGaps(im.data, W, H); sealInterior(im.data, W, H);
+      const m2 = new Uint8Array(W * H); for (let y = 0; y < ch; y++) for (let xx = 0; xx < cw; xx++) if (mask[y * cw + xx]) { const yy = y >= nk.at ? y + nk.n : y; if (yy < H) m2[yy * W + xx] = 1; }
+      { const [x0, y0, nw, nh] = nk.rect; for (let y = y0 + 8; y < y0 + nh && y < H; y++) for (const xx of [x0 - 3, x0 - 2, x0 - 1, x0, x0 + nw - 1, x0 + nw, x0 + nw + 1, x0 + nw + 2]) if (xx >= 0 && xx < W) m2[y * W + xx] = 1; }
+      x.putImageData(im, 0, 0); shadeSprite(cv, { r: 3, light: 0.2, dark: 0.24, grad: 0.1, bands: [0.16, 0.2] }); const im2 = x.getImageData(0, 0, W, H); eraseSeams(im2.data, W, H, m2); x.putImageData(im2, 0, 0); } }
   cv.feet = feet;
+  if (audit) { const W = cv.width, H = cv.height, d = cv.getContext('2d').getImageData(0, 0, W, H).data, m2 = new Uint8Array(W * H);
+    if (mask) for (let y = 0; y < ch; y++) for (let x = 0; x < cw; x++) if (mask[y * cw + x]) { const yy = nk && y >= nk.at ? y + nk.n : y; if (yy < H) m2[yy * W + x] = 1; }
+    if (nk?.rect) { const [x0, y0, nw, nh] = nk.rect; for (let y = y0 + 8; y < y0 + nh && y < H; y++) for (const x of [x0 - 3, x0 - 2, x0 - 1, x0, x0 + nw - 1, x0 + nw, x0 + nw + 1, x0 + nw + 2]) if (x >= 0 && x < W) m2[y * W + x] = 1; }
+    return { holes: findHoles(d, W, H), gaps: findGaps(d, W, H), dips: findAlphaDips(d, W, H), seams: findDarkSeams(d, W, H, m2), w: W, h: H, cv, mask: m2 }; }
   layerCache.set(key, cv); if (layerCache.size > 400) layerCache.delete(layerCache.keys().next().value);
   return cv;
 }
+export function layerAudit(coat, view, frame, equipped) { return layeredCanvas(coat, view, frame, equipped, true); }
 // Mip chain for the layered art: halve with high-quality filtering until within 2x of the on-screen device size,
 // so small in-world Shibas keep fur/outfit detail instead of shimmering from a single 4x+ downscale.
 function mip(cv, devH) { let m = cv; while (m.height > devH * 2 && m.height > 24) { if (!m.half) { const h = Object.assign(document.createElement('canvas'), { width: Math.ceil(m.width / 2), height: Math.ceil(m.height / 2) }), c = h.getContext('2d');

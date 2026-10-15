@@ -6,9 +6,9 @@ const lum = (r, g, b) => 0.3 * r + 0.59 * g + 0.11 * b;
 // Pixel-level pass on a canvas (in place). r = rim/shadow reach in px. fur = strand strength (0 = none).
 export function shadeSprite(cv, { r = 2, light = 0.28, dark = 0.3, fur = 0, glint = false, grad = 0.12, seed = 1, skipInk = 40, bands = null } = {}) {
   const w = cv.width, h = cv.height, c = cv.getContext('2d'), im = c.getImageData(0, 0, w, h), d = im.data, src = new Uint8ClampedArray(d);
-  const A = (x, y) => (x < 0 || y < 0 || x >= w || y >= h ? 0 : src[(y * w + x) * 4 + 3]);
+  const AL = new Uint8Array(w * h); for (let p = 0; p < w * h; p++) AL[p] = src[p * 4 + 3]; const A = (x, y) => (x < 0 || y < 0 || x >= w || y >= h ? 0 : AL[y * w + x]);
   const L = (x, y) => { const i = (y * w + x) * 4; return lum(src[i], src[i + 1], src[i + 2]); };
-  let y0 = h, y1 = 0; for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) if (A(x, y) > 128) { y0 = Math.min(y0, y); y1 = Math.max(y1, y); }
+  let y0 = h, y1 = 0; for (let p = 0; p < w * h; p++) if (AL[p] > 128) { const y = (p / w) | 0; if (y < y0) y0 = y; y1 = y; }
   const span = Math.max(1, y1 - y0);
   for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) {
     const i = (y * w + x) * 4; if (src[i + 3] < 128) continue; const l = L(x, y); if (l < skipInk) continue; // keep outlines/ink crisp
@@ -99,10 +99,10 @@ export function addNeck(src, base, n = 5, ink = '#1a1420') { const w = src.width
   const out = mk(w, h + n), c = out.getContext('2d');
   const b3 = [0, 0, 0]; let nb = 0; for (let y = S - 18; y < S - 6; y++) for (let x = Math.round(hl + 3); x < hl + 12; x++) { const k = (y * w + x) * 4; const l = 0.3 * bc[k] + 0.59 * bc[k + 1] + 0.11 * bc[k + 2]; if (bc[k + 3] > 128 && l > 50 && l < 215) { b3[0] += bc[k]; b3[1] += bc[k + 1]; b3[2] += bc[k + 2]; nb++; } } for (let q = 0; q < 3; q++) b3[q] = nb ? b3[q] / nb : 150;
   const sh = (f) => `rgb(${b3.map((v) => Math.round(v * f)).join(',')})`, nw = Math.max(6, Math.round(hw * 2) + 2), x0 = Math.round(cx - nw / 2);
-  c.fillStyle = ink; c.fillRect(x0 - 2, S - 6, nw + 4, Yc - S + n + 10); c.fillStyle = sh(0.84); c.fillRect(x0, S - 6, nw, Yc - S + n + 10); c.fillStyle = sh(0.66); c.fillRect(x0, Yc - 2, nw, 4); // neck (behind body + head), shadow under the chin
+  if (ink) { c.fillStyle = ink; c.fillRect(x0 - 2, S - 6, nw + 4, Yc - S + n + 10); } else { c.fillStyle = sh(0.74); c.fillRect(x0 - 2, S - 6, nw + 4, Yc - S + n + 10); } // no dark outline where neck meets collar/fur c.fillStyle = sh(0.84); c.fillRect(x0, S - 6, nw, Yc - S + n + 10); c.fillStyle = sh(0.66); c.fillRect(x0, Yc - 2, nw, 4); // neck (behind body + head), shadow under the chin
   const body = mk(w, h), bx = body.getContext('2d'); bx.drawImage(src, 0, 0); bx.globalCompositeOperation = 'destination-out'; headPath(bx); bx.fill();
-  for (let k = 0; k < n; k++) c.drawImage(body, 0, S, w, 1, 0, S + k, w, 1); // shoulders rise to meet the head (no gap)
+  for (let k = 0; k < n + 3; k++) c.drawImage(body, 0, S + 3, w, 1, 0, S + k, w, 1); // stretch from inside the shoulders (not the outline row) // shoulders rise to meet the head (no gap)
   c.drawImage(body, 0, n); // body moved down n: collar now overlaps the neck base
   c.save(); headPath(c); c.clip(); c.drawImage(src, 0, 0); c.restore(); // head + chin on top
-  return { cv: out, at: S, n }; }
+  return { cv: out, at: S, n, rect: [x0, S - 6, nw, Yc - S + n + 10] }; }
 export { mk as mkCanvas };
