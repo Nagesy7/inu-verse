@@ -9,11 +9,11 @@ const fail = (reason) => ({ ok: false, reason });
 const h32 = (s) => { let h = 2166136261 >>> 0; for (let i = 0; i < String(s).length; i++) { h ^= s.charCodeAt(i); h = Math.imul(h, 16777619); } return (h >>> 0) / 0xffffffff; };
 
 // 1. Holder perks (simulated SDK balance threshold)
-export const HOLDER_THRESHOLD_U = toU(100); // 100 KIBBLE
+export const HOLDER_THRESHOLD_U = toU(1000000); // 100 KIBBLE
 export const HOLDER_PERKS = ['mall_vip', 'early_access', 'gold_name'];
 
 // 2. Monthly burn festival
-export const BURN_GOAL_U = toU(500);
+export const BURN_GOAL_U = toU(5000000);
 export const BURN_STAGES = [0.25, 0.5, 0.75, 1];
 export const BURN_REWARD = 'hoodie_maroon'; // free cosmetic for everyone when goal hits
 
@@ -29,9 +29,9 @@ export const QUEST_REWARD = 'shades';
 
 // 4. Sponsor slots — cafe week + billboard (extends featured; labelled Sponsored)
 export const SPONSOR_SLOTS = {
-  cafe: { id: 'cafe', name: 'Café Theme Week', price: 12, hours: 72, label: 'Sponsored Café' },
-  bb1: { id: 'bb1', name: 'Bone Street East Billboard', price: 8, hours: 24, label: 'Sponsored' },
-  bb2: { id: 'bb2', name: 'Bone Street West Billboard', price: 6, hours: 24, label: 'Sponsored' },
+  cafe: { id: 'cafe', name: 'Café Theme Week', price: 120000, hours: 72, label: 'Sponsored Café' },
+  bb1: { id: 'bb1', name: 'Bone Street East Billboard', price: 80000, hours: 24, label: 'Sponsored' },
+  bb2: { id: 'bb2', name: 'Bone Street West Billboard', price: 60000, hours: 24, label: 'Sponsored' },
 };
 
 // 5. Photo board

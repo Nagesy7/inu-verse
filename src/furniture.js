@@ -33,7 +33,7 @@ const SET_ITEMS = [ // [set, cat, draw, name, w, h, color, layer]
   ['deco', 'sofas', 'sofa', 'Emerald Deco Sofa', 3, 1, '#1f6a4a'], ['deco', 'lamps', 'lamp', 'Fan Sconce Lamp', 1, 1, '#ffd86a'], ['deco', 'wall art', 'art', 'Sunburst Mirror', 1, 1, '#e3b341'], ['deco', 'tables', 'table', 'Onyx Side Table', 2, 2, '#2a2440'],
   ['deco', 'baby & pup', 'pupbed', 'Velvet Pup Pouf', 1, 1, '#1f6a4a'],
 ];
-const PRICE = { beds: [140, 9], sofas: [110, 7], tables: [70, 5], lamps: [35, 2.5], rugs: [55, 3.5], 'wall art': [40, 3], plants: [25, 1.5], kitchen: [160, 10], 'baby & pup': [90, 6] };
+const PRICE = { beds: [140, 90000], sofas: [110, 70000], tables: [70, 50000], lamps: [35, 25000], rugs: [55, 35000], 'wall art': [40, 30000], plants: [25, 15000], kitchen: [160, 100000], 'baby & pup': [90, 60000] };
 for (const [set, cat, draw, name, w, h, color, layer] of SET_ITEMS) { const store = FURN_STORES.cosy.sets.includes(set) ? 'cosy' : 'royal', id = (set + '_' + name).toLowerCase().replace(/[^a-z0-9]+/g, '_');
   FURNITURE[id] = { name, w, h, color, layer: layer || 'obj', draw, set, cat, store, ...(store === 'cosy' ? { price: PRICE[cat][0] } : { price: Math.round(PRICE[cat][0] * 2), kibble: PRICE[cat][1] }) }; }
 export const storeItems = (store) => Object.entries(FURNITURE).filter(([, d]) => d.store === store);

@@ -2,7 +2,7 @@ import { PLOTS, PLOT_COST, TILE } from './world.js';
 import { ensurePacks } from './packs.js';
 import { FURNITURE, WALLS, FLOORS, canPlace } from './furniture.js';
 
-export const START_BONES = 500, START_KIBBLE = 20, BONES_PER_KIBBLE = 25, SELL_BACK = 0.5;
+export const START_BONES = 500, START_KIBBLE = 200000, BONES_PER_KIBBLE = 0.0025, SELL_BACK = 0.5;
 // The six starter Shiba coats (only avatar choices at character creation).
 export const COATS = {
   tan:    { name: 'Classic Tan',    base: '#d98b45', dark: '#a8622c', light: '#f7e6c8', ear: '#f0b48e' },

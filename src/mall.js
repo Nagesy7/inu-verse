@@ -27,16 +27,16 @@ export const POOL_RULES = {
 
 // price in KIBBLE (2dp). kind: outfit | furniture | car | jewelry
 export const MALL_ITEMS = {
-  gold_suit:    { cat: 'outfit', name: 'Gold Designer Suit', price: 12, grants: { outfit: 'gold_suit' } },
-  velvet_gown:  { cat: 'outfit', name: 'Midnight Velvet Gown', price: 14, grants: { outfit: 'velvet_gown' } },
-  crown:        { cat: 'jewelry', name: 'Little Gold Crown', price: 9.5, grants: { outfit: 'crown' } },
-  diamond_chain:{ cat: 'jewelry', name: 'Diamond Paw Chain', price: 8, grants: { outfit: 'diamond_chain' } },
-  gold_shades2: { cat: 'jewelry', name: 'Platinum Shades', price: 5.25, grants: { outfit: 'plat_shades' } },
-  gold_throne:  { cat: 'furniture', name: 'Golden Throne', price: 10, grants: { furniture: 'gold_throne' } },
-  gold_statue:  { cat: 'furniture', name: 'Mini Shiba Statue', price: 7.5, grants: { furniture: 'gold_statue' } },
-  gold_lamp:    { cat: 'furniture', name: 'Gilded Lamp', price: 3, grants: { furniture: 'gold_lamp' } },
-  car_coupe:    { cat: 'car', name: 'Zoomie GT Coupe (preview)', price: 40, grants: { car: 'coupe' } },
-  car_limo:     { cat: 'car', name: 'Bone-mobile Limo (preview)', price: 65, grants: { car: 'limo' } },
+  gold_suit:    { cat: 'outfit', name: 'Gold Designer Suit', price: 120000, grants: { outfit: 'gold_suit' } },
+  velvet_gown:  { cat: 'outfit', name: 'Midnight Velvet Gown', price: 140000, grants: { outfit: 'velvet_gown' } },
+  crown:        { cat: 'jewelry', name: 'Little Gold Crown', price: 95000, grants: { outfit: 'crown' } },
+  diamond_chain:{ cat: 'jewelry', name: 'Diamond Paw Chain', price: 80000, grants: { outfit: 'diamond_chain' } },
+  gold_shades2: { cat: 'jewelry', name: 'Platinum Shades', price: 52500, grants: { outfit: 'plat_shades' } },
+  gold_throne:  { cat: 'furniture', name: 'Golden Throne', price: 100000, grants: { furniture: 'gold_throne' } },
+  gold_statue:  { cat: 'furniture', name: 'Mini Shiba Statue', price: 75000, grants: { furniture: 'gold_statue' } },
+  gold_lamp:    { cat: 'furniture', name: 'Gilded Lamp', price: 30000, grants: { furniture: 'gold_lamp' } },
+  car_coupe:    { cat: 'car', name: 'Zoomie GT Coupe (preview)', price: 400000, grants: { car: 'coupe' } },
+  car_limo:     { cat: 'car', name: 'Bone-mobile Limo (preview)', price: 650000, grants: { car: 'limo' } },
 };
 
 const fail = (reason) => ({ ok: false, reason });

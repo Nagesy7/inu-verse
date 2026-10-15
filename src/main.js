@@ -747,7 +747,7 @@ function renderLaunch() {
   body.innerHTML = `<div class="demo-banner">Demo – simulated tokens · No blockchain · No real money · $KIBBLE here is play currency</div>
   <h2>Launch Hall</h2><p class="sub">Create a token and watch it trade on a bonding curve against demo $KIBBLE. NPC Inu traders buy and sell in real time; when the curve fills the token <b>graduates</b>.</p>
   <div class="launch"><div>
-   <div class="card" style="text-align:left"><b>Swap bones → $KIBBLE</b><div class="small">${BONES_PER_KIBBLE} bones = 1 KIBBLE (demo)</div><div class="tradebox"><input id="swapamt" type="number" value="100" min="1"><button class="btn alt" id="swap">Swap</button></div></div>
+   <div class="card" style="text-align:left"><b>Swap bones → $KIBBLE</b><div class="small">1 bone = ${Math.round(1 / BONES_PER_KIBBLE)} KIBBLE (demo)</div><div class="tradebox"><input id="swapamt" type="number" value="100" min="1"><button class="btn alt" id="swap">Swap</button></div></div>
    <h3 style="margin:10px 0 6px">Tokens</h3><div class="toklist" id="toklist"></div>
    <details class="card form" style="text-align:left;margin-top:8px" id="createbox" open><summary><b>Create a token</b> (${CREATE_FEE} KIBBLE)</summary>
     <input id="tname" placeholder="Name e.g. Shiba Star" maxlength="24"><input id="tticker" placeholder="Ticker e.g. STAR" maxlength="6">

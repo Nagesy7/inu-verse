@@ -10,13 +10,13 @@ export const PETS = {
   hamster:  { name: 'Hamster', cur: 'bones', price: 80, pal: ['#e8b070', '#b07840', '#fff4e0'] },
   parrot:   { name: 'Parrot', cur: 'bones', price: 200, pal: ['#3fb04a', '#e8343c', '#ffd84a'] },
   fishbowl: { name: 'Goldfish Bowl', cur: 'bones', price: 60, pal: ['#ff8a2a', '#9fd8f5', '#e6f7ff'] },
-  redpanda: { name: 'Red Panda', cur: 'kibble', price: 18, exotic: true, pal: ['#c8502a', '#3a2418', '#fff1e0'] },
-  fennec:   { name: 'Fennec Fox', cur: 'kibble', price: 15, exotic: true, pal: ['#e8c88a', '#b08a50', '#fff6ea'] },
-  axolotl:  { name: 'Axolotl', cur: 'kibble', price: 12, exotic: true, pal: ['#ffa8c8', '#e86a9a', '#9fd8f5'] },
-  peacock:  { name: 'Peacock', cur: 'kibble', price: 22, exotic: true, pal: ['#2a6ad0', '#2aa890', '#e3b341'] },
-  dragon:   { name: 'Baby Dragon-Lizard', cur: 'kibble', price: 30, exotic: true, pal: ['#4fb05a', '#2a7038', '#ffd84a'] },
-  koi:      { name: 'Golden Koi', cur: 'kibble', price: 25, exotic: true, pal: ['#e3b341', '#fff6ea', '#9fd8f5'] },
-  snowowl:  { name: 'Snow Owl', cur: 'kibble', price: 20, exotic: true, pal: ['#f4f6fa', '#9aa0b4', '#ffd84a'] },
+  redpanda: { name: 'Red Panda', cur: 'kibble', price: 180000, exotic: true, pal: ['#c8502a', '#3a2418', '#fff1e0'] },
+  fennec:   { name: 'Fennec Fox', cur: 'kibble', price: 150000, exotic: true, pal: ['#e8c88a', '#b08a50', '#fff6ea'] },
+  axolotl:  { name: 'Axolotl', cur: 'kibble', price: 120000, exotic: true, pal: ['#ffa8c8', '#e86a9a', '#9fd8f5'] },
+  peacock:  { name: 'Peacock', cur: 'kibble', price: 220000, exotic: true, pal: ['#2a6ad0', '#2aa890', '#e3b341'] },
+  dragon:   { name: 'Baby Dragon-Lizard', cur: 'kibble', price: 300000, exotic: true, pal: ['#4fb05a', '#2a7038', '#ffd84a'] },
+  koi:      { name: 'Golden Koi', cur: 'kibble', price: 250000, exotic: true, pal: ['#e3b341', '#fff6ea', '#9fd8f5'] },
+  snowowl:  { name: 'Snow Owl', cur: 'kibble', price: 200000, exotic: true, pal: ['#f4f6fa', '#9aa0b4', '#ffd84a'] },
 };
 export function ensurePets(s) { s.pets ||= { owned: [], active: null }; return s.pets; }
 export function buyPet(s, species, name) {

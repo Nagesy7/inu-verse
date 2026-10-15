@@ -13,8 +13,8 @@ export const CROPS = {
   strawberry: { name: 'Strawberry', seed: 18, grow: 210, yield: 5, seasons: ['spring', 'summer'], color: '#e8344a', leaf: '#3f9c4a' },
   pumpkin:    { name: 'Pumpkin', seed: 25, grow: 300, yield: 3, seasons: ['autumn'], color: '#f07a1a', leaf: '#4a8c3a' },
   kale:       { name: 'Snow Kale', seed: 14, grow: 180, yield: 5, seasons: ['winter'], color: '#9fd8c0', leaf: '#3f8a6a' },
-  goldmelon:  { name: 'Golden Melon', rare: true, kibble: 2, grow: 360, yield: 3, seasons: ['summer'], color: '#ffd23a', leaf: '#5aa04a' },
-  starberry:  { name: 'Starberry', rare: true, kibble: 3, grow: 300, yield: 4, seasons: SEASONS, color: '#b07aff', leaf: '#4a7ad0' },
+  goldmelon:  { name: 'Golden Melon', rare: true, kibble: 20000, grow: 360, yield: 3, seasons: ['summer'], color: '#ffd23a', leaf: '#5aa04a' },
+  starberry:  { name: 'Starberry', rare: true, kibble: 30000, grow: 300, yield: 4, seasons: SEASONS, color: '#b07aff', leaf: '#4a7ad0' },
 };
 // base market prices (Bones per unit) for every sellable good
 export const GOODS = {
@@ -37,8 +37,8 @@ export const FIELD_COUNT = 4;
 export const MARKET_FEE = 0.05; // 5% of market sales -> weekly Top Farmer Bones pool
 export const POOL_SPLIT = [0.5, 0.3, 0.2];
 export const COSMETICS = {
-  barn_red: { slot: 'barn', name: 'Classic Red Barn', kibble: 0 }, barn_blue: { slot: 'barn', name: 'Royal Blue Barn', kibble: 4 }, barn_gold: { slot: 'barn', name: 'Gold-Trim Barn', kibble: 8 },
-  tractor_green: { slot: 'tractor', name: 'Field Green Tractor', kibble: 0 }, tractor_pink: { slot: 'tractor', name: 'Sakura Tractor', kibble: 3 }, tractor_chrome: { slot: 'tractor', name: 'Chrome Tractor', kibble: 6 },
+  barn_red: { slot: 'barn', name: 'Classic Red Barn', kibble: 0 }, barn_blue: { slot: 'barn', name: 'Royal Blue Barn', kibble: 40000 }, barn_gold: { slot: 'barn', name: 'Gold-Trim Barn', kibble: 80000 },
+  tractor_green: { slot: 'tractor', name: 'Field Green Tractor', kibble: 0 }, tractor_pink: { slot: 'tractor', name: 'Sakura Tractor', kibble: 30000 }, tractor_chrome: { slot: 'tractor', name: 'Chrome Tractor', kibble: 60000 },
 };
 export const RIVAL_FARMERS = ['Farmer Goma', 'Old Kinako', 'Ume of Hill Farm', 'Pochi Fields', 'Azuki Acres'];
 const h32 = (s) => { let h = 2166136261; for (const c of String(s)) h = Math.imul(h ^ c.charCodeAt(0), 16777619); return (h >>> 0) / 4294967296; };

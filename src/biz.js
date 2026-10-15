@@ -25,7 +25,7 @@ export const LEASE_DEPOSIT = 2; // days of rent up front
 export const STAFF_WAGE = 20, MAX_STAFF = 3, BIZ_POOL_SHARE = 0.1; // 10% of every rent payment -> weekly Top Business pool
 export const DECOR = { awning: { name: 'Striped Awning', price: 60, appeal: 0.1 }, planters: { name: 'Flower Planters', price: 40, appeal: 0.06 }, neon: { name: 'Neon Sign', price: 90, appeal: 0.14 }, bench: { name: 'Window Bench', price: 30, appeal: 0.04 } };
 export const UPGRADES = { shelves: { name: 'Bigger Shelves', price: [80, 160, 320], cap: 20 }, display: { name: 'Window Display', price: [100, 200, 400], appeal: 0.12 } };
-export const PREMIUM_LOOKS = { marble: { name: 'Marble Storefront', kibble: 5, appeal: 0.15 }, gold: { name: 'Gold Leaf Facade', kibble: 9, appeal: 0.25 }, sakura: { name: 'Sakura Arch', kibble: 4, appeal: 0.12 } };
+export const PREMIUM_LOOKS = { marble: { name: 'Marble Storefront', kibble: 50000, appeal: 0.15 }, gold: { name: 'Gold Leaf Facade', kibble: 90000, appeal: 0.25 }, sakura: { name: 'Sakura Arch', kibble: 40000, appeal: 0.12 } };
 export const RIVAL_BIZ = [{ lot: 'P2', owner: 'Hana', name: "Hana's Blooms", type: 'flower' }, { lot: 'L3', owner: 'Taro', name: 'Taro Bakes', type: 'bakery' }, { lot: 'L4', owner: 'Kiki', name: 'Kiki Grooming', type: 'groomer' }];
 export const OTHER_OWNERS = ['Goma Goods', 'Yuzu Café'];
 // NPC footfall by hour (0..23), shops open 8-20

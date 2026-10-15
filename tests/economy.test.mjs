@@ -45,7 +45,7 @@ test('cafe shift earns bones', () => {
   const total = finishShift(s, sh); assert.equal(s.bones, 500 + total); assert.ok(total >= r.pay); assert.equal(s.stats.shifts, 1);
 });
 test('swap bones to demo KIBBLE', () => {
-  const s = newGame(); const r = swapBonesToKibble(s, 100); assert.ok(r.ok); assert.equal(s.kibble, 20 + 100 / BONES_PER_KIBBLE); assert.equal(swapBonesToKibble(s, 99999).ok, false);
+  const s = newGame(); const r = swapBonesToKibble(s, 100); assert.ok(r.ok); assert.equal(s.kibble, 200000 + 100 / BONES_PER_KIBBLE); assert.equal(swapBonesToKibble(s, 99999).ok, false);
 });
 test('launch: create token, buy/sell, NPC holders, KIBBLE conserved', () => {
   const s = newGame(); const rng = mulberry32(3); seedTokens(s, rng);

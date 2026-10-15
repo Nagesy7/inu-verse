@@ -3,17 +3,17 @@
 import { wallet } from './wallet.js'; import { toU } from './mall.js'; import { ensureMall } from './mall.js';
 import { recordBurn } from './fly5.js';
 export const FEATURED_SLOTS = {
-  bb1: { id: 'bb1', name: 'Bone Street East Billboard', price: 8, hours: 24 },
-  bb2: { id: 'bb2', name: 'Bone Street West Billboard', price: 6, hours: 24 },
+  bb1: { id: 'bb1', name: 'Bone Street East Billboard', price: 80000, hours: 24 },
+  bb2: { id: 'bb2', name: 'Bone Street West Billboard', price: 60000, hours: 24 },
 };
 // burn-for-status: limited editions. Paying burns the $KIBBLE (out of circulation); supply is numbered.
 export const STATUS = {
-  supercar_01: { kind: 'car', name: 'No.1 Golden Zoomster', burn: 40, supply: 50, glow: '#ffd23a' },
-  supercar_02: { kind: 'car', name: 'No.2 Midnight Phantom', burn: 40, supply: 50, glow: '#7aa7e0' },
-  pet_aurora: { kind: 'pet', name: 'Aurora Kitsune', burn: 25, supply: 100, glow: '#ff7aa8' },
-  pet_void: { kind: 'pet', name: 'Void Pup', burn: 25, supply: 100, glow: '#9b7aff' },
-  store_sakura: { kind: 'storefront', name: 'Sakura Storefront Skin', burn: 15, supply: 200, glow: '#ffb0c8' },
-  store_gold: { kind: 'storefront', name: 'Gilded Storefront Skin', burn: 18, supply: 150, glow: '#e3b341' },
+  supercar_01: { kind: 'car', name: 'No.1 Golden Zoomster', burn: 400000, supply: 50, glow: '#ffd23a' },
+  supercar_02: { kind: 'car', name: 'No.2 Midnight Phantom', burn: 400000, supply: 50, glow: '#7aa7e0' },
+  pet_aurora: { kind: 'pet', name: 'Aurora Kitsune', burn: 250000, supply: 100, glow: '#ff7aa8' },
+  pet_void: { kind: 'pet', name: 'Void Pup', burn: 250000, supply: 100, glow: '#9b7aff' },
+  store_sakura: { kind: 'storefront', name: 'Sakura Storefront Skin', burn: 150000, supply: 200, glow: '#ffb0c8' },
+  store_gold: { kind: 'storefront', name: 'Gilded Storefront Skin', burn: 180000, supply: 150, glow: '#e3b341' },
 };
 export const PRES_DROPS = [
   { id: 'pres_scarf', name: "President's Scarf", slot: 'neck' },

@@ -6,10 +6,10 @@ export const CAR_MODELS = {
   sedan:       { name: 'Fetch Sedan', kind: 'sedan', dealer: 'cars', price: 650, cur: 'bones', speed: 205, blurb: 'Comfy family cruiser.' },
   suv:         { name: 'Trailsniffer SUV', kind: 'suv', dealer: 'cars', price: 900, cur: 'bones', speed: 200, blurb: 'Room for the whole Pack.' },
   pickup:      { name: 'Bone Hauler Pickup', kind: 'pickup', dealer: 'cars', price: 800, cur: 'bones', speed: 195, blurb: 'Hauls bones by the bed-load.' },
-  coupe:       { name: 'Zoomie GT Coupe', kind: 'coupe', dealer: 'luxauto', price: 40, cur: 'kibble', speed: 250, blurb: 'Sports coupe, tuned for zoomies.' },
-  convertible: { name: 'Sea Breeze Convertible', kind: 'convertible', dealer: 'luxauto', price: 55, cur: 'kibble', speed: 235, blurb: 'Ears in the wind.' },
-  supercar:    { name: 'Zoomstar Supercar', kind: 'supercar', dealer: 'luxauto', price: 90, cur: 'kibble', speed: 280, blurb: 'Fastest thing on four paws.' },
-  limo:        { name: 'Gold Bone-mobile Limo', kind: 'limo', dealer: 'luxauto', price: 65, cur: 'kibble', speed: 210, blurb: 'Fit for a President.' },
+  coupe:       { name: 'Zoomie GT Coupe', kind: 'coupe', dealer: 'luxauto', price: 400000, cur: 'kibble', speed: 250, blurb: 'Sports coupe, tuned for zoomies.' },
+  convertible: { name: 'Sea Breeze Convertible', kind: 'convertible', dealer: 'luxauto', price: 550000, cur: 'kibble', speed: 235, blurb: 'Ears in the wind.' },
+  supercar:    { name: 'Zoomstar Supercar', kind: 'supercar', dealer: 'luxauto', price: 900000, cur: 'kibble', speed: 280, blurb: 'Fastest thing on four paws.' },
+  limo:        { name: 'Gold Bone-mobile Limo', kind: 'limo', dealer: 'luxauto', price: 650000, cur: 'kibble', speed: 210, blurb: 'Fit for a President.' },
 };
 export const CAR_COLORS = { Red: '#c8323c', Blue: '#2f6fbd', Green: '#3f9450', Gold: '#e3b341', White: '#f2efe6', Black: '#232633', Pink: '#e86a9a', Purple: '#7a4ac0' };
 export function ensureGarage(s) { s.garage ||= { cars: [], active: null, parked: null }; return s.garage; }
