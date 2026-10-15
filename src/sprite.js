@@ -4,6 +4,7 @@
 // Each sprite is painted on a tiny grid, outlined, cached and blitted crisp.
 import { COATS, normalizeCoat } from './game.js';
 import { outfitLook } from './outfits.js';
+import { hires } from './hires.js';
 
 export const GW = 22, GH = 30, PAD = 1;
 const SHIRT = '#f3ead6', SHIRT_D = '#d9ccb0', JEANS = '#26335e', JEANS_D = '#1a2446', INK = '#1a1420', MOUTH = '#5a3a32', TONGUE = '#e0707e', BELT = '#2b2116', BUCKLE = '#c9a24a';
@@ -188,6 +189,6 @@ export function shibaSprite(coat, face = 'down', frame = 0, equipped = {}) {
   const mirror = face === 'left', f = face === 'left' || face === 'right' ? 'side' : face;
   const key = `${coat}|${face}|${frame}|${JSON.stringify(equipped || {})}`;
   let cv = cache.get(key);
-  if (!cv) { cv = toCanvas(paint(coat, f, frame, equipped), mirror); cache.set(key, cv); if (cache.size > 600) cache.delete(cache.keys().next().value); }
+  if (!cv) { cv = hires(toCanvas(paint(coat, f, frame, equipped), mirror)); cache.set(key, cv); if (cache.size > 600) cache.delete(cache.keys().next().value); }
   return cv;
 }

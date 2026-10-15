@@ -1,6 +1,6 @@
 // Character creator UI (title screen) + salon re-style panel. Renders choices as pixel chips.
 import { OPTIONS, TRAITS, STARTER_OUTFITS, HOMES, PATHS, defaultChoices, lookOf } from './creator.js';
-import { drawInuAvatar } from './vendor/inu-avatar.js';
+import { drawInuAvatarHi as drawInuAvatar } from './art.js';
 import { OUTFITS } from './outfits.js';
 import { COAT_NAMES } from './profile.js';
 const esc = (s) => String(s).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c]);

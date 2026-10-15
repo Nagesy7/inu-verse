@@ -1,0 +1,27 @@
+// Character resolution proof: same characters/outfits at in-game sizes, phone landscape DPR 3. TAG=before|after
+import { chromium } from 'playwright';
+const URL = process.env.URL || 'http://localhost:8642/', TAG = process.env.TAG || 'after';
+const b = await chromium.launch(); const errors = [];
+const ctx = await b.newContext({ viewport: { width: 844, height: 390 }, deviceScaleFactor: 3, hasTouch: true, isMobile: true });
+const page = await ctx.newPage(); page.on('pageerror', (e) => errors.push(e.message)); page.on('console', (m) => m.type() === 'error' && errors.push(m.text()));
+await page.goto(URL); await page.evaluate(() => localStorage.clear()); await page.reload(); await page.waitForTimeout(1500);
+const LOOKS = [{}, { top: 'tux_black', bottom: 'slacks_black', neck: 'bowtie', hat: 'top_hat', feet: 'sneakers_gold', eyes: 'shades' }, { top: 'hoodie_maroon', bottom: 'jeans_ripped', neck: 'chain_gold', hat: 'cap_red', feet: 'sneakers_red' }, { top: 'velvet_gown', hat: 'crown', neck: 'diamond_chain', eyes: 'plat_shades' }];
+await page.evaluate(() => { window.__sd = 0; });
+await page.addScriptTag({ type: 'module', content: `import { drawShiba, drawProfileShiba, artReady } from '/src/art.js'; import { petSprite, PETS } from '/src/pets.js'; await artReady;
+ const L = ${JSON.stringify(LOOKS)}; const c = document.createElement('canvas'), d = 3; c.id = 'ss'; c.width = 844 * d; c.height = 390 * d; c.style.cssText = 'position:fixed;inset:0;width:844px;height:390px;z-index:99'; document.body.appendChild(c);
+ const x = c.getContext('2d'); x.setTransform(d, 0, 0, d, 0, 0); x.fillStyle = '#5a8a4a'; x.fillRect(0, 0, 844, 390); x.font = '8px Silkscreen, monospace'; x.fillStyle = '#fff'; x.fillText('${TAG.toUpperCase()}: in-game scale 1 (world) / 1.5 / 2.4 (wardrobe)', 8, 12);
+ ['tan', 'red', 'dark', 'cream'].forEach((coat, i) => { drawShiba(x, 40 + i * 50, 100, { coat, outfit: L[i], face: 'down' }); drawShiba(x, 40 + i * 50, 190, { coat, outfit: L[i], face: 'right', moving: true, phase: 1.7 }); });
+ L.forEach((o, i) => drawShiba(x, 260 + i * 70, 150, { coat: ['tan','red','dark','cream'][i], outfit: o, scale: 1.5 }));
+ drawShiba(x, 600, 200, { coat: 'red', outfit: L[1], scale: 2.4 }); drawShiba(x, 720, 200, { coat: 'dark', outfit: L[2], scale: 2.4, face: 'right' });
+ drawProfileShiba(x, 60, 330, { v: 1, coat: 'tan' }, { scale: 1 }); drawProfileShiba(x, 140, 330, { v: 1, coat: 'red' }, { scale: 1.5 });
+ x.imageSmoothingEnabled = false; Object.keys(PETS).forEach((sp, i) => x.drawImage(petSprite(sp, 0), 220 + i * 44, 300, 32, 32));
+ window.__sd = 1;` });
+await page.waitForFunction(() => window.__sd === 1); await page.waitForTimeout(300);
+const p1 = `proof/hires-${TAG}-sheet.png`; await page.screenshot({ path: p1 });
+await page.screenshot({ path: `proof/hires-${TAG}-sheet-zoom.png`, clip: { x: 0, y: 40, width: 420, height: 180 } });
+await page.evaluate(() => document.getElementById('ss').remove());
+await page.click('#start'); await page.waitForTimeout(1000);
+await page.evaluate((o) => { const w = __inu.state.wardrobe; w.owned = Object.values(o); w.equipped = o; document.querySelectorAll('.guide,#guide,.tour').forEach((e) => e.remove()); }, LOOKS[1]);
+await page.keyboard.press('Escape'); await page.waitForTimeout(800);
+await page.screenshot({ path: `proof/hires-${TAG}-world.png`, clip: { x: 322, y: 115, width: 200, height: 150 } });
+console.log(p1, 'errors:', JSON.stringify(errors)); await b.close();

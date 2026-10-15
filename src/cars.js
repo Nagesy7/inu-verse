@@ -1,6 +1,7 @@
 // One car model for the whole game, at world scale: 2.25 tiles long (72 world px = 144 screen px at ZOOM 2), one 48px lane wide (40px across), 2x chunky pixels.
 // Views: 'side' (east/west travel, flipped for west), 'front' (driving toward camera = south), 'back' (driving away = north).
 import { TILE, ROADS, AVENUE } from './world.js';
+import { hires } from './hires.js';
 export const CAR_LEN = 72, CAR_W = 40, U = 2, LANE = 48; // world px; U = one native pixel
 export const LANES = { // 3-tile roads = two 48px lanes, right-hand traffic
   rows: ROADS, avenue: AVENUE, // horizontal roads occupy rows r..r+2; avenue occupies cols 31-33
@@ -53,12 +54,12 @@ function top(col, kind, view) { // 20 x 40 native (16 body + wheel nubs), front 
   return cv;
 }
 export function carSprite(col, view = 'side', kind = 'sedan') {
-  const k = col + view + kind; let s = cache.get(k); if (!s) { s = view === 'side' ? side(col, kind) : top(col, kind, view); cache.set(k, s); } return s;
+  const k = col + view + kind; let s = cache.get(k); if (!s) { s = hires(view === 'side' ? side(col, kind) : top(col, kind, view)); cache.set(k, s); } return s;
 }
 // Draw a car whose ground contact is (x, base): x = centre, base = bottom of wheels (side) / bottom of bumper (front/back).
 export function drawCar(c, x, base, { col = '#c8323c', dir = 'east', kind = 'sedan', alpha = 1, glow = null } = {}) {
   const view = dir === 'south' ? 'front' : dir === 'north' ? 'back' : 'side', spr = carSprite(col, view, kind);
-  const w = spr.width * U, h = spr.height * U, X = Math.round(x - w / 2), Y = Math.round(base - h);
+  const w = spr.width * U / (spr.k || 1), h = spr.height * U / (spr.k || 1), X = Math.round(x - w / 2), Y = Math.round(base - h);
   c.save(); c.globalAlpha = alpha; c.fillStyle = 'rgba(16,24,48,.32)';
   if (view === 'side') { c.fillRect(X + 4, Math.round(base) - 4, w - 6, 4); c.fillRect(X + 8, Math.round(base), w - 14, 2); }
   else { c.fillRect(X + 4, Y + 6, w - 4, h - 4); }

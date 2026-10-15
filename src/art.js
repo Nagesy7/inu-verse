@@ -1,6 +1,18 @@
 import { drawInuAvatar } from './vendor/inu-avatar.js';
 // All art drawn procedurally - original.
 import { shibaSprite } from './sprite.js';
+import { hires } from './hires.js';
+// Shared Shiba (vendor/inu-avatar.js, synced from kibble-pay) drawn at 4x its native 18x22 pixel density (Scale2x twice).
+// Same signature + return value as drawInuAvatar; the vendored file and other games are untouched.
+const avHi = new WeakMap();
+export function drawInuAvatarHi(ctx, profile, x, y, opts = {}) {
+  let spr = null, dst = null; const sh = [];
+  const fake = { save() {}, restore() {}, set fillStyle(v) { this._f = v; }, get fillStyle() { return this._f; }, imageSmoothingEnabled: false,
+    fillRect(...a) { sh.push([this._f, a]); }, drawImage(s, ...a) { spr = s; dst = a; } };
+  const r = drawInuAvatar(fake, profile, x, y, opts); if (!spr) return drawInuAvatar(ctx, profile, x, y, opts);
+  let hi = avHi.get(spr); if (!hi) { hi = hires(spr, 2); avHi.set(spr, hi); }
+  ctx.save(); for (const [f, a] of sh) { ctx.fillStyle = f; ctx.fillRect(...a); } ctx.imageSmoothingEnabled = false; ctx.drawImage(hi, ...dst); ctx.restore(); return r;
+}
 import { FURNITURE, footprint, WALLS, FLOORS } from './furniture.js';
 import { OUTFIT_ATLAS } from './outfit-atlas.js';
 import { OUTFITS } from './outfits.js';
@@ -33,6 +45,10 @@ function layeredCanvas(coat, view, frame, equipped) {
   layerCache.set(key, cv); if (layerCache.size > 400) layerCache.delete(layerCache.keys().next().value);
   return cv;
 }
+// Mip chain for the layered art: halve with high-quality filtering until within 2x of the on-screen device size,
+// so small in-world Shibas keep fur/outfit detail instead of shimmering from a single 4x+ downscale.
+function mip(cv, devH) { let m = cv; while (m.height > devH * 2 && m.height > 24) { if (!m.half) { const h = Object.assign(document.createElement('canvas'), { width: Math.ceil(m.width / 2), height: Math.ceil(m.height / 2) }), c = h.getContext('2d');
+  c.imageSmoothingEnabled = true; c.imageSmoothingQuality = 'high'; c.drawImage(m, 0, 0, h.width, h.height); m.half = h; } m = m.half; } return m; }
 function drawLayered(ctx, x, y, coat, outfit, { face, phase, moving, scale, name, shadow, badge, emote }) {
   const view = face === 'up' ? 'back' : face === 'left' || face === 'right' ? 'side' : 'front';
   const frame = moving ? Math.floor(phase / 1.6) % 4 : 0, cv = layeredCanvas(coat, view, frame, outfit);
@@ -41,14 +57,14 @@ function drawLayered(ctx, x, y, coat, outfit, { face, phase, moving, scale, name
   ctx.save(); ctx.imageSmoothingEnabled = true; ctx.imageSmoothingQuality = 'high';
   if (shadow) { ctx.fillStyle = 'rgba(10,14,30,0.3)'; ctx.beginPath(); ctx.ellipse(x, y + 11, w * 0.3, 4 * scale, 0, 0, 7); ctx.fill(); }
   ctx.translate(Math.round(x), 0); if (face === 'left') ctx.scale(-1, 1);
-  ctx.drawImage(cv, Math.round(-w / 2), Math.round(top - bob), Math.round(w), Math.round(h));
+  ctx.drawImage(mip(cv, h * (ctx.getTransform?.().d || 1)), Math.round(-w / 2), Math.round(top - bob), Math.round(w), Math.round(h));
   ctx.restore();
   if (name) nameTag(ctx, x, top, name, badge);
 }
 
 // Custom (character-creator) Shibas: shared cross-game renderer, sized to match the layered atlas (~64px at scale 1)
 export function drawProfileShiba(ctx, x, y, profile, { face = 'down', phase = 0, moving = false, scale = 1, name = null, shadow = true, badge = null } = {}) {
-  const frame = moving ? Math.floor(phase / 1.6) % 4 : 0, r = drawInuAvatar(ctx, profile, x, y + 12, { scale: scale * 1.6, face, frame, shadow });
+  const frame = moving ? Math.floor(phase / 1.6) % 4 : 0, r = drawInuAvatarHi(ctx, profile, x, y + 12, { scale: scale * 1.6, face, frame, shadow });
   if (name) nameTag(ctx, x, y + 12 - r.h, name, badge); }
 const rr = (ctx, x, y, w, h, r) => { ctx.beginPath(); ctx.roundRect(x, y, w, h, r); };
 
@@ -61,7 +77,7 @@ export function drawShiba(ctx, x, y, { coat = 'tan', face = 'down', phase = 0, m
   const px = Math.max(1, Math.round(2 * scale));
   const frame = moving ? Math.floor(phase / 1.6) % 4 : 0;
   const spr = shibaSprite(coat, face, frame, outfit || {});
-  const w = spr.width * px, h = spr.height * px, dx = Math.round(x - w / 2), dy = Math.round(y + 12 - h);
+  const w = spr.width * px / (spr.k || 1), h = spr.height * px / (spr.k || 1), dx = Math.round(x - w / 2), dy = Math.round(y + 12 - h);
   ctx.save(); ctx.imageSmoothingEnabled = false;
   if (shadow) { ctx.fillStyle = 'rgba(10,14,30,0.28)'; ctx.fillRect(Math.round(x - 7 * px), Math.round(y + 12 - 2 * px), 14 * px, 2 * px); ctx.fillRect(Math.round(x - 5 * px), Math.round(y + 12 - 3 * px), 10 * px, 3 * px); }
   ctx.drawImage(spr, dx, dy, w, h);

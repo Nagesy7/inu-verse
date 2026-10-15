@@ -1,5 +1,5 @@
 // Matchmaker / Couples / Duo / Pups panels
-import * as P from './pairing.js'; import { JOBS } from './jobs.js'; import { drawInuAvatar } from './vendor/inu-avatar.js';
+import * as P from './pairing.js'; import { JOBS } from './jobs.js'; import { drawInuAvatarHi as drawInuAvatar } from './art.js';
 const esc = (s) => String(s).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c]);
 const top = (rows, n = 5) => rows.slice(0, n).map((r, i) => `<li${r.me ? ' class="me"' : ''}>${i + 1}. ${esc(r.name)} <b>${Math.floor(r.score)}</b></li>`).join('');
 function thumb(look, id) { setTimeout(() => { const c = document.getElementById(id); if (!c) return; const x = c.getContext('2d'); x.clearRect(0, 0, 48, 56); drawInuAvatar(x, { look }, 24, 52, { scale: 1.2, shadow: false }); }, 0); return `<canvas id="${id}" width="48" height="56"></canvas>`; }
