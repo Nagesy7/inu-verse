@@ -769,7 +769,7 @@ function renderLaunch() {
   else if (tab === 'launch') body.innerHTML = `${head}<div class="card" style="text-align:left"><b>Launch your own coin on pump.fun</b>
      <p class="small">Inu Verse never creates, holds or signs tokens. You launch on pump.fun with your own wallet; pump.fun shows you every fee and step before you sign.</p>
      <ol class="small steps"><li>Open pump.fun's create page (button below) and connect Phantom there.</li>
-     <li><b>Pair it with $KIBBLE (optional):</b> pump.fun lets a new coin use another pump.fun coin as its pair asset ("Secondary Pair Asset", one hop only). In the create form's pair / quote selector, paste the $KIBBLE contract address <code>${RC.short(K0.mint)}</code> <button class="btn ghost tiny" data-copy="${K0.mint}">Copy CA</button>. If the pair option doesn't appear for you, launch against SOL instead: it still works here.</li>
+     <li><b>Pick your pair:</b> on pump.fun's create form choose <b>Custom</b> under the pool liquidity pair, then paste one of these contract addresses into the search and select the matching coin (check the address!). pump.fun has no link that preselects the pair, so copy it from here:<div id="pairlist" class="pairlist"><span class="small">Loading eligible pairs…</span></div></li>
      <li>After launch, copy your coin's mint address and register it on the <b>Coin board</b> tab so it shows on the board and city billboards.</li></ol>
      <div class="row" style="justify-content:flex-start"><button class="btn green" id="go-pump">Open pump.fun create ↗</button>${isMobile() ? '<button class="btn alt" id="go-phantom">Open in Phantom app ↗</button>' : ''}</div></div>${NFA}`;
   else if (tab === 'board') body.innerHTML = `${head}<div class="launch rboard"><div><div class="card form" style="text-align:left"><b>Register a coin you launched</b>
@@ -796,6 +796,10 @@ function renderLaunch() {
   if ($('#go-pump')) $('#go-pump').onclick = () => { blip(880); window.open(RC.PUMP_CREATE, '_blank', 'noopener'); };
   if ($('#go-phantom')) $('#go-phantom').onclick = () => { location.href = RC.phantomBrowse(RC.PUMP_CREATE); };
   if ($('#reg-go')) $('#reg-go').onclick = registerCoin;
+  if (tab === 'launch') RC.listPairs().then((r) => { const el = $('#pairlist'); if (!el) return;
+    el.innerHTML = r.pairs.map((p) => `<div class="pairrow ${p.featured ? 'feat' : ''}"><b>${p.featured ? '★ ' : ''}$${esc(p.symbol)}</b><span class="small">${esc(p.name)}${p.mcap != null && !p.featured ? ' · MC ' + RC.fmtUsd(p.mcap) + ' · liq ' + RC.fmtUsd(p.liquidity) : ''}</span><code>${RC.short(p.mint)}</code><button class="btn tiny ghost" data-copy="${p.mint}">Copy CA</button></div>`).join('')
+      + `<div class="small">${r.rules ? `Inu/Doge pairs shown only while market cap ≥ ${RC.fmtUsd(r.rules.minMcapUsd)}, liquidity ≥ ${RC.fmtUsd(r.rules.minLiquidityUsd)} and RugCheck shows no danger (checked live). $KIBBLE is always featured.` : 'Pair checks unavailable right now: only $KIBBLE shown.'}</div>`;
+    el.querySelectorAll('[data-copy]').forEach((b) => b.onclick = () => copyText(b.dataset.copy)); });
   if (tab === 'board') { renderRegBoard(); refreshRegistry(true); } else if (tab === 'kibble') refreshRealStats();
 }
 async function copyText(t) { try { await navigator.clipboard.writeText(t); toast('Copied contract address', 'good'); } catch { const i = document.createElement('textarea'); i.value = t; document.body.appendChild(i); i.select(); try { document.execCommand('copy'); toast('Copied', 'good'); } catch { toast(t); } i.remove(); } }
@@ -812,7 +816,7 @@ async function registerCoin() {
 function renderRegBoard() { const el = $('#regboard'); if (!el) return;
   if (REG.offline) { el.innerHTML = `<p class="small">Coin board is offline right now (${esc(REG.reason || 'unavailable')}). Your coin is still live on pump.fun.</p>`; return; }
   if (!REG.coins.length) { el.innerHTML = '<p class="small">No player coins registered yet. Be the first: launch on pump.fun, then register it here.</p>'; return; }
-  el.innerHTML = REG.coins.map((c) => { const st = RC.statsOf(c.mint); return `<div class="regcoin" data-mint="${c.mint}"><div><b>$${esc(st?.symbol || c.symbol || '???')}</b> ${esc(st?.name || c.name || '')} ${c.pairedWithKibble ? '<span class="chip">paired with $KIBBLE</span>' : ''}
+  el.innerHTML = REG.coins.map((c) => { const st = RC.statsOf(c.mint); return `<div class="regcoin" data-mint="${c.mint}"><div><b>$${esc(st?.symbol || c.symbol || '???')}</b> ${esc(st?.name || c.name || '')} ${c.pairedWithKibble ? '<span class="chip">paired with $KIBBLE</span>' : c.quote && c.quote !== 'SOL' ? `<span class="chip">paired with $${esc(c.quote)}</span>` : ''}
      <div class="small">CA <code>${RC.short(c.mint)}</code> · creator ${RC.short(c.creator)} (verified)</div>
      <div class="small">Price ${RC.fmtUsd(st?.priceUsd)} · MC ${RC.fmtUsd(st?.mcap)} · 24h ${RC.fmtPct(st?.change24)}</div></div>
      <div class="row"><a class="btn tiny green" href="${RC.PUMP_COIN(c.mint)}" target="_blank" rel="noopener noreferrer">pump.fun</a><button class="btn tiny ghost" data-copy="${c.mint}">Copy CA</button><button class="btn tiny red" data-report="${c.mint}">Report</button></div></div>`; }).join('');

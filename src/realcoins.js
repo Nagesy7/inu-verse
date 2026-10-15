@@ -53,3 +53,7 @@ export function realTrend(coins = [], n = 6) {
   const v = (mint, symbol, name, color) => { const s = statsOf(mint); return { id: 'real:' + mint, mint, real: true, ticker: (s?.symbol || symbol || '???').slice(0, 10), name: s?.name || name || short(mint), color, pct: s?.change24 ?? null, heat: s?.vol24 || 0 }; };
   return [v(KIBBLE.mint, KIBBLE.symbol, KIBBLE.name, KIBBLE.color), ...coins.filter((c) => !c.hidden).map((c) => v(c.mint, c.symbol, c.name, hue(c.mint))).sort((a, b) => b.heat - a.heat)].slice(0, n);
 }
+// Eligible pair assets (server-checked live: $KIBBLE first + Inu/Doge coins over the mcap/liquidity/RugCheck bar).
+export async function listPairs({ f = globalThis.fetch, base = '' } = {}) {
+  try { const r = await f(base + '/api/coins?pairs=1'); if (!r.ok) throw 0; const j = await r.json(); return { ok: true, ...j }; }
+  catch { return { ok: false, pairs: [{ mint: KIBBLE.mint, symbol: KIBBLE.symbol, name: KIBBLE.name, featured: true, exempt: true }], rules: null }; } }

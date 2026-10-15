@@ -1,0 +1,55 @@
+import test from 'node:test'; import assert from 'node:assert/strict'; import fs from 'node:fs';
+import { makeHandler, memoryStore, bondingCurveOf, OWNER_WALLET, REPORTS_TO_HIDE, KIBBLE_MINT } from '../api/coins.js';
+import { judge, evaluatePairs, _resetPairs, PAIR_RULES } from '../api/_lib/pairs.js';
+import * as RC from '../src/realcoins.js';
+const MINT = 'HgBRWfYxEfvPhtqkaeymCQtHCrKE46qQ43pKe8HCpump', ME = 'Akk3DdxeRRLZABfpkFKYoDBk6Zim5wNLRYemNFjv56fn';
+function call(h, { method = 'GET', url = '/api/coins', body, headers = {}, ip = '1.1.1.1' } = {}) { return new Promise((done) => { const res = { headers: {}, setHeader(k, v) { this.headers[k] = v; }, end(b) { done({ code: this.statusCode, body: b ? JSON.parse(b) : null }); } };
+  h({ method, url, query: Object.fromEntries(new URL(url, 'http://x').searchParams), body, headers: { 'x-forwarded-for': ip, ...headers } }, res); }); }
+const deps = { sessionWallet: async (t) => ({ me: ME, owner: OWNER_WALLET, other: 'G5UUTmXfriPbjr342VWGqERzNi5PKt9XNeJFfeehiYxa' })[t] || null,
+  pumpCreator: async (m) => m === MINT ? { ok: true, creator: ME } : { ok: false, reason: 'not a pump.fun coin (no bonding curve account found)' },
+  dexInfo: async () => ({ name: 'Bert', symbol: 'Bert', pairedWithKibble: true, quote: 'KIBBLE', quoteMint: KIBBLE_MINT }), pairs: async () => ({ pairs: [] }) };
+const H = () => makeHandler({ env: { ADMIN_TOKEN: 'sekret' }, store: memoryStore(), deps });
+test('PDA derivation matches the live $KIBBLE pump.fun bonding curve (DexScreener pair address)', () => assert.equal(bondingCurveOf(KIBBLE_MINT), 'CwcC2iMpRVGgxZKKnmLq9N3fMjVVPSkLGKdvU7piXLrc'));
+test('register requires a session and the pump.fun creator to be the signer', async () => { const h = H();
+  assert.equal((await call(h, { method: 'POST', body: { action: 'register', mint: MINT } })).code, 401);
+  assert.equal((await call(h, { method: 'POST', body: { action: 'register', mint: MINT }, headers: { authorization: 'Bearer other' } })).code, 403);
+  assert.equal((await call(h, { method: 'POST', body: { action: 'register', mint: 'notamint' }, headers: { authorization: 'Bearer me' } })).code, 400);
+  assert.equal((await call(h, { method: 'POST', body: { action: 'register', mint: 'DezXAZ8z7PnrnRJjz3wXBoRgixCa6xjnB7YaB1pPB263' }, headers: { authorization: 'Bearer me' } })).code, 400);
+  const ok = await call(h, { method: 'POST', body: { action: 'register', mint: MINT }, headers: { authorization: 'Bearer me' } }); assert.equal(ok.code, 200); assert.equal(ok.body.coin.creator, ME); assert.equal(ok.body.coin.pairedWithKibble, true);
+  const list = await call(h); assert.equal(list.body.coins.length, 1); });
+test(`${REPORTS_TO_HIDE} distinct reports auto-hide; duplicates ignored; owner/admin can restore`, async () => { const h = H();
+  await call(h, { method: 'POST', body: { action: 'register', mint: MINT }, headers: { authorization: 'Bearer me' } });
+  for (let i = 0; i < 2; i++) await call(h, { method: 'POST', body: { action: 'report', mint: MINT }, ip: '9.9.9.9' });
+  assert.equal((await call(h)).body.coins.length, 1);
+  for (let i = 0; i < REPORTS_TO_HIDE; i++) await call(h, { method: 'POST', body: { action: 'report', mint: MINT }, ip: '2.2.2.' + i });
+  assert.equal((await call(h)).body.coins.length, 0);
+  assert.equal((await call(h, { method: 'POST', body: { action: 'moderate', op: 'show', mint: MINT }, headers: { authorization: 'Bearer me' } })).code, 403);
+  assert.equal((await call(h, { url: '/api/coins?all=1', headers: { 'x-admin-token': 'sekret' } })).body.coins.length, 1);
+  assert.equal((await call(h, { method: 'POST', body: { action: 'moderate', op: 'show', mint: MINT }, headers: { authorization: 'Bearer owner' } })).code, 200);
+  assert.equal((await call(h)).body.coins.length, 1);
+  assert.equal((await call(h, { method: 'POST', body: { action: 'moderate', op: 'delete', mint: MINT }, headers: { 'x-admin-token': 'sekret' } })).code, 200);
+  assert.equal((await call(h)).body.coins.length, 0);
+  assert.equal((await call(h, { method: 'POST', body: { action: 'register', mint: MINT }, headers: { authorization: 'Bearer me' } })).code, 403); });
+test('no storage -> honest 503, pairs still served', async () => { const h = makeHandler({ env: {}, store: null, deps });
+  assert.equal((await call(h)).code, 503); assert.equal((await call(h, { url: '/api/coins?pairs=1' })).code, 200); });
+test('pair rules: $100K mcap, $10K liquidity, RugCheck danger rejects', () => {
+  assert.equal(PAIR_RULES.minMcapUsd, 100000); assert.equal(PAIR_RULES.minLiquidityUsd, 10000);
+  assert.equal(judge({}, { mcap: 2e5, liquidity: 2e4 }, { danger: [] }).eligible, true);
+  assert.equal(judge({}, { mcap: 9e4, liquidity: 2e4 }, { danger: [] }).eligible, false);
+  assert.equal(judge({}, { mcap: 2e5, liquidity: 9e3 }, { danger: [] }).eligible, false);
+  assert.equal(judge({}, { mcap: 2e5, liquidity: 2e4 }, { danger: ['Mint Authority still enabled'] }).eligible, false);
+  assert.equal(judge({}, { mcap: 2e5, liquidity: 2e4 }, null).eligible, false); });
+test('evaluatePairs keeps $KIBBLE first even with tiny mcap, hides failing candidates, survives API outage', async () => { _resetPairs();
+  const f = async (u) => ({ ok: true, json: async () => u.includes('rugcheck') ? { risks: [] } : [{ baseToken: { address: u.split('/').pop() }, marketCap: u.includes('opump') ? 3000 : u.includes('DezX') ? 50 : 5e6, liquidity: { usd: 5e5 } }] });
+  const v = await evaluatePairs({ f, now: 1 }); assert.equal(v.pairs[0].symbol, 'KIBBLE'); assert.ok(!v.pairs.some((p) => p.symbol === 'BONK')); assert.ok(v.rejected.some((p) => p.symbol === 'BONK'));
+  _resetPairs(); const down = await evaluatePairs({ f: async () => { throw new Error('down'); }, now: 2 }); assert.deepEqual(down.pairs.map((p) => p.symbol), ['KIBBLE']); _resetPairs(); });
+test('DexScreener stats: parsed, cached, and "unavailable" (null) on error instead of fake numbers', async () => { RC._resetCache(); let n = 0;
+  const good = async () => { n++; return { ok: true, json: async () => [{ baseToken: { address: KIBBLE_MINT, symbol: '$KIBBLE' }, priceUsd: '0.0000033', marketCap: 3285, priceChange: { h24: 9.4 } }] }; };
+  const s = await RC.fetchStats([KIBBLE_MINT], { f: good, now: 0 }); assert.equal(s[KIBBLE_MINT].mcap, 3285); assert.equal(s[KIBBLE_MINT].symbol, 'KIBBLE');
+  await RC.fetchStats([KIBBLE_MINT], { f: good, now: 1000 }); assert.equal(n, 1);
+  RC._resetCache(); const bad = await RC.fetchStats([KIBBLE_MINT], { f: async () => ({ ok: false, status: 500 }), now: 0 }); assert.equal(bad[KIBBLE_MINT], null);
+  assert.equal(RC.fmtUsd(null), 'unavailable'); assert.equal(RC.fmtPct(null), '—'); });
+test('Launch Hall copy: no "no blockchain / no real money", official CA + pump.fun link, never signs tokens', () => {
+  const src = ['src/main.js', 'src/launch.js', 'src/guide.js', 'src/coinads.js', 'src/realcoins.js'].map((f) => fs.readFileSync(f, 'utf8')).join('\n');
+  assert.doesNotMatch(src, /no blockchain|no real money/i); assert.match(src, /4VE9sy4fEMJdZ6i7MkYPbnqDJd2oqzJQmg44WJ3opump/); assert.match(src, /pump\.fun\/coin\//); assert.match(src, /Not financial advice/);
+  assert.doesNotMatch(fs.readFileSync('src/realcoins.js', 'utf8'), /signTransaction|signAndSend/); assert.match(RC.phantomBrowse(RC.PUMP_CREATE), /^https:\/\/phantom\.app\/ul\/browse\/https%3A%2F%2Fpump\.fun%2Fcreate/); });

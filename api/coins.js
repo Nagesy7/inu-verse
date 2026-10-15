@@ -15,6 +15,7 @@
 // Admin: ADMIN_TOKEN header, or a kibble-pay session for the owner wallet.
 // Storage: Upstash Redis REST (UPSTASH_REDIS_REST_URL/TOKEN or KV_REST_API_URL/TOKEN). Without it the API answers 503.
 import crypto from "node:crypto";
+import { evaluatePairs, PAIR_CANDIDATES } from "./_lib/pairs.js";
 
 export const KIBBLE_MINT = "4VE9sy4fEMJdZ6i7MkYPbnqDJd2oqzJQmg44WJ3opump";
 export const OWNER_WALLET = "BzLYTFAfUsjzQ5x8bx5BbPK4DFtaHrLCuferkvkxTNGJ";
@@ -65,7 +66,8 @@ export async function pumpCreator(mint, { rpc, f = fetch } = {}) {
   const d = Buffer.from(v.data[0], "base64"); if (d.length < 81) return { ok: false, reason: "old pump.fun curve without a creator field" };
   return { ok: true, creator: b58encode(d.subarray(49, 81)), complete: d[48] === 1 }; }
 export async function dexInfo(mint, f = fetch) { try { const r = await f(`https://api.dexscreener.com/tokens/v1/solana/${mint}`); if (!r.ok) return null; const a = await r.json(); if (!Array.isArray(a) || !a.length) return null;
-  const p = a.find((x) => x.baseToken?.address === mint) || a[0]; return { name: p.baseToken?.name || "", symbol: p.baseToken?.symbol || "", pairedWithKibble: a.some((x) => x.quoteToken?.address === KIBBLE_MINT || (x.baseToken?.address === KIBBLE_MINT && x.quoteToken?.address === mint)), quote: p.quoteToken?.symbol || "" }; } catch { return null; } }
+  const p = a.find((x) => x.baseToken?.address === mint) || a[0]; const allow = [KIBBLE_MINT, ...PAIR_CANDIDATES.map((c) => c.mint)], qp = a.find((x) => x.baseToken?.address === mint && allow.includes(x.quoteToken?.address));
+  return { quoteMint: qp?.quoteToken?.address || p.quoteToken?.address || "", name: p.baseToken?.name || "", symbol: p.baseToken?.symbol || "", pairedWithKibble: a.some((x) => x.quoteToken?.address === KIBBLE_MINT || (x.baseToken?.address === KIBBLE_MINT && x.quoteToken?.address === mint)), quote: p.quoteToken?.symbol || "" }; } catch { return null; } }
 
 const json = (res, code, o) => { res.statusCode = code; res.setHeader("content-type", "application/json"); res.setHeader("cache-control", code === 200 ? "public, max-age=15" : "no-store"); res.end(JSON.stringify(o)); };
 const clean = (s, n) => String(s || "").replace(/[<>\u0000-\u001f]/g, "").slice(0, n);
@@ -77,12 +79,14 @@ async function isAdmin(req, env, deps) { const t = req.headers["x-admin-token"];
 const bearer = (req) => (req.headers.authorization || "").replace(/^Bearer /, "");
 
 export function makeHandler({ env = process.env, store = upstashStore(env), deps = {} } = {}) {
-  const D = { sessionWallet: (t) => sessionWallet(t), pumpCreator: (m) => pumpCreator(m, { rpc: env.SOLANA_RPC || "https://api.mainnet-beta.solana.com" }), dexInfo: (m) => dexInfo(m), ...deps };
+  const D = { sessionWallet: (t) => sessionWallet(t), pumpCreator: (m) => pumpCreator(m, { rpc: env.SOLANA_RPC || "https://api.mainnet-beta.solana.com" }), dexInfo: (m) => dexInfo(m), pairs: () => evaluatePairs(), ...deps };
   return async function handler(req, res) {
     if (req.method === "OPTIONS") { res.statusCode = 204; return res.end(); }
+    if (req.method === "GET" && /[?&]pairs=1/.test(req.url || "")) return json(res, 200, await D.pairs());
     if (!store) return json(res, 503, { error: "coin registry storage is not configured yet", storage: false });
     try {
       const q = req.query || Object.fromEntries(new URL(req.url, "http://x").searchParams);
+      if (req.method === "GET" && q.pairs === "1") return json(res, 200, await D.pairs());
       if (req.method === "GET") { const all = q.all === "1"; if (all && !(await isAdmin(req, env, D))) return json(res, 403, { error: "admin only" });
         return json(res, 200, { coins: await listCoins(store, all), reportsToHide: REPORTS_TO_HIDE, kibble: KIBBLE_MINT, verification: "pump.fun bonding-curve creator == signed-in wallet" }); }
       if (req.method !== "POST") return json(res, 405, { error: "GET or POST" });
@@ -96,7 +100,7 @@ export function makeHandler({ env = process.env, store = upstashStore(env), deps
         const pc = await D.pumpCreator(mint); if (!pc.ok) return json(res, 400, { error: pc.reason });
         if (pc.creator !== wallet) return json(res, 403, { error: `pump.fun lists ${pc.creator.slice(0, 4)}…${pc.creator.slice(-4)} as the creator, not your wallet` });
         const dx = await D.dexInfo(mint);
-        const coin = { mint, creator: wallet, name: clean(dx?.name, 32), symbol: clean(dx?.symbol, 12).replace(/^\$/, ""), pairedWithKibble: !!dx?.pairedWithKibble, quote: clean(dx?.quote, 12),
+        const coin = { mint, creator: wallet, name: clean(dx?.name, 32), symbol: clean(dx?.symbol, 12).replace(/^\$/, ""), pairedWithKibble: !!dx?.pairedWithKibble, quote: clean(dx?.quote, 12), quoteMint: clean(dx?.quoteMint, 44),
           verifiedBy: "pump.fun bonding-curve creator", registeredAt: Date.now(), reports: 0, hidden: false };
         await store.set(key, JSON.stringify(coin)); await store.sadd("coins", mint); return json(res, 200, { ok: true, coin }); }
       const raw = await store.get(key); if (!raw) return json(res, 404, { error: "coin not registered" }); const coin = JSON.parse(raw);

@@ -268,3 +268,4 @@ body.mm-on #minimap-wrap{top:calc(max(8px,env(safe-area-inset-top)) + 58px)!impo
 .regcoin .row{margin:0;flex-wrap:nowrap}#reg-mint{width:100%}.small.bad{color:#ff8a8a}.small.good{color:#7df09a}
 a.btn{text-decoration:none;display:inline-flex;align-items:center}
 body.short.landscape .launch.rboard{grid-template-columns:1fr 1.2fr}body.short .regboard{max-height:none}body.short .rstats div{padding:3px}
+.pairlist{display:flex;flex-direction:column;gap:4px;margin:4px 0}.pairrow{display:grid;grid-template-columns:auto 1fr auto auto;gap:6px;align-items:center;background:var(--navy2);border:2px solid var(--goldd);padding:3px 6px}.pairrow.feat{border-color:var(--gold)}.pairrow code{font-size:10px}
