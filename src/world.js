@@ -1,5 +1,5 @@
 export const TILE = 32, MAP_W = 64, MAP_H = 106;
-export const T = { GRASS: 0, ROAD: 1, WALK: 2, BUILDING: 3, WATER: 4, TREE: 5, PLOT: 6, FLOWER: 7, PLAZA: 8, HOME: 9 };
+export const T = { GRASS: 0, ROAD: 1, WALK: 2, BUILDING: 3, WATER: 4, TREE: 5, PLOT: 6, FLOWER: 7, PLAZA: 8, HOME: 9, DIRT: 10 };
 const SOLID = new Set([T.BUILDING, T.WATER, T.TREE, T.PLOT, T.HOME]);
 
 export const ROADS = [20, 31, 42], AVENUE = 31; // first row of each 3-row street; first column of the 3-col avenue
@@ -195,3 +195,18 @@ export function moveBody(b, dx, dy, r = 6) {
   if (!blocked(b.x + dx, b.y)) b.x += dx;
   if (!blocked(b.x, b.y + dy)) b.y += dy;
 }
+
+// ---- Dirt paths: link every interactable that isn't on the road network to the nearest road/walk/plaza ----
+// Cheapest-path search over grass (slight noise in the cost bends the paths naturally); a tree is only cleared if it sits on the route.
+export const NETWORK = new Set([T.ROAD, T.WALK, T.PLAZA, T.DIRT]);
+export const DIRT_LINKS = [];
+{ const hz = (x, y) => { let h = (x * 374761393 + y * 668265263) ^ 0x2f1e; h = Math.imul(h ^ (h >>> 13), 1274126177); return ((h ^ (h >>> 16)) >>> 0) / 4294967296; };
+  const open = (x, y) => x > 0 && y > 0 && x < MAP_W - 1 && y < MAP_H - 1 && !DECOR_SET.has(y * MAP_W + x) && (MAP[y][x] === T.GRASS || MAP[y][x] === T.FLOWER || MAP[y][x] === T.TREE || NETWORK.has(MAP[y][x]));
+  for (const it of interactables(null)) { const { tx, ty } = it; if (!open(tx, ty) || NETWORK.has(MAP[ty][tx])) continue;
+    const dist = new Map([[ty * MAP_W + tx, 0]]), prev = new Map(), q = [[0, tx, ty]]; let end = null;
+    while (q.length) { let bi = 0; for (let i = 1; i < q.length; i++) if (q[i][0] < q[bi][0]) bi = i; const [d, x, y] = q.splice(bi, 1)[0], k = y * MAP_W + x;
+      if (d > dist.get(k)) continue; if (NETWORK.has(MAP[y][x])) { end = k; break; } if (d > 60) break;
+      for (const [dx, dy] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) { const nx = x + dx, ny = y + dy; if (!open(nx, ny)) continue; const nk = ny * MAP_W + nx;
+        const nd = d + 1 + hz(nx >> 1, ny >> 1) * 0.9 + (MAP[ny][nx] === T.TREE ? 6 : 0); if (nd < (dist.get(nk) ?? 1e9)) { dist.set(nk, nd); prev.set(nk, k); q.push([nd, nx, ny]); } } }
+    if (end == null) continue; const tiles = []; for (let k = prev.get(end); k != null; k = prev.get(k)) tiles.push(k); if (!tiles.length) tiles.push(ty * MAP_W + tx);
+    for (const k of tiles) MAP[Math.floor(k / MAP_W)][k % MAP_W] = T.DIRT; DIRT_LINKS.push({ id: it.id, name: it.name, tiles: tiles.length }); } }

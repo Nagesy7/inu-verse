@@ -506,7 +506,7 @@ function streetPups() {
 function minimap(vx, vy, vw, vh) {
   const m = $('#minimap').getContext('2d'), s = 2;
   if (!miniBase) { miniBase = document.createElement('canvas'); miniBase.width = MAP_W * s; miniBase.height = MAP_H * s; const b = miniBase.getContext('2d');
-    const col = { [T.GRASS]: '#52a349', [T.FLOWER]: '#62b05a', [T.ROAD]: '#4a4f63', [T.WALK]: '#dcd3bc', [T.PLAZA]: '#d6b383', [T.BUILDING]: '#e3b341', [T.WATER]: '#2f6cbd', [T.TREE]: '#2c7040', [T.PLOT]: '#a8764a', [T.HOME]: '#c8323c' };
+    const col = { [T.GRASS]: '#52a349', [T.FLOWER]: '#62b05a', [T.ROAD]: '#4a4f63', [T.WALK]: '#dcd3bc', [T.PLAZA]: '#d6b383', [T.BUILDING]: '#e3b341', [T.WATER]: '#2f6cbd', [T.TREE]: '#2c7040', [T.PLOT]: '#a8764a', [T.HOME]: '#c8323c', [T.DIRT]: '#a8764a' };
     for (let y = 0; y < MAP_H; y++) for (let x = 0; x < MAP_W; x++) { b.fillStyle = col[MAP[y][x]]; b.fillRect(x * s, y * s, s, s); } }
   m.drawImage(miniBase, 0, 0);
   for (const p of PLOTS) if (state.plots[p.id]) { m.fillStyle = '#f2cc68'; m.fillRect(p.x * s, p.y * s, p.w * s, p.h * s); }

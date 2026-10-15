@@ -22,7 +22,7 @@ const mk = (w, h) => { const cv = document.createElement('canvas'); cv.width = w
 const isBridge = (x, y) => BRIDGES.some((b) => x >= b.x && x < b.x + b.w && y >= b.y && y < b.y + b.h);
 const at = (x, y) => (x < 0 || y < 0 || x >= MAP_W || y >= MAP_H ? T.TREE : isBridge(x, y) ? T.WATER : MAP[y][x]);
 const PAVED = new Set([T.ROAD, T.WALK, T.PLAZA]);
-const GREEN = (t) => t === T.GRASS || t === T.FLOWER || t === T.TREE || t === T.HOME || t === T.PLOT;
+const GREEN = (t) => t === T.GRASS || t === T.FLOWER || t === T.TREE || t === T.HOME || t === T.PLOT || t === T.DIRT;
 
 function grass(c, px, py, x, y) {
   P(c, px, py, PAL.g2, N, N);
@@ -138,6 +138,21 @@ export function shadowEllipse(c, cx, cy, rx, ry, a = 0.28) {
   for (let yy = -ry; yy <= ry; yy++) { const hw = Math.round(rx * Math.sqrt(1 - (yy / (ry + 0.5)) ** 2)); c.fillRect(Math.round(cx - hw), Math.round(cy + yy), hw * 2, 1); }
 }
 
+// soft-edged dirt trails: each dirt tile is a wobbly round blob joined to its dirt/paved neighbours, so paths curve at corners
+const PATHY = (t) => t === T.DIRT || PAVED.has(t);
+function dirtTrails(c) {
+  const segs = []; for (let y = 0; y < MAP_H; y++) for (let x = 0; x < MAP_W; x++) if (MAP[y][x] === T.DIRT) { const cx = x * N + 8 + (hash(x, y, 7) - 0.5) * 4, cy = y * N + 8 + (hash(x, y, 8) - 0.5) * 4;
+    for (const [dx, dy] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) { const t = at(x + dx, y + dy); if (t === T.DIRT) { if (dx > 0 || dy > 0) segs.push([cx, cy, (x + dx) * N + 8 + (hash(x + dx, y + dy, 7) - 0.5) * 4, (y + dy) * N + 8 + (hash(x + dx, y + dy, 8) - 0.5) * 4]); }
+      else if (PATHY(t) || t === T.BUILDING || t === T.HOME || t === T.PLOT) segs.push([cx, cy, cx + dx * 10, cy + dy * 10]); }
+    segs.push([cx, cy, cx, cy]); }
+  const dseg = (px, py, [ax, ay, bx, by]) => { const vx = bx - ax, vy = by - ay, L = vx * vx + vy * vy, u = L ? Math.max(0, Math.min(1, ((px - ax) * vx + (py - ay) * vy) / L)) : 0; return Math.hypot(px - ax - u * vx, py - ay - u * vy); };
+  const box = new Map(); for (const sg of segs) for (let ty = Math.floor((Math.min(sg[1], sg[3]) - 8) / N); ty <= Math.floor((Math.max(sg[1], sg[3]) + 8) / N); ty++) for (let tx = Math.floor((Math.min(sg[0], sg[2]) - 8) / N); tx <= Math.floor((Math.max(sg[0], sg[2]) + 8) / N); tx++) { const k = ty * MAP_W + tx; (box.get(k) || box.set(k, []).get(k)).push(sg); }
+  for (const [k, list] of box) { const tx = k % MAP_W, ty = Math.floor(k / MAP_W), t = at(tx, ty); if (!(t === T.DIRT || t === T.GRASS || t === T.FLOWER)) continue;
+    for (let yy = 0; yy < N; yy++) for (let xx = 0; xx < N; xx++) { const px = tx * N + xx, py = ty * N + yy; let d = 99; for (const sg of list) d = Math.min(d, dseg(px + 0.5, py + 0.5, sg));
+      const r = 5.2 + (hash(px >> 1, py >> 1, 3) - 0.5) * 1.6; if (d > r + 1) continue; const h = hash(px, py, 5);
+      if (d > r) { if (h < 0.5) P(c, px, py, PAL.g1); continue; } // trodden grass fringe
+      P(c, px, py, d > r - 1.2 ? PAL.dirtD : h < 0.12 ? PAL.dirtL : h > 0.94 ? PAL.dirtD : PAL.dirt); } }
+}
 export function buildGround(extra) {
   const [cv, c] = mk(MAP_W * N, MAP_H * N);
   for (let y = 0; y < MAP_H; y++) for (let x = 0; x < MAP_W; x++) {
@@ -148,6 +163,7 @@ export function buildGround(extra) {
     else { grass(c, px, py, x, y); if (t === T.FLOWER) flowers(c, px, py, x, y); }
   }
   for (let y = 0; y < MAP_H; y++) for (let x = 0; x < MAP_W; x++) edges(c, x * N, y * N, x, y);
+  dirtTrails(c);
   for (const b of BRIDGES) { // wooden plank bridges with rails + shadow on the water
     const x0 = b.x * N, y0 = b.y * N - 3, w = b.w * N, h = b.h * N + 6;
     P(c, x0 + 1, y0 + 2, 'rgba(10,20,50,.35)', w + 2, h);
