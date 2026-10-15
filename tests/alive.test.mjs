@@ -1,0 +1,12 @@
+import test from 'node:test';
+import assert from 'node:assert/strict';
+import { CAPS, inView, capPush, treeSpecies, ALIVE, makeAlive, stepAlive } from '../src/alive.js';
+import { MAP, MAP_W, MAP_H, T } from '../src/world.js';
+const V = { x0: 0, y0: 0, x1: 422, y1: 195 };
+test('capPush respects caps', () => { const a = []; for (let i = 0; i < 100; i++) capPush(a, i, 5); assert.equal(a.length, 5); });
+test('inView culls offscreen', () => { assert.ok(inView(10, 10, V)); assert.ok(!inView(900, 10, V)); assert.ok(!inView(-50, 10, V, 20)); assert.ok(inView(-10, 10, V, 20)); });
+test('species coverage', () => { const s = new Set(); for (let y = 0; y < MAP_H; y++) for (let x = 0; x < MAP_W; x++) if (MAP[y][x] === T.TREE) s.add(treeSpecies(x, y)); makeAlive(); ALIVE.trees.forEach((t) => s.add(t.kind)); for (const k of ['round', 'pine', 'blossom', 'autumn']) assert.ok(s.has(k), k); });
+test('particles stay under caps over long runs', () => { globalThis.__reducedMotion = false; makeAlive(); for (let i = 0; i < 6000; i++) stepAlive(ALIVE, 1 / 60, { x0: 200, y0: 200, x1: 1100, y1: 600 });
+  for (const k of ['leaves', 'clouds', 'kites', 'squirrels']) assert.ok(ALIVE[k].length <= CAPS[k], k); assert.ok(ALIVE.bfly.length <= CAPS.butterflies); assert.ok(ALIVE.cbirds.length <= CAPS.canopyBirds); });
+test('reduced motion: no particles or fly-overs', () => { globalThis.__reducedMotion = true; makeAlive(); for (let i = 0; i < 6000; i++) stepAlive(ALIVE, 1 / 60, V);
+  assert.equal(ALIVE.leaves.length, 0); assert.equal(ALIVE.fly, null); assert.ok(!ALIVE.flock); globalThis.__reducedMotion = undefined; });

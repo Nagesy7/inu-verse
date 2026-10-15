@@ -14,6 +14,7 @@ import { drawShiba, drawFurniture, drawRoom, drawMenuIcon, drawBoneIcon, drawEmb
 import { ART, artReady, artKey } from './art.js';
 import { carProps } from './ambient.js';
 import { drawCar } from './cars.js';
+import { makeAlive, stepAlive, drawAliveGround, drawAliveSky, ALIVE } from './alive.js';
 import { makeAmbient, stepAmbient, throwBall, dayPhase, timeForHour, drawGroundLife, drawSkyLife, drawAtmosphere, drawEmote, lightsFor, addMail, unreadMail, EMOTES, DAY_LEN } from './ambient.js';
 import { initAudio, setMuted, isMuted, footstep, chirp, bork, blip, uiClick, uiOpen, uiClose, textBlip, rustle, fanfare } from './audio.js';
 import { CAR_MODELS, CAR_COLORS, ensureGarage, buyCar, carOf } from './garage.js';
@@ -142,7 +143,7 @@ function titleScreen() {
 function startGame(s) { loadProfile(s).catch(() => {}); ENG.ensureEngage(s); ENG.addSeasonXp(s, 'login', Math.floor((s.clockSec || 0) / DAY_LEN)); F5.ensureFly5(s); F5.holderCheck(s); s.town ||= makeTown(rng); townH = -1; seedTokens(s, rng); REL.ensureRel(s); ensureFarm(s); ensureBiz(s); s.clockSec ??= 0; catchUp(s, Date.now(), { season: seasonOf(Math.floor(s.clockSec / DAY_LEN)), rain: false }); hourIdx = Math.floor(s.clockSec / (DAY_LEN / 24));
   state = s; state.kibble ??= DEMO ? 20 : 0; if (!DEMO) state.kibble = 0; ensureWardrobe(state); ensurePacks(state); ensureMall(state); state.clockSec ??= 0; lastEarned = state.stats.bonesEarned; mode = 'world';
   $('#title').hidden = true; $('#hud').hidden = false; $('#minimap-wrap').hidden = false; document.body.classList.add('inworld');
-  mapImg = prerenderMap(); npcs = spawnNpcs(rng, 6); npcs.forEach((n) => { n.art = artKey(n.coat); }); amb = makeAmbient(42);
+  makeAlive(); mapImg = prerenderMap(); npcs = spawnNpcs(rng, 6); npcs.forEach((n) => { n.art = artKey(n.coat); }); amb = makeAmbient(42);
   Promise.all([artReady, buildingsReady, document.fonts?.load('8px Silkscreen').catch(() => {})]).then(() => { mapImg = prerenderMap(); });
   feel.fade(); $('#hud').classList.add('in');
   cam.x = state.player.x; cam.y = state.player.y; hud(); persist(); wayUi(true);
@@ -383,6 +384,7 @@ function updateWorld(dt) {
   { const pet = activePet(state); if (pet && !drive) { if (!petF.id || petF.id !== pet.id) Object.assign(petF, { id: pet.id, x: p.x - 20, y: p.y + 4 }); followStep(petF, p.x - player.dir * 22, p.y + 2, dt); if (petF.love > 0) petF.love -= dt; } else if (drive) Object.assign(petF, { x: p.x, y: p.y }); }
   if (honkT > 0) honkT -= dt;
   if (player.emote) { player.emote.t -= dt; if (player.emote.kind === 'zoomies') { const a = player.emote.t * 5; moveBody(p, Math.cos(a) * 150 * dt, Math.sin(a) * 150 * dt); player.moving = true; player.phase += dt * 20; player.face = Math.cos(a + 1.57) > 0 ? 'right' : 'left'; } if (player.emote.t <= 0) player.emote = null; }
+  { const vw = innerWidth / ZOOM, vh = innerHeight / ZOOM; stepAlive(ALIVE, dt, { x0: cam.x - vw / 2, y0: cam.y - vh / 2, x1: cam.x + vw / 2, y1: cam.y + vh / 2 }); }
   for (const e of stepAmbient(amb, dt, p, npcs)) { if (e.kind === 'flush') chirp(); if (e.kind === 'fetched') toast(`${e.who} brought the ball back!`, 'good'); }
   if (rng() < dt * 0.08) chirp();
   if (player.moving) { stepAcc += dt; if (stepAcc > 0.26) { stepAcc = 0; const tt = MAP[Math.floor(p.y / TILE)]?.[Math.floor(p.x / TILE)]; if (tt === T.GRASS || tt === T.FLOWER) { feel.rustle(p.x, p.y + 10); rustle(); } else { feel.dust(p.x, p.y + 11); footstep(); } } }
@@ -421,7 +423,8 @@ function renderWorld() {
   globalThis.__inuNight = phase.dark;
   const dyn = [...dynamicProps(state, time, myPack(state)), ...presidentProps(pres, time), ...doorProps(time), ...carWorldProps(), ...crewProps(), ...adProps(trend, adRot, adIdx, !!globalThis.__inuNight, time, featuredMap()), ...confettiProps(), ...squareProps(state, time, Math.floor(gameDay() / 7)), ...arcadeProps(time, arcadeTop)];
   for (const d of dyn) if (d.flat) d.d(ctx);
-  drawGroundLife(ctx, amb, phase); feel.drawGround(ctx);
+  const view = { x0: -ox, y0: -oy, x1: -ox + vw, y1: -oy + vh };
+  drawGroundLife(ctx, amb, phase); drawAliveGround(ctx, ALIVE, view, phase); feel.drawGround(ctx);
   if (player.clickMark && player.path.length) { const m = player.clickMark, k = Math.round(10 + Math.sin(time * 6) * 2); ctx.fillStyle = '#f2cc68'; for (const [ax, ay] of [[-k, 0], [k - 4, 0], [0, -k / 2], [0, k / 2 - 2]]) ctx.fillRect(Math.round(m.x + ax), Math.round(m.y + 6 + ay), 4, 3); }
   const actors = [...npcs.map((n) => ({ ...n, npc: true, badge: badgeOf(packOfName(state, n.name)) })), ...(drive ? [] : [{ x: state.player.x, y: state.player.y, coat: state.player.coat, outfit: state.wardrobe.equipped, face: player.face, phase: player.phase, moving: player.moving, name: state.player.name, me: true, badge: badgeOf(myPack(state)), emote: player.emote, art: artKey(state.player.coat, state.wardrobe.equipped), profile: hasCustomLook(state) ? myProfile() : null }]), ...streetPups(), ...presActors(), ...petActors(), ...crewActors(), ...pupActors()];
   // one depth-sorted list: static props (culled), dynamic props and actors, by ground y
@@ -447,7 +450,7 @@ function renderWorld() {
     if (a.emote) drawEmote(ctx, 0, a.name ? -14 : 0, a.emote.kind, time); ctx.restore();
   }
   feel.drawAir(ctx);
-  drawSkyLife(ctx, amb, phase);
+  drawSkyLife(ctx, amb, phase); drawAliveSky(ctx, ALIVE, view, phase);
   const it = !panel && nearestInteractable(state, state.player.x, state.player.y); if (it) feel.bubble(ctx, (it.tx + 0.5) * TILE, (it.ty) * TILE - 6, time);
   guide.drawWorld(ctx, time, state.player);
   ctx.restore();

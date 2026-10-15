@@ -1,3 +1,4 @@
+import { treeProp, extraTreeProps, ALIVE } from './alive.js';
 // Pixel-art world rendering: chunky gold-trimmed buildings, navy/gold palette.
 import { DOORS } from './world.js';
 import { TILE, MAP_W, MAP_H, MAP, T, BUILDINGS, PLOTS, NPC_HOMES, STALL_SLOTS, CLUBHOUSE, MALL_BUILDINGS, LEADERS, BRIDGES, DECOR } from './world.js';
@@ -228,11 +229,11 @@ function groundExtras(c) {
 export function prerenderMap() {
   const S = sprites(), props = [];
   const ground = buildGround((c) => { groundExtras(c); luxuryGround(c); farmGround(c); });
-  // trees: sakura near the ponds/Sakura Lane, green elsewhere
+  // trees: round leafy / pine / palm (water) / blossom (Sakura zones) / autumn (south park + farm)
   for (let y = 0; y < MAP_H; y++) for (let x = 0; x < MAP_W; x++) if (MAP[y][x] === T.TREE) {
-    const sak = (x < 29 && y < 11) || (y > 33 && y < 42 && x < 30) || (x > 33 && y > 33 && y < 41) ? hash(x, y, 5) < 0.75 : hash(x, y, 5) < 0.12, spr = sak ? S.sakura : S.tree;
-    props.push({ y: (y + 1) * TILE - 4, d: (c) => c.drawImage(spr, x * TILE + 16 - 48, (y + 1) * TILE - 132 + 3, spr.width * 3, spr.height * 3) }); // park trees at 3 native px (2.4x a Shiba)
+    props.push(treeProp(x, y)); // species + wind sway (src/alive.js), 3 native px like before
   }
+  props.push(...extraTreeProps()); // palms at the water's edge
   for (const [lx, ly] of LAMP_TILES) props.push(sp(S.lamp, lx * TILE + 4, ly * TILE + 24 - 68, ly * TILE + 24));
   for (const [bx, by] of [[17, 6], [11, 8], [39, 34.2], [50, 34.2], [22, 52], [41, 52], [28, 47]]) props.push(sp(S.bench, bx * TILE, by * TILE + 4, by * TILE + 28));
   for (const [cx, cy] of [[61, 6], [61, 7], [60.6, 6.5], [34.3, 9.2], [26.4, 19.0]]) props.push(sp(S.crate, cx * TILE, cy * TILE, cy * TILE + 28));
