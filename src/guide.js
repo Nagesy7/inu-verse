@@ -88,7 +88,7 @@ export const TOUR = [
   { place: 'pools', title: 'VIP Lounge', text: 'Holders get the VIP lounge, gold names and early peeks. Cosmetic perks only.' },
   { place: 'burn', title: 'Burn Festival Monument', text: 'Opt-in burns unlock numbered status flair. Burning is always your choice.' },
   { place: 'bb1', title: 'Billboards', text: 'Coin ads rotate here. Featured slots can be rented; organic ads are free.' },
-  { place: null, title: 'Find your way', text: 'Tap Places to search anywhere, or Map to pick a spot. I\'ll draw an arrow and a path, and can walk you there. First stop: the Launch Hall! Replay me any time with Guide.' },
+  { place: null, title: 'Find your way', text: 'Open the ☰ menu (top right) and tap Places to search anywhere, or Map to pick a spot. I\'ll draw an arrow and a path, and can walk you there. Zoom, wardrobe, emotes and settings live in that menu too. First stop: the Launch Hall! Replay me any time with Guide in the menu.', target: '#menu-btn' },
 ];
 // resolve a tour step to a place (home = your plot if owned, else the first free plot)
 export function stepPlace(state, step) {

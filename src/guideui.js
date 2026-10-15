@@ -31,14 +31,14 @@ export function createGuide(h) {
   // ---------- tour ----------
   function startTour(replay = false) { if (!h.state()) return; closePlaces(); closeMap(); G.tour = { i: 0, replay }; document.body.classList.add('touring'); tour.hidden = false; showStep(); }
   function go(d) { if (!G.tour) return; const n = G.tour.i + d; if (n < 0) return; if (n >= GD.TOUR.length) return endTour('done'); G.tour.i = n; showStep(); }
-  function endTour(how) { if (!G.tour) return; const replay = G.tour.replay; G.tour = null; tour.hidden = true; document.body.classList.remove('touring');
+  function endTour(how) { if (!G.tour) return; const replay = G.tour.replay; G.tour = null; tour.hidden = true; document.body.classList.remove('touring'); document.querySelectorAll('.tour-target').forEach((e) => e.classList.remove('tour-target'));
     GD.markTourSeen({ ls: localStorage, wallet: h.wallet(), how, state: h.state() }); h.persist(); h.saveProfile();
     const first = GD.placeById(h.state(), GD.AFTER_TOUR); if (first) setTimeout(() => setGuide(first), 600);
     if (!replay) h.toast(how === 'done' ? 'Tour done! Tap Guide any time to replay it.' : 'Tour skipped: tap Guide any time to see it.', 'good'); }
   function showStep() { const st = GD.TOUR[G.tour.i], p = GD.stepPlace(h.state(), st); G.tour.place = p;
     tour.querySelector('.tname').textContent = 'Biscuit · President\'s aide'; tour.querySelector('.ttitle').textContent = st.title; tour.querySelector('.ttext').textContent = st.text;
     tour.querySelector('.tstep').textContent = `${G.tour.i + 1} / ${GD.TOUR.length}`; $('#t-back').disabled = G.tour.i === 0; $('#t-next').textContent = G.tour.i === GD.TOUR.length - 1 ? 'Done' : 'Next';
-    tour.classList.toggle('hl', !!st.highlight); tour.classList.toggle('feat', !!st.featured); G.tour.hl = !!st.highlight || !!st.featured;
+    document.querySelectorAll('.tour-target').forEach((e) => e.classList.remove('tour-target')); if (st.target) document.querySelector(st.target)?.classList.add('tour-target'); tour.classList.toggle('hl', !!st.highlight); tour.classList.toggle('feat', !!st.featured); G.tour.hl = !!st.highlight || !!st.featured;
     document.body.dataset.tourStep = String(G.tour.i); document.body.dataset.tourPlace = p?.id || ''; }
   const npc = $('#tour-npc').getContext('2d'); let npcT = 0;
   function drawNpc(dt) { npcT += dt; npc.imageSmoothingEnabled = false; npc.clearRect(0, 0, 64, 64); try { drawShiba(npc, 32, 52, { coat: 'cream', art: artKey('cream'), face: 'down', phase: npcT * 6, moving: Math.floor(npcT * 2) % 3 === 0, scale: 1.2, shadow: false }); } catch {} }
