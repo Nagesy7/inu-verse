@@ -1,4 +1,5 @@
-// Launch Hall - SIMULATED tokens only. No blockchain, no real money.
+// Launch Hall "Practice" tab: play tokens on a pretend bonding curve (not on-chain, not real $KIBBLE).
+// Real coins (the official $KIBBLE and player-launched pump.fun coins) live in realcoins.js + api/coins.js.
 import { createCurve, buy, sell, price, quoteBuy, quoteSell } from './curve.js';
 export const PLAYER = 'you';
 export const CREATE_FEE = 2;
@@ -24,7 +25,7 @@ export function createToken(state, { name, ticker, color }) {
   const tk = String(ticker || '').toUpperCase().replace(/[^A-Z0-9]/g, '');
   if (tk.length < 2) return { ok: false, reason: 'Ticker needs 2-6 letters' };
   if (state.tokens.some((t) => t.ticker === tk)) return { ok: false, reason: 'Ticker taken' };
-  if (state.kibble < CREATE_FEE) return { ok: false, reason: `Need ${CREATE_FEE} demo KIBBLE` };
+  if (state.kibble < CREATE_FEE) return { ok: false, reason: `Need ${CREATE_FEE} practice KIBBLE` };
   state.kibble -= CREATE_FEE;
   state.treasury = (state.treasury || 0) + CREATE_FEE;
   const tok = makeToken({ name, ticker: tk, color, creator: PLAYER, t: state.simTime });
@@ -62,7 +63,7 @@ export function playerBuy(state, tokId, kibbleIn) {
   const tok = state.tokens.find((t) => t.id === tokId);
   if (!tok) return { ok: false, reason: 'No token' };
   if (!(kibbleIn > 0)) return { ok: false, reason: 'Enter an amount' };
-  if (state.kibble < kibbleIn - 1e-9) return { ok: false, reason: 'Not enough demo KIBBLE' };
+  if (state.kibble < kibbleIn - 1e-9) return { ok: false, reason: 'Not enough practice KIBBLE' };
   const r = traderBuy(state, tok, PLAYER, kibbleIn);
   if (r.ok) state.kibble -= r.kibbleUsed;
   return r;

@@ -43,7 +43,7 @@ test('search + grouping + map pick + arrival', () => {
   const path = GD.guidePath(4.5 * 32, 19.5 * 32, arc); assert.ok(path && path.length > 5); assert.match(GD.distLabel(path, 0, 0, arc), /^\d+ m$/);
 });
 test('Launch Hall is the highlight (early, honest "simulated"), Kibble Bank featured second; first arrow after the tour -> Launch Hall', async () => {
-  assert.equal(GD.TOUR[1].place, 'launch'); assert.ok(GD.TOUR[1].highlight); assert.match(GD.TOUR[1].text, /SIMULATION/); assert.match(GD.TOUR[1].text, /no real money/);
+  assert.equal(GD.TOUR[1].place, 'launch'); assert.ok(GD.TOUR[1].highlight); assert.match(GD.TOUR[1].text, /\$KIBBLE/); assert.match(GD.TOUR[1].text, /Practice/); assert.match(GD.TOUR[1].text, /Not financial advice/); assert.doesNotMatch(GD.TOUR[1].text, /no blockchain|no real money/i);
   assert.equal(GD.TOUR[2].place, 'bank'); assert.ok(GD.TOUR[2].featured); assert.match(GD.TOUR[2].text, /No deposits, lending or yield/);
   assert.equal(GD.TOUR.filter((t) => t.highlight).length, 1, 'only one main highlight'); assert.ok(GD.TOUR.some((t) => t.place === 'market' && !t.highlight), 'markets stay in, not the highlight');
   assert.equal(GD.AFTER_TOUR, 'launch'); const { BANK, isSolid, findPath } = await import('../src/world.js');

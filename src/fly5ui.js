@@ -12,7 +12,7 @@ export function renderFly5(ctx) {
 
   if (tab === 'vip') {
     const h = F5.holderCheck(s);
-    html += `<p class="sub">Hold ≥ ${fmtK(F5.HOLDER_THRESHOLD_U)} $KIBBLE (simulated SDK balance) for Mall VIP lounge, early mall labels and a <b>gold name tag</b>.</p>
+    html += `<p class="sub">Hold ≥ ${fmtK(F5.HOLDER_THRESHOLD_U)} $KIBBLE (on-chain balance) for Mall VIP lounge, early mall labels and a <b>gold name tag</b>.</p>
       <div class="card"><b>${h.vip ? '★ VIP Holder' : 'Not yet VIP'}</b><small>Balance ${fmtK(h.bal)} / ${fmtK(h.threshold)}</small>
       ${h.vip ? `<ul>${h.perks.map((p) => `<li>${esc(p)}</li>`).join('')}</ul>` : ''}</div>
       ${h.vip ? '<div class="card"><b>VIP Lounge</b><small>Quiet seating, early item peek, gold name in the world.</small><p class="small">You look fabulous.</p></div>' : ''}`;

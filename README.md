@@ -2,7 +2,7 @@
 Cosy hub world for the Inu games network. Vanilla JS ES modules + canvas, no build step. All art procedural.
 - `npm test` — headless logic tests (node:test)
 - `npm run serve` then `npm run proof` — Playwright proof, screenshots in proof/
-Launch Hall is a **simulation only** (demo $KIBBLE, no blockchain, no real money). Phantom button is a placeholder.
+Launch Hall features the real $KIBBLE (Token-2022 `4VE9sy4fEMJdZ6i7MkYPbnqDJd2oqzJQmg44WJ3opump`, live DexScreener stats), sends players to pump.fun to launch their own coin, and lists player coins registered via `api/coins.js` (creator verified from pump.fun's on-chain bonding curve; needs Upstash env `UPSTASH_REDIS_REST_URL/TOKEN` or `KV_REST_API_URL/TOKEN`, optional `ADMIN_TOKEN`, `SOLANA_RPC`). The old simulator is the clearly labelled **Practice** tab. The game never creates, holds or signs tokens.
 
 ## Newer systems
 - Reference art: `scripts/extract_art.py` crops the user's own art into `assets/*.png` (6 coat Shibas, 6 fashion previews, 5 relabelled buildings; casino words replaced with shop words/paws).

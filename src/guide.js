@@ -38,7 +38,7 @@ function groupOf(it) {
   if (it.kind === 'mall' || it.kind === 'building') return 'Shops & Mall';
   return 'Park & Square';
 }
-const NICE = { launch: 'Launch Hall (simulated tokens)', bank: 'Kibble Bank', pools: 'VIP Lounge & Pools Monument', burn: 'Burn Festival Monument', board: 'Prize-pool board (Mall statue)', quests: 'Quest Board (cross-game quests)', cafe: 'Shiba Sips Café (jobs)', office: "President's Office" };
+const NICE = { launch: 'Launch Hall ($KIBBLE + your coins)', bank: 'Kibble Bank', pools: 'VIP Lounge & Pools Monument', burn: 'Burn Festival Monument', board: 'Prize-pool board (Mall statue)', quests: 'Quest Board (cross-game quests)', cafe: 'Shiba Sips Café (jobs)', office: "President's Office" };
 const KEYWORDS = { bank: 'wallet balance inventory history purchases', cafe: 'jobs work coffee shift', arcade: 'games scores chomp invaders', rescue: 'inu rescue pups game door', quest: 'inu quest trainer gate game door', leaders: 'leaderboards scores prizes', board: 'prize pool kibble', pools: 'vip lounge holder pools', burn: 'burn kibble festival monument', mall: 'kibble shop luxury', launch: 'tokens launch hall coins', quests: 'quest chain weekly' };
 // nearest walkable tile (spiral search) so every place has a reachable stand tile
 export function nearestWalkable(tx, ty, r = 6) { tx = Math.round(tx); ty = Math.round(ty); if (!isSolid(tx, ty)) return [tx, ty];
@@ -73,7 +73,7 @@ export const distLabel = (path, px, py, target) => { const n = path ? path.lengt
 // place: registry id the camera pans to (null = the player). Text is short; every step is skippable.
 export const TOUR = [
   { place: null, title: 'Welcome to Inu Verse!', text: 'I\'m Biscuit, President Inu\'s aide. Walk with WASD / arrow keys or click the ground. On a phone, drag the stick. Walk straight into a door to go inside; tap A (E on a keyboard) to talk, pet pups and read signs.' },
-  { place: 'launch', highlight: true, title: '★ Launch Hall: the big one', text: 'Create your own coin and watch NPC traders pump it up a bonding curve until it graduates! It\'s a SIMULATION: play tokens only, no blockchain, no real money. Try it first!' },
+  { place: 'launch', highlight: true, title: '★ Launch Hall: the big one', text: 'Home of the real $KIBBLE (live price + official contract address). Launch your own coin on pump.fun, register it here and it shows on the city billboards. Want to learn first? The Practice tab uses play tokens. Not financial advice!' },
   { place: 'bank', featured: true, title: '★ Kibble Bank', text: 'Your wallet at a glance: $KIBBLE balance, items you own across every Inu game, purchase history and the public prize-pool and burn boards. No deposits, lending or yield.' },
   { place: 'mall', title: 'Kibble Mall', text: 'Luxury outfits, jewels, cars and furniture. Prices are in $KIBBLE (live: you pay in Phantom); everyday stuff costs bones you earn by playing.' },
   { place: 'arcade', title: 'Inu Arcade', text: 'Four retro games. Sign in and your best scores count toward the weekly prize pools.' },

@@ -22,11 +22,11 @@ export const SimWallet = {
 // ---- modes ----
 // DEMO (fake balance from playing, local ledger) ONLY with ?demo=1 in the browser. Node tests default to demo (pure sim maths).
 // Otherwise: real kibble-pay. Before the $KIBBLE mint is set, every KIBBLE purchase/burn says SOON and nothing is faked.
-export const SOON = 'KIBBLE launching soon: purchases open at launch.';
+export const SOON = 'KIBBLE is live, but the wallet service is unreachable right now. Try again shortly.';
 export let DEMO = typeof location === 'undefined' ? true : new URLSearchParams(location.search).get('demo') === '1';
 export const setDemo = (v) => (DEMO = !!v);
 export const demoOnly = (what = 'This') => ({ ok: false, reason: `${what} uses demo KIBBLE: open Inu Verse with ?demo=1 to try it. Real $KIBBLE never comes from play.` });
-export const kibText = (s) => (DEMO ? `demo $KIBBLE (you have ${(s?.kibble || 0).toFixed(2)})` : active?.live ? `$KIBBLE (wallet ${active.balanceUi ?? '…'})` : '$KIBBLE (launching soon)');
+export const kibText = (s) => (DEMO ? `demo $KIBBLE (you have ${(s?.kibble || 0).toFixed(2)})` : active?.live ? `$KIBBLE (wallet ${active.balanceUi ?? '…'})` : '$KIBBLE (sign in with Phantom)');
 // Real adapter (kibble-pay SDK). Catalog is authoritative + FEE-INCLUSIVE: we send only the catalog id `inu-verse:<itemId>`.
 // Purchases are async (Phantom). purchaseSync() never blocks the game: it returns ok:true only when the wallet already owns an
 // unclaimed copy in /api/inventory (state.kibbleClaims tracks what this save has received); otherwise it starts the payment and

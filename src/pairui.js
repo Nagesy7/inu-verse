@@ -8,7 +8,7 @@ const NPC_NAMES = ['Mochi', 'Kuro', 'Hana', 'Taro', 'Yuzu', 'Goma'];
 export function renderMatchmaker(ctx) { const s = ctx.state, Pr = P.ensurePair(s), tab = ctx.tab || 'board';
   const tabs = [['board', 'Matchmaker'], ['duo', 'Duo Jobs'], ['couple', 'Couples'], ['pups', 'Pups']];
   let html = `<h2>Park Matchmaker</h2><div class="ctabs">${tabs.map(([k, n]) => `<button class="ctab ${k === tab ? 'sel' : ''}" data-ptab="${k}">${n}</button>`).join('')}</div>`;
-  if (tab === 'board') { html += `<p class="sub">Find a partner for duo jobs, friendship or breeding. Listings are public; other players (simulated for now, real wallets later) can accept. No paid boosts.</p>
+  if (tab === 'board') { html += `<p class="sub">Find a partner for duo jobs, friendship or breeding. Listings are public; other players (shown here are sample pups until real players list) can accept. No paid boosts.</p>
     <p>Looking for: ${['duo', 'pups', 'friends', 'couple'].map((w) => `<button class="chip-o ${Pr.listing === w ? 'sel' : ''}" data-act="list:${w}">${w}</button>`).join('')} <button class="chip-o" data-act="list:clear">Clear</button></p>
     <div class="grid">${P.SIM_PLAYERS.map((pl, i) => `<div class="card">${thumb(pl.look, 'mm' + i)}<b>${esc(pl.name)}</b><small>wants ${pl.wants} · skill ${Math.round(pl.skill * 100)}</small>
       <button class="btn alt" data-act="askduo:${pl.name}">Duo job</button> <button class="btn alt" data-act="askbreed:${pl.id}">Breed</button></div>`).join('')}</div>`; }

@@ -17,7 +17,7 @@ for (const [tag, opts] of [['desktop', { viewport: { width: 1280, height: 800 } 
   if (tag === 'iphone') { const card = await p.locator('#tour').boundingBox(); for (const sel of ['#stick', '#btn-a', '#btn-b', '#btn-menu']) ok(!inter(card, await p.locator(sel).boundingBox()), `${tag}: tour card clear of ${sel}`); }
   await click('#t-next'); await p.waitForTimeout(1800);
   ok(await ds(p, 'tourPlace') === 'launch' && await p.locator('#tour.hl').count() === 1, `${tag}: step 2 = Launch Hall highlight`);
-  ok(/SIMULATION/.test(await p.textContent('#tour .ttext')), `${tag}: Launch Hall labelled simulated`); await shot('2-launch-highlight');
+  ok(/Practice/.test(await p.textContent('#tour .ttext')), `${tag}: Launch Hall labelled simulated`); await shot('2-launch-highlight');
   await click('#t-next'); await p.waitForTimeout(1800); ok(await ds(p, 'tourPlace') === 'bank', `${tag}: step 3 = Kibble Bank`); await shot('3-bank');
   await click('#t-next'); await p.waitForTimeout(250); await shot('3b-panning-edge-arrow'); await p.waitForTimeout(1600); await shot('4-mall');
   await click('#t-skip'); await p.waitForTimeout(900);
@@ -34,7 +34,7 @@ for (const [tag, opts] of [['desktop', { viewport: { width: 1280, height: 800 } 
   // Places list -> guide -> walk -> arrive
   await p.evaluate(() => __guide.clearGuide()); await click('#w-places'); await p.waitForSelector('#places:not([hidden])');
   const first = await p.locator('#pl-list h3').first().textContent(); ok(first === 'Featured', `${tag}: Places: Featured group first (${first})`);
-  ok((await p.locator('#pl-list .pl-item.feat b').allTextContents()).join('|') === '★ Launch Hall (simulated tokens)|★ Kibble Bank', `${tag}: Launch Hall + Kibble Bank pinned with stars`);
+  ok((await p.locator('#pl-list .pl-item.feat b').allTextContents()).join('|') === '★ Launch Hall ($KIBBLE + your coins)|★ Kibble Bank', `${tag}: Launch Hall + Kibble Bank pinned with stars`);
   await shot('6-places'); await p.fill('#pl-q', 'trainer'); await p.waitForTimeout(150); await shot('7-places-search');
   await click('#pl-list [data-place="quest"]'); await p.waitForTimeout(300);
   ok(await ds(p, 'guide') === 'quest' && await p.locator('#guidechip').isVisible(), `${tag}: picking a place starts the guide (${await p.textContent('#guidechip .gdist')})`);

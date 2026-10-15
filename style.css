@@ -259,3 +259,12 @@ body.mm-on #minimap-wrap{top:calc(max(8px,env(safe-area-inset-top)) + 58px)!impo
 #enter-ov{position:fixed;inset:0;z-index:60;display:flex;align-items:center;justify-content:center;background:#0c1022cc}#enter-ov[hidden]{display:none}
 #enter-ov .enter-card{display:flex;flex-direction:column;gap:8px;align-items:center;padding:16px 22px;background:#121a36;border:4px solid var(--gold);color:var(--goldl);font-size:14px}
 #enter-ov small{color:#c8c0a8;font-size:10px}#enter-ov .btn{min-height:44px}
+/* Launch Hall: real coins */
+.ca{display:flex;gap:6px;align-items:center;margin:4px 0}.ca code{flex:1;min-width:0;overflow-wrap:anywhere;background:var(--navy2);border:2px solid var(--goldd);padding:6px;font-size:11px;user-select:all}
+.rstats b.up{color:#5df07a}.rstats b.dn{color:#ff6a6a}
+.nfa{margin-top:8px;font-size:10px;opacity:.85;border-left:3px solid var(--gold);padding:4px 8px}
+.steps{padding-left:18px;margin:6px 0}.steps li{margin:4px 0}.btn.tiny{padding:4px 8px;font-size:11px;min-height:32px}
+.regboard{display:flex;flex-direction:column;gap:6px;max-height:46vh;overflow:auto}.regcoin{display:flex;gap:8px;justify-content:space-between;align-items:center;background:var(--navy2);border:2px solid var(--goldd);padding:6px}
+.regcoin .row{margin:0;flex-wrap:nowrap}#reg-mint{width:100%}.small.bad{color:#ff8a8a}.small.good{color:#7df09a}
+a.btn{text-decoration:none;display:inline-flex;align-items:center}
+body.short.landscape .launch.rboard{grid-template-columns:1fr 1.2fr}body.short .regboard{max-height:none}body.short .rstats div{padding:3px}

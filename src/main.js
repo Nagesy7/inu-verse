@@ -26,6 +26,7 @@ import { MALL_ITEMS, quote, buyMallItem, ensureMall, rollPeriods, fmtK, FEE_LABE
 import { GAMES, boardRows, poolEntries } from './leaderboards.js';
 import { makeCrew, stepCrew, takeGig, drawVest, drawTool, drawCones } from './workers.js';
 import { trending, adProps, adAt } from './coinads.js';
+import * as RC from './realcoins.js';
 import { ensureFarm, tickFarm, seasonOf, marketHour, rollFarmWeek, catchUp, fishCatch, WEEK_DAYS } from './farm.js';
 import { ensureBiz, bizHour, bizDay, rollBizWeek } from './biz.js';
 import { renderField, renderFarm, renderLot, renderBizBoard } from './farmui.js';
@@ -96,7 +97,7 @@ function persist() { if (state) { for (const u of ENG.checkCollections(state)) t
 // burn-for-status flair: pulsing pixel halo + sparkles at the feet (world, home and photos)
 function drawFlair(c, col, t) { const r = 40 + Math.sin(t * 3) * 3; c.save(); c.globalAlpha = 0.5; c.fillStyle = col; c.fillRect(-r, 6, r * 2, 12); c.fillRect(-r + 10, 0, r * 2 - 20, 24); c.globalAlpha = 0.22 + Math.sin(t * 4) * 0.08; c.fillRect(-r + 8, -100, r * 2 - 16, 106); c.globalAlpha = 1; for (let i = 0; i < 6; i++) { const a = t * 1.6 + i * 1.047; c.fillStyle = i % 2 ? '#ffffff' : col; c.fillRect(Math.round(Math.cos(a) * 52) - 4, Math.round(-50 + Math.sin(a) * 56) - 4, 8, 8); } c.restore(); }
 function featuredMap() { const nowH = state.clockSec / (DAY_LEN / 24), out = {}; for (const id of Object.keys(FEATURED_SLOTS)) { const r = featuredOf(state, id, nowH); if (r) out[id] = { ...r, label: 'FEATURED' }; const sp = F5.sponsorOf(state, id, nowH); if (sp) out[id] = { ticker: sp.brand, by: sp.by, untilH: sp.untilH, featured: true, sponsored: true, label: 'SPONSORED' }; } return out; }
-// ---- real $KIBBLE (kibble-pay). Demo only with ?demo=1; otherwise no fake balances and purchases say launching soon until the mint is set.
+// ---- real $KIBBLE (kibble-pay, live: mint 4VE9sy4fEMJdZ6i7MkYPbnqDJd2oqzJQmg44WJ3opump). Demo only with ?demo=1; otherwise no fake balances.
 let K = { mode: DEMO ? 'demo' : 'offline', kp: null }, serverPools = null;
 async function refreshPools() { try { const r = await K.kp.pools(); const u = (p) => Number(r.pools[p].accruedBaseUnits); serverPools = { daily: u('daily'), weekly: u('weekly'), monthly: u('monthly'), burned: Number(r.burnedAllBaseUnits) }; if (state) hud(); } catch {} }
 async function bootKibble() {
@@ -116,7 +117,7 @@ async function bootKibble() {
 addEventListener('kibble:paid', (e) => { toast(e.detail.burn ? 'Burn confirmed: tap again to unlock it.' : 'Payment confirmed: tap Buy again to receive it.', 'good'); wallet().refresh?.().then(() => state && hud()).catch(() => {}); refreshPools(); });
 addEventListener('kibble:failed', (e) => toast(e.detail.reason || 'Payment failed', 'bad'));
 addEventListener('kibble:wallet', () => { if (state) { state.walletAddr = wallet().address; hud(); } });
-bootKibble();
+bootKibble(); refreshRegistry(true);
 function hud() { GOLD.name = F5.isVip(state) ? state.player.name : null; { const P = DEMO ? poolsOf(state) : serverPools, el = $('#pools'); if (el) el.textContent = P ? `D${(P.daily / 1e6).toFixed(2)} W${(P.weekly / 1e6).toFixed(2)} M${(P.monthly / 1e6).toFixed(2)}` : 'pools'; } $('#bones').textContent = Math.floor(state.bones); $('#kibble').textContent = DEMO ? state.kibble.toFixed(2) : (wallet().live ? (wallet().balanceUi ?? '–') : 'soon'); $('#hud-name').textContent = state.player.name; }
 
 function resize() { cv.width = Math.round(innerWidth * devicePixelRatio); cv.height = Math.round(innerHeight * devicePixelRatio); vignette = null; document.body.classList.toggle('landscape', innerWidth > innerHeight); document.body.classList.toggle('short', innerHeight < 520); }
@@ -194,7 +195,7 @@ const screenToWorld = (sx, sy) => ({ x: (sx - innerWidth / 2) / ZOOM + cam.x, y:
 cv.addEventListener('mousemove', (e) => { if (mode === 'build') build.hover = roomCell(e.clientX, e.clientY); });
 cv.addEventListener('click', (e) => {
   if (mode === 'world' && !panel) {
-    const w = screenToWorld(e.clientX, e.clientY); const ad = adAt(trend, adRot, adIdx, w.x, w.y); if (ad) { blip(990); openPanel('launch', { sel: ad.coin.id }); return; } clickWorldTile(Math.floor(w.x / TILE), Math.floor(w.y / TILE));
+    const w = screenToWorld(e.clientX, e.clientY); const ad = adAt(trend, adRot, adIdx, w.x, w.y); if (ad) { blip(990); openPanel('launch', ad.coin.real ? { tab: ad.coin.mint === RC.KIBBLE.mint ? 'kibble' : 'board' } : { sel: ad.coin.id }); return; } clickWorldTile(Math.floor(w.x / TILE), Math.floor(w.y / TILE));
   } else if (mode === 'build') buildClick(roomCell(e.clientX, e.clientY));
 });
 $('#minimap').addEventListener('click', (e) => { if (mode === 'world' && !panel) { if (guide) return guide.openMap(); const r = e.target.getBoundingClientRect(); clickWorldTile(Math.floor((e.clientX - r.left) / 2), Math.floor((e.clientY - r.top) / 2)); } });
@@ -281,7 +282,7 @@ function wayUi(on) { const w = document.getElementById('wayctl'); if (w) w.hidde
 async function tourCheck() { if (!state || mode !== 'world') return; const w = state.walletAddr; const prof = isRealWallet(w) ? await profileStore().get(w).catch(() => null) : null; guide.maybeStartTour(prof); }
 // ---- Kibble Bank: read-only view of the wallet (kibble-pay). No deposits, lending or yield. ----
 async function renderBank() { const body = $('#panel-body'), kp = K.kp, w = wallet(), signed = !DEMO && !!kp?.session;
-  const bal = DEMO ? `${state.kibble.toFixed(2)} demo KIBBLE (fake)` : w.live ? (signed ? `${w.balanceUi ?? '…'} KIBBLE` : 'sign in to see') : 'soon (KIBBLE launching soon)';
+  const bal = DEMO ? `${state.kibble.toFixed(2)} demo KIBBLE (fake)` : w.live ? (signed ? `${w.balanceUi ?? '…'} KIBBLE` : 'sign in to see') : 'wallet service offline';
   const P = DEMO ? poolsOf(state) : serverPools, fmtU = (u) => (Number(u || 0) / 1e6).toLocaleString('en-US', { maximumFractionDigits: 4 });
   body.innerHTML = `<h2>Kibble Bank</h2><p class="sub">A read-only window on your wallet. <b>No deposits, no lending, no yield</b>: your $KIBBLE stays in your own wallet.</p>
    <div class="bank"><div class="card"><b>Wallet</b><small id="bk-addr">${DEMO ? 'Demo mode (no wallet)' : signed ? esc(kp.address) : 'Not signed in'}</small>${!DEMO && !signed ? '<button class="btn" id="bk-sign">Sign in with Phantom</button>' : ''}</div>
@@ -386,7 +387,7 @@ function updateWorld(dt) {
   { const nowH = ((time + dayOffset) / DAY_LEN) * 24;
     if (PRES_Q && !presForced) { presForced = true; startVisit(pres, PRES_KINDS.includes(PRES_Q) ? PRES_Q : null, { dayLen: DAY_LEN }); }
     updatePresident(pres, dt, { nowH, dayLen: DAY_LEN, npcs, rng, toast: (s) => toast(s, 'good'), banner: presBanner, fanfare, snack: () => toast('President Inu bought a taiyaki from the snack cart!', 'good') }); }
-  adT += dt; if (adT > 8 || !trend.length) { adT = 0; adRot++; trend = trending(state, 6); }
+  adT += dt; if (adT > 8 || !trend.length) { adT = 0; adRot++; trend = RC.realTrend(REG.coins, 6); if (adRot % 8 === 1) refreshRegistry(); }
   farmTick(dt); if (state.bones < 0) state.bones = 0;
   stepCrew(crew, dt, dayPhase(time + dayOffset).hour, () => { adIdx++; });
   stepScene(dt); stepConfetti(dt); stepPups(dt);
@@ -747,24 +748,82 @@ function cafeUi() {
 }
 
 // ---- Launch Hall ----
+// Tabs: $KIBBLE (real, live stats) · Launch your coin (pump.fun's own create flow) · Coin board (player-registered, verified) · Practice (play tokens).
+const practice = () => DEMO ? state : new Proxy(state, { get: (t, k) => k === 'kibble' ? (t.practiceKibble ??= 20) : t[k], set: (t, k, v) => { t[k === 'kibble' ? 'practiceKibble' : k] = v; return true; } });
+let REG = { coins: [], offline: false, loaded: 0 };
+async function refreshRegistry(force) { if (!force && Date.now() - REG.loaded < 30000) return; REG.loaded = Date.now();
+  const r = await RC.listCoins(); REG = { ...REG, coins: r.coins, offline: !r.ok, reason: r.reason }; await refreshRealStats(); }
+async function refreshRealStats() { await RC.fetchStats([RC.KIBBLE.mint, ...REG.coins.map((c) => c.mint)]); trend = RC.realTrend(REG.coins, 6); if (panel?.kind === 'launch') launchRealUi(); }
+const NFA = '<div class="nfa">Not financial advice. No price promises. Coins here are user-launched memecoins on pump.fun: they can go to zero. Always check the contract address.</div>';
+const isMobile = () => matchMedia('(pointer:coarse)').matches || /Android|iPhone|iPad/i.test(navigator.userAgent);
+function statBox(mint) { const st = RC.statsOf(mint); return `<div class="stats rstats" data-stats="${mint}"><div>Price<b>${RC.fmtUsd(st?.priceUsd)}</b>USD</div><div>Market cap<b>${RC.fmtUsd(st?.mcap)}</b>USD</div><div>24h<b class="${st?.change24 == null ? '' : st.change24 >= 0 ? 'up' : 'dn'}">${RC.fmtPct(st?.change24)}</b>change</div><div>24h volume<b>${RC.fmtUsd(st?.vol24)}</b>USD</div></div>`; }
 function renderLaunch() {
-  const body = $('#panel-body');
-  if (!panel.sel) panel.sel = state.tokens[state.tokens.length - 1]?.id;
-  body.innerHTML = `<div class="demo-banner">Demo – simulated tokens · No blockchain · No real money · $KIBBLE here is play currency</div>
-  <h2>Launch Hall</h2><p class="sub">Create a token and watch it trade on a bonding curve against demo $KIBBLE. NPC Inu traders buy and sell in real time; when the curve fills the token <b>graduates</b>.</p>
+  const body = $('#panel-body'), tab = panel.tab || (panel.sel ? 'practice' : 'kibble');
+  const tabs = [['kibble', '$KIBBLE'], ['launch', 'Launch your coin'], ['board', 'Coin board'], ['practice', 'Practice']];
+  const head = `<h2>Launch Hall</h2><div class="row tabs" style="justify-content:flex-start;margin:0 0 8px">${tabs.map(([k, l]) => `<button class="btn ${k === tab ? '' : 'ghost'}" data-tab="${k}">${l}</button>`).join('')}</div>`;
+  const K0 = RC.KIBBLE, link = (u, l, cls = 'btn') => `<a class="${cls}" href="${u}" target="_blank" rel="noopener noreferrer">${l}</a>`;
+  if (tab === 'kibble') body.innerHTML = `${head}<div class="card rcoin" style="text-align:left"><h3 style="margin:0">$KIBBLE <span class="small">official · Solana ${K0.program} · mint authority renounced</span></h3>
+     <div class="small">Contract address (only this one is real):</div><div class="ca"><code id="kib-ca">${K0.mint}</code><button class="btn alt" data-copy="${K0.mint}">Copy</button></div>
+     ${statBox(K0.mint)}<div class="small" id="kib-src">Live from DexScreener, refreshed every minute. Shows "unavailable" if the feed is down.</div>
+     <div class="row" style="justify-content:flex-start">${link(RC.PUMP_COIN(K0.mint), 'View on pump.fun', 'btn green')}${link(RC.DEX_URL(K0.mint), 'DexScreener chart', 'btn ghost')}</div></div>${NFA}`;
+  else if (tab === 'launch') body.innerHTML = `${head}<div class="card" style="text-align:left"><b>Launch your own coin on pump.fun</b>
+     <p class="small">Inu Verse never creates, holds or signs tokens. You launch on pump.fun with your own wallet; pump.fun shows you every fee and step before you sign.</p>
+     <ol class="small steps"><li>Open pump.fun's create page (button below) and connect Phantom there.</li>
+     <li><b>Pair it with $KIBBLE (optional):</b> pump.fun lets a new coin use another pump.fun coin as its pair asset ("Secondary Pair Asset", one hop only). In the create form's pair / quote selector, paste the $KIBBLE contract address <code>${RC.short(K0.mint)}</code> <button class="btn ghost tiny" data-copy="${K0.mint}">Copy CA</button>. If the pair option doesn't appear for you, launch against SOL instead: it still works here.</li>
+     <li>After launch, copy your coin's mint address and register it on the <b>Coin board</b> tab so it shows on the board and city billboards.</li></ol>
+     <div class="row" style="justify-content:flex-start"><button class="btn green" id="go-pump">Open pump.fun create ↗</button>${isMobile() ? '<button class="btn alt" id="go-phantom">Open in Phantom app ↗</button>' : ''}</div></div>${NFA}`;
+  else if (tab === 'board') body.innerHTML = `${head}<div class="launch rboard"><div><div class="card form" style="text-align:left"><b>Register a coin you launched</b>
+     <div class="small">Sign in with Phantom, paste your coin's mint. We check pump.fun's on-chain record that <i>your wallet</i> created it.</div>
+     <input id="reg-mint" placeholder="Your coin's mint address" maxlength="44" autocomplete="off" spellcheck="false"><button class="btn green" id="reg-go">${K.kp?.signedIn ? 'Register coin' : 'Sign in & register'}</button><div class="small" id="reg-msg"></div></div>${NFA}</div>
+     <div><b>Registered coins</b><div class="regboard" id="regboard"></div></div></div>`;
+  else { body.innerHTML = `${head}<div class="demo-banner">Practice – play tokens on a pretend bonding curve. Not on-chain, not real $KIBBLE, worth nothing.</div>
+  <p class="sub">Practise launching and trading against practice KIBBLE. NPC Inu traders buy and sell; when the curve fills the token <b>graduates</b>. You have <b id="prac-bal">${practice().kibble.toFixed(2)}</b> practice KIBBLE.</p>
   <div class="launch"><div>
-   <div class="card" style="text-align:left"><b>Swap bones → $KIBBLE</b><div class="small">1 bone = ${Math.round(1 / BONES_PER_KIBBLE)} KIBBLE (demo)</div><div class="tradebox"><input id="swapamt" type="number" value="100" min="1"><button class="btn alt" id="swap">Swap</button></div></div>
-   <h3 style="margin:10px 0 6px">Tokens</h3><div class="toklist" id="toklist"></div>
-   <details class="card form" style="text-align:left;margin-top:8px" id="createbox" open><summary><b>Create a token</b> (${CREATE_FEE} KIBBLE)</summary>
+   <div class="card" style="text-align:left"><b>Swap bones → practice KIBBLE</b><div class="small">1 bone = ${Math.round(1 / BONES_PER_KIBBLE)} practice KIBBLE</div><div class="tradebox"><input id="swapamt" type="number" value="100" min="1"><button class="btn alt" id="swap">Swap</button></div></div>
+   <h3 style="margin:10px 0 6px">Practice tokens</h3><div class="toklist" id="toklist"></div>
+   <details class="card form" style="text-align:left;margin-top:8px" id="createbox"><summary><b>Create a practice token</b> (${CREATE_FEE} practice KIBBLE)</summary>
     <input id="tname" placeholder="Name e.g. Shiba Star" maxlength="24"><input id="tticker" placeholder="Ticker e.g. STAR" maxlength="6">
     <label class="small">Icon colour <input id="tcolor" type="color" value="#e58b3a" style="height:34px"></label>
-    <button class="btn green" id="tcreate">Launch token</button></details>
+    <button class="btn green" id="tcreate">Launch practice token</button></details>
   </div><div id="tokdetail"></div></div>`;
-  $('#swap').onclick = () => { const r = !DEMO ? demoOnly('The bones swap') : swapBonesToKibble(state, +$('#swapamt').value); if (r.ok) { toast(`+${r.kibble.toFixed(2)} demo KIBBLE`, 'good'); hud(); persist(); } else toast(r.reason, 'bad'); };
-  $('#tcreate').onclick = () => { const r = !DEMO ? demoOnly('The Launch Hall') : createToken(state, { name: $('#tname').value, ticker: $('#tticker').value, color: $('#tcolor').value }); if (r.ok) { packAct('token'); panel.sel = r.token.id; toast(`$${r.token.ticker} launched! A stall opened on Market Row.`, 'good'); hud(); persist(); renderLaunch(); } else toast(r.reason, 'bad'); };
+  if (!panel.sel) panel.sel = state.tokens[state.tokens.length - 1]?.id;
+  $('#swap').onclick = () => { const r = swapBonesToKibble(practice(), +$('#swapamt').value); if (r.ok) { toast(`+${r.kibble.toFixed(2)} practice KIBBLE`, 'good'); hud(); persist(); renderLaunch(); } else toast(r.reason, 'bad'); };
+  $('#tcreate').onclick = () => { const r = createToken(practice(), { name: $('#tname').value, ticker: $('#tticker').value, color: $('#tcolor').value }); if (r.ok) { packAct('token'); panel.sel = r.token.id; toast(`Practice $${r.token.ticker} launched!`, 'good'); hud(); persist(); renderLaunch(); } else toast(r.reason, 'bad'); };
   $('#toklist').onclick = (e) => { const b = e.target.closest('[data-tok]'); if (b) { panel.sel = b.dataset.tok; renderTokDetail(); launchUi(); } };
-  renderTokDetail(); launchUi();
+  renderTokDetail(); launchUi(); }
+  body.querySelector('.tabs').onclick = (e) => { const b = e.target.closest('[data-tab]'); if (b) { panel.tab = b.dataset.tab; renderLaunch(); } };
+  body.querySelectorAll('[data-copy]').forEach((b) => b.onclick = () => copyText(b.dataset.copy));
+  if ($('#go-pump')) $('#go-pump').onclick = () => { blip(880); window.open(RC.PUMP_CREATE, '_blank', 'noopener'); };
+  if ($('#go-phantom')) $('#go-phantom').onclick = () => { location.href = RC.phantomBrowse(RC.PUMP_CREATE); };
+  if ($('#reg-go')) $('#reg-go').onclick = registerCoin;
+  if (tab === 'board') { renderRegBoard(); refreshRegistry(true); } else if (tab === 'kibble') refreshRealStats();
 }
+async function copyText(t) { try { await navigator.clipboard.writeText(t); toast('Copied contract address', 'good'); } catch { const i = document.createElement('textarea'); i.value = t; document.body.appendChild(i); i.select(); try { document.execCommand('copy'); toast('Copied', 'good'); } catch { toast(t); } i.remove(); } }
+async function registerCoin() {
+  const msg = $('#reg-msg'), mint = $('#reg-mint').value.trim(); const say = (t, bad) => { if (msg) { msg.textContent = t; msg.className = 'small ' + (bad ? 'bad' : 'good'); } };
+  if (!RC.isMint(mint)) return say('Paste a Solana mint address (32-44 letters/numbers).', true);
+  if (!K.kp) return say('Wallet sign-in is unavailable right now. Try again in a moment.', true);
+  try { if (!K.kp.signedIn) { say('Approve the sign-in message in Phantom…'); if (!K.kp.address) await K.kp.connect?.(); await K.kp.signIn(); } } catch (e) { return say('Sign-in cancelled: ' + (e.message || e), true); }
+  say('Checking pump.fun creator on-chain…');
+  const r = await RC.postCoins({ action: 'register', mint }, { session: K.kp.session });
+  if (!r.ok) return say(r.reason, true);
+  say(r.already ? 'Already registered.' : `Registered! Verified you created it${r.coin.pairedWithKibble ? ' · paired with $KIBBLE ✓' : ''}.`); refreshRegistry(true);
+}
+function renderRegBoard() { const el = $('#regboard'); if (!el) return;
+  if (REG.offline) { el.innerHTML = `<p class="small">Coin board is offline right now (${esc(REG.reason || 'unavailable')}). Your coin is still live on pump.fun.</p>`; return; }
+  if (!REG.coins.length) { el.innerHTML = '<p class="small">No player coins registered yet. Be the first: launch on pump.fun, then register it here.</p>'; return; }
+  el.innerHTML = REG.coins.map((c) => { const st = RC.statsOf(c.mint); return `<div class="regcoin" data-mint="${c.mint}"><div><b>$${esc(st?.symbol || c.symbol || '???')}</b> ${esc(st?.name || c.name || '')} ${c.pairedWithKibble ? '<span class="chip">paired with $KIBBLE</span>' : ''}
+     <div class="small">CA <code>${RC.short(c.mint)}</code> · creator ${RC.short(c.creator)} (verified)</div>
+     <div class="small">Price ${RC.fmtUsd(st?.priceUsd)} · MC ${RC.fmtUsd(st?.mcap)} · 24h ${RC.fmtPct(st?.change24)}</div></div>
+     <div class="row"><a class="btn tiny green" href="${RC.PUMP_COIN(c.mint)}" target="_blank" rel="noopener noreferrer">pump.fun</a><button class="btn tiny ghost" data-copy="${c.mint}">Copy CA</button><button class="btn tiny red" data-report="${c.mint}">Report</button></div></div>`; }).join('');
+  el.querySelectorAll('[data-copy]').forEach((b) => b.onclick = () => copyText(b.dataset.copy));
+  el.querySelectorAll('[data-report]').forEach((b) => b.onclick = async () => { if (!confirm('Report this coin as a scam, impersonation or offensive? Coins with several reports are hidden until reviewed.')) return;
+    const r = await RC.postCoins({ action: 'report', mint: b.dataset.report, reason: 'player report' }); toast(r.ok ? (r.hidden ? 'Reported. Hidden pending review.' : 'Reported. Thanks!') : r.reason, r.ok ? 'good' : 'bad'); refreshRegistry(true); });
+}
+function launchRealUi() { document.querySelectorAll('[data-stats]').forEach((el) => { el.outerHTML = statBox(el.dataset.stats); }); renderRegBoard(); }
+// Owner moderation from the console: __launchAdmin('hide'|'show'|'delete', mint, adminToken?) (wallet session for the owner wallet also works).
+globalThis.__launchAdmin = async (op, mint, admin) => { const r = await RC.postCoins({ action: 'moderate', op, mint }, { session: K.kp?.session, admin }); refreshRegistry(true); return r; };
+globalThis.__reg = () => REG;
 function renderTokDetail() {
   const tok = state.tokens.find((t) => t.id === panel.sel), el = $('#tokdetail');
   if (!tok) { el.innerHTML = '<p>No tokens yet — create one!</p>'; return; }
@@ -774,8 +833,8 @@ function renderTokDetail() {
    <div class="small">Bonding curve progress <span id="st-prog"></span></div><div class="bar"><i id="st-bar"></i></div>
    <div class="tradebox"><input id="buyamt" type="number" value="1" min="0.01" step="0.1"><span>KIBBLE</span><button class="btn green" id="buybtn">Buy</button><span style="flex:1"></span><button class="btn red" data-sell="0.25">Sell 25%</button><button class="btn red" data-sell="0.5">50%</button><button class="btn red" data-sell="1" id="sellall">Sell all</button></div>
    <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px"><div><b>Recent trades</b><div class="trades" id="trades"></div></div><div><b>Top holders</b><div class="trades" id="holders"></div></div></div>`;
-  $('#buybtn').onclick = () => { const r = !DEMO ? demoOnly('The Launch Hall') : playerBuy(state, tok.id, +$('#buyamt').value); if (r.ok) { toast(`Bought ${fmt(r.tokensOut)} $${tok.ticker}${r.graduatedNow ? ' — GRADUATED!' : ''}`, 'good'); hud(); persist(); launchUi(); } else toast(r.reason, 'bad'); };
-  el.querySelectorAll('[data-sell]').forEach((b) => b.onclick = () => { const r = playerSell(state, tok.id, (tok.holders[PLAYER] || 0) * +b.dataset.sell); if (r.ok) { toast(`Sold for ${r.kibbleOut.toFixed(3)} KIBBLE`, 'good'); hud(); persist(); launchUi(); } else toast(r.reason, 'bad'); });
+  $('#buybtn').onclick = () => { const r = playerBuy(practice(), tok.id, +$('#buyamt').value); if (r.ok) { toast(`Bought ${fmt(r.tokensOut)} $${tok.ticker}${r.graduatedNow ? ' — GRADUATED!' : ''}`, 'good'); hud(); persist(); launchUi(); } else toast(r.reason, 'bad'); };
+  el.querySelectorAll('[data-sell]').forEach((b) => b.onclick = () => { const r = playerSell(practice(), tok.id, (tok.holders[PLAYER] || 0) * +b.dataset.sell); if (r.ok) { toast(`Sold for ${r.kibbleOut.toFixed(3)} KIBBLE`, 'good'); hud(); persist(); launchUi(); } else toast(r.reason, 'bad'); });
 }
 function launchUi() {
   if (!$('#toklist')) return;
@@ -943,7 +1002,7 @@ function renderPacks() {
 // ---------------- Kibble Mall ----------------
 function renderMall() {
   const body = $('#panel-body'), m = ensureMall(state), cat = panel.cat, store = MALL_BUILDINGS.find((b) => b.id === panel.store);
-  const demo = DEMO ? `<div class="demo-banner">Demo – simulated $KIBBLE · No blockchain · No real money · Prize pools are won by skill/activity score, never by chance</div>` : wallet().live ? '' : `<div class="demo-banner">${SOON} Prize pools are won by skill score, never by chance.</div>`;
+  const demo = DEMO ? `<div class="demo-banner">Demo mode (?demo=1) – pretend $KIBBLE balances for testing, not on-chain · Prize pools are won by skill/activity score, never by chance</div>` : wallet().live ? '' : `<div class="demo-banner">${SOON} Prize pools are won by skill score, never by chance.</div>`;
   const pools = `<div class="stats"><div>Daily pool<b>${fmtK(m.pools.daily)}</b>KIBBLE</div><div>Weekly pool<b>${fmtK(m.pools.weekly)}</b>KIBBLE</div><div>Monthly pool<b>${fmtK(m.pools.monthly)}</b>KIBBLE</div><div>President's Treasury<b>${fmtK(m.treasury)}</b>KIBBLE</div></div>`;
   if (cat === 'board') {
     const day = m.period.day, dayFrac = (state.clockSec % DAY_LEN) / DAY_LEN;
@@ -993,7 +1052,7 @@ function frame(now) {
       const day = Math.floor(state.clockSec / DAY_LEN); if (day > m.period.day) for (const w of rollPeriods(state, day, poolEntries(state, 1))) toast(`${w.pool} prize pool: ${w.winner} wins ${fmtK(w.amount)} demo KIBBLE (score ${w.score})`, 'good'); }
     packAcc += dt; if (packAcc > 6) { packAcc = 0; simulatePacks(state, rng); }
     liveScores(); // every visible pack score reads packScore() (single source of truth), refreshed in place
-    simAcc += dt; while (simAcc >= 1.2) { simAcc -= 1.2; simulateTick(state, rng); trend = trending(state, 6); if (panel?.kind === 'launch') launchUi(); }
+    simAcc += dt; while (simAcc >= 1.2) { simAcc -= 1.2; simulateTick(state, rng); if (panel?.kind === 'launch') launchUi(); }
     saveAcc += dt; if (saveAcc > 5) { saveAcc = 0; persist(); }
     if (panel?.kind === 'cafe' && panel.shift && !panel.shift.settled) { tickShift(panel.shift, dt, rng); cafeUi(); }
   }
