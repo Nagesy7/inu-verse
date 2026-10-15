@@ -4,9 +4,8 @@ const b = await chromium.launch(); const ctx = await b.newContext({ viewport: { 
 const errs = []; page.on('pageerror', (e) => errs.push(e.message));
 await page.goto('http://localhost:8642/'); await page.waitForTimeout(1200);
 const CATS = {
- cars: `const M=['sedan','coupe','limo','hatch','suv','pickup','supercar','convertible'],C=['#c8323c','#2a6ad8','#e3b341','#3fb36a','#141a2e','#f08a2a','#c8323c','#6c5ce7'];
-  M.forEach((k,i)=>{drawCar(x,60+(i%4)*100,90+Math.floor(i/4)*120,{col:C[i],kind:k,dir:'east'}); drawCar(x,60+(i%4)*100+30,90+Math.floor(i/4)*120+60,{col:C[i],kind:k,dir:'south'});});`,
- 'car-accessories': `[['#fff6a0'],['#5ae0ff'],['#ff5aa8']].forEach(([g],i)=>drawCar(x,70+i*130,140,{col:'#141a2e',kind:'supercar',dir:'east',glow:g})); drawCar(x,200,240,{col:'#e3b341',kind:'limo',dir:'west'});`,
+ cars: `x.scale(2.2,2.2); [['sedan','#c8323c'],['supercar','#2a6ad8'],['suv','#141a2e'],['pickup','#f08a2a']].forEach(([k,c],i)=>drawCar(x,45+(i%2)*95,50+Math.floor(i/2)*42,{col:c,kind:k,dir:'east'})); [['coupe','#3fb36a'],['limo','#e3b341'],['convertible','#6c5ce7']].forEach(([k,c],i)=>drawCar(x,30+i*55,178,{col:c,kind:k,dir:i==1?'north':'south'}));`,
+ 'car-accessories': `x.fillStyle='#2a2e3e'; x.fillRect(0,40,421,350); x.scale(2.2,2.2); [['#ffe14a'],['#5ae0ff'],['#ff5aa8'],['#7dff7a']].forEach(([g],i)=>drawCar(x,45+(i%2)*95,70+Math.floor(i/2)*60,{col:i%2?'#141a2e':'#c8323c',kind:'supercar',dir:'east',glow:g}));`,
  pets: `x.imageSmoothingEnabled=false; Object.keys(PETS).forEach((sp,i)=>x.drawImage(petSprite(sp,0),6+(i%4)*103,24+Math.floor(i/4)*120,96,96));`,
  shiba: `[['#e8a25a'],['#c8502a'],['#f2e2c0'],['#3a2a24']].forEach(([c],i)=>{drawProfileShiba(x,50+i*95,170,{v:1,look:{coat:c}},{scale:2}); drawProfileShiba(x,50+i*95,340,{v:1,look:{coat:c},outfit:{hat:{kind:'tophat',c:'#222'}}},{scale:1.8,face:'right'});});`,
  characters: `['tan','red','dark'].forEach((c,i)=>{drawShiba(x,70+i*135,200,{coat:c,scale:2.6}); drawShiba(x,40+i*135,350,{coat:c,face:'right'}); drawShiba(x,100+i*135,350,{coat:c,face:'up'});});`,

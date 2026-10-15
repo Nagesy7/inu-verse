@@ -2,6 +2,27 @@
 // Views: 'side' (east/west travel, flipped for west), 'front' (driving toward camera = south), 'back' (driving away = north).
 import { TILE, ROADS, AVENUE } from './world.js';
 import { hires } from './hires.js';
+import { shadeSprite } from './detail.js';
+// Detail pass at 2x (coords below are hi-res px = 2 x native): gloss shading, door panel seams, spoked chrome rims,
+// lit head/tail lamp lenses, chrome specular, glass reflections. Same palette family; cached with the sprite.
+function carDetail(cv, view, kind) { if (globalThis.__noDetail || !cv.k) return cv;
+  shadeSprite(cv, { r: 2, light: 0.32, dark: 0.22, grad: 0.22, skipInk: 30 }); const c = cv.getContext('2d'), Q = (x, y, w, h, col) => { c.fillStyle = col; c.fillRect(x, y, w, h); };
+  c.save(); c.globalCompositeOperation = 'source-atop';
+  if (view === 'side') {
+    if (kind !== 'pickup') { Q(28, 21, 1, 9, 'rgba(10,14,30,.45)'); Q(46, 21, 1, 9, 'rgba(10,14,30,.45)'); Q(29, 21, 1, 9, 'rgba(255,255,255,.18)'); } // door seams
+    Q(4, 21, 62, 1, 'rgba(255,255,255,.45)'); Q(10, 21, 6, 1, 'rgba(255,255,255,.9)'); Q(40, 21, 4, 1, 'rgba(255,255,255,.85)'); // gloss specular
+    Q(66, 22, 4, 4, '#fffbe8'); Q(67, 23, 2, 2, '#ffffff'); Q(65, 22, 1, 4, '#d8c070'); // headlamp lens
+    Q(2, 22, 4, 4, '#ff5a5a'); Q(3, 23, 2, 1, '#ffd0d0'); // tail lens
+    for (const wx of [5, 24]) { const cx = 2 * wx + 7, cy = 33; // spoked rims
+      Q(cx - 4, cy - 4, 8, 8, '#22232c'); Q(cx - 3, cy - 4, 6, 8, '#9aa0b4'); Q(cx - 4, cy - 3, 8, 6, '#9aa0b4'); Q(cx - 2, cy - 3, 4, 6, '#5a6074'); Q(cx - 3, cy - 2, 6, 4, '#5a6074');
+      Q(cx - 1, cy - 4, 2, 8, '#d8dce8'); Q(cx - 4, cy - 1, 8, 2, '#d8dce8'); Q(cx - 1, cy - 1, 2, 2, '#141a2e'); Q(cx - 3, cy - 4, 2, 1, '#ffffff'); }
+    c.globalAlpha = 0.6; c.fillStyle = '#ffffff'; for (let i = 0; i < 5; i++) c.fillRect(20 + i, 8 + i, 1, 2); c.globalAlpha = 1; // glass streak
+  } else {
+    Q(19, 4, 2, 70, 'rgba(255,255,255,.12)'); Q(6, 3, 1, 68, 'rgba(255,255,255,.4)'); // centre line + side gloss
+    c.globalAlpha = 0.7; c.fillStyle = '#ffffff'; for (let i = 0; i < 6; i++) c.fillRect(10 + i, (view === 'front' ? 12 : 20) + i, 2, 1); c.globalAlpha = 1;
+    const ly = 70; if (view === 'front') { Q(7, ly, 6, 3, '#ffffff'); Q(27, ly, 6, 3, '#ffffff'); } else { Q(7, ly, 6, 3, '#ff6a6a'); Q(27, ly, 6, 3, '#ff6a6a'); }
+  }
+  c.restore(); return cv; }
 export const CAR_LEN = 72, CAR_W = 40, U = 2, LANE = 48; // world px; U = one native pixel
 export const LANES = { // 3-tile roads = two 48px lanes, right-hand traffic
   rows: ROADS, avenue: AVENUE, // horizontal roads occupy rows r..r+2; avenue occupies cols 31-33
@@ -54,7 +75,7 @@ function top(col, kind, view) { // 20 x 40 native (16 body + wheel nubs), front 
   return cv;
 }
 export function carSprite(col, view = 'side', kind = 'sedan') {
-  const k = col + view + kind; let s = cache.get(k); if (!s) { s = hires(view === 'side' ? side(col, kind) : top(col, kind, view)); cache.set(k, s); } return s;
+  const k = col + view + kind; let s = cache.get(k); if (!s) { s = carDetail(hires(view === 'side' ? side(col, kind) : top(col, kind, view)), view, kind); cache.set(k, s); } return s;
 }
 // Draw a car whose ground contact is (x, base): x = centre, base = bottom of wheels (side) / bottom of bumper (front/back).
 export function drawCar(c, x, base, { col = '#c8323c', dir = 'east', kind = 'sedan', alpha = 1, glow = null } = {}) {
@@ -64,6 +85,9 @@ export function drawCar(c, x, base, { col = '#c8323c', dir = 'east', kind = 'sed
   if (view === 'side') { c.fillRect(X + 4, Math.round(base) - 4, w - 6, 4); c.fillRect(X + 8, Math.round(base), w - 14, 2); }
   else { c.fillRect(X + 4, Y + 6, w - 4, h - 4); }
   if (dir === 'west') { c.translate(X + w, Y); c.scale(-1, 1); c.drawImage(spr, 0, 0, w, h); } else c.drawImage(spr, X, Y, w, h);
-  if (glow) { c.globalAlpha = 0.45; c.fillStyle = glow; c.fillRect(X - 4, Math.round(base) - 6, w + 8, 8); c.fillRect(X + 4, Y - 4, w - 8, 4); c.globalAlpha = 1; }
+  if (glow && globalThis.__noDetail) { c.globalAlpha = 0.45; c.fillStyle = glow; c.fillRect(X - 4, Math.round(base) - 6, w + 8, 8); c.fillRect(X + 4, Y - 4, w - 8, 4); c.globalAlpha = 1; }
+  else if (glow) { c.save(); c.globalCompositeOperation = 'lighter'; const gx = X + w / 2, gy = Math.round(base) - 2, g = c.createRadialGradient(gx, gy, 2, gx, gy, w * 0.62);
+    g.addColorStop(0, glow); g.addColorStop(0.5, glow + '66'); g.addColorStop(1, glow + '00'); c.globalAlpha = 0.75; c.fillStyle = g; c.beginPath(); c.ellipse(gx, gy, w * 0.62, 9, 0, 0, 7); c.fill(); // underglow pool
+    c.globalAlpha = 0.9; c.fillStyle = glow; c.fillRect(X + 6, Math.round(base) - 3, w - 12, 1); c.fillStyle = '#ffffff'; c.globalAlpha = 0.6; c.fillRect(X + 10, Math.round(base) - 3, w - 20, 1); c.restore(); } // neon strip + hot core
   c.restore();
 }
