@@ -59,6 +59,8 @@ import { feel } from './feel.js';
 import { faceTalk, faceReact } from './face.js';
 import { stepChat, drawChat, emoteBubble } from './chat.js';
 import { buildDrawer, drawerOpen } from './hudmenu.js';
+import { makeDoorState, doorStep, doorExit, outsideOf } from './doors.js';
+import { isDoor, doorList, COMMUNITY } from './world.js';
 import { ensurePacks, myPack, meIn, createPack, joinPack, leavePack, kickMember, recruitNpc, contribute, buyForPack, donateFurniture, upgradeClubhouse, placePackFurniture, movePackFurniture, storePackFurniture, postToBoard, recordActivity, memberScore, packScore, leaderboard, simulatePacks, packOfName, PACK_CREATE_COST, EMBLEMS, SEASON, SCORE, ME } from './packs.js';
 
 const $ = (s) => document.querySelector(s);
@@ -394,6 +396,8 @@ function updateWorld(dt) {
   if (rng() < dt * 0.08) chirp();
   if (player.moving) { stepAcc += dt; if (stepAcc > 0.26) { stepAcc = 0; const tt = MAP[Math.floor(p.y / TILE)]?.[Math.floor(p.x / TILE)]; if (tt === T.GRASS || tt === T.FLOWER) { feel.rustle(p.x, p.y + 10); rustle(); } else { feel.dust(p.x, p.y + 11); footstep(); } } }
   feel.step(dt); document.body.classList.toggle('driving', !!drive);
+  if (mode === 'world' && !panel && !drive && !entering && !arcadeOpen) { doorAcc -= dt; if (doorAcc <= 0) { doorAcc = 1; doorsNow = doorList(state).filter((d) => d.kind !== 'plot' || state.plots[d.id]); }
+    const d = doorStep(doorSt, { x: p.x, y: p.y, face: player.face, moving: player.moving }, doorsNow, time); if (d) enterDoor(d); }
   { const vw = innerWidth / ZOOM, vh = innerHeight / ZOOM; stepChat({ now: time, player: p, npcs, hour: dayPhase(time + dayOffset).hour, rain: amb.rain > 0.3, rng, inView: (x, y) => Math.abs(x - cam.x) < vw / 2 - 20 && Math.abs(y - cam.y) < vh / 2 - 30, placeOf: chatPlace }); }
   mailAcc += dt; if (mailAcc > 45) { mailAcc = 0; if (rng() < 0.6 && addMail(state, rng)) { toast('New note in your mailbox!', 'good'); persist(); } }
   // smooth camera
@@ -411,7 +415,7 @@ function updateWorld(dt) {
   else if (pk) { pr.hidden = false; pr.innerHTML = `<kbd${tch ? ' class="ta"' : ''}>${tch ? 'A' : 'E'}</kbd>Drive your ${esc(CAR_MODELS[carOf(state, pk.id)?.model]?.name || 'car')}`; setA('DRIVE'); }
   else if (pup?.workerRef) { pr.hidden = false; const v = pup.workerRef.chatted ? `Play ${JOB_DEFS[WORKER_JOB[pup.workerRef.job]].name} with` : 'Chat with'; pr.innerHTML = tch ? `<kbd class="ta">A</kbd>${v} ${esc(pup.name)}` : `<kbd>E</kbd>${v} ${esc(pup.name)}`; setA('TALK'); }
   else if (pup) { pr.hidden = false; const v = REL.PEOPLE[pup.name] && !pup.pet ? `Talk to ${esc(pup.name)} ${'♥'.repeat(REL.hearts(REL.ensureRel(state)[pup.name]))}` : `Pet ${esc(pup.name)}`; pr.innerHTML = tch ? `<kbd class="ta">A</kbd>${v}` : `<kbd>E</kbd>${v} · <kbd>T</kbd> throw ball`; setA(REL.PEOPLE[pup.name] && !pup.pet ? 'TALK' : 'PET'); }
-  else if (it) { pr.hidden = false; const verb = { arcade: 'Play at', matchmaker: 'Browse', square: 'Open', building: 'Enter', plot: state.plots[it.id] ? 'Enter' : 'Inspect', visit: 'Visit', stall: 'View', clubhouse: myPack(state) ? 'Decorate' : 'Open', mall: 'Enter', field: 'Tend', farm: 'Use', lot: 'Visit', biz: 'Read', chapel: 'Enter' }[it.kind] || 'Use'; pr.innerHTML = `<kbd${tch ? ' class="ta"' : ''}>${tch ? 'A' : 'E'}</kbd>${verb} ${esc(it.name)}`; pr.dataset.target = it.id; setA(verb.toUpperCase()); }
+  else if (it) { pr.hidden = false; const verb = { community: 'Open', gamedoor: 'Play', bank: 'Enter', arcade: 'Play at', matchmaker: 'Browse', square: 'Open', building: 'Enter', plot: state.plots[it.id] ? 'Enter' : 'Inspect', visit: 'Visit', stall: 'View', clubhouse: myPack(state) ? 'Decorate' : 'Open', mall: 'Enter', field: 'Tend', farm: 'Use', lot: 'Visit', biz: 'Read', chapel: 'Enter' }[it.kind] || 'Use'; pr.innerHTML = isWalkDoor(it) ? `<kbd>${it.side === 'left' ? '▶' : it.side === 'right' ? '◀' : '▲'}</kbd>Walk in to ${verb === 'Enter' ? 'enter' : verb.toLowerCase()} ${esc(it.name)}` : `<kbd${tch ? ' class="ta"' : ''}>${tch ? 'A' : 'E'}</kbd>${verb} ${esc(it.name)}`; pr.dataset.target = it.id; setA(isWalkDoor(it) ? '' : verb.toUpperCase()); }
   else { pr.hidden = true; setA(''); }
 }
 
@@ -525,7 +529,21 @@ function minimap(vx, vy, vw, vh) {
 
 // ---------------- Interactions ----------------
 { const _say = feel.say; if (_say) feel.say = (who, line, ...r) => { faceTalk(String(who).split(' (')[0], Math.min(4, 1 + String(line || '').length / 25)); return _say.call(feel, who, line, ...r); }; }
-function interact(it) { faceReact('me', it.kind === 'building' || it.kind === 'mall' ? 'wow' : 'curious', 1.2);
+// ---- walk-in doors (src/doors.js): walking into a door enters; A is for talking, signs, shops counters etc. ----
+const doorSt = makeDoorState(); let doorAcc = 0, doorsNow = [], entering = null, lastDoor = null;
+const isWalkDoor = (it) => isDoor(it) && (it.kind !== 'plot' || !!state.plots[it.id]);
+function enterDoor(d) { lastDoor = d; keys.clear(); player.path = [];
+  if (d.kind === 'gamedoor' || (d.kind === 'arcade' && COARSE.matches)) return enterExternal(d);
+  interact(d, true); }
+// External games: same-tab navigation (a movement event is not a user gesture, so window.open would be popup-blocked).
+// Your spot is saved one tile outside the door, so coming back (browser Back) puts you outside, not in the doorway.
+function enterExternal(d) { const url = d.kind === 'arcade' ? arcadeUrl() : gameDoorUrl(d.id), name = d.name.replace(/^.*\((.*)\)$/, '$1');
+  const o = outsideOf(d); Object.assign(state.player, { x: o.x, y: o.y }); player.face = o.face; persist();
+  let ov = document.getElementById('enter-ov'); if (!ov) { ov = document.createElement('div'); ov.id = 'enter-ov'; document.body.appendChild(ov); }
+  ov.innerHTML = `<div class="enter-card"><b>Entering ${esc(name)}…</b><small>opening ${esc(new URL(url).host)}</small><button class="btn ghost" id="enter-cancel">Stay in Inu Verse</button></div>`; ov.hidden = false; feel.fade(); blip(660);
+  entering = setTimeout(() => { entering = null; globalThis.__lastNav = url; if (!globalThis.__noNav) location.assign(url); else ov.hidden = true; }, 800);
+  ov.querySelector('#enter-cancel').onclick = () => { clearTimeout(entering); entering = null; ov.hidden = true; doorExit(doorSt, time); }; }
+function interact(it, viaDoor = false) { if (!viaDoor && isWalkDoor(it)) { toast(`Walk into the door to enter ${it.name}`, ''); return; } faceReact('me', it.kind === 'building' || it.kind === 'mall' ? 'wow' : 'curious', 1.2);
   if (it.kind === 'building') openPanel(it.id);
   else if (it.kind === 'plot') { if (state.plots[it.id]) enterBuild(it.id, false); else openPanel('plot', { plotId: it.id }); }
   else if (it.kind === 'visit') enterBuild(it.id, true);
@@ -545,6 +563,7 @@ function interact(it) { faceReact('me', it.kind === 'building' || it.kind === 'm
   else if (it.kind === 'matchmaker') openPanel('matchmaker');
   else if (it.kind === 'square') openPanel('fly5', { tab: it.id === 'pools' ? 'vip' : it.id === 'burn' ? 'burn' : it.id === 'quests' ? 'quests' : 'vip' });
   else if (it.kind === 'clubhouse') { if (myPack(state)) enterBuild('clubhouse', false); else openPanel('packs'); }
+  else if (it.kind === 'community') { const w = window.open(COMMUNITY.url, '_blank', 'noopener'); toast(w ? 'Community board: Telegram opened in a new tab' : 'Allow pop-ups to open the Telegram link', w ? 'good' : 'bad'); }
 }
 
 function openPanel(kind, opts = {}) {
@@ -617,7 +636,7 @@ function renderGarage() { const body = $('#panel-body'), g = ensureGarage(state)
     else if (t.dataset.home) { g.active = t.dataset.home; persist(); renderGarage(); }
     else if (t.dataset.walk) { st.active = st.active === t.dataset.walk ? null : t.dataset.walk; persist(); renderGarage(); }
     else if (t.dataset.rename) { const n = prompt('New name?'); if (n) { renamePet(state, t.dataset.rename, n); persist(); renderGarage(); } } }; }
-function closePanel() { const dg = $('#dialog'); if (dg) { dg.style.pointerEvents = ''; dg.style.visibility = ''; }
+function closePanel() { doorExit(doorSt, time); const dg = $('#dialog'); if (dg) { dg.style.pointerEvents = ''; dg.style.visibility = ''; }
   if (panel?.kind === 'cafe' && panel.shift && !panel.shift.settled && panel.shift.earned > 0) { finishShift(state, panel.shift); packAct('shift'); toast(`Shift ended early: +${panel.shift.paid} bones`, 'good'); hud(); persist(); }
   if (panel) uiClose(); panel = null; $('#panel').hidden = true;
 }
@@ -783,7 +802,7 @@ function enterBuild(id, readOnly) {
   build = { plotId: id, readOnly, pack, home, sel: null, hover: null, picked: null };
   $('#prompt').hidden = true; $('#minimap-wrap').hidden = true; wayUi(false); buildBar();
 }
-function exitBuild() { feel.fade(); uiClose(); mode = 'world'; build = null; $('#buildbar').hidden = true; $('#minimap-wrap').hidden = false; wayUi(true); persist(); }
+function exitBuild() { doorExit(doorSt, time); if (lastDoor && (lastDoor.kind === 'plot' || lastDoor.kind === 'visit' || lastDoor.kind === 'clubhouse')) { const o = outsideOf(lastDoor); Object.assign(state.player, { x: o.x, y: o.y }); player.face = o.face; } feel.fade(); uiClose(); mode = 'world'; build = null; $('#buildbar').hidden = true; $('#minimap-wrap').hidden = false; wayUi(true); persist(); }
 function rotateSel() { if (build?.sel) { build.sel.rot = (build.sel.rot + 1) % 4; } else if (build?.picked) { const it = build.picked; const r = build.pack ? movePackFurniture(state, it.uid, it.x, it.y, (it.rot + 1) % 4) : moveFurniture(state, build.plotId, it.uid, it.x, it.y, (it.rot + 1) % 4); if (!r.ok) toast('No room to rotate here', 'bad'); persist(); } }
 function buildClick(c) {
   if (!build || build.readOnly) return;

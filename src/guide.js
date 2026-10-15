@@ -30,7 +30,7 @@ const GAME_IDS = new Set(['arcade', 'rescue', 'quest', 'launch']);
 const WORK_IDS = new Set(['cafe', 'office', 'bizboard']);
 function groupOf(it) {
   if (FEATURED.includes(it.id)) return 'Featured';
-  if (it.kind === 'arcade' || it.kind === 'gamedoor' || GAME_IDS.has(it.id)) return 'Games';
+  if (it.kind === 'arcade' || it.kind === 'gamedoor' || it.kind === 'community' || GAME_IDS.has(it.id)) return 'Games';
   if (it.id === 'leaders' || it.id === 'board' || it.id === 'pools' || it.id === 'burn' || it.id === 'quests' || it.id === 'farmboard') return 'Prizes & Boards';
   if (WORK_IDS.has(it.id) || it.kind === 'lot' || it.kind === 'stall') return 'Work & Café';
   if (it.kind === 'plot' || it.kind === 'visit' || it.kind === 'clubhouse') return 'Homes';
@@ -72,7 +72,7 @@ export const distLabel = (path, px, py, target) => { const n = path ? path.lengt
 // ---------- tour steps ----------
 // place: registry id the camera pans to (null = the player). Text is short; every step is skippable.
 export const TOUR = [
-  { place: null, title: 'Welcome to Inu Verse!', text: 'I\'m Biscuit, President Inu\'s aide. Walk with WASD / arrow keys or click the ground. On a phone, drag the stick and tap A to interact (E on a keyboard).' },
+  { place: null, title: 'Welcome to Inu Verse!', text: 'I\'m Biscuit, President Inu\'s aide. Walk with WASD / arrow keys or click the ground. On a phone, drag the stick. Walk straight into a door to go inside; tap A (E on a keyboard) to talk, pet pups and read signs.' },
   { place: 'launch', highlight: true, title: '★ Launch Hall: the big one', text: 'Create your own coin and watch NPC traders pump it up a bonding curve until it graduates! It\'s a SIMULATION: play tokens only, no blockchain, no real money. Try it first!' },
   { place: 'bank', featured: true, title: '★ Kibble Bank', text: 'Your wallet at a glance: $KIBBLE balance (soon), items you own across every Inu game, purchase history and the public prize-pool and burn boards. No deposits, lending or yield.' },
   { place: 'mall', title: 'Kibble Mall', text: 'Luxury outfits, jewels, cars and furniture. Prices are in $KIBBLE (launching soon); everyday stuff costs bones you earn by playing.' },

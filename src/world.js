@@ -59,7 +59,13 @@ export const ARCADE = { id: 'arcade', name: 'Inu Arcade', x: 57, y: 50, w: 6, h:
 export const GAME_DOORS = [
   { id: 'rescue', name: 'Rescue Station (Inu Rescue)', x: 2, y: 48, w: 4, h: 4, door: { tx: 3, ty: 52 }, url: 'https://inu-rescue.vercel.app/' },
   { id: 'quest', name: 'Trainer Gate (Inu Quest)', x: 2, y: 55, w: 4, h: 4, door: { tx: 3, ty: 59 }, url: 'https://inu-quest.vercel.app/' },
+  { id: 'empires', name: 'Empire Keep (Inu Empires)', x: 2, y: 61, w: 4, h: 4, door: { tx: 3, ty: 65 }, url: 'https://aoe2-ashen.vercel.app/' },
+  { id: 'pepeballz', name: 'PepeBallz Dome', x: 2, y: 67, w: 4, h: 4, door: { tx: 3, ty: 71 }, url: 'https://pepeballz.vercel.app/' },
+  { id: 'memebrawl', name: 'Meme Brawl Arena', x: 2, y: 73, w: 4, h: 4, door: { tx: 3, ty: 77 }, url: 'https://meme-brawl.vercel.app/' },
+  { id: 'kibblepay', name: 'Kibble Pay Office', x: 58, y: 60, w: 4, h: 4, door: { tx: 59, ty: 64 }, url: 'https://kibble-pay.vercel.app/' },
 ];
+// Community notice board (Telegram). A sign, not a door: tap A to open the invite link.
+export const COMMUNITY = { id: 'telegram', name: 'Community Board (Telegram)', x: 5, y: 53, url: 'https://t.me/+L1LZkNnEsAA2M2Jl' };
 // Kibble Bank: read-only wallet view (balance, inventory, purchase history). No deposits, lending or yield.
 export const BANK = { id: 'bank', name: 'Kibble Bank', x: 40, y: 53, w: 5, h: 4, door: { tx: 42, ty: 57 } };
 export const SQUARE = { pools: { x: 19, y: 81 }, burn: { x: 28.5, y: 81 }, quest: { x: 10.5, y: 80 } }; // Item 5 monuments + quest board
@@ -149,6 +155,7 @@ export function interactables(state) {
   list.push({ kind: 'arcade', id: 'arcade', name: 'Inu Arcade', tx: ARCADE.door.tx, ty: ARCADE.door.ty });
   list.push({ kind: 'bank', id: 'bank', name: 'Kibble Bank', tx: BANK.door.tx, ty: BANK.door.ty });
   for (const g of GAME_DOORS) list.push({ kind: 'gamedoor', id: g.id, name: g.name, tx: g.door.tx, ty: g.door.ty });
+  list.push({ kind: 'community', id: COMMUNITY.id, name: COMMUNITY.name, tx: COMMUNITY.x, ty: COMMUNITY.y + 1 });
   list.push({ kind: 'matchmaker', id: 'matchmaker', name: 'Park Matchmaker', tx: MATCHMAKER.x, ty: MATCHMAKER.y + 1 });
   list.push({ kind: 'square', id: 'pools', name: 'Pools Monument', tx: Math.round(SQUARE.pools.x), ty: SQUARE.pools.y + 2 });
   list.push({ kind: 'square', id: 'burn', name: 'Burn Festival Monument', tx: Math.round(SQUARE.burn.x), ty: SQUARE.burn.y + 2 });
@@ -210,3 +217,10 @@ export const DIRT_LINKS = [];
         const nd = d + 1 + hz(nx >> 1, ny >> 1) * 0.9 + (MAP[ny][nx] === T.TREE ? 6 : 0); if (nd < (dist.get(nk) ?? 1e9)) { dist.set(nk, nd); prev.set(nk, k); q.push([nd, nx, ny]); } } }
     if (end == null) continue; const tiles = []; for (let k = prev.get(end); k != null; k = prev.get(k)) tiles.push(k); if (!tiles.length) tiles.push(ty * MAP_W + tx);
     for (const k of tiles) MAP[Math.floor(k / MAP_W)][k % MAP_W] = T.DIRT; DIRT_LINKS.push({ id: it.id, name: it.name, tiles: tiles.length }); } }
+
+// ---- walk-in doors: these interactables are entered by walking into the door, not by pressing A ----
+export const DOOR_KINDS = new Set(['building', 'mall', 'arcade', 'bank', 'gamedoor', 'plot', 'visit', 'clubhouse']);
+export const isDoor = (it) => DOOR_KINDS.has(it.kind) && it.id !== 'board';
+// direction you walk to go through the door from its stand tile
+export function doorDir(it) { if (it.side === 'left') return { dx: 1, dy: 0, face: 'right' }; if (it.side === 'right') return { dx: -1, dy: 0, face: 'left' }; return { dx: 0, dy: -1, face: 'up' }; }
+export const doorList = (state) => interactables(state).filter(isDoor);

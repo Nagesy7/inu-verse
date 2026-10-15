@@ -1,5 +1,5 @@
 // Pixel art for the Rescue Station and Trainer Gate (procedural, crisp integer rects, same style as arcadeart.js).
-import { TILE, GAME_DOORS, BANK } from './world.js';
+import { TILE, GAME_DOORS, BANK, COMMUNITY } from './world.js';
 const INK = '#1a1424', R = (c, x, y, w, h, col) => { c.fillStyle = col; c.fillRect(Math.round(x), Math.round(y), Math.round(w), Math.round(h)); };
 const txt = (c, s, x, y, size, col) => { c.font = `${size}px Silkscreen, monospace`; c.textAlign = 'center'; c.textBaseline = 'alphabetic'; c.fillStyle = INK; c.fillText(s, x + 1, y + 1); c.fillStyle = col; c.fillText(s, x, y); };
 const night = () => !!globalThis.__inuNight;
@@ -48,7 +48,38 @@ function bank(c, g, t) { const x = g.x * TILE, y = g.y * TILE, w = g.w * TILE, h
   for (let i = 0; i < 5; i++) { const cx = x + 8 + i * ((w - 22) / 4); R(c, cx, y + 26, 8, h - 28, '#f4ead4'); R(c, cx - 2, y + 24, 12, 3, '#bfb294'); R(c, cx - 2, y + h - 4, 12, 3, '#bfb294'); R(c, cx + 2, y + 28, 1, h - 34, '#d4c8a8'); }
   R(c, x + dx - 8, y + h - 30, 32, 30, INK); R(c, x + dx - 6, y + h - 28, 28, 28, '#5a3a1a'); R(c, x + dx + 7, y + h - 28, 2, 28, '#3a240e'); R(c, x + dx + 2, y + h - 14, 3, 3, '#f0c840'); R(c, x + dx + 11, y + h - 14, 3, 3, '#f0c840');
   R(c, x - 6, y + h, w + 12, 4, '#bfb294'); const gl = 0.5 + 0.5 * Math.sin(t * 3); c.save(); c.globalAlpha = gl; R(c, x + w - 18, y + 10, 4, 4, '#fff'); c.restore(); }
-export function doorProps(t) { return [...GAME_DOORS.map((g) => ({ y: (g.y + g.h) * TILE - 1, d: (c) => (g.id === 'rescue' ? rescue(c, g, t) : gate(c, g, t)) })), { y: (BANK.y + BANK.h) * TILE - 1, d: (c) => bank(c, BANK, t) }]; }
+
+// New game buildings (Inu Empires, PepeBallz, Meme Brawl, Kibble Pay): one themed pixel facade each, same crisp-rect style.
+const THEME = {
+  empires: { wall: '#8a8478', hi: '#a8a294', lo: '#6a6458', roof: '#3a5a9a', sign: 'INU EMPIRES', signBg: '#2a2030', signCol: '#ffd84a', door: '#5a3a1a' },
+  pepeballz: { wall: '#3f9a4a', hi: '#62b86a', lo: '#2a7034', roof: '#f2efe6', sign: 'PEPEBALLZ', signBg: '#1a3a20', signCol: '#c8ff7a', door: '#1e2a3a' },
+  memebrawl: { wall: '#9a2a34', hi: '#c8404a', lo: '#6a1a22', roof: '#1e1a2c', sign: 'MEME BRAWL', signBg: '#1e1a2c', signCol: '#ff8a3a', door: '#2a1a14' },
+  kibblepay: { wall: '#1f2d5c', hi: '#2f3f7a', lo: '#141e40', roof: '#d4a640', sign: 'KIBBLE PAY', signBg: '#d4a640', signCol: '#1f2d5c', door: '#0e1630' } };
+function studio(c, g, t) { const T = THEME[g.id], x = g.x * TILE, y = g.y * TILE, w = g.w * TILE, h = g.h * TILE, dx = (g.door.tx - g.x) * TILE, n = night();
+  c.save(); c.globalAlpha = 0.25; R(c, x - 2, y + h - 2, w + 4, 6, '#000'); c.restore();
+  R(c, x - 2, y + 14, w + 4, h - 14, INK); R(c, x, y + 16, w, h - 16, T.wall); for (let k = y + 22; k < y + h; k += 8) { R(c, x, k, w, 1, T.lo); R(c, x, k + 1, w, 1, T.hi); }
+  if (g.id === 'empires') { for (const tx of [x - 6, x + w - 18]) { R(c, tx - 2, y - 18, 28, h + 18, INK); R(c, tx, y - 16, 24, h + 16, T.wall); R(c, tx, y - 16, 24, 2, T.hi); for (let k = 0; k < 24; k += 8) R(c, tx + k, y - 22, 5, 6, INK), R(c, tx + k + 1, y - 21, 3, 5, T.wall); R(c, tx + 9, y - 2, 6, 10, INK); }
+    for (const [fx, col] of [[x + 6, '#c8282e'], [x + w - 6, '#2a4a9a']]) { R(c, fx, y - 44, 2, 24, INK); const wv = Math.floor(t * 4) % 2; R(c, fx + 2, y - 44 + wv, 12, 8, INK); R(c, fx + 2, y - 43 + wv, 11, 6, col); }
+    for (let k = 0; k < w; k += 10) R(c, x + k, y + 8, 6, 8, INK), R(c, x + k + 1, y + 9, 4, 7, T.wall); }
+  else if (g.id === 'pepeballz') { c.fillStyle = INK; c.beginPath(); c.ellipse(x + w / 2, y + 18, w / 2 + 4, 34, 0, Math.PI, 0); c.fill(); c.fillStyle = T.roof; c.beginPath(); c.ellipse(x + w / 2, y + 18, w / 2 + 2, 32, 0, Math.PI, 0); c.fill();
+    for (let k = -3; k <= 3; k++) R(c, x + w / 2 + k * 16 - 1, y - 6 + Math.abs(k) * 4, 2, 24 - Math.abs(k) * 4, '#d8d2c4');
+    const by = y - 20 + Math.abs(Math.sin(t * 3)) * -6; R(c, x + w / 2 - 8, by - 8, 16, 16, INK); R(c, x + w / 2 - 7, by - 7, 14, 14, '#7ac84a'); R(c, x + w / 2 - 5, by - 5, 4, 4, '#fff'); R(c, x + w / 2 + 1, by - 5, 4, 4, '#fff'); R(c, x + w / 2 - 4, by - 4, 2, 2, INK); R(c, x + w / 2 + 2, by - 4, 2, 2, INK); R(c, x + w / 2 - 4, by + 2, 8, 2, '#c8323c'); }
+  else if (g.id === 'memebrawl') { R(c, x - 8, y - 6, w + 16, 22, INK); R(c, x - 6, y - 4, w + 12, 18, T.roof); for (let k = 0; k < w + 12; k += 8) { const on = (Math.floor(t * 6) + k / 8) % 2 < 1; R(c, x - 6 + k + 2, y - 2, 3, 3, on ? '#ffd84a' : '#6a5a2a'); R(c, x - 6 + k + 2, y + 9, 3, 3, on ? '#6a5a2a' : '#ffd84a'); }
+    for (const fx of [x + 14, x + w - 26]) { R(c, fx, y + 26, 12, 12, INK); R(c, fx + 1, y + 27, 10, 10, '#ffd84a'); R(c, fx + 3, y + 29, 6, 6, '#e8a050'); R(c, fx + 1, y + 27, 10, 2, '#fff3b0'); } }
+  else { R(c, x - 6, y + 2, w + 12, 14, INK); R(c, x - 4, y + 4, w + 8, 10, T.roof); for (let k = 0; k < w + 8; k += 12) R(c, x - 4 + k, y + 4, 6, 10, '#f0c860');
+    const cy = y - 14 + Math.sin(t * 2) * 1.5; R(c, x + w / 2 - 11, cy - 11, 22, 22, INK); R(c, x + w / 2 - 10, cy - 10, 20, 20, '#d4a640'); R(c, x + w / 2 - 6, cy - 6, 12, 12, '#f0c860'); R(c, x + w / 2 - 2, cy - 7, 4, 14, '#8a5a1a'); }
+  R(c, x + 6, y + 16, w - 12, 12, INK); R(c, x + 8, y + 17, w - 16, 10, T.signBg); txt(c, T.sign, x + w / 2, y + 25, 7, T.signCol);
+  for (const wx of [x + 8, x + w - 24]) win(c, wx, y + 42, 16, 14, n);
+  R(c, x + dx - 6, y + h - 32, 44, 32, INK); R(c, x + dx - 4, y + h - 30, 40, 30, T.door); R(c, x + dx + 15, y + h - 30, 2, 30, INK); R(c, x + dx - 4, y + h - 30, 40, 3, T.hi);
+  R(c, x + dx + 8, y + h - 16, 3, 3, '#f0c840'); R(c, x + dx + 21, y + h - 16, 3, 3, '#f0c840'); R(c, x + dx - 8, y + h, 48, 4, '#9aa4b0'); R(c, x + dx - 8, y + h + 4, 48, 1, INK);
+  if (n) glow(c, x + dx + 16, y + h - 14, 40, '#ffd27a', 0.45); }
+// Community board (Telegram invite): wooden notice board with a paper-plane poster.
+function board(c, t) { const x = COMMUNITY.x * TILE, y = COMMUNITY.y * TILE;
+  for (const px of [x + 4, x + 26]) { R(c, px, y - 4, 3, 36, INK); R(c, px + 1, y - 4, 1, 36, '#8a5a2a'); }
+  R(c, x - 2, y - 30, 36, 30, INK); R(c, x, y - 28, 32, 26, '#b8844a'); R(c, x, y - 28, 32, 2, '#d8a468'); R(c, x + 3, y - 25, 26, 20, '#2aa0e0'); R(c, x + 3, y - 25, 26, 2, '#6ac8f4');
+  c.fillStyle = '#fff'; c.beginPath(); c.moveTo(x + 7, y - 15); c.lineTo(x + 25, y - 22); c.lineTo(x + 20, y - 8); c.lineTo(x + 15, y - 13); c.closePath(); c.fill(); R(c, x + 14, y - 13, 2, 4, '#c8e8f8');
+  R(c, x - 4, y - 38, 40, 9, INK); R(c, x - 3, y - 37, 38, 7, '#1f2d5c'); txt(c, 'COMMUNITY', x + 16, y - 31, 5, '#ffd84a'); }
+export function doorProps(t) { return [...GAME_DOORS.map((g) => ({ y: (g.y + g.h) * TILE - 1, d: (c) => (g.id === 'rescue' ? rescue(c, g, t) : g.id === 'quest' ? gate(c, g, t) : studio(c, g, t)) })), { y: (COMMUNITY.y + 1) * TILE - 1, d: (c) => board(c, t) }, { y: (BANK.y + BANK.h) * TILE - 1, d: (c) => bank(c, BANK, t) }]; }
 // Night light sources for these buildings (fed into the atmosphere pass so they glow through the dark overlay).
 export function doorLights() { const L = [], P = (x, y, r, core, gy) => L.push({ x, y, gy, r, glow: true, core, flat: 0.6 });
   for (const g of [...GAME_DOORS, BANK]) { const x = g.x * TILE, y = g.y * TILE, w = g.w * TILE, h = g.h * TILE, dx = (g.door.tx - g.x) * TILE;

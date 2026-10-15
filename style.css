@@ -256,3 +256,6 @@ body.mm-on #minimap-wrap{top:calc(max(8px,env(safe-area-inset-top)) + 58px)!impo
 .tour-target{outline:3px solid var(--goldl);outline-offset:3px;animation:tourPulse 1s ease-in-out infinite}
 @keyframes tourPulse{50%{outline-color:#fff}}@media (prefers-reduced-motion: reduce){.tour-target{animation:none}}
 #drawer #btn-pools{grid-column:span 2;font-size:9px!important;gap:4px}#drawer #btn-pools::before{content:'Prize pools';margin-right:4px;color:var(--goldl)}
+#enter-ov{position:fixed;inset:0;z-index:60;display:flex;align-items:center;justify-content:center;background:#0c1022cc}#enter-ov[hidden]{display:none}
+#enter-ov .enter-card{display:flex;flex-direction:column;gap:8px;align-items:center;padding:16px 22px;background:#121a36;border:4px solid var(--gold);color:var(--goldl);font-size:14px}
+#enter-ov small{color:#c8c0a8;font-size:10px}#enter-ov .btn{min-height:44px}
