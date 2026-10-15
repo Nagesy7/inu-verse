@@ -38,7 +38,8 @@ import * as F5 from './fly5.js';
 import { renderFly5 } from './fly5ui.js';
 import { squareProps } from './fly5art.js';
 import { arcadeProps } from './arcadeart.js';
-import { ARCADE } from './world.js';
+import { ARCADE, GAME_DOORS } from './world.js';
+import { doorProps } from './doorart.js';
 import * as PAIR from './pairing.js';
 import { ensureFly, featuredOf, statusGlow, poolsOf, FEATURED_SLOTS, claimPresDrop } from './flywheels.js';
 import { makeTown, townHour, lineFor, playerDid, friendsOf, rivalsOf } from './townai.js';
@@ -249,6 +250,12 @@ function openArcade() { const url = arcadeUrl(), touch = matchMedia('(pointer: c
   if (!ov) { ov = document.createElement('div'); ov.id = 'arcade-ov'; ov.innerHTML = '<div class="arc-bar"><button class="btn" id="arc-back">◀ Back to Inu Verse</button><b>INU ARCADE</b><a class="btn alt" id="arc-tab" target="_blank" rel="noopener">Open in new tab ↗</a></div><iframe id="arc-frame" allow="autoplay; fullscreen; gamepad" title="Inu Arcade"></iframe>'; document.body.appendChild(ov);
     ov.querySelector('#arc-back').onclick = closeArcade; }
   ov.querySelector('#arc-frame').src = url; ov.querySelector('#arc-tab').href = url; ov.hidden = false; arcadeOpen = true; setTimeout(() => ov.querySelector('#arc-frame').focus(), 300); }
+// Rescue Station / Trainer Gate: open Inu Rescue / Inu Quest with the signed-in wallet (public address only; never a session).
+function gameDoorUrl(id) { const g = GAME_DOORS.find((d) => d.id === id), w = state?.walletAddr, q = new URLSearchParams();
+  if (/^[1-9A-HJ-NP-Za-km-z]{32,44}$/.test(w || '')) q.set('wallet', w); if (DEMO) q.set('demo', '1'); q.set('from', 'inu-verse'); return g.url + '?' + q.toString(); }
+function openGameDoor(id) { const url = gameDoorUrl(id), g = GAME_DOORS.find((d) => d.id === id); keys.clear(); const w = window.open(url, '_blank', 'noopener');
+  toast(w ? `${g.name} opened in a new tab${/wallet=/.test(url) ? ' with your wallet' : ''}` : 'Allow pop-ups to open ' + g.name, w ? 'good' : 'bad'); }
+globalThis.__doors = { url: gameDoorUrl, open: openGameDoor };
 function closeArcade() { const ov = document.getElementById('arcade-ov'); if (ov) { ov.hidden = true; ov.querySelector('#arc-frame').src = 'about:blank'; } arcadeOpen = false; fetchArcadeTop(); }
 let arcadeOpen = false; globalThis.__arcade = { open: openArcade, close: closeArcade, url: arcadeUrl, get top() { return arcadeTop; } };
 globalThis.__eng = ENG; globalThis.__fly5 = F5;
@@ -380,7 +387,7 @@ function renderWorld() {
     const tx0 = Math.floor(-ox / TILE) - 1, ty0 = Math.floor(-oy / TILE) - 1; ctx.save(); ctx.scale(SCALE, SCALE); drawWater(ctx, time, tx0, ty0, tx0 + Math.ceil(vw / TILE) + 2, ty0 + Math.ceil(vh / TILE) + 2); ctx.restore(); }
   const phase = dayPhase(time + dayOffset);
   globalThis.__inuNight = phase.dark;
-  const dyn = [...dynamicProps(state, time, myPack(state)), ...presidentProps(pres, time), ...carWorldProps(), ...crewProps(), ...adProps(trend, adRot, adIdx, !!globalThis.__inuNight, time, featuredMap()), ...confettiProps(), ...squareProps(state, time, Math.floor(gameDay() / 7)), ...arcadeProps(time, arcadeTop)];
+  const dyn = [...dynamicProps(state, time, myPack(state)), ...presidentProps(pres, time), ...doorProps(time), ...carWorldProps(), ...crewProps(), ...adProps(trend, adRot, adIdx, !!globalThis.__inuNight, time, featuredMap()), ...confettiProps(), ...squareProps(state, time, Math.floor(gameDay() / 7)), ...arcadeProps(time, arcadeTop)];
   for (const d of dyn) if (d.flat) d.d(ctx);
   drawGroundLife(ctx, amb, phase); feel.drawGround(ctx);
   if (player.clickMark && player.path.length) { const m = player.clickMark, k = Math.round(10 + Math.sin(time * 6) * 2); ctx.fillStyle = '#f2cc68'; for (const [ax, ay] of [[-k, 0], [k - 4, 0], [0, -k / 2], [0, k / 2 - 2]]) ctx.fillRect(Math.round(m.x + ax), Math.round(m.y + 6 + ay), 4, 3); }
@@ -488,6 +495,7 @@ function interact(it) {
   else if (it.kind === 'lot') openPanel('lot', { id: it.id });
   else if (it.kind === 'biz') openPanel('bizboard');
   else if (it.kind === 'arcade') openArcade();
+  else if (it.kind === 'gamedoor') openGameDoor(it.id);
   else if (it.kind === 'matchmaker') openPanel('matchmaker');
   else if (it.kind === 'square') openPanel('fly5', { tab: it.id === 'pools' ? 'vip' : it.id === 'burn' ? 'burn' : it.id === 'quests' ? 'quests' : 'vip' });
   else if (it.kind === 'clubhouse') { if (myPack(state)) enterBuild('clubhouse', false); else openPanel('packs'); }

@@ -55,6 +55,11 @@ export const CHAPEL = { id: 'chapel', name: 'Park Chapel', x: 21, y: 80, w: 7, h
 export const FARM_SIGNS = { farmboard: { x: 34, y: 87 }, bizboard: { x: 47, y: 78 } };
 export const MATCHMAKER = { x: 15, y: 79 }; // park board west of the chapel
 export const ARCADE = { id: 'arcade', name: 'Inu Arcade', x: 57, y: 50, w: 6, h: 6, door: { tx: 59, ty: 56 }, url: 'https://inu-arcade.vercel.app/' }; // east edge of the Mall plaza; front door opens onto the plaza walkway
+// doors to the other Inu games (open with the signed-in wallet passed through as ?wallet=<address>)
+export const GAME_DOORS = [
+  { id: 'rescue', name: 'Rescue Station (Inu Rescue)', x: 2, y: 48, w: 4, h: 4, door: { tx: 3, ty: 52 }, url: 'https://inu-rescue.vercel.app/' },
+  { id: 'quest', name: 'Trainer Gate (Inu Quest)', x: 2, y: 55, w: 4, h: 4, door: { tx: 3, ty: 59 }, url: 'https://inu-quest.vercel.app/' },
+];
 export const SQUARE = { pools: { x: 19, y: 81 }, burn: { x: 28.5, y: 81 }, quest: { x: 10.5, y: 80 } }; // Item 5 monuments + quest board
 export { LOTS } from './biz.js';
 import { LOTS as BIZ_LOTS } from './biz.js';
@@ -78,6 +83,7 @@ export function buildMap() {
   fill(AVENUE, 41, 3, 4, T.ROAD); // avenue joins the south road
   fill(7, 46, 50, 34, T.PLAZA);
   for (const b of MALL_BUILDINGS) fill(b.x, b.y, b.w, b.h, T.BUILDING);
+  for (const g of GAME_DOORS) fill(g.x, g.y, g.w, g.h, T.BUILDING);
   fill(ARCADE.x, ARCADE.y, ARCADE.w, ARCADE.h, T.BUILDING); fill(ARCADE.x, ARCADE.y + ARCADE.h, ARCADE.w, 3, T.PLAZA);
   fill(STATUE.x, STATUE.y, 2, 1, T.BUILDING); fill(LEADERS.x, LEADERS.y, LEADERS.w, LEADERS.h, T.BUILDING);
   // farmland: walk from the plaza, a farm lane, fields, barn, pond, market, crafting, animal pen, orchard, lots
@@ -138,6 +144,7 @@ export function interactables(state) {
   list.push({ kind: 'farm', id: 'farmboard', name: 'Top Farmer board', tx: FARM_SIGNS.farmboard.x, ty: FARM_SIGNS.farmboard.y + 1 });
   list.push({ kind: 'biz', id: 'bizboard', name: 'Top Business board', tx: FARM_SIGNS.bizboard.x, ty: FARM_SIGNS.bizboard.y + 1 });
   list.push({ kind: 'arcade', id: 'arcade', name: 'Inu Arcade', tx: ARCADE.door.tx, ty: ARCADE.door.ty });
+  for (const g of GAME_DOORS) list.push({ kind: 'gamedoor', id: g.id, name: g.name, tx: g.door.tx, ty: g.door.ty });
   list.push({ kind: 'matchmaker', id: 'matchmaker', name: 'Park Matchmaker', tx: MATCHMAKER.x, ty: MATCHMAKER.y + 1 });
   list.push({ kind: 'square', id: 'pools', name: 'Pools Monument', tx: Math.round(SQUARE.pools.x), ty: SQUARE.pools.y + 2 });
   list.push({ kind: 'square', id: 'burn', name: 'Burn Festival Monument', tx: Math.round(SQUARE.burn.x), ty: SQUARE.burn.y + 2 });
