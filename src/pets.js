@@ -1,3 +1,4 @@
+import { shadeSprite } from './detail.js';
 import { hires } from './hires.js';
 // Pets: bought like clothes, follow the player, idle + walk animations, can be named and petted.
 // Common pets cost Bones; exotic pets cost $KIBBLE through the shared wallet adapter (treasury + pool split).
@@ -48,5 +49,5 @@ export function petSprite(species, frame = 0, pal = null) { const k = species + 
     case 'koi': P(2, 4, 12, 11, I); P(3, 5, 10, 9, c3(b)); P(5 + f * 2, 8, 5, 3, a); P(6 + f * 2, 9, 2, 1, e); P(3 + f * 2, 9, 2, 1, a); P(4, 6, 1, 3, '#ffffff'); P(3, 14, 10, 1, '#e3b341'); break;
     case 'snowowl': P(4, 3, 9, 11, I); P(5, 4, 7, 9, a); P(6, 5, 2, 2, e); P(9, 5, 2, 2, e); P(6, 5, 1, 1, I); P(10, 5, 1, 1, I); P(8, 7, 1, 1, '#e3b341'); P(5, 9, 7, 1, b); P(4 - f, 7, 1, 4, b); P(12 + f, 7, 1, 4, b); P(6, 14, 1, 2, '#e3b341'); P(10, 14, 1, 2, '#e3b341'); break;
   }
-  cv = hires(cv); cache.set(k, cv); return cv; } // 32x32: 2x pixel density (same palette)
+  cv = hires(cv); if (!globalThis.__noDetail) shadeSprite(cv, { r: 2, light: 0.3, dark: 0.32, fur: 0.12, glint: 'small', grad: 0.14, seed: species.length }); cache.set(k, cv); return cv; } // 32x32: 2x pixel density (same palette)
 const c3 = (x) => x;

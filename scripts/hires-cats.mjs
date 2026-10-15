@@ -15,7 +15,7 @@ const CATS = {
  'outfits-2': `const L=[{top:'hawaiian',bottom:'chinos',eyes:'gold_shades',feet:'sneakers_red'},{top:'gold_suit',bottom:'slacks_black',hat:'crown',neck:'diamond_chain',feet:'loafers'},{top:'jacket_black',bottom:'slacks_black',neck:'chain_gold',feet:'sneakers_gold'},{top:'gown_white',neck:'chain_gold'}];
   L.forEach((o,i)=>{drawShiba(x,52+i*102,200,{coat:['golden','gray','red','cream'][i],outfit:o,scale:2.3}); drawShiba(x,52+i*102,350,{coat:'tan',outfit:o,face:'up'});});`,
 };
-for (const [cat, js] of Object.entries(CATS)) for (const half of [1, 0]) {
+for (const [cat, js] of Object.entries(CATS).filter(([k]) => !k.startsWith('__') && (!process.env.ONLY || process.env.ONLY.split(',').includes(k)))) for (const half of [1, 0]) {
   await page.reload(); await page.waitForTimeout(600); await page.evaluate(() => { window.__sd = 0; });
   await page.addScriptTag({ type: 'module', content: `import { drawShiba, drawProfileShiba, artReady } from '/src/art.js'; import { petSprite, PETS } from '/src/pets.js'; import { drawCar } from '/src/cars.js'; await artReady;
    document.getElementById('ss')?.remove(); const cv=document.createElement('canvas'),d=3; cv.id='ss'; cv.width=844*d; cv.height=390*d; cv.style.cssText='position:fixed;inset:0;width:844px;height:390px;z-index:99'; document.body.appendChild(cv);

@@ -23,6 +23,10 @@ export function shadeSprite(cv, { r = 2, light = 0.28, dark = 0.3, fur = 0, glin
     if (L(x, y) > skipInk || A(x, y) < 128) continue; if (![[-6, 0], [6, 0], [0, -6], [0, 6], [-2, 0], [2, 0], [0, -2], [0, 2]].every(([a, b]) => A(x + a, y + b) > 128)) continue;
     if (L(x - 1, y) <= skipInk && L(x, y - 1) <= skipInk && L(x + 1, y) <= skipInk && L(x, y + 1) <= skipInk && L(x - 1, y - 1) > skipInk) { const i = (y * w + x) * 4; d[i] = d[i + 1] = d[i + 2] = 255; }
   }
+  if (glint === 'small') for (let y = 1; y < h - 2; y++) for (let x = 1; x < w - 2; x++) { // 2x2-ish pet eyes: light the top-left pixel
+    if (A(x, y) < 128 || L(x, y) > skipInk) continue; const lit = (a, b) => A(a, b) > 128 && L(a, b) > skipInk + 30;
+    if (lit(x - 1, y) && lit(x, y - 1) && !lit(x + 1, y) && !lit(x, y + 1) && A(x + 1, y) > 128 && A(x, y + 1) > 128 && lit(x + 2, y) && lit(x, y + 2)) { const i = (y * w + x) * 4; d[i] = d[i + 1] = d[i + 2] = 255; }
+  }
   c.putImageData(im, 0, 0); return cv;
 }
 // Material patterns per outfit item (drawn source-atop on that layer only). b = layer bbox [x, y, w, h], u = px unit.
