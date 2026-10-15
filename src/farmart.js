@@ -64,13 +64,39 @@ function barnDraw(c, look) { const x = BARN.x * TILE, y = BARN.y * TILE, w = BAR
   lantern(c, x + w / 2 - 44, y + 64); lantern(c, x + w / 2 + 44, y + 64);
   for (const [bx, by] of [[x - 26, y + h - 16], [x - 26, y + h - 30], [x - 10, y + h - 16]]) { R(c, bx - 1, by - 1, 16, 14, INK); R(c, bx, by, 14, 12, '#e8c95a'); R(c, bx, by + 3, 14, 1, '#b8903a'); R(c, bx, by + 8, 14, 1, '#b8903a'); R(c, bx, by, 14, 2, '#f8e08a'); } // hay bales
   R(c, x + w + 4, y + h - 12, 30, 12, INK); R(c, x + w + 5, y + h - 11, 28, 10, '#8a5a2a'); R(c, x + w + 7, y + h - 10, 24, 4, '#5aa8d8'); // water trough
+  if (!globalThis.__noDetail) barnDetail(c, look, x, y, w, h, wall, trim);
   txt(c, 'BIG BARN', x + w / 2, y + 6, 8, '#ffe7a3'); }
+// ---- cosmetic detail pass (half-world-px strokes = 1 screen px at zoom 2): wood grain, form shading, glazing, trim ornaments, rims ----
+const hsh = (a, b) => { const n = Math.sin(a * 127.1 + b * 311.7) * 43758.5453; return n - Math.floor(n); };
+function barnDetail(c, look, x, y, w, h, wall, trim) { const H = 0.5;
+  const g = c.createLinearGradient(0, y + 26, 0, y + h); g.addColorStop(0, 'rgba(255,255,255,.12)'); g.addColorStop(0.6, 'rgba(0,0,0,0)'); g.addColorStop(1, 'rgba(0,0,0,.22)'); c.fillStyle = g; c.fillRect(x, y + 29, w, h - 32); // form shading
+  for (let i = 0; i < w; i += 8) { R(c, x + i + 1, y + 29, H, h - 32, 'rgba(255,255,255,.14)'); for (let k = 0; k < 6; k++) { const gy = y + 32 + hsh(i, k) * (h - 40); R(c, x + i + 2 + hsh(k, i) * 4, gy, 2.5, H, 'rgba(0,0,0,.22)'); R(c, x + i + 3, gy + 2, H, H, 'rgba(0,0,0,.35)'); } } // plank grain + knots
+  for (let i = 0; i < w + 8; i += 6) R(c, x - 4 + i, y - 8 + ((i / 6) % 2 ? 9 : 18), 6, H, 'rgba(0,0,0,.28)'); for (let r = 0; r < 4; r++) R(c, x - 4, y - 7 + r * 9, w + 8, H, 'rgba(255,220,180,.18)'); // shingle courses
+  const dx = x + w / 2 - 34; for (let k = 0; k < 68; k += 5) R(c, dx + k, y + 63, H, h - 63, 'rgba(0,0,0,.25)'); R(c, dx + 30, y + 90, 2, 3, '#c9a23a'); R(c, dx + 36, y + 90, 2, 3, '#c9a23a'); // door boards + latches
+  for (const wx of [x + 16, x + w - 46]) { R(c, wx + 3, y + 81.5, 24, H, trim); R(c, wx + 5, y + 74, 4, H, '#fff'); R(c, wx + 5, y + 74, H, 4, '#fff'); R(c, wx + 3, y + 73, 24, 18, 'rgba(255,190,90,.18)'); R(c, wx + 2, y + 94, 26, 1, 'rgba(0,0,0,.35)'); } // panes, glint, sill shadow
+  R(c, x, y + 29, w, H, 'rgba(0,0,0,.3)'); R(c, x, y + 26, w, H, 'rgba(255,255,255,.5)'); R(c, x, y + h - 3, w, H, 'rgba(255,255,255,.5)'); // trim bevels
+  if (look === 'barn_gold') { for (let i = 4; i < w - 4; i += 10) { R(c, x + i, y + 27, 2, 1, '#fff6c0'); R(c, x + i + 4, y + h - 2, 2, 1, '#fff6c0'); } for (const [sx, sy] of [[x + 8, y + 40], [x + w - 10, y + 50], [x + w / 2 + 20, y + 32]]) { R(c, sx - 2, sy, 5, H, '#fffbe0'); R(c, sx, sy - 2, H, 5, '#fffbe0'); } // gold leaf filigree + sparkle
+    c.strokeStyle = '#ffd23a'; c.lineWidth = 1; c.beginPath(); c.arc(x + w / 2, y + 56, 6, Math.PI, 0); c.stroke(); }
+  if (look === 'barn_blue') { const sx = x + w / 2, sy = y + 46; c.fillStyle = '#f4ead2'; c.beginPath(); for (let k = 0; k < 10; k++) { const a = -Math.PI / 2 + k * Math.PI / 5, r = k % 2 ? 2.5 : 6; c.lineTo(sx + Math.cos(a) * r - 26, sy + Math.sin(a) * r); } c.fill(); c.beginPath(); for (let k = 0; k < 10; k++) { const a = -Math.PI / 2 + k * Math.PI / 5, r = k % 2 ? 2.5 : 6; c.lineTo(sx + Math.cos(a) * r + 26, sy + Math.sin(a) * r); } c.fill(); } // royal stars
+}
+function tractorDetail(c, x, y, look, col, dk) { const H = 0.5;
+  R(c, x, y - 28, 42, H, 'rgba(255,255,255,.55)'); R(c, x + 16, y - 28, H, 10, 'rgba(0,0,0,.3)'); R(c, x + 16.5, y - 28, H, 10, 'rgba(255,255,255,.25)'); // hood edge + panel seam
+  for (let k = 0; k < 4; k++) R(c, x + 1, y - 27 + k * 2.5, 4, 1, 'rgba(0,0,0,.4)'); // grille slats
+  R(c, x + 26, y - 30, 18, 2, 'rgba(0,0,0,.25)'); for (let i = 0; i < 4; i++) R(c, x + 34 + i, y - 48 + i * 1.5, H, 3, 'rgba(255,255,255,.7)'); // cab shading + glass streak
+  R(c, x - 3.5, y - 23, 2, 2, '#ffffff'); c.save(); c.globalAlpha = 0.35; R(c, x - 8, y - 25, 4, 8, '#fff6c0'); c.restore(); // lamp lens + beam
+  for (const [cx, cy, r] of [[x + 8, y - 8, 8], [x + 34, y - 12, 12]]) { for (let k = 0; k < 12; k++) { const a = k * Math.PI / 6; R(c, cx + Math.cos(a) * (r - 1) - 0.75, cy + Math.sin(a) * (r - 1) - 0.75, 1.5, 1.5, '#5a5a66'); } // tyre lugs
+    c.fillStyle = look === 'tractor_chrome' ? '#e8eef6' : '#e8c95a'; c.beginPath(); c.arc(cx, cy, r * 0.45, 0, 7); c.fill(); c.fillStyle = 'rgba(0,0,0,.35)'; c.beginPath(); c.arc(cx + 0.5, cy + 0.5, r * 0.3, 0, 7); c.fill();
+    for (let k = 0; k < 5; k++) { const a = k * Math.PI * 0.4; R(c, cx + Math.cos(a) * r * 0.32 - 0.5, cy + Math.sin(a) * r * 0.32 - 0.5, 1, 1, '#2a2a30'); } R(c, cx - r * 0.3, cy - r * 0.35, 2, H, '#fff'); } // rim, bolts, glint
+  if (look === 'tractor_pink') for (const [px, py] of [[x + 8, y - 24], [x + 20, y - 22], [x + 34, y - 36]]) { R(c, px - 1.5, py, 4, 1, '#fff0f6'); R(c, px, py - 1.5, 1, 4, '#fff0f6'); R(c, px, py, 1, 1, '#ffd23a'); } // sakura decals
+  if (look === 'tractor_chrome') { for (let i = 0; i < 3; i++) R(c, x + 4 + i * 12, y - 27, 5, H, '#ffffff'); R(c, x + 27, y - 51, 1, 22, 'rgba(255,255,255,.7)'); } // mirror-polish streaks
+}
+export const __farmArt = { barn: (c, look) => barnDraw(c, look), tractor: (c, x, y, look) => tractor(c, x, y, look), BARN: () => BARN };
 function wheel(c, cx, cy, r) { for (let dy = -r; dy <= r; dy++) { const w = Math.round(Math.sqrt(r * r - dy * dy)); R(c, cx - w, cy + dy, w * 2, 1, INK); } for (let dy = -r + 3; dy <= r - 3; dy++) { const w = Math.round(Math.sqrt((r - 3) ** 2 - dy * dy)); R(c, cx - w, cy + dy, w * 2, 1, '#3a3a44'); } R(c, cx - 2, cy - 2, 4, 4, '#e8c95a'); }
 function tractor(c, x, y, look) { const col = look === 'tractor_pink' ? '#ff8ab8' : look === 'tractor_chrome' ? '#cfd8e4' : '#3f9c4a', dk = look === 'tractor_pink' ? '#d0608a' : look === 'tractor_chrome' ? '#8a96a8' : '#2a6a32';
   R(c, x - 2, y - 30, 46, 16, INK); R(c, x, y - 28, 42, 12, col); R(c, x, y - 18, 42, 2, dk); R(c, x + 2, y - 26, 12, 3, 'rgba(255,255,255,.35)'); // hood + body
   R(c, x + 24, y - 54, 22, 26, INK); R(c, x + 26, y - 52, 18, 24, col); R(c, x + 28, y - 49, 14, 10, '#bfe6ff'); R(c, x + 28, y - 49, 4, 10, '#e8f6ff'); R(c, x + 22, y - 56, 26, 4, dk); // cab
   R(c, x + 6, y - 40, 4, 12, '#555'); R(c, x + 5, y - 42, 6, 3, '#333'); R(c, x - 4, y - 24, 5, 6, '#ffe07a'); // exhaust + headlight
-  wheel(c, x + 8, y - 8, 8); wheel(c, x + 34, y - 12, 12); }
+  wheel(c, x + 8, y - 8, 8); wheel(c, x + 34, y - 12, 12); if (!globalThis.__noDetail) tractorDetail(c, x, y, look, col, dk); }
 function crop(c, x, y, cropId, st, t) { const C = CROPS[cropId], sw = Math.sin(t * 2 + x) * 0.8; if (st === 1) { R(c, x - 1, y - 4, 2, 4, C.leaf); R(c, x - 3 + sw, y - 6, 3, 2, C.leaf); return; }
   if (st === 2) { R(c, x - 1, y - 9, 2, 9, C.leaf); R(c, x - 5 + sw, y - 9, 4, 3, C.leaf); R(c, x + 1 + sw, y - 7, 4, 3, C.leaf); return; }
   R(c, x - 1, y - 12, 2, 12, C.leaf); R(c, x - 6 + sw, y - 12, 5, 4, C.leaf); R(c, x + 1 + sw, y - 10, 5, 4, C.leaf); if (st === 3) { R(c, x - 2, y - 15, 4, 3, '#fff6c0'); return; }

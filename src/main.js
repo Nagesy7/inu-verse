@@ -611,7 +611,7 @@ function closePanel() { const dg = $('#dialog'); if (dg) { dg.style.pointerEvent
   if (panel) uiClose(); panel = null; $('#panel').hidden = true;
 }
 
-function iconCanvas(draw, w = 64, h = 52) { const c = document.createElement('canvas'); c.width = w * 2; c.height = h * 2; c.style.width = w + 'px'; c.style.height = h + 'px'; const x = c.getContext('2d'); x.scale(2, 2); draw(x); return c; }
+function iconCanvas(draw, w = 64, h = 52) { const k = Math.max(2, Math.ceil(devicePixelRatio || 1)), c = document.createElement("canvas"); c.width = w * k; c.height = h * k; c.style.width = w + 'px'; c.style.height = h + "px"; const x = c.getContext("2d"); x.scale(k, k); draw(x); return c; } // preview icons at device resolution (3x on most phones)
 
 function renderShop() {
   const body = $('#panel-body');
