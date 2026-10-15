@@ -136,3 +136,46 @@ Vehicles are cosmetic and ownership only, with no effect on any prize. This foll
 - **Phase 3: new buildings.** The vet/hospital, school, police/ranger station, train station, beach and gym, built with realistic materials. The Community Hall vote decides the order.
 - **Phase 4: weather, seasons and wildlife.** Weather states, seasonal palettes and events, and animal life.
 - **Phase 5: deeper ecosystem.** Deliveries linked to shops, bus, train and ferry routes, and NPC jobs tied to buildings.
+
+## City Layout Restructure (later phase)
+
+Plan only. No code changes yet. Images:
+- `proof/city-layout-current.png`, rendered from `src/world.js` `MAP` and the building data. Numbers on it are path steps from spawn, from `findPath`.
+- `proof/city-layout-proposed.png`, a sketch of the proposed layout.
+
+### Current layout (from `src/world.js`)
+- **Shape:** the map is 64×106 tiles of 32 px each, laid out as one tall north-to-south strip. Spawn is at tile (31, 23), near the north end on the main avenue.
+- **Roads:** three east-west streets (rows 20, 31 and 42) and one north-south avenue (column 31, rows 6–45). The avenue does not continue south of row 45. The whole Mall district and the farmland have plaza and walkways only, with no roads.
+- **North (rows 1–18):** Market Row (Shiba Sips Café, Paws & Pillows, Fetch Fashion, Launch Hall, Zoomies Motors), the stall plaza, the clubhouse and a pond. Everything here is 8–38 steps from spawn.
+- **Middle (rows 24–39):** a row of 8 player plots, 4 NPC homes and a large pond. Large patches of grass in between are dead space.
+- **South (rows 46–79):** the Kibble Mall district. It is one large 50×34 plaza holding the Mall, five specialty shops, the Bank, the Arcade, the Rescue Station and Trainer Gate, the Leaderboards Hall, the forecourt, the fountain, the statue and the President's Office. The Kibble Mall, President Inu's flagship, is 81 steps from spawn. That is the most important store and it's off-centre.
+- **Far south (rows 80–104):** the park and chapel, then the farmland (fields, barn, farmers market, crafting station, pen, orchard and farm lane lots). These are 92–123 steps from spawn.
+- **Problems:**
+  - Key places sit at the opposite end from spawn. The Mall is 81 steps away and the barn and craft station are around 120.
+  - On a phone, getting there means a long vertical scroll and drag.
+  - There is no fast travel and almost no signage.
+  - The road grid stops at the Mall, so the south half has no readable streets.
+  - Dead grass sits between the homes and the plots.
+  - About 1,970 of the 6,784 tiles (29%) are plain grass.
+
+### Proposed changes: Kibble Mall at the centre
+- **President Inu's Kibble Mall becomes the centre of the map** and the hub landmark. A Mall Plaza surrounds it, with the fountain, the President Inu statue and signposts. Spawn moves to the Mall Plaza.
+- **Districts radiate out from the Mall** in six wedges:
+  - North: Market Row
+  - North-east: Arcade and game doors (Arcade, Rescue Station, Trainer Gate)
+  - South-east: Luxury and Finance (Bank, Luxury Autos, Designer, Jewelers)
+  - South: Civic (President's Office, Leaderboards Hall, Community Hall, and later the vet and school)
+  - South-west: Park and Farm
+  - North-west: Homes and Plots
+- **Readable road grid:** six radial avenues leave the Mall Plaza, joined by an inner ring road and an outer ring road. Every district gets a road, including the farm, which currently has none.
+- **Shorter walks:** every key building should be about 40 steps or fewer from the Mall. The specialty Mall shops sit on the inner ring.
+- **Signage:** district name signs, a signpost at each avenue mouth on the plaza, labels for key buildings on the minimap, and floating labels above building doors.
+- **Fast travel:** a stop in each district (the gold markers on the sketch), and every stop has a "Back to Mall" option. On a phone, a single tap opens a district list. Fast travel is free and purely convenience, with no prize effect.
+- **Phone accessibility:** a minimap you can tap to jump to a location, larger tap targets on doors, and a "Take me to…" button for key buildings that uses the existing `findPath` with auto-walk.
+- **Reuse dead space:** fill the empty grass with the new Living World buildings and more plots.
+
+### Phased outline
+1. **Signage, minimap labels and "Take me to…".** No changes to the map.
+2. **Fast travel stops and a Mall return option.**
+3. **Rebuild the map** around the Kibble Mall hub (radial avenues, ring roads, district wedges). Migrate saves, remapping plot and home coordinates.
+4. **Fill districts** with Living World buildings that use realistic materials.
