@@ -11,7 +11,7 @@ test('phone HUD shows only essentials; every former button lives in the menu and
     const ctx = await b.newContext({ viewport: vp, isMobile: true, hasTouch: true }), p = await ctx.newPage(); p.on('pageerror', (e) => errs.push(e.message));
     await p.goto(`http://localhost:${srv.address().port}/`); await p.evaluate(() => { localStorage.clear(); localStorage.setItem('inuverse.tour.v1', 'skipped:test'); }); await p.reload(); await p.waitForTimeout(700); await p.click('#start'); await p.waitForTimeout(1800);
     const vis = await p.evaluate(() => [...document.querySelectorAll('button,a.btn')].filter((e) => { const r = e.getBoundingClientRect(); return r.width > 0 && r.height > 0 && !e.closest('#drawer') && !e.closest('[hidden]') && getComputedStyle(e).visibility !== 'hidden'; }).map((e) => ({ id: e.id, w: e.getBoundingClientRect().width, h: e.getBoundingClientRect().height })));
-    assert.deepEqual(vis.map((v) => v.id).sort(), ['btn-a', 'menu-btn'], 'on-screen buttons at ' + vp.width + ': ' + JSON.stringify(vis));
+    assert.deepEqual(vis.map((v) => v.id).filter((id) => id !== 'inu-wallet-btn').sort(), ['btn-a', 'menu-btn'], 'on-screen buttons (plus the shared Connect Wallet pill) at ' + vp.width + ': ' + JSON.stringify(vis));
     for (const v of vis) assert.ok(v.w >= 44 && v.h >= 44, v.id + ' too small');
     const where = await p.evaluate((ids) => ids.map((id) => [id, !!document.getElementById(id)?.closest('#drawer')]), FORMER.filter((i) => i !== 'btn-guide'));
     for (const [id, inDrawer] of where) assert.ok(inDrawer, id + ' not in the menu');

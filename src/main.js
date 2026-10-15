@@ -100,7 +100,13 @@ function featuredMap() { const nowH = state.clockSec / (DAY_LEN / 24), out = {};
 let K = { mode: DEMO ? 'demo' : 'offline', kp: null }, serverPools = null;
 async function refreshPools() { try { const r = await K.kp.pools(); const u = (p) => Number(r.pools[p].accruedBaseUnits); serverPools = { daily: u('daily'), weekly: u('weekly'), monthly: u('monthly'), burned: Number(r.burnedAllBaseUnits) }; if (state) hud(); } catch {} }
 async function bootKibble() {
-  try { const G = await import('https://kibble-pay.vercel.app/inu-games.js'); K = await G.initKibble({ game: KGAME }); G.mountFooter(K.mode); }
+  try { const G = await import('https://kibble-pay.vercel.app/inu-games.js'); K = await G.initKibble({ game: KGAME }); G.mountFooter(K.mode);
+    // Connect Wallet (title + in-game): cloud save keyed by wallet, holder tier from on-chain $KIBBLE (VIP perks read the real balance).
+    const js = (g) => { try { return JSON.parse(g('inuverse.save.v1') || 'null'); } catch { return null; } };
+    G.mountWallet(K, { game: KGAME, keys: ['inuverse.save.v1', 'inu.profile.v1:'], position: 'top-center',
+      progress: (g) => { const s = js(g); return s ? Math.floor((s.stats?.bonesEarned || 0) + (s.stats?.shifts || 0) * 10 + (s.clockSec || 0) / 60) : 0; },
+      label: (g) => { const s = js(g); return s ? `${s.player?.name || 'Shiba'} · ${Math.floor(s.stats?.bonesEarned || 0)} bones earned` : ''; },
+      onWallet: () => { if (K.kp?.session) wallet().refresh?.().then(() => state && hud()).catch(() => {}); } }); }
   catch (e) { K = { mode: DEMO ? 'demo' : 'offline', kp: null }; }
   document.body.dataset.kibble = K.mode;
   if (K.kp) { setWallet(kibblePayWallet(K.kp)); setProfileStore(kibblePayProfileStore(K.kp)); refreshPools(); if (K.kp.session) wallet().refresh().catch(() => {}); }
