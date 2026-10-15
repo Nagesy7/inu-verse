@@ -56,6 +56,7 @@ import { renderFriend, renderChapel, renderFurnStore } from './relui.js';
 import { prerenderMap, dynamicProps, buildingsReady } from './render.js';
 import { N, SCALE, drawWater } from './tiles.js';
 import { feel } from './feel.js';
+import { faceTalk, faceReact } from './face.js';
 import { ensurePacks, myPack, meIn, createPack, joinPack, leavePack, kickMember, recruitNpc, contribute, buyForPack, donateFurniture, upgradeClubhouse, placePackFurniture, movePackFurniture, storePackFurniture, postToBoard, recordActivity, memberScore, packScore, leaderboard, simulatePacks, packOfName, PACK_CREATE_COST, EMBLEMS, SEASON, SCORE, ME } from './packs.js';
 
 const $ = (s) => document.querySelector(s);
@@ -82,7 +83,7 @@ const esc = (s) => String(s).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&
 
 const packAct = (k) => { if (myPack(state)) { recordActivity(state, k); ENG.addSeasonXp(state, 'pack', gameDay()); } };
 const badgeOf = (p) => (p ? { tag: p.tag, color: p.color, emblem: p.emblem } : null);
-function toast(msg, cls = '') { // de-duplicated: an identical visible toast is refreshed instead of stacking
+function toast(msg, cls = '') { if (cls === 'good') faceReact('me', 'joy'); else if (cls === 'bad') faceReact('me', 'wow', 1); // de-duplicated: an identical visible toast is refreshed instead of stacking
   for (const e of document.querySelectorAll('#toast .toast')) if (e.dataset.msg === msg) { clearTimeout(e._t); e._t = setTimeout(() => e.remove(), 2200); return; }
   if ($('#toast').children.length >= 4) $('#toast').firstElementChild.remove();
   const d = document.createElement('div'); d.dataset.msg = msg; d.className = 'toast ' + cls; d.textContent = msg; $('#toast').appendChild(d); d._t = setTimeout(() => d.remove(), 2200); }
@@ -442,10 +443,10 @@ function renderWorld() {
     if (a.me) { ctx.fillStyle = 'rgba(242,204,104,0.45)'; ctx.fillRect(-20, 9, 40, 4); ctx.fillRect(-14, 7, 28, 8); }
     if (a.petSpecies) { drawPetActor(ctx, a); ctx.restore(); continue; }
     if (a.president) { drawPresident(ctx, a); if (a.emote) drawEmote(ctx, 0, -14, a.emote.kind, time); ctx.restore(); continue; }
-    if (a.pupScale) { if (a.customPup) drawProfileShiba(ctx, 0, 0, a.profile, { face: a.face, phase: a.phase, moving: a.moving, name: a.name, scale: a.pupScale }); else { drawShiba(ctx, 0, 0, { coat: a.coat, outfit: a.outfit, face: a.face, phase: a.phase, moving: a.moving, name: a.name, scale: a.pupScale, art: a.art }); ctx.fillStyle = a.pupPatch; ctx.fillRect(-7 * a.pupScale, -30 * a.pupScale, 14 * a.pupScale, 4 * a.pupScale); ctx.fillStyle = a.pupHex; ctx.fillRect(-7 * a.pupScale, -26 * a.pupScale, 14 * a.pupScale, 3 * a.pupScale); } ctx.restore(); continue; }
+    if (a.pupScale) { if (a.customPup) drawProfileShiba(ctx, 0, 0, a.profile, { face: a.face, phase: a.phase, moving: a.moving, name: a.name, scale: a.pupScale, fid: a.name }); else { drawShiba(ctx, 0, 0, { coat: a.coat, outfit: a.outfit, face: a.face, phase: a.phase, moving: a.moving, name: a.name, scale: a.pupScale, art: a.art, fid: a.name, wag: a.wag }); ctx.fillStyle = a.pupPatch; ctx.fillRect(-7 * a.pupScale, -30 * a.pupScale, 14 * a.pupScale, 4 * a.pupScale); ctx.fillStyle = a.pupHex; ctx.fillRect(-7 * a.pupScale, -26 * a.pupScale, 14 * a.pupScale, 3 * a.pupScale); } ctx.restore(); continue; }
     if (a.me) { const gl = statusGlow(state); if (gl) drawFlair(ctx, gl, time); }
-    if (a.profile) { drawProfileShiba(ctx, 0, 0, a.profile, { face: a.face, phase: a.phase, moving: a.moving, name: a.name, scale: 1.5, badge: a.badge }); if (a.emote) drawEmote(ctx, 0, -110, a.emote.kind, time); }
-    else drawShiba(ctx, 0, 0, { coat: a.coat, outfit: a.outfit, face: a.face, phase: a.phase, moving: a.moving, name: a.name, scale: 1.5, badge: a.badge, art: a.art, emote: a.emote?.kind });
+    if (a.profile) { drawProfileShiba(ctx, 0, 0, a.profile, { face: a.face, phase: a.phase, moving: a.moving, name: a.name, scale: 1.5, badge: a.badge, fid: a.me ? 'me' : a.name, emote: a.emote?.kind }); if (a.emote) drawEmote(ctx, 0, -110, a.emote.kind, time); }
+    else drawShiba(ctx, 0, 0, { coat: a.coat, outfit: a.outfit, face: a.face, phase: a.phase, moving: a.moving, name: a.name, scale: 1.5, badge: a.badge, art: a.art, emote: a.emote?.kind, fid: a.me ? 'me' : a.name || a.id, wag: a.wag });
     if (a.worker) { drawVest(ctx, a.face); drawTool(ctx, a.worker); }
     if (a.emote) drawEmote(ctx, 0, a.name ? -14 : 0, a.emote.kind, time); ctx.restore();
   }
@@ -517,7 +518,8 @@ function minimap(vx, vy, vw, vh) {
 }
 
 // ---------------- Interactions ----------------
-function interact(it) {
+{ const _say = feel.say; if (_say) feel.say = (who, line, ...r) => { faceTalk(String(who).split(' (')[0], Math.min(4, 1 + String(line || '').length / 25)); return _say.call(feel, who, line, ...r); }; }
+function interact(it) { faceReact('me', it.kind === 'building' || it.kind === 'mall' ? 'wow' : 'curious', 1.2);
   if (it.kind === 'building') openPanel(it.id);
   else if (it.kind === 'plot') { if (state.plots[it.id]) enterBuild(it.id, false); else openPanel('plot', { plotId: it.id }); }
   else if (it.kind === 'visit') enterBuild(it.id, true);

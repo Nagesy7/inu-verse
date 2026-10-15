@@ -2,6 +2,7 @@ import { drawInuAvatar } from './vendor/inu-avatar.js';
 // All art drawn procedurally - original.
 import { shibaSprite } from './sprite.js';
 import { hires } from './hires.js';
+import { findFace, faceFor, faceKey, paintFace, NEUTRAL } from './face.js';
 import { shadeSprite, patternLayer, mkCanvas, roundCorners, addNeck } from './detail.js';
 import { conformLayer, sealInterior, layerBoundary, eraseSeams, closeGaps, findGaps, findHoles, findAlphaDips, findDarkSeams } from './seams.js';
 // Shared Shiba (vendor/inu-avatar.js, synced from kibble-pay) drawn at 4x its native 18x22 pixel density (Scale2x twice).
@@ -13,7 +14,10 @@ export function drawInuAvatarHi(ctx, profile, x, y, opts = {}) {
     fillRect(...a) { sh.push([this._f, a]); }, drawImage(s, ...a) { spr = s; dst = a; } };
   const r = drawInuAvatar(fake, profile, x, y, opts); if (!spr) return drawInuAvatar(ctx, profile, x, y, opts);
   let hi = avHi.get(spr); if (!hi) { hi = hires(spr, 2); if (!globalThis.__noDetail && hi !== spr) { roundCorners(hi, 3); shadeSprite(hi, { r: 4, light: 0.26, dark: 0.28, glint: true, grad: 0.12, bands: [0.18, 0.22] }); } avHi.set(spr, hi); }
-  ctx.save(); for (const [f, a] of sh) { ctx.fillStyle = f; ctx.fillRect(...a); } ctx.imageSmoothingEnabled = false; ctx.drawImage(hi, ...dst); ctx.restore(); return r;
+  let img = hi; if (opts.fid && !globalThis.__noFace) { const view = opts.face === 'up' ? 'back' : opts.face === 'left' || opts.face === 'right' ? 'side' : 'front'; hi.F ||= {};
+    if (!(view in hi.F)) { const c = mkCanvas(hi.width, hi.height), x = c.getContext('2d', { willReadFrequently: true }); x.drawImage(hi, 0, 0); hi.F[view] = view === 'back' ? null : findFace(x.getImageData(0, 0, c.width, c.height).data, c.width, c.height, view); }
+    if (hi.F[view]) img = faceVariant(hi, hi.F[view], faceFor(opts.fid, { moving: !!opts.moving, face: opts.face, emote: opts.emote }), { eyes: true, ears: false }); }
+  ctx.save(); for (const [f, a] of sh) { ctx.fillStyle = f; ctx.fillRect(...a); } ctx.imageSmoothingEnabled = false; ctx.drawImage(img, ...dst); ctx.restore(); return r;
 }
 import { FURNITURE, footprint, WALLS, FLOORS } from './furniture.js';
 import { OUTFIT_ATLAS } from './outfit-atlas.js';
@@ -77,11 +81,24 @@ export function layerAudit(coat, view, frame, equipped) { return layeredCanvas(c
 // so small in-world Shibas keep fur/outfit detail instead of shimmering from a single 4x+ downscale.
 function mip(cv, devH) { let m = cv; while (m.height > devH * 2 && m.height > 24) { if (!m.half) { const h = Object.assign(document.createElement('canvas'), { width: Math.ceil(m.width / 2), height: Math.ceil(m.height / 2) }), c = h.getContext('2d');
   c.imageSmoothingEnabled = true; c.imageSmoothingQuality = 'high'; c.drawImage(m, 0, 0, h.width, h.height); m.half = h; } m = m.half; } return m; }
-function drawLayered(ctx, x, y, coat, outfit, { face, phase, moving, scale, name, shadow, badge, emote }) {
+// Face anchors from the bare coat art (same geometry as every dressed variant of that coat/view/frame)
+const faceInfo = new Map();
+function faceOf(coat, view, frame) { const k = `${coat}|${view}|${frame}`; if (faceInfo.has(k)) return faceInfo.get(k); const b = layeredCanvas(coat, view, frame, {}), d = b.getContext('2d').getImageData(0, 0, b.width, b.height).data;
+  const F = findFace(d, b.width, b.height, view); faceInfo.set(k, F); return F; }
+export function faceCanvas(cv, coat, view, frame, outfit, s) { const key = faceKey(s); if (key === NEUTRAL || globalThis.__noFace) return cv; const F = faceOf(coat, view, frame); if (!F) return cv;
+  const items = Object.values(outfit || {}).map((id) => OUTFITS[id]?.slot); const fr = OUTFIT_ATLAS.frames[coat], overEars = F.ears && Object.values(outfit || {}).some((id) => { const r = fr[`${id}|${view}|${frame}`]; return r && r[5] <= F.ears.y1 + 2; });
+  return faceVariant(cv, F, s, { eyes: !items.includes('eyes'), ears: !items.includes('hat') && !overEars }); }
+function faceVariant(cv, F, s, flags) { const key = faceKey(s); if (key === NEUTRAL) return cv; cv.faces ||= new Map(); let v = cv.faces.get(key); if (v) return v;
+  v = Object.assign(document.createElement('canvas'), { width: cv.width, height: cv.height }); const c = v.getContext('2d', { willReadFrequently: true }); c.drawImage(cv, 0, 0);
+  const im = c.getImageData(0, 0, v.width, v.height); paintFace(im.data, v.width, v.height, F, s, flags); c.putImageData(im, 0, 0); v.feet = cv.feet;
+  cv.faces.set(key, v); if (cv.faces.size > 24) cv.faces.delete(cv.faces.keys().next().value); return v; }
+export { faceOf as __faceOf, layeredCanvas as __layered };
+function drawLayered(ctx, x, y, coat, outfit, { face, phase, moving, scale, name, shadow, badge, emote, fid, wag }) {
   const view = face === 'up' ? 'back' : face === 'left' || face === 'right' ? 'side' : 'front';
-  const frame = moving ? Math.floor(phase / 1.6) % 4 : 0, cv = layeredCanvas(coat, view, frame, outfit);
+  const frame = moving ? Math.floor(phase / 1.6) % 4 : 0; let cv = layeredCanvas(coat, view, frame, outfit);
+  if (fid) cv = faceCanvas(cv, coat, view, frame, outfit, faceFor(fid, { moving, face, emote, wag }));
   const k = (64 * scale) / (cv.feet - 6), sit = emote === 'sit' ? 0.82 : 1; // ~64px tall at scale 1, matches the old art sprites
-  const w = cv.width * k, h = cv.height * k * sit, top = y + 12 - cv.feet * k * sit, bob = moving ? 0 : Math.sin(phase * 0.5) * 0.6;
+  const w = cv.width * k, h = cv.height * k * sit, top = y + 12 - cv.feet * k * sit, bob = moving ? (frame % 2 ? 1.4 * scale : 0) : Math.sin(phase * 0.5) * 0.6; // walk: body rises on the passing frames
   ctx.save(); ctx.imageSmoothingEnabled = true; ctx.imageSmoothingQuality = 'high';
   if (shadow) { ctx.fillStyle = 'rgba(10,14,30,0.3)'; ctx.beginPath(); ctx.ellipse(x, y + 11, w * 0.3, 4 * scale, 0, 0, 7); ctx.fill(); }
   ctx.translate(Math.round(x), 0); if (face === 'left') ctx.scale(-1, 1);
@@ -91,16 +108,16 @@ function drawLayered(ctx, x, y, coat, outfit, { face, phase, moving, scale, name
 }
 
 // Custom (character-creator) Shibas: shared cross-game renderer, sized to match the layered atlas (~64px at scale 1)
-export function drawProfileShiba(ctx, x, y, profile, { face = 'down', phase = 0, moving = false, scale = 1, name = null, shadow = true, badge = null } = {}) {
-  const frame = moving ? Math.floor(phase / 1.6) % 4 : 0, r = drawInuAvatarHi(ctx, profile, x, y + 12, { scale: scale * 1.6, face, frame, shadow });
+export function drawProfileShiba(ctx, x, y, profile, { face = 'down', phase = 0, moving = false, scale = 1, name = null, shadow = true, badge = null, fid = null, emote = null } = {}) {
+  const frame = moving ? Math.floor(phase / 1.6) % 4 : 0, r = drawInuAvatarHi(ctx, profile, x, y + 12, { scale: scale * 1.6, face, frame, shadow, fid, emote, moving });
   if (name) nameTag(ctx, x, y + 12 - r.h, name, badge); }
 const rr = (ctx, x, y, w, h, r) => { ctx.beginPath(); ctx.roundRect(x, y, w, h, r); };
 
 // Pixel Shiba (see sprite.js). (x,y) = ground point under the feet-ish centre.
-export function drawShiba(ctx, x, y, { coat = 'tan', face = 'down', phase = 0, moving = false, scale = 1, name = null, outfit = null, shadow = true, badge = null, art = null, emote = null } = {}) {
+export function drawShiba(ctx, x, y, { coat = 'tan', face = 'down', phase = 0, moving = false, scale = 1, name = null, outfit = null, shadow = true, badge = null, art = null, emote = null, fid = null, wag = 0 } = {}) {
   if (art && ART[art]) return drawArt(ctx, x, y, ART[art], { face, phase, moving, scale, name, shadow, badge, emote });
   const lc = art?.startsWith?.('layer:') ? art.slice(6) : coat;
-  if (ART['outfits/' + lc] && OUTFIT_ATLAS.canvas[lc]) return drawLayered(ctx, x, y, lc, outfit || {}, { face, phase, moving, scale, name, shadow, badge, emote });
+  if (ART['outfits/' + lc] && OUTFIT_ATLAS.canvas[lc]) return drawLayered(ctx, x, y, lc, outfit || {}, { face, phase, moving, scale, name, shadow, badge, emote, fid, wag });
   // last resort (atlas failed to load): procedural pixel sprite
   const px = Math.max(1, Math.round(2 * scale));
   const frame = moving ? Math.floor(phase / 1.6) % 4 : 0;

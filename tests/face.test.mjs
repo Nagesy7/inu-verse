@@ -1,0 +1,13 @@
+import test from 'node:test';
+import assert from 'node:assert/strict';
+import { faceAt, faceKey, NEUTRAL } from '../src/face.js';
+const run = (id, o, T = 30, dt = 1 / 60) => { const out = []; for (let t = 0; t < T; t += dt) out.push(faceAt(id, t, o)); return out; };
+test('blinks are periodic, brief and differ per character', () => { const a = run('Mochi', {}), b = run('Kuro', {});
+  const blinks = (r) => r.filter((s, i) => s.eye === 'blink' && r[i - 1]?.eye !== 'blink').length; assert.ok(blinks(a) >= 5 && blinks(a) <= 20, 'blinks ' + blinks(a));
+  assert.ok(a.filter((s) => s.eye === 'blink').length / a.length < 0.12); assert.notDeepEqual(a.map((s) => s.eye), b.map((s) => s.eye)); });
+test('eyes follow walking direction; idle runs happy/curious/sleepy moods', () => { assert.equal(faceAt('x', 1, { moving: true, face: 'down' }).ly, 1);
+  const moods = new Set(run('Hana', { idle: 30 }, 120).map((s) => s.mouth === 'yawn' ? 'yawn' : s.eye === 'happy' ? 'happy' : s.ly === -1 ? 'curious' : s.eye === 'half' ? 'sleepy' : '')); for (const m of ['yawn', 'happy', 'curious']) assert.ok(moods.has(m), m); });
+test('talking moves the mouth, reactions + emotes change the face and wag the tail', () => { const m = new Set(run('a', { talking: true }, 3).map((s) => s.mouth)); assert.ok(m.has('open') && m.has('none'));
+  const j = faceAt('a', 1, { react: 'joy' }); assert.equal(j.eye, 'happy'); assert.ok(j.tail !== 0); assert.equal(faceAt('a', 1, { emote: 'heart' }).mouth, 'tongue'); assert.ok(faceAt('a', 1, { wag: 1 }).tail !== 0); });
+test('reduced motion: no blinking, twitching or wagging', () => { globalThis.__reducedMotion = true; const r = run('Taro', { idle: 30, wag: 1 }, 60);
+  assert.ok(r.every((s) => s.eye !== 'blink' && s.ear === 0 && s.tail === 0)); assert.ok(r.every((s) => faceKey(s) === NEUTRAL)); globalThis.__reducedMotion = undefined; });
