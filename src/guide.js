@@ -74,8 +74,8 @@ export const distLabel = (path, px, py, target) => { const n = path ? path.lengt
 export const TOUR = [
   { place: null, title: 'Welcome to Inu Verse!', text: 'I\'m Biscuit, President Inu\'s aide. Walk with WASD / arrow keys or click the ground. On a phone, drag the stick. Walk straight into a door to go inside; tap A (E on a keyboard) to talk, pet pups and read signs.' },
   { place: 'launch', highlight: true, title: '★ Launch Hall: the big one', text: 'Create your own coin and watch NPC traders pump it up a bonding curve until it graduates! It\'s a SIMULATION: play tokens only, no blockchain, no real money. Try it first!' },
-  { place: 'bank', featured: true, title: '★ Kibble Bank', text: 'Your wallet at a glance: $KIBBLE balance (soon), items you own across every Inu game, purchase history and the public prize-pool and burn boards. No deposits, lending or yield.' },
-  { place: 'mall', title: 'Kibble Mall', text: 'Luxury outfits, jewels, cars and furniture. Prices are in $KIBBLE (launching soon); everyday stuff costs bones you earn by playing.' },
+  { place: 'bank', featured: true, title: '★ Kibble Bank', text: 'Your wallet at a glance: $KIBBLE balance, items you own across every Inu game, purchase history and the public prize-pool and burn boards. No deposits, lending or yield.' },
+  { place: 'mall', title: 'Kibble Mall', text: 'Luxury outfits, jewels, cars and furniture. Prices are in $KIBBLE (live: you pay in Phantom); everyday stuff costs bones you earn by playing.' },
   { place: 'arcade', title: 'Inu Arcade', text: 'Four retro games. Sign in and your best scores count toward the weekly prize pools.' },
   { place: 'rescue', title: 'Rescue Station', text: 'Opens Inu Rescue: climb the girders and save pups from the grumpy cat. Your wallet comes along.' },
   { place: 'quest', title: 'Trainer Gate', text: 'Opens Inu Quest, the Shiba creature-collecting RPG. Beat the gym to complete a weekly quest step.' },
