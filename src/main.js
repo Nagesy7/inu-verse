@@ -57,6 +57,7 @@ import { prerenderMap, dynamicProps, buildingsReady } from './render.js';
 import { N, SCALE, drawWater } from './tiles.js';
 import { feel } from './feel.js';
 import { faceTalk, faceReact } from './face.js';
+import { stepChat, drawChat, emoteBubble } from './chat.js';
 import { ensurePacks, myPack, meIn, createPack, joinPack, leavePack, kickMember, recruitNpc, contribute, buyForPack, donateFurniture, upgradeClubhouse, placePackFurniture, movePackFurniture, storePackFurniture, postToBoard, recordActivity, memberScore, packScore, leaderboard, simulatePacks, packOfName, PACK_CREATE_COST, EMBLEMS, SEASON, SCORE, ME } from './packs.js';
 
 const $ = (s) => document.querySelector(s);
@@ -162,7 +163,7 @@ addEventListener('keydown', (e) => {
   initAudio();
   if (mode === 'world' && !panel && state) {
     if (k === 'h' && drive) honk();
-    if (k === 'b') { bork(); player.emote = { kind: 'bork', t: 1.2 }; }
+    if (k === 'b') { bork(); player.emote = { kind: 'bork', t: 1.2 }; emoteBubble('me', 'bork', time); }
     if (k === 't') { const d = throwBall(amb, state.player, player.face, npcs); blip(660); if (d) toast(`${d.name} is fetching!`, 'good'); }
     if (k === 'm') toggleMute();
     if (k === '+' || k === '=') setZoom(stepZoom(ZOOM, 1)); if (k === '-' || k === '_') setZoom(stepZoom(ZOOM, -1));
@@ -314,7 +315,9 @@ function petPup(n) { if (n.workerRef) { const w = n.workerRef; blip(880); if (w.
   if (n.pet) { petF.love = 2; blip(990); feel.say(n.pet.name, ['*happy noises*', '*nuzzles you*', '*purrs/chirps contentedly*', '*does a little spin*'][Math.floor(rng() * 4)], textBlip); return; }
   if (n.president) { if (pres.stage === 'visit') { const d = claimPresDrop(state, 'visit' + pres.n); if (d.ok) { toast(`President Inu gave you a free limited drop: ${d.drop.name}!`, 'good'); persist(); } } const r = presTalk(pres, state); pres.emote = { kind: 'heart', t: 2 }; blip(990); feel.say('President Inu', r.quote, textBlip); if (r.tip) { toast(`President Inu tipped you ${r.tip} bones!`, 'good'); hud(); persist(); } return; } n.wag = 1.2; n.path = []; blip(990); if (REL.PEOPLE[n.name]) { const r = REL.chat(state, n.name, gameDay()); if (r.gain) n.emote = { kind: 'heart', t: 2.2 }; persist(); openPanel('friend', { name: n.name }); if (r.scene) startScene(n.name, REL.SCENES[r.scene](n.name)); return; } feel.say(n.name, PUP_LINES[Math.floor(rng() * PUP_LINES.length)], textBlip); }
 const PUP_LINES = ['Woof! That spot behind the ears... perfect!', 'Arf! Have you tried the taiyaki cart on Main Street?', 'Wanna race to Sakura Pond? Last one there is a wet biscuit!', 'I buried a bone by the big tree. Shh, it is a secret.', 'Bork bork! The Launch Hall is busy today.'];
-function doEmote(kind) { player.emote = { kind, t: kind === 'zoomies' ? 2.4 : 2.5 }; $('#emotes').hidden = true; blip(kind === 'heart' ? 990 : 740);
+const CHAT_PLACE = { cafe: 'cafe', shop: 'shop', fashion: 'shop', cars: 'shop', launch: 'mall', mall: 'mall', square: 'mall', arcade: 'arcade', bank: 'bank', chapel: 'chapel', farm: 'farm', field: 'farm', gamedoor: 'game', visit: 'home', plot: 'home', matchmaker: 'park', lot: 'shop' };
+function chatPlace(x, y) { const it = nearestInteractable(state, x, y, 5); return it && (CHAT_PLACE[it.id] || CHAT_PLACE[it.kind]); }
+function doEmote(kind) { emoteBubble('me', kind, time); player.emote = { kind, t: kind === 'zoomies' ? 2.4 : 2.5 }; $('#emotes').hidden = true; blip(kind === 'heart' ? 990 : 740);
   for (const n of npcs) if (Math.hypot(n.x - state.player.x, n.y - state.player.y) < 260 && rng() < 0.6) setTimeout(() => { n.emote = { kind: rng() < 0.5 ? kind : 'heart', t: 2 }; }, 400 + rng() * 600); }
 function toggleEmotes() { const e = $('#emotes'); e.hidden = !e.hidden; }
 $('#emotes').onclick = (e) => { const b = e.target.closest('[data-emote]'); if (b) doEmote(b.dataset.emote); };
@@ -346,7 +349,7 @@ $('#panel-close').onclick = () => closePanel();
   pad.addEventListener('pointerup', end); pad.addEventListener('pointercancel', end);
   const act = () => { if (feel.talking()) return feel.advance(); if (mode !== 'world' || panel || !state) return; if (carAction()) return; const it = nearestInteractable(state, state.player.x, state.player.y); const pup = nearPup(); if (pup && !it) petPup(pup); else if (it) interact(it); };
   $('#btn-a').addEventListener('pointerdown', (e) => { e.preventDefault(); initAudio(); act(); });
-  $('#btn-b').addEventListener('pointerdown', (e) => { e.preventDefault(); initAudio(); if (mode === 'world' && !panel && state) { if (drive) return honk(); bork(); player.emote = { kind: 'bork', t: 1.2 }; } });
+  $('#btn-b').addEventListener('pointerdown', (e) => { e.preventDefault(); initAudio(); if (mode === 'world' && !panel && state) { if (drive) return honk(); bork(); player.emote = { kind: 'bork', t: 1.2 }; emoteBubble('me', 'bork', time); } });
   $('#btn-menu').addEventListener('pointerdown', (e) => { e.preventDefault(); document.body.classList.toggle('menu-open'); });
 }
 
@@ -390,6 +393,7 @@ function updateWorld(dt) {
   if (rng() < dt * 0.08) chirp();
   if (player.moving) { stepAcc += dt; if (stepAcc > 0.26) { stepAcc = 0; const tt = MAP[Math.floor(p.y / TILE)]?.[Math.floor(p.x / TILE)]; if (tt === T.GRASS || tt === T.FLOWER) { feel.rustle(p.x, p.y + 10); rustle(); } else { feel.dust(p.x, p.y + 11); footstep(); } } }
   feel.step(dt);
+  { const vw = innerWidth / ZOOM, vh = innerHeight / ZOOM; stepChat({ now: time, player: p, npcs, hour: dayPhase(time + dayOffset).hour, rain: amb.rain > 0.3, rng, inView: (x, y) => Math.abs(x - cam.x) < vw / 2 - 20 && Math.abs(y - cam.y) < vh / 2 - 30, placeOf: chatPlace }); }
   mailAcc += dt; if (mailAcc > 45) { mailAcc = 0; if (rng() < 0.6 && addMail(state, rng)) { toast('New note in your mailbox!', 'good'); persist(); } }
   // smooth camera
   const k = 1 - Math.pow(0.004, dt), lead = player.moving ? 10 : 0, fx = { left: -1, right: 1 }[player.face] || 0, fy = { up: -1, down: 1 }[player.face] || 0;
@@ -451,6 +455,7 @@ function renderWorld() {
     if (a.emote) drawEmote(ctx, 0, a.name ? -14 : 0, a.emote.kind, time); ctx.restore();
   }
   feel.drawAir(ctx);
+  drawChat(ctx, (id) => { if (id === 'me') return drive ? null : { x: state.player.x, y: state.player.y - 60 }; const n = npcs.find((q) => q.name === id); return n && { x: n.x, y: n.y - (n.pupScale ? 40 * n.pupScale + 10 : 60) - (n.badge || packOfName(state, n.name) ? 8 : 0) }; }, time);
   drawSkyLife(ctx, amb, phase); drawAliveSky(ctx, ALIVE, view, phase);
   const it = !panel && nearestInteractable(state, state.player.x, state.player.y); if (it) feel.bubble(ctx, (it.tx + 0.5) * TILE, (it.ty) * TILE - 6, time);
   guide.drawWorld(ctx, time, state.player);
@@ -977,4 +982,4 @@ cv.addEventListener('wheel', (e) => { if (mode !== 'world') return; e.preventDef
   cv.addEventListener('touchmove', (e) => { if (!pinch || e.touches.length !== 2) return; const d = dist(e.touches); if (d / pinch > 1.35) { setZoom(stepZoom(ZOOM, 1)); pinch = d; } else if (pinch / d > 1.35) { setZoom(stepZoom(ZOOM, -1)); pinch = d; } }, { passive: true });
   cv.addEventListener('touchend', (e) => { if (e.touches.length < 2) pinch = null; }, { passive: true }); }
 document.getElementById('zin')?.addEventListener('click', () => setZoom(stepZoom(ZOOM, 1))); document.getElementById('zout')?.addEventListener('click', () => setZoom(stepZoom(ZOOM, -1)));
-window.__inu = { guide, get player() { return player; }, get zoom() { return ZOOM; }, setZoom, president: pres, presVisit: (k) => startVisit(pres, k, { dayLen: DAY_LEN }), setHour: (h) => { dayOffset = timeForHour(h) - time; }, setRain: (r) => { amb.rain = amb.rainTarget = r; amb.weatherT = 999; }, get amb() { return amb; }, get npcs() { return npcs; }, emote: (k) => doEmote(k), cam, get state() { return state; }, get mode() { return mode; }, get panel() { return panel?.kind; }, get panelObj() { return panel; } };
+window.__inu = { guide, get time() { return time; }, get player() { return player; }, get zoom() { return ZOOM; }, setZoom, president: pres, presVisit: (k) => startVisit(pres, k, { dayLen: DAY_LEN }), setHour: (h) => { dayOffset = timeForHour(h) - time; }, setRain: (r) => { amb.rain = amb.rainTarget = r; amb.weatherT = 999; }, get amb() { return amb; }, get npcs() { return npcs; }, emote: (k) => doEmote(k), cam, get state() { return state; }, get mode() { return mode; }, get panel() { return panel?.kind; }, get panelObj() { return panel; } };
