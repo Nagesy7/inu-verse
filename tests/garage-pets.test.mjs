@@ -7,8 +7,8 @@ const { BUILDINGS, MALL_BUILDINGS, doorTile, isSolid, findPath, interactables } 
 const S = () => ({ bones: 2000, kibble: 200, inventory: {} });
 test('6-10 distinct car models across both dealers', () => { const ms = Object.values(CAR_MODELS); assert.ok(ms.length >= 6 && ms.length <= 10); assert.equal(new Set(ms.map((m) => m.kind)).size, ms.length);
   assert.ok(ms.some((m) => m.dealer === 'cars' && m.cur === 'bones')); assert.ok(ms.some((m) => m.dealer === 'luxauto' && m.cur === 'kibble')); });
-test('everyday car costs bones; luxury car costs KIBBLE + 2% split to treasury', () => { const s = S(); assert.ok(buyCar(s, 'hatch', 'Blue').ok); assert.equal(s.bones, 1600);
-  const r = buyCar(s, 'supercar', 'Gold'); assert.ok(r.ok); assert.ok(Math.abs(s.kibble - (200 - 90 * 1.02)) < 1e-9); const m = ensureMall(s); assert.equal(m.ledger[0].to, OWNER_WALLET); assert.equal(m.treasury, 900000); assert.equal(m.pools.weekly, 450000);
+test('everyday car costs bones; luxury car costs KIBBLE (fee-inclusive 2% split)', () => { const s = S(); assert.ok(buyCar(s, 'hatch', 'Blue').ok); assert.equal(s.bones, 1600);
+  const r = buyCar(s, 'supercar', 'Gold'); assert.ok(r.ok); assert.ok(Math.abs(s.kibble - (200 - 90)) < 1e-9); const m = ensureMall(s); assert.equal(m.ledger[0].to, OWNER_WALLET); assert.equal(m.treasury, 900000); assert.equal(m.pools.weekly, 450000);
   assert.equal(ensureGarage(s).cars.length, 2); assert.equal(buyCar({ bones: 1, kibble: 0 }, 'sedan').ok, false); });
 test('pets: common for bones, exotic for KIBBLE via the swappable wallet adapter', async () => { const s = S(); assert.ok(buyPet(s, 'kitten', 'Miso').ok); assert.equal(s.bones, 1850); assert.equal(activePet(s).name, 'Miso');
   let called = null; setWallet({ ...SimWallet, purchaseSync(o) { called = o; return SimWallet.purchaseSync(o); } }); assert.ok(buyPet(s, 'dragon').ok); assert.equal(called.itemId, 'pet-dragon'); setWallet(null);

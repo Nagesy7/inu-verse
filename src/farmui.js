@@ -1,7 +1,7 @@
 // Panels for the farmland district + player businesses. Each render(ctx) writes into ctx.body and wires buttons via data-act.
 import * as F from './farm.js';
 import * as B from './biz.js';
-import { wallet } from './wallet.js';
+import { wallet, kibText } from './wallet.js';
 import { toU, fmtK, FEE_LABEL } from './mall.js';
 const esc = (s) => String(s).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
 const btn = (act, label, cls = 'green', extra = '') => `<button class="btn ${cls}" data-act="${act}" ${extra}>${label}</button>`;
@@ -18,7 +18,7 @@ export function renderField(ctx, i) { const f = F.ensureFarm(ctx.state), fl = f.
    <p class="small">Inventory: ${inv(f)}</p>`;
   wire(ctx, { plant: (k) => F.plant(ctx.state, i, k), water: () => F.water(ctx.state, i), harvest: () => { const r = F.harvest(ctx.state, i); if (r.ok) ctx.onHarvest?.(); if (r.ok) ctx.toast(`Harvested ${r.n} ${F.GOODS[r.item].name}`, 'good'); return r; } }); }
 export function renderFarm(ctx, id) { const s = ctx.state, f = F.ensureFarm(s), H = ctx.hourKey; let h = '';
-  if (id === 'barn') { h = `<h2>Big Barn</h2><p class="sub">Seeds and animals cost bones (${Math.floor(s.bones)}). Rare seeds and barn/tractor looks cost demo $KIBBLE (${s.kibble.toFixed(2)}) with the ${FEE_LABEL}.</p>
+  if (id === 'barn') { h = `<h2>Big Barn</h2><p class="sub">Seeds and animals cost bones (${Math.floor(s.bones)}). Rare seeds and barn/tractor looks cost ${kibText(s)} with the ${FEE_LABEL}.</p>
     <h3>Seeds (season: ${ctx.season})</h3><div class="grid">${Object.entries(F.CROPS).map(([k, c]) => `<div class="card"><b>${c.name}${c.rare ? ' ★' : ''}</b><small>${c.seasons.length === 4 ? 'any season' : c.seasons.join('/')} · yields ${c.yield} · own ${f.seeds[k] || 0}</small>${c.rare ? btn('rare:' + k, `${fmtK(toU(c.kibble))} KIBBLE`, 'alt') : btn('seed:' + k, `${c.seed} bones`)}</div>`).join('')}</div>
     <h3>Animals</h3><div class="grid">${Object.entries(F.ANIMALS).map(([k, a]) => `<div class="card"><b>${a.name}</b><small>own ${f.animals[k]} · gives ${F.GOODS[a.product].name}</small>${btn('animal:' + k, `${a.price} bones`)}</div>`).join('')}</div>
     <h3>Looks</h3><div class="grid">${Object.entries(F.COSMETICS).map(([k, c]) => `<div class="card"><b>${c.name}</b><small>${c.slot}${f.look[c.slot] === k ? ' · in use' : ''}</small>${f.owned[k] ? btn('look:' + k, 'Use', 'alt') : btn('buylook:' + k, `${c.kibble} KIBBLE`, 'alt')}</div>`).join('')}</div>`;

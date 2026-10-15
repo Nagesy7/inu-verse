@@ -18,10 +18,10 @@ import { makeAmbient, stepAmbient, throwBall, dayPhase, timeForHour, drawGroundL
 import { initAudio, setMuted, isMuted, footstep, chirp, bork, blip, uiClick, uiOpen, uiClose, textBlip, rustle, fanfare } from './audio.js';
 import { CAR_MODELS, CAR_COLORS, ensureGarage, buyCar, carOf } from './garage.js';
 import { PETS, ensurePets, buyPet, renamePet, activePet, followStep, petSprite } from './pets.js';
-import { wallet, TREASURY } from './wallet.js';
+import { wallet, TREASURY, DEMO, SOON, demoOnly, kibText, setWallet, kibblePayWallet, GAME as KGAME } from './wallet.js';
 import { ZOOMS, DEFAULT_ZOOM, stepZoom, clampCam } from './zoom.js';
 import { makePresident, startVisit, updatePresident, presidentProps, presidentPresent, talk as presTalk, OUTFIT as PRES_OUTFIT, KINDS as PRES_KINDS } from './president.js';
-import { MALL_ITEMS, quote, buyMallItem, ensureMall, rollPeriods, fmtK, FEE_LABEL, OWNER, OWNER_WALLET, POOL_WALLETS, POOL_RULES, FEE_BPS } from './mall.js';
+import { MALL_ITEMS, quote, buyMallItem, ensureMall, rollPeriods, fmtK, FEE_LABEL, OWNER, OWNER_WALLET, POOL_RULES, FEE_BPS } from './mall.js';
 import { GAMES, boardRows, poolEntries } from './leaderboards.js';
 import { makeCrew, stepCrew, takeGig, drawVest, drawTool, drawCones } from './workers.js';
 import { trending, adProps, adAt } from './coinads.js';
@@ -87,7 +87,22 @@ function persist() { if (state) { for (const u of ENG.checkCollections(state)) t
 // burn-for-status flair: pulsing pixel halo + sparkles at the feet (world, home and photos)
 function drawFlair(c, col, t) { const r = 40 + Math.sin(t * 3) * 3; c.save(); c.globalAlpha = 0.5; c.fillStyle = col; c.fillRect(-r, 6, r * 2, 12); c.fillRect(-r + 10, 0, r * 2 - 20, 24); c.globalAlpha = 0.22 + Math.sin(t * 4) * 0.08; c.fillRect(-r + 8, -100, r * 2 - 16, 106); c.globalAlpha = 1; for (let i = 0; i < 6; i++) { const a = t * 1.6 + i * 1.047; c.fillStyle = i % 2 ? '#ffffff' : col; c.fillRect(Math.round(Math.cos(a) * 52) - 4, Math.round(-50 + Math.sin(a) * 56) - 4, 8, 8); } c.restore(); }
 function featuredMap() { const nowH = state.clockSec / (DAY_LEN / 24), out = {}; for (const id of Object.keys(FEATURED_SLOTS)) { const r = featuredOf(state, id, nowH); if (r) out[id] = { ...r, label: 'FEATURED' }; const sp = F5.sponsorOf(state, id, nowH); if (sp) out[id] = { ticker: sp.brand, by: sp.by, untilH: sp.untilH, featured: true, sponsored: true, label: 'SPONSORED' }; } return out; }
-function hud() { GOLD.name = F5.isVip(state) ? state.player.name : null; { const P = poolsOf(state), el = $('#pools'); if (el) el.textContent = `D${(P.daily / 1e6).toFixed(2)} W${(P.weekly / 1e6).toFixed(2)} M${(P.monthly / 1e6).toFixed(2)}`; } $('#bones').textContent = Math.floor(state.bones); $('#kibble').textContent = state.kibble.toFixed(2); $('#hud-name').textContent = state.player.name; }
+// ---- real $KIBBLE (kibble-pay). Demo only with ?demo=1; otherwise no fake balances and purchases say launching soon until the mint is set.
+let K = { mode: DEMO ? 'demo' : 'offline', kp: null }, serverPools = null;
+async function refreshPools() { try { const r = await K.kp.pools(); const u = (p) => Number(r.pools[p].accruedBaseUnits); serverPools = { daily: u('daily'), weekly: u('weekly'), monthly: u('monthly'), burned: Number(r.burnedAllBaseUnits) }; if (state) hud(); } catch {} }
+async function bootKibble() {
+  try { const G = await import('https://kibble-pay.vercel.app/inu-games.js'); K = await G.initKibble({ game: KGAME }); G.mountFooter(K.mode); }
+  catch (e) { K = { mode: DEMO ? 'demo' : 'offline', kp: null }; }
+  document.body.dataset.kibble = K.mode;
+  if (K.kp) { setWallet(kibblePayWallet(K.kp)); setProfileStore(kibblePayProfileStore(K.kp)); refreshPools(); if (K.kp.session) wallet().refresh().catch(() => {}); }
+  const b = $('#btn-phantom'); if (b) { b.title = DEMO ? 'Demo mode: no wallet' : 'Sign in with Phantom'; b.innerHTML = DEMO ? 'Demo mode <small>(fake KIBBLE)</small>' : 'Phantom'; }
+  if (state) hud();
+}
+addEventListener('kibble:paid', (e) => { toast(e.detail.burn ? 'Burn confirmed: tap again to unlock it.' : 'Payment confirmed: tap Buy again to receive it.', 'good'); wallet().refresh?.().then(() => state && hud()).catch(() => {}); refreshPools(); });
+addEventListener('kibble:failed', (e) => toast(e.detail.reason || 'Payment failed', 'bad'));
+addEventListener('kibble:wallet', () => { if (state) { state.walletAddr = wallet().address; hud(); } });
+bootKibble();
+function hud() { GOLD.name = F5.isVip(state) ? state.player.name : null; { const P = DEMO ? poolsOf(state) : serverPools, el = $('#pools'); if (el) el.textContent = P ? `D${(P.daily / 1e6).toFixed(2)} W${(P.weekly / 1e6).toFixed(2)} M${(P.monthly / 1e6).toFixed(2)}` : 'pools'; } $('#bones').textContent = Math.floor(state.bones); $('#kibble').textContent = DEMO ? state.kibble.toFixed(2) : (wallet().live ? (wallet().balanceUi ?? '–') : 'soon'); $('#hud-name').textContent = state.player.name; }
 
 function resize() { cv.width = Math.round(innerWidth * devicePixelRatio); cv.height = Math.round(innerHeight * devicePixelRatio); vignette = null; document.body.classList.toggle('landscape', innerWidth > innerHeight); document.body.classList.toggle('short', innerHeight < 520); }
 addEventListener('resize', resize); addEventListener('orientationchange', () => setTimeout(resize, 60)); window.visualViewport?.addEventListener('resize', resize); resize();
@@ -122,7 +137,7 @@ function titleScreen() {
 }
 
 function startGame(s) { loadProfile(s).catch(() => {}); ENG.ensureEngage(s); ENG.addSeasonXp(s, 'login', Math.floor((s.clockSec || 0) / DAY_LEN)); F5.ensureFly5(s); F5.holderCheck(s); s.town ||= makeTown(rng); townH = -1; seedTokens(s, rng); REL.ensureRel(s); ensureFarm(s); ensureBiz(s); s.clockSec ??= 0; catchUp(s, Date.now(), { season: seasonOf(Math.floor(s.clockSec / DAY_LEN)), rain: false }); hourIdx = Math.floor(s.clockSec / (DAY_LEN / 24));
-  state = s; state.kibble ??= 20; ensureWardrobe(state); ensurePacks(state); ensureMall(state); state.clockSec ??= 0; lastEarned = state.stats.bonesEarned; mode = 'world';
+  state = s; state.kibble ??= DEMO ? 20 : 0; if (!DEMO) state.kibble = 0; ensureWardrobe(state); ensurePacks(state); ensureMall(state); state.clockSec ??= 0; lastEarned = state.stats.bonesEarned; mode = 'world';
   $('#title').hidden = true; $('#hud').hidden = false; $('#minimap-wrap').hidden = false;
   mapImg = prerenderMap(); npcs = spawnNpcs(rng, 6); npcs.forEach((n) => { n.art = artKey(n.coat); }); amb = makeAmbient(42);
   Promise.all([artReady, buildingsReady, document.fonts?.load('8px Silkscreen').catch(() => {})]).then(() => { mapImg = prerenderMap(); });
@@ -273,7 +288,8 @@ $('#btn-engage').onclick = () => { initAudio(); uiClick?.(); openPanel('engage')
 $('#btn-pools').onclick = () => { initAudio(); uiClick?.(); openPanel('city', { tab: 'pools' }); };
 $('#photo-save').onclick = () => { const tmp = document.createElement('canvas'); tmp.width = cv.width; tmp.height = cv.height; const tx = tmp.getContext('2d'); tx.drawImage(cv, 0, 0); F5.watermarkPhoto(tx, tmp.width, tmp.height); const a = document.createElement('a'); a.download = `inu-verse-${Date.now()}.png`; a.href = tmp.toDataURL('image/png'); a.click(); F5.submitPhoto(state, Math.floor(gameDay() / 7), { caption: 'Inu Verse snap' }); toast('Photo saved + entered this week\'s board', 'good'); };
 $('#photo-exit').onclick = () => togglePhoto();
-$('#btn-phantom').onclick = () => toast('Phantom wallet support is coming soon — nothing is connected.', '');
+$('#btn-phantom').onclick = async () => { initAudio(); if (DEMO) return toast('Demo mode: fake KIBBLE, no wallet. Remove ?demo=1 to use Phantom.', ''); if (!K.kp) return toast('Wallet service is offline right now. Try again soon.', 'bad');
+  try { const a = await wallet().connect(); if (state) { state.walletAddr = a; if (hasCustomLook(state)) await saveProfile(state); persist(); hud(); } toast(`Signed in ${a.slice(0, 4)}…${a.slice(-4)}${K.mode === 'live' ? '' : ' · ' + SOON}`, 'good'); } catch (e) { toast(e.message || 'Phantom sign-in failed', 'bad'); } };
 $('#btn-help').onclick = () => openPanel('help');
 $('#btn-pack').onclick = () => { if (mode === 'world') openPanel('packs'); };
 $('#btn-wardrobe').onclick = () => { if (mode === 'world') openPanel('wardrobe'); };
@@ -488,7 +504,7 @@ function openPanel(kind, opts = {}) {
   if (kind === 'chapel') return renderChapel(relCtx());
   if (kind === 'salon') return renderSalon();
   if (kind === 'engage') return renderEngage({ ...farmCtx(), tab: opts.tab, day: gameDay(), open: (t) => openPanel('engage', { tab: t }) });
-  if (kind === 'fly5') return renderFly5({ ...farmCtx(), tab: opts.tab, day: gameDay(), week: Math.floor(gameDay() / 7), month: Math.floor(gameDay() / 28), nowH: state.clockSec / (DAY_LEN / 24), open: (t) => openPanel('fly5', { tab: t }) });
+  if (kind === 'fly5') return renderFly5({ ...farmCtx(), kp: DEMO ? null : K.kp, tab: opts.tab, day: gameDay(), week: Math.floor(gameDay() / 7), month: Math.floor(gameDay() / 28), nowH: state.clockSec / (DAY_LEN / 24), open: (t) => openPanel('fly5', { tab: t }) });
   if (kind === 'matchmaker') return renderMatchmaker({ ...farmCtx(), tab: opts.tab, weekFrac: ((state.clockSec / DAY_LEN) % WEEK_DAYS) / WEEK_DAYS, open: (t) => openPanel('matchmaker', { tab: t }), startDuo: (partner, jobId) => { if (!partner) return toast('No partner', 'bad'); closePanel(); playDuo(jobId, partner); } });
   if (kind === 'city') return renderCity({ ...farmCtx(), tab: opts.tab, nowH: state.clockSec / (DAY_LEN / 24), dayFrac: (state.clockSec % DAY_LEN) / DAY_LEN, trend, presOn: pres.on && pres.stage === 'visit', presKey: 'visit' + pres.n, open: (t) => openPanel('city', { tab: t }) });
   if (kind === 'furn') return renderFurnStore(relCtx(), opts.store);
@@ -516,7 +532,7 @@ function openPanel(kind, opts = {}) {
 const priceTag = (m) => m.cur === 'bones' ? `${m.price} bones` : (() => { const q = wallet().quote(Math.round(m.price * 1e6)); return `${m.price} KIBBLE <small>+2% = ${(q.total / 1e6).toFixed(2)}</small>`; })();
 function carIcon(model, color) { const m = CAR_MODELS[model]; return iconCanvas((x) => { x.imageSmoothingEnabled = false; x.scale(0.75, 0.75); drawCar(x, 43, 58, { col: CAR_COLORS[color], kind: m.kind, dir: 'east' }); }, 64, 52); }
 function renderDealer() { const body = $('#panel-body'), lux = panel.dealer === 'luxauto', g = ensureGarage(state); panel.col ||= {};
-  body.innerHTML = `<h2>${lux ? 'Zoomies Luxury Autos' : 'Zoomies Motors'}</h2><p class="sub">${lux ? `Luxury cars in demo $KIBBLE (you have ${state.kibble.toFixed(2)}). ${FEE_LABEL}. Paid to the treasury <code>${TREASURY.slice(0, 6)}…${TREASURY.slice(-4)}</code> via the ${wallet().simulated ? 'simulated' : 'live'} wallet.` : `Everyday cars priced in bones (you have ${Math.floor(state.bones)}).`} Pick a colour, buy, then drive it from your Garage.</p><div class="grid" id="dealgrid"></div>`;
+  body.innerHTML = `<h2>${lux ? 'Zoomies Luxury Autos' : 'Zoomies Motors'}</h2><p class="sub">${lux ? `Luxury cars in ${kibText(state)}. ${FEE_LABEL}. Paid to the treasury <code>${TREASURY.slice(0, 6)}…${TREASURY.slice(-4)}</code> via the ${wallet().simulated ? 'simulated' : 'live'} wallet.` : `Everyday cars priced in bones (you have ${Math.floor(state.bones)}).`} Pick a colour, buy, then drive it from your Garage.</p><div class="grid" id="dealgrid"></div>`;
   const grid = $('#dealgrid');
   for (const [id, m] of Object.entries(CAR_MODELS).filter(([, m]) => m.dealer === panel.dealer)) { const col = panel.col[id] || (lux ? 'Gold' : 'Red'), owned = g.cars.filter((c) => c.model === id).length;
     const card = document.createElement('div'); card.className = 'card'; card.appendChild(carIcon(id, col));
@@ -527,7 +543,7 @@ function renderDealer() { const body = $('#panel-body'), lux = panel.dealer === 
     if (r.ok) { toast(`You bought a ${r.car.color} ${CAR_MODELS[id].name}! Find it in your Garage.`, 'good'); hud(); persist(); renderDealer(); } else toast(r.reason, 'bad'); }; }
 function petIcon(sp, pal = null) { return iconCanvas((x) => { x.imageSmoothingEnabled = false; x.drawImage(petSprite(sp, 0, pal), 12, 4, 40, 40); }, 64, 48); }
 function renderPets() { const body = $('#panel-body'), st = ensurePets(state);
-  body.innerHTML = `<h2>Pawsome Pets</h2><p class="sub">Companions that follow you around. Common pets cost bones (${Math.floor(state.bones)}); exotic pets cost demo $KIBBLE (${state.kibble.toFixed(2)}) with the ${FEE_LABEL}, sent to the treasury via the ${wallet().simulated ? 'simulated' : 'live'} wallet.</p>
+  body.innerHTML = `<h2>Pawsome Pets</h2><p class="sub">Companions that follow you around. Common pets cost bones (${Math.floor(state.bones)}); exotic pets cost ${kibText(state)} with the ${FEE_LABEL}, sent to the treasury via the ${wallet().simulated ? 'simulated' : 'live'} wallet.</p>
    <label class="small">Name your new pet: <input id="petname" maxlength="16" placeholder="e.g. Biscuit"></label><div class="grid" id="petgrid"></div>`;
   const grid = $('#petgrid');
   for (const [id, p] of Object.entries(PETS)) { const card = document.createElement('div'); card.className = 'card'; card.appendChild(petIcon(id));
@@ -664,8 +680,8 @@ function renderLaunch() {
     <label class="small">Icon colour <input id="tcolor" type="color" value="#e58b3a" style="height:34px"></label>
     <button class="btn green" id="tcreate">Launch token</button></details>
   </div><div id="tokdetail"></div></div>`;
-  $('#swap').onclick = () => { const r = swapBonesToKibble(state, +$('#swapamt').value); if (r.ok) { toast(`+${r.kibble.toFixed(2)} demo KIBBLE`, 'good'); hud(); persist(); } else toast(r.reason, 'bad'); };
-  $('#tcreate').onclick = () => { const r = createToken(state, { name: $('#tname').value, ticker: $('#tticker').value, color: $('#tcolor').value }); if (r.ok) { packAct('token'); panel.sel = r.token.id; toast(`$${r.token.ticker} launched! A stall opened on Market Row.`, 'good'); hud(); persist(); renderLaunch(); } else toast(r.reason, 'bad'); };
+  $('#swap').onclick = () => { const r = !DEMO ? demoOnly('The bones swap') : swapBonesToKibble(state, +$('#swapamt').value); if (r.ok) { toast(`+${r.kibble.toFixed(2)} demo KIBBLE`, 'good'); hud(); persist(); } else toast(r.reason, 'bad'); };
+  $('#tcreate').onclick = () => { const r = !DEMO ? demoOnly('The Launch Hall') : createToken(state, { name: $('#tname').value, ticker: $('#tticker').value, color: $('#tcolor').value }); if (r.ok) { packAct('token'); panel.sel = r.token.id; toast(`$${r.token.ticker} launched! A stall opened on Market Row.`, 'good'); hud(); persist(); renderLaunch(); } else toast(r.reason, 'bad'); };
   $('#toklist').onclick = (e) => { const b = e.target.closest('[data-tok]'); if (b) { panel.sel = b.dataset.tok; renderTokDetail(); launchUi(); } };
   renderTokDetail(); launchUi();
 }
@@ -678,7 +694,7 @@ function renderTokDetail() {
    <div class="small">Bonding curve progress <span id="st-prog"></span></div><div class="bar"><i id="st-bar"></i></div>
    <div class="tradebox"><input id="buyamt" type="number" value="1" min="0.01" step="0.1"><span>KIBBLE</span><button class="btn green" id="buybtn">Buy</button><span style="flex:1"></span><button class="btn red" data-sell="0.25">Sell 25%</button><button class="btn red" data-sell="0.5">50%</button><button class="btn red" data-sell="1" id="sellall">Sell all</button></div>
    <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px"><div><b>Recent trades</b><div class="trades" id="trades"></div></div><div><b>Top holders</b><div class="trades" id="holders"></div></div></div>`;
-  $('#buybtn').onclick = () => { const r = playerBuy(state, tok.id, +$('#buyamt').value); if (r.ok) { toast(`Bought ${fmt(r.tokensOut)} $${tok.ticker}${r.graduatedNow ? ' — GRADUATED!' : ''}`, 'good'); hud(); persist(); launchUi(); } else toast(r.reason, 'bad'); };
+  $('#buybtn').onclick = () => { const r = !DEMO ? demoOnly('The Launch Hall') : playerBuy(state, tok.id, +$('#buyamt').value); if (r.ok) { toast(`Bought ${fmt(r.tokensOut)} $${tok.ticker}${r.graduatedNow ? ' — GRADUATED!' : ''}`, 'good'); hud(); persist(); launchUi(); } else toast(r.reason, 'bad'); };
   el.querySelectorAll('[data-sell]').forEach((b) => b.onclick = () => { const r = playerSell(state, tok.id, (tok.holders[PLAYER] || 0) * +b.dataset.sell); if (r.ok) { toast(`Sold for ${r.kibbleOut.toFixed(3)} KIBBLE`, 'good'); hud(); persist(); launchUi(); } else toast(r.reason, 'bad'); });
 }
 function launchUi() {
@@ -847,7 +863,7 @@ function renderPacks() {
 // ---------------- Kibble Mall ----------------
 function renderMall() {
   const body = $('#panel-body'), m = ensureMall(state), cat = panel.cat, store = MALL_BUILDINGS.find((b) => b.id === panel.store);
-  const demo = `<div class="demo-banner">Demo – simulated $KIBBLE · No blockchain · No real money · Prize pools are won by skill/activity score, never by chance</div>`;
+  const demo = DEMO ? `<div class="demo-banner">Demo – simulated $KIBBLE · No blockchain · No real money · Prize pools are won by skill/activity score, never by chance</div>` : wallet().live ? '' : `<div class="demo-banner">${SOON} Prize pools are won by skill score, never by chance.</div>`;
   const pools = `<div class="stats"><div>Daily pool<b>${fmtK(m.pools.daily)}</b>KIBBLE</div><div>Weekly pool<b>${fmtK(m.pools.weekly)}</b>KIBBLE</div><div>Monthly pool<b>${fmtK(m.pools.monthly)}</b>KIBBLE</div><div>President's Treasury<b>${fmtK(m.treasury)}</b>KIBBLE</div></div>`;
   if (cat === 'board') {
     const day = m.period.day, dayFrac = (state.clockSec % DAY_LEN) / DAY_LEN;
@@ -868,13 +884,13 @@ function renderMall() {
   }
   if (cat === 'office') {
     body.innerHTML = `${demo}<h2>President's Office</h2><div class="packhead"><span id="presimg"></span><div><h3 style="margin:0">${OWNER.name}</h3><div class="small">${OWNER.title}</div><div class="small">President's treasury (Solana): <code style="word-break:break-all">${OWNER_WALLET}</code> (simulated — demo KIBBLE only, no on-chain transfers)</div></div></div>${pools}
-      <p class="sub">Fee routing per purchase: 1% → President's Treasury · 0.25% → daily pool · 0.5% → weekly pool · 0.25% → monthly pool. Pool wallets: ${Object.entries(POOL_WALLETS).map(([k, v]) => `${k} <code>${v}</code>`).join(' · ')}</p>
+      <p class="sub">Fee routing per purchase: 1% → President's Treasury · 0.25% → daily pool · 0.5% → weekly pool · 0.25% → monthly pool. All of the price goes to the treasury wallet; the pools are an off-chain ledger, paid out by rank (see Prize Rules).</p>
       <h3>Fee ledger</h3><div class="board">${m.ledger.map((l) => `<div class="post"><b>${esc(MALL_ITEMS[l.item]?.name || l.item)}</b> price ${fmtK(l.price)} · fee ${fmtK(l.fee)} = owner ${fmtK(l.owner)} + daily ${fmtK(l.daily)} + weekly ${fmtK(l.weekly)} + monthly ${fmtK(l.monthly)}</div>`).join('') || '<p class="small">No purchases yet.</p>'}</div>`;
     $('#presimg').appendChild(spriteCanvas('golden', { top: 'gold_suit', hat: 'crown', neck: 'diamond_chain', bottom: 'slacks_black', feet: 'loafers' }, 72, 92, 1));
     return;
   }
   const items = Object.entries(MALL_ITEMS).filter(([, it]) => cat === 'all' || it.cat === cat);
-  body.innerHTML = `${demo}<h2>${esc(store?.name || 'Kibble Mall')}</h2><p class="sub">Luxury goods priced in demo $KIBBLE (you have ${state.kibble.toFixed(2)}). Owned by ${OWNER.name}. Checkout shows the <b>${FEE_LABEL}</b>.</p><div class="grid" id="mallgrid"></div>${cat === 'all' ? pools : ''}`;
+  body.innerHTML = `${demo}<h2>${esc(store?.name || 'Kibble Mall')}</h2><p class="sub">Luxury goods priced in ${kibText(state)}. Owned by ${OWNER.name}. Checkout shows the <b>${FEE_LABEL}</b>.</p><div class="grid" id="mallgrid"></div>${cat === 'all' ? pools : ''}`;
   const grid = $('#mallgrid');
   for (const [id, it] of items) {
     const q = quote(id), card = document.createElement('div'); card.className = 'card';

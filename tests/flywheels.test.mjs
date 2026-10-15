@@ -1,8 +1,8 @@
 import test from 'node:test'; import assert from 'node:assert/strict';
 const F = await import('../src/flywheels.js'); const { newGame } = await import('../src/game.js'); const { ensureMall, toU, OWNER_WALLET } = await import('../src/mall.js'); const { coinFor, AD_SLOTS } = await import('../src/coinads.js'); const { jobBoard, finishJob } = await import('../src/jobs.js');
 const S = () => { const s = newGame({ name: 'T' }); s.kibble = 200; return s; };
-test('featured billboard: rent for KIBBLE to treasury (+2% to pools), FEATURED badge, expires; organic ads stay free', () => { const s = S(), m = ensureMall(s), t0 = m.treasury;
-  const r = F.rentFeatured(s, 'bb1', 'MOCHI', 10); assert.ok(r.ok); assert.ok(m.treasury > t0); assert.ok(m.pools.daily > 0); assert.equal(s.kibble, 200 - 8 * 1.02);
+test('featured billboard: rent for KIBBLE (fee-inclusive, 2% carved to treasury/pools), FEATURED badge, expires; organic ads stay free', () => { const s = S(), m = ensureMall(s), t0 = m.treasury;
+  const r = F.rentFeatured(s, 'bb1', 'MOCHI', 10); assert.ok(r.ok); assert.ok(m.treasury > t0); assert.ok(m.pools.daily > 0); assert.equal(s.kibble, 200 - 8); // fee-inclusive
   assert.equal(F.rentFeatured(s, 'bb1', 'SNIF', 11).ok, false); const slot = AD_SLOTS.find((x) => x.id === 'bb1'), c = coinFor(slot, [{ ticker: 'ZEN', name: 'z', color: '#fff', pct: 1 }], 0, 0, { bb1: F.featuredOf(s, 'bb1', 12) }); assert.equal(c.featured, true); assert.equal(c.ticker, 'MOCHI');
   const organic = coinFor(AD_SLOTS.find((x) => x.id === 'bb2'), [{ ticker: 'ZEN', pct: 1 }], 0, 0, {}); assert.ok(!organic.featured); assert.equal(F.featuredOf(s, 'bb1', 10 + 25), null); });
 test('burn-for-status: burns (no treasury), numbered, capped supply, one each, flair glow', () => { const s = S(), m = ensureMall(s), t0 = m.treasury;

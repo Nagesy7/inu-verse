@@ -25,7 +25,9 @@ export function renderFly5(ctx) {
       <small>${fmtK(B.burnedU)} / ${fmtK(F5.BURN_GOAL_U)} burned · stage ${B.stage}/${F5.BURN_STAGES.length}</small></div>
       <button class="btn" data-act="burnclaim" ${B.burnedU < F5.BURN_GOAL_U || B.claimed ? 'disabled' : ''}>${B.claimed ? 'Claimed' : 'Claim free ' + (OUTFITS[F5.BURN_REWARD]?.name || F5.BURN_REWARD)}</button>`;
   }
-  if (tab === 'quests') {
+  if (tab === 'quests' && ctx.kp) {
+    html += `<p class="sub">Weekly cross-game quest chain, tracked on the kibble-pay server for your wallet (Verse Shiba, Arcade, Meme Brawl, PepeBallz). Finish all → cosmetic outfit. No purchase needed.</p><div id="srvq" class="grid"><div class="card">${ctx.kp.session ? 'Loading…' : 'Sign in with Phantom (top bar) to track quests.'}</div></div>`;
+  } else if (tab === 'quests') {
     const q = F5.questProgress(s, week);
     html += `<p class="sub">Weekly cross-game quest chain. Verse steps check locally; Empires / Quest report through kibble-pay later (sim buttons below). Finish all → cosmetic.</p>
       <div class="grid">${q.list.map((it) => `<div class="card"><b>${it.ok ? '✓' : '·'} ${esc(it.name)}</b><small>${it.game}${it.remote ? ' · remote' : ''}</small>
@@ -70,6 +72,7 @@ export function renderFly5(ctx) {
   }
 
   ctx.body.innerHTML = html;
+  if (tab === 'quests' && ctx.kp?.session) serverQuests(ctx);
   ctx.body.onclick = (e) => {
     const t = e.target.closest('[data-f5]'); if (t) return ctx.open(t.dataset.f5);
     const b = e.target.closest('[data-act]'); if (!b) return;
@@ -95,4 +98,16 @@ export function renderFly5(ctx) {
     ctx.toast(a === 'streak' ? `Day ${r.streak}: +${r.bones} Bones${r.cosmetic ? ' + ' + r.cosmetic : ''}` : a === 'photo' ? 'Photo submitted!' : a === 'sponsor' ? 'Sponsored!' : a === 'tourney' ? `Rank #${r.rank}: +${r.prize} Bones` : a === 'burnclaim' || a === 'questclaim' || a === 'photoprize' ? `Cosmetic: ${r.item}` : 'Done', 'good');
     ctx.hud(); ctx.persist(); ctx.open(tab);
   };
+}
+
+// server-side quests (real mode): progress from /api/game?action=quests, claim writes the reward to the wallet inventory
+const grant = (s) => { s.wardrobe ||= { owned: [] }; if (OUTFITS[F5.QUEST_REWARD] && !s.wardrobe.owned.includes(F5.QUEST_REWARD)) s.wardrobe.owned.push(F5.QUEST_REWARD); };
+async function serverQuests(ctx) {
+  const el = ctx.body.querySelector('#srvq'); if (!el) return;
+  try { const q = await ctx.kp.quests(); if (q.claimed) grant(ctx.state);
+    el.innerHTML = q.list.map((it) => `<div class="card"><b>${it.ok ? '✓' : '·'} ${esc(it.name)}</b></div>`).join('') +
+      `<button class="btn" id="srvclaim" ${q.done < q.total || q.claimed ? 'disabled' : ''}>${q.claimed ? 'Claimed this week' : `Claim ${esc(OUTFITS[F5.QUEST_REWARD]?.name || 'reward')} (${q.done}/${q.total})`}</button>`;
+    const b = el.querySelector('#srvclaim'); if (b) b.onclick = async () => { const r = await ctx.kp.claimQuests().catch((e) => ({ ok: false, reason: e.message }));
+      if (r.ok) { grant(ctx.state); ctx.toast?.('Quest chain reward added to your wardrobe!', 'good'); ctx.persist?.(); } else ctx.toast?.(r.reason || r.error || 'Claim failed', 'bad'); serverQuests(ctx); };
+  } catch (e) { el.innerHTML = `<div class="card">Quests unavailable: ${esc(e.message)}</div>`; }
 }

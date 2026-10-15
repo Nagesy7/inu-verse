@@ -2,7 +2,7 @@
 import * as R from './relations.js';
 import { GOODS } from './farm.js';
 import { FURNITURE, FURN_STORES, FURN_CATS, storeItems } from './furniture.js';
-import { wallet } from './wallet.js';
+import { wallet, kibText } from './wallet.js';
 import { toU, FEE_LABEL } from './mall.js';
 const esc = (s) => String(s).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
 const btn = (act, label, cls = 'green') => `<button class="btn ${cls}" data-act="${act}">${label}</button>`;
@@ -43,7 +43,7 @@ export function renderChapel(ctx) { const s = ctx.state; R.ensureRel(s); const e
     joint: () => R.jointOpen(s, true), jin: () => R.jointMove(s, 50), jout: () => R.jointMove(s, -50), divorce: () => { const x = R.p2pDivorce(s); if (x.ok) ctx.toast(`Divorced. ${x.refund} bones from the joint account returned to you.`); return x; },
     block: () => R.block(s, val('safename') || 'unknown'), mute: () => R.mute(s, val('safename') || 'unknown'), report: () => { const x = R.report(s, val('safename') || 'unknown', 'reported from chapel'); ctx.toast('Report saved for moderators.'); return x; } }); }
 export function renderFurnStore(ctx, store) { const S = FURN_STORES[store], s = ctx.state, kib = S.currency === 'kibble', set = ctx.panel.set || S.sets[0], items = storeItems(store).filter(([, d]) => d.set === set);
-  ctx.body.innerHTML = `<h2>${S.name}</h2><p class="sub">${kib ? `Luxury design in demo $KIBBLE (${s.kibble.toFixed(2)}) with the ${FEE_LABEL}.` : `Everyday furniture for bones (${Math.floor(s.bones)}).`} Pick a themed set, preview it in a room, then place items from build mode in your home.</p>
+  ctx.body.innerHTML = `<h2>${S.name}</h2><p class="sub">${kib ? `Luxury design in ${kibText(s)} with the ${FEE_LABEL}.` : `Everyday furniture for bones (${Math.floor(s.bones)}).`} Pick a themed set, preview it in a room, then place items from build mode in your home.</p>
    <p>${S.sets.map((k) => btn('set:' + k, k[0].toUpperCase() + k.slice(1) + ' set', k === set ? '' : 'alt')).join('')}${btn('preview', 'Preview this set in a room', 'alt')}</p><canvas id="furnprev" width="520" height="300" style="width:100%;max-width:520px;display:block;margin:6px auto;background:#1b1f33;border-radius:10px"></canvas>
    ${FURN_CATS.filter((c) => items.some(([, d]) => d.cat === c)).map((c) => `<h3>${c}</h3><div class="grid">${items.filter(([, d]) => d.cat === c).map(([id, d]) => `<div class="card"><canvas data-icon="${id}" width="64" height="56"></canvas><b>${d.name}</b><small>${d.w}×${d.h} · owned ${s.inventory[id] || 0}</small>${btn('buy:' + id, kib ? `${d.kibble} KIBBLE` : `${d.price} bones`)}</div>`).join('')}</div>`).join('')}
    ${store === 'cosy' ? `<h3>Gifts</h3><div class="grid">${Object.entries(R.GIFT_SHOP).map(([k, g]) => `<div class="card"><b>${g.name}</b><small>${g.note} · own ${s.giftInv?.[k] || 0}</small>${btn('gift:' + k, g.price + ' bones')}</div>`).join('')}</div>` : ''}`;

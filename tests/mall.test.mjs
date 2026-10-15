@@ -3,16 +3,16 @@ import { feeSplit, quote, buyMallItem, ensureMall, payout, rollPeriods, toU, U, 
 import { newGame } from '../src/game.js';
 import { save, load, MemoryStorage } from '../src/save.js';
 test('fee split is exact: 1% owner, .25/.5/.25 pools, no rounding loss', () => {
-  const q = feeSplit(toU(12)); assert.equal(q.fee, 240000); assert.equal(q.owner, 120000); assert.equal(q.daily, 30000); assert.equal(q.weekly, 60000); assert.equal(q.monthly, 30000); assert.equal(q.total, toU(12.24));
+  const q = feeSplit(toU(12)); assert.equal(q.fee, 240000); assert.equal(q.owner, 120000); assert.equal(q.daily, 30000); assert.equal(q.weekly, 60000); assert.equal(q.monthly, 30000); assert.equal(q.total, toU(12)); // fee-inclusive
   for (const p of [1, 3, 7, 33, 101, 999999, 1234567, 5.25 * U, 9.5 * U]) { const f = feeSplit(p); assert.equal(f.owner + f.daily + f.weekly + f.monthly, f.fee, `p=${p}`); assert.equal(f.fee, Math.floor(p * 0.02)); assert.ok(f.owner >= Math.floor(p / 100)); }
-  assert.match(FEE_LABEL, /2% fee: 1% Mall owner, 1% community prize pools/); assert.equal(OWNER_WALLET, 'BzLYTFAfUsjzQ5x8bx5BbPK4DFtaHrLCuferkvkxTNGJ');
+  assert.match(FEE_LABEL, /price includes 2%/); assert.equal(OWNER_WALLET, 'BzLYTFAfUsjzQ5x8bx5BbPK4DFtaHrLCuferkvkxTNGJ');
 });
-test('purchase charges price + 2%, accrues treasury and pools, grants item', () => {
+test('purchase charges exactly the (fee-inclusive) price, accrues treasury and pools, grants item', () => {
   const s = newGame(); s.kibble = 100; const r = buyMallItem(s, 'gold_suit'); assert.ok(r.ok);
-  assert.equal(toU(s.kibble), toU(100 - 12.24)); const m = ensureMall(s);
+  assert.equal(toU(s.kibble), toU(100 - 12)); const m = ensureMall(s);
   assert.equal(m.treasury, 120000); assert.deepEqual(m.pools, { daily: 30000, weekly: 60000, monthly: 30000 }); assert.ok(s.wardrobe.owned.includes('gold_suit'));
   assert.equal(buyMallItem(s, 'gold_suit').ok, false, 'no duplicates'); buyMallItem(s, 'gold_throne'); assert.equal(s.inventory.gold_throne, 1);
-  const poor = newGame(); poor.kibble = 12; assert.equal(buyMallItem(poor, 'gold_suit').ok, false, 'fee must be covered');
+  const poor = newGame(); poor.kibble = 11.99; assert.equal(buyMallItem(poor, 'gold_suit').ok, false, 'price must be covered');
   let sum = 0; for (const id of Object.keys(MALL_ITEMS)) sum += quote(id).fee; assert.ok(sum > 0);
 });
 test('payouts go to the top score (skill based, deterministic) and pools reset', () => {

@@ -1,23 +1,23 @@
-// Kibble Mall + shopping district economy. DEMO ONLY: simulated $KIBBLE, no blockchain, no real money.
-// All Mall + district stores are owned by "President Inu". Every purchase adds a transparent 2% fee:
+// Kibble Mall + shopping district economy. Real mode: purchases go through kibble-pay (wallet.js); demo (?demo=1): local sim.
+// All Mall + district stores are owned by "President Inu". Prices are FEE-INCLUSIVE; 2% of every price is set aside:
 //   1%    -> President's Treasury (Mall owner)
 //   0.25% -> daily prize pool    (top café/job earner of the day)
 //   0.5%  -> weekly prize pool   (best decorated home score of the week)
 //   0.25% -> monthly prize pool  (top Pack in the Kibble Cup)
 // Prize pools are skill/activity based - winners are chosen by score, never by chance.
 // Amounts are kept as integer micro-KIBBLE units (1 KIBBLE = 1,000,000 u) so splits are exact.
-// Backend/wallet hook: OWNER_WALLET is the real treasury receive address (display only, no transfers); POOL_WALLETS are placeholders; settle() is the single place
-// a real on-chain split would be submitted later.
+// Real payments: the full price goes to OWNER_WALLET; the 2% split is an off-chain ledger in kibble-pay (no separate pool wallets).
+// settle() here is the DEMO-mode local ledger only.
 import { OUTFITS } from './outfits.js';
 import { FURNITURE } from './furniture.js';
+import { wallet, DEMO } from './wallet.js';
 
 export const U = 1_000_000;
 export const OWNER = { name: 'President Inu', title: 'Owner of Kibble Mall & the shopping district' };
 export const OWNER_WALLET = 'BzLYTFAfUsjzQ5x8bx5BbPK4DFtaHrLCuferkvkxTNGJ'; // President's treasury (Solana receive address). Simulated: no transfers are made.
-export const POOL_WALLETS = { daily: 'DAILY_POOL_PLACEHOLDER', weekly: 'WEEKLY_POOL_PLACEHOLDER', monthly: 'MONTHLY_POOL_PLACEHOLDER' };
 export const FEE_BPS = { owner: 100, daily: 25, weekly: 50, monthly: 25 }; // basis points (sum 200 = 2%)
 export const FEE_TOTAL_BPS = 200;
-export const FEE_LABEL = '2% fee: 1% Mall owner, 1% community prize pools';
+export const FEE_LABEL = 'price includes 2%: 1% treasury, 1% community prize pools';
 export const PERIOD_DAYS = { daily: 1, weekly: 7, monthly: 28 };
 export const POOL_RULES = {
   daily: 'Top café / job earner of the day (bones earned on shifts)',
@@ -57,7 +57,7 @@ export function feeSplit(priceU) {
   const fee = Math.floor(priceU * FEE_TOTAL_BPS / 10000);
   const daily = Math.floor(priceU * FEE_BPS.daily / 10000), weekly = Math.floor(priceU * FEE_BPS.weekly / 10000), monthly = Math.floor(priceU * FEE_BPS.monthly / 10000);
   const owner = fee - daily - weekly - monthly;
-  return { price: priceU, fee, owner, daily, weekly, monthly, total: priceU + fee };
+  return { price: priceU, fee, owner, daily, weekly, monthly, total: priceU }; // fee-inclusive: player pays exactly priceU
 }
 export const quote = (id) => { const it = MALL_ITEMS[id]; return it ? feeSplit(toU(it.price)) : null; };
 
@@ -65,17 +65,14 @@ export function buyMallItem(s, id) {
   const m = ensureMall(s), it = MALL_ITEMS[id]; if (!it) return fail('Unknown item');
   if (it.grants.outfit && s.wardrobe?.owned?.includes(it.grants.outfit)) return fail('Already owned');
   if (it.grants.car && m.cars.includes(it.grants.car)) return fail('Already owned');
-  const q = feeSplit(toU(it.price));
-  if (toU(s.kibble) < q.total) return fail(`Need ${fmtK(q.total)} KIBBLE (incl. 2% fee)`);
-  s.kibble = fromU(toU(s.kibble) - q.total);
-  settle(m, q, id);
+  const r = wallet().purchaseSync({ state: s, itemId: 'mall-' + id, priceU: toU(it.price) }); if (!r.ok) return r; const q = r.quote;
   if (it.grants.outfit) { s.wardrobe ||= { owned: [], equipped: {} }; s.wardrobe.owned.push(it.grants.outfit); }
   if (it.grants.furniture) s.inventory[it.grants.furniture] = (s.inventory[it.grants.furniture] || 0) + 1;
   if (it.grants.car) m.cars.push(it.grants.car);
   m.owned.push(id);
   return { ok: true, quote: q };
 }
-// Single settlement point (local now; would submit the split to OWNER_WALLET / POOL_WALLETS later).
+// DEMO-mode settlement (local ledger). Real purchases are settled by kibble-pay's server ledger.
 export function settle(m, q, item) {
   m.treasury += q.owner; m.pools.daily += q.daily; m.pools.weekly += q.weekly; m.pools.monthly += q.monthly;
   m.ledger.unshift({ item, price: q.price, fee: q.fee, owner: q.owner, daily: q.daily, weekly: q.weekly, monthly: q.monthly, to: OWNER_WALLET });
@@ -99,7 +96,7 @@ export function rollPeriods(s, day, entries) {
     m.period.day++;
     for (const pool of ['daily', 'weekly', 'monthly']) if (m.period.day % PERIOD_DAYS[pool] === 0) {
       const r = payout(m, pool, entries(pool)); if (!r) continue;
-      if (r.id === 'you') s.kibble = fromU(toU(s.kibble) + r.amount);
+      if (r.id === 'you' && DEMO) s.kibble = fromU(toU(s.kibble) + r.amount); // demo only: real pools are paid on-chain by kibble-pay
       else if (r.id?.startsWith('pk_') && s.packs?.all?.[r.id]) { const p = s.packs.all[r.id]; p.kibblePrize = (p.kibblePrize || 0) + r.amount; }
       out.push(r);
     }
