@@ -34,7 +34,7 @@ export function upstashStore(env = process.env, f = fetch) {
   const url = env.UPSTASH_REDIS_REST_URL || env.KV_REST_API_URL, tok = env.UPSTASH_REDIS_REST_TOKEN || env.KV_REST_API_TOKEN;
   if (!url || !tok) return null;
   const cmd = async (...a) => { const r = await f(url, { method: "POST", headers: { authorization: "Bearer " + tok, "content-type": "application/json" }, body: JSON.stringify(a) }); const j = await r.json(); if (j.error) throw new Error(j.error); return j.result; };
-  const P = "inuverse:";
+  const P = env.REGISTRY_PREFIX || "launchhall:"; // distinct namespace: this Upstash DB is shared with Kibble Pay
   return { get: (k) => cmd("GET", P + k), set: (k, v) => cmd("SET", P + k, String(v)), del: (k) => cmd("DEL", P + k),
     setNX: async (k, v) => (await cmd("SET", P + k, String(v), "NX")) === "OK", sadd: (k, v) => cmd("SADD", P + k, v), srem: (k, v) => cmd("SREM", P + k, v),
     smembers: (k) => cmd("SMEMBERS", P + k), incr: (k) => cmd("INCR", P + k) }; }

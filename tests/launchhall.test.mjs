@@ -53,3 +53,9 @@ test('Launch Hall copy: no "no blockchain / no real money", official CA + pump.f
   const src = ['src/main.js', 'src/launch.js', 'src/guide.js', 'src/coinads.js', 'src/realcoins.js'].map((f) => fs.readFileSync(f, 'utf8')).join('\n');
   assert.doesNotMatch(src, /no blockchain|no real money/i); assert.match(src, /4VE9sy4fEMJdZ6i7MkYPbnqDJd2oqzJQmg44WJ3opump/); assert.match(src, /pump\.fun\/coin\//); assert.match(src, /Not financial advice/);
   assert.doesNotMatch(fs.readFileSync('src/realcoins.js', 'utf8'), /signTransaction|signAndSend/); assert.match(RC.phantomBrowse(RC.PUMP_CREATE), /^https:\/\/phantom\.app\/ul\/browse\/https%3A%2F%2Fpump\.fun%2Fcreate/); });
+test('$KIBBLE pair is honest about graduation; registry uses launchhall: prefix on shared Upstash', async () => { _resetPairs();
+  const f = async (u) => ({ ok: true, json: async () => u.includes('rugcheck') ? { risks: [] } : [] });
+  const v = await evaluatePairs({ f, now: 5, curve: async () => ({ graduated: false }) }); assert.equal(v.pairs[0].graduated, false); assert.match(v.pairs[0].note, /Not graduated yet/); assert.equal(v.pairs[0].availability, 'unconfirmed'); _resetPairs();
+  const u = await evaluatePairs({ f, now: 6, curve: async () => { throw new Error('rpc'); } }); assert.equal(u.pairs[0].graduated, null); assert.match(u.pairs[0].note, /unavailable/); _resetPairs();
+  const { upstashStore } = await import('../api/coins.js'); let sent; const s = upstashStore({ KV_REST_API_URL: 'https://x', KV_REST_API_TOKEN: 't' }, async (_, o) => { sent = JSON.parse(o.body); return { json: async () => ({ result: 'OK' }) }; });
+  await s.set('coin:A', 1); assert.equal(sent[1], 'launchhall:coin:A'); });

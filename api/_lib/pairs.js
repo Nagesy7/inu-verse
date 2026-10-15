@@ -20,12 +20,22 @@ export function judge(c, m, rc, rules = PAIR_RULES) { const why = [];
   if (!m || m.mcap == null) why.push("no market data"); else { if (m.mcap < rules.minMcapUsd) why.push(`market cap below $${rules.minMcapUsd.toLocaleString("en-US")}`); if (m.liquidity < rules.minLiquidityUsd) why.push(`liquidity below $${rules.minLiquidityUsd.toLocaleString("en-US")}`); }
   if (!rc) why.push("RugCheck unavailable"); else if (rc.danger.length) why.push("RugCheck danger: " + rc.danger.join(", "));
   return { ...c, mcap: m?.mcap ?? null, liquidity: m?.liquidity ?? null, rugcheck: rc ? (rc.danger.length ? "danger" : "ok") : "unavailable", eligible: !why.length, why }; }
+// $KIBBLE's pump.fun bonding curve (PDA verified in tests). Byte 48 = complete (graduated).
+export const KIBBLE_CURVE = "CwcC2iMpRVGgxZKKnmLq9N3fMjVVPSkLGKdvU7piXLrc";
+export async function curveStatus(addr, { f = fetch, rpc = process.env.SOLANA_RPC || "https://api.mainnet-beta.solana.com" } = {}) {
+  const r = await f(rpc, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ jsonrpc: "2.0", id: 1, method: "getAccountInfo", params: [addr, { encoding: "base64" }] }) });
+  const v = (await r.json()).result?.value; if (!v) return null; const d = Buffer.from(v.data[0], "base64"); return { graduated: d[48] === 1 }; }
+// Honest note for the featured pair: pump.fun lets a SOL-launched pump.fun coin be a "Secondary Pair Asset" "where the platform permits".
+export function kibbleNote(graduated) { return graduated === true ? "Graduated. Search its CA under Custom Pairs on pump.fun's create page."
+  : graduated === false ? "Not graduated yet (still on its bonding curve). pump.fun may not offer $KIBBLE under Custom Pairs until it graduates — if it doesn't appear when you paste the CA, it isn't available yet; pick another pair below or use SOL."
+  : "Graduation status unavailable right now. If $KIBBLE doesn't appear under Custom Pairs when you paste the CA, it isn't available yet."; }
 let memo = null;
-export async function evaluatePairs({ f = fetch, now = Date.now(), rules = PAIR_RULES } = {}) {
+export async function evaluatePairs({ f = fetch, now = Date.now(), rules = PAIR_RULES, curve = (a) => curveStatus(a, { f }) } = {}) {
   if (memo && now - memo.at < rules.cacheMs) return memo.v;
   const k = await dexMarket(KIBBLE_PAIR.mint, f).catch(() => null);
+  const cs = await curve(KIBBLE_CURVE).catch(() => null), graduated = cs ? cs.graduated : null;
   const rows = await Promise.all(PAIR_CANDIDATES.map(async (c) => judge(c, await dexMarket(c.mint, f).catch(() => null), await rugcheck(c.mint, f).catch(() => null), rules)));
   const v = { rules: { minMcapUsd: rules.minMcapUsd, minLiquidityUsd: rules.minLiquidityUsd }, checkedAt: now,
-    pairs: [{ ...KIBBLE_PAIR, mcap: k?.mcap ?? null, liquidity: k?.liquidity ?? null, eligible: true, exempt: true, why: [] }, ...rows.filter((r) => r.eligible).sort((a, b) => b.mcap - a.mcap)], rejected: rows.filter((r) => !r.eligible) };
+    pairs: [{ ...KIBBLE_PAIR, mcap: k?.mcap ?? null, liquidity: k?.liquidity ?? null, eligible: true, exempt: true, graduated, availability: graduated ? "available" : "unconfirmed", note: kibbleNote(graduated), why: [] }, ...rows.filter((r) => r.eligible).sort((a, b) => b.mcap - a.mcap)], rejected: rows.filter((r) => !r.eligible) };
   memo = { at: now, v }; return v; }
 export const _resetPairs = () => { memo = null; };
