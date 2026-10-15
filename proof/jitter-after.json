@@ -1,0 +1,12 @@
+{"1366x768":{"frames":175,"sy":[0],"st":[0],"bt":[0],"vvy":[0],"ih":[768],"cy":[0],"cx":[0],"cwid":[1366],"w":[1366],"h":[768],"canvasWidthSets":0,"shifts":0.0017,"docH":768,"winH":768,"docW":1366,"dtMax":"16.8","audioCtx":1,"audioStarts":25,"maxLiveVoices":20,"startsPer100msMax":15,"camSamples":175,"bgDX":{"mean":-2,"sd":1.385,"max":4,"zeroFrames":48,"reversals":0,"velSdPerFrame":1.386},
+"playerScreenDX":{"mean":-0.184,"sd":0.597,"max":3,"zeroFrames":137,"reversals":14,"velSdPerFrame":0.597},
+"bgOffDevicePx":0,"stepHist":null,"errors":[]},
+"1440x900":{"frames":180,"sy":[0],"st":[0],"bt":[0],"vvy":[0],"ih":[900],"cy":[0],"cx":[0],"cwid":[1440],"w":[1440],"h":[900],"canvasWidthSets":0,"shifts":0.0013,"docH":900,"winH":900,"docW":1440,"dtMax":"16.8","audioCtx":1,"audioStarts":25,"maxLiveVoices":21,"startsPer100msMax":15,"camSamples":180,"bgDX":{"mean":-1.961,"sd":1.4,"max":4,"zeroFrames":52,"reversals":0,"velSdPerFrame":1.4},
+"playerScreenDX":{"mean":-0.179,"sd":0.59,"max":3,"zeroFrames":142,"reversals":14,"velSdPerFrame":0.59},
+"bgOffDevicePx":0,"stepHist":null,"errors":[]},
+"1280x720":{"frames":173,"sy":[0],"st":[0],"bt":[0],"vvy":[0],"ih":[720],"cy":[0],"cx":[0],"cwid":[1280],"w":[1280],"h":[720],"canvasWidthSets":0,"shifts":0.0021,"docH":720,"winH":720,"docW":1280,"dtMax":"16.8","audioCtx":1,"audioStarts":28,"maxLiveVoices":20,"startsPer100msMax":15,"camSamples":173,"bgDX":{"mean":-2.023,"sd":1.377,"max":4,"zeroFrames":46,"reversals":0,"velSdPerFrame":1.377},
+"playerScreenDX":{"mean":-0.186,"sd":0.601,"max":3,"zeroFrames":135,"reversals":14,"velSdPerFrame":0.601},
+"bgOffDevicePx":0,"stepHist":null,"errors":[]},
+"844x390":{"frames":158,"sy":[0],"st":[0],"bt":[0],"vvy":[0],"ih":[390],"cy":[0],"cx":[0],"cwid":[844],"w":[2532],"h":[1170],"canvasWidthSets":0,"shifts":0.0136,"docH":390,"winH":390,"docW":844,"dtMax":"50.1","audioCtx":1,"audioStarts":25,"maxLiveVoices":20,"startsPer100msMax":15,"camSamples":158,"bgDX":{"mean":-2.212,"sd":1.773,"max":9.67,"zeroFrames":30,"reversals":0,"velSdPerFrame":1.74},
+"playerScreenDX":{"mean":-0.2,"sd":0.536,"max":3,"zeroFrames":94,"reversals":23,"velSdPerFrame":0.535},
+"bgOffDevicePx":0,"stepHist":null,"errors":[]}}

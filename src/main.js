@@ -16,7 +16,7 @@ import { carProps } from './ambient.js';
 import { drawCar } from './cars.js';
 import { makeAlive, stepAlive, drawAliveGround, drawAliveSky, ALIVE } from './alive.js';
 import { makeAmbient, stepAmbient, throwBall, dayPhase, timeForHour, drawGroundLife, drawSkyLife, drawAtmosphere, drawEmote, lightsFor, addMail, unreadMail, EMOTES, DAY_LEN } from './ambient.js';
-import { initAudio, setMuted, isMuted, footstep, chirp, bork, blip, uiClick, uiOpen, uiClose, textBlip, rustle, fanfare } from './audio.js';
+import { initAudio, setMusicActive, setMuted, isMuted, footstep, chirp, bork, blip, uiClick, uiOpen, uiClose, textBlip, rustle, fanfare } from './audio.js';
 import { CAR_MODELS, CAR_COLORS, ensureGarage, buyCar, carOf } from './garage.js';
 import { PETS, ensurePets, buyPet, renamePet, activePet, followStep, petSprite } from './pets.js';
 import { wallet, TREASURY, DEMO, SOON, demoOnly, kibText, setWallet, kibblePayWallet, GAME as KGAME } from './wallet.js';
@@ -121,7 +121,8 @@ addEventListener('kibble:wallet', () => { if (state) { state.walletAddr = wallet
 bootKibble(); refreshRegistry(true);
 function hud() { GOLD.name = F5.isVip(state) ? state.player.name : null; { const P = DEMO ? poolsOf(state) : serverPools, el = $('#pools'); if (el) el.textContent = P ? `D${(P.daily / 1e6).toFixed(2)} W${(P.weekly / 1e6).toFixed(2)} M${(P.monthly / 1e6).toFixed(2)}` : 'pools'; } $('#bones').textContent = Math.floor(state.bones); $('#kibble').textContent = DEMO ? state.kibble.toFixed(2) : (wallet().live ? (wallet().balanceUi ?? '–') : 'soon'); $('#hud-name').textContent = state.player.name; }
 
-function resize() { cv.width = Math.round(innerWidth * devicePixelRatio); cv.height = Math.round(innerHeight * devicePixelRatio); vignette = null; document.body.classList.toggle('landscape', innerWidth > innerHeight); document.body.classList.toggle('short', innerHeight < 520); }
+function resize() { const nw = Math.round(innerWidth * devicePixelRatio), nh = Math.round(innerHeight * devicePixelRatio); if (cv.width !== nw || cv.height !== nh) { cv.width = nw; cv.height = nh; vignette = null; } // only touch the backing store on a real size change (visualViewport fires during address-bar moves; re-setting width clears the canvas)
+  document.body.classList.toggle('landscape', innerWidth > innerHeight); document.body.classList.toggle('short', innerHeight < 520); }
 addEventListener('resize', resize); addEventListener('orientationchange', () => setTimeout(resize, 60)); window.visualViewport?.addEventListener('resize', resize); resize();
 
 // ---------------- Title ----------------
@@ -265,7 +266,7 @@ fetchArcadeTop(); setInterval(fetchArcadeTop, 120000);
 function arcadeUrl() { const p = profileFromState(state), q = new URLSearchParams(); if (/^[1-9A-HJ-NP-Za-km-z]{32,44}$/.test(p.wallet || '')) q.set('wallet', p.wallet);
   try { const lite = { ...p, pets: [] }; q.set('p', btoa(unescape(encodeURIComponent(JSON.stringify(lite)))).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '')); } catch {}
   q.set('from', 'inu-verse'); q.set('spawn', 'arcade'); return ARCADE.url + '?' + q.toString(); }
-function openArcade() { const url = arcadeUrl(), touch = matchMedia('(pointer: coarse)').matches;
+function openArcade() { const url = arcadeUrl(), touch = matchMedia('(pointer: coarse)').matches; setMusicActive(false); // the arcade iframe plays its own music: duck the hub loop so two tracks never overlap
   if (touch) { const w = window.open(url, '_blank', 'noopener'); toast(w ? 'Inu Arcade opened in a new tab' : 'Allow pop-ups to open the arcade', w ? 'good' : 'bad'); return; }
   keys.clear(); let ov = document.getElementById('arcade-ov');
   if (!ov) { ov = document.createElement('div'); ov.id = 'arcade-ov'; ov.innerHTML = '<div class="arc-bar"><button class="btn" id="arc-back">◀ Back to Inu Verse</button><b>INU ARCADE</b><a class="btn alt" id="arc-tab" target="_blank" rel="noopener">Open in new tab ↗</a></div><iframe id="arc-frame" allow="autoplay; fullscreen; gamepad" title="Inu Arcade"></iframe>'; document.body.appendChild(ov);
@@ -303,7 +304,7 @@ async function renderBank() { const body = $('#panel-body'), kp = K.kp, w = wall
     $('#bk-inv').innerHTML = rows.length ? rows.map((r) => `<div class="card"><b>${esc(names[r.id]?.name || r.id.replace(/^burn:/, 'Burn unlock: '))}</b><small>${esc(r.g)} · ×${r.n}</small></div>`).join('') : '<div class="card"><small>No items yet.</small></div>';
     $('#bk-hist').innerHTML = hist.length ? `<table class="board"><tr><th>When</th><th>What</th><th>Item</th><th>KIBBLE</th><th>Tx</th></tr>${hist.map((x) => `<tr><td>${new Date(x.at).toLocaleDateString()}</td><td>${x.type === 'burn' ? 'Burn (opt-in)' : 'Purchase'}</td><td>${esc(names[x.itemId]?.name || x.itemId || '–')}</td><td>${fmtU(x.amountBaseUnits)}</td><td><a href="https://solscan.io/tx/${encodeURIComponent(x.signature)}" target="_blank" rel="noopener">${esc(String(x.signature).slice(0, 6))}…</a></td></tr>`).join('')}</table>` : '<p class="sub">No purchases yet.</p>';
   } catch (e) { $('#bk-hist').innerHTML = `<p class="sub">Could not load: ${esc(e.message)}</p>`; } }
-function closeArcade() { const ov = document.getElementById('arcade-ov'); if (ov) { ov.hidden = true; ov.querySelector('#arc-frame').src = 'about:blank'; } arcadeOpen = false; fetchArcadeTop(); }
+function closeArcade() { setMusicActive(true); const ov = document.getElementById('arcade-ov'); if (ov) { ov.hidden = true; ov.querySelector('#arc-frame').src = 'about:blank'; } arcadeOpen = false; fetchArcadeTop(); }
 let arcadeOpen = false; globalThis.__arcade = { open: openArcade, close: closeArcade, url: arcadeUrl, get top() { return arcadeTop; } };
 globalThis.__eng = ENG; globalThis.__fly5 = F5;
 function playJob(id) { if (panel) closePanel(); keys.clear(); startJob(id, { state, rng, day: gameDay, blip, rustle, fanfare, done: (r) => { ENG.addSeasonXp(state, 'job', gameDay()); F5.tourneyScore(state, id, r.score || 0, Math.floor(gameDay() / 7)); hud(); persist(); if ((r.pb || r.rankUp) && state.town) playerDid(state.town, `You ${r.rankUp ? 'made ' + r.rank + ' as a' : 'set a new best as a'} ${JOB_DEFS[id].name.toLowerCase()} worker.`); toast(`${JOB_DEFS[id].name}: +${r.total} bones${r.pb ? ' · new best!' : ''}${r.rankUp ? ` · rank ${r.rank}!` : ''}`, 'good'); }, closed: () => keys.clear() }); }
@@ -430,12 +431,16 @@ function updateWorld(dt) {
   else { pr.hidden = true; setA(''); }
 }
 
+let snapPx = (v) => Math.round(v * 2) / 2;
 function renderWorld() {
   const dpr = devicePixelRatio, SW = innerWidth, SH = innerHeight, vw = SW / ZOOM, vh = SH / ZOOM; ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
   ctx.imageSmoothingEnabled = false; ctx.fillStyle = '#141a2e'; ctx.fillRect(0, 0, SW, SH); ctx.setTransform(dpr * ZOOM, 0, 0, dpr * ZOOM, 0, 0); // world drawn at ZOOM; Shibas drawn back at 1/ZOOM so they keep their on-screen size
-  // integer camera snapped to the native pixel grid (2px) so tiles never shimmer
-  const ox = Math.round((vw / 2 - cam.x) / SCALE) * SCALE, oy = Math.round((vh / 2 - cam.y) / SCALE) * SCALE;
-  const G = mapImg.ground, sx = Math.max(0, -ox / SCALE), sy = Math.max(0, -oy / SCALE), sw = Math.min(G.width - sx, Math.ceil(vw / SCALE) + 1), sh = Math.min(G.height - sy, Math.ceil(vh / SCALE) + 1);
+  // camera + actors snapped to the SAME device-pixel grid (q world px = 1 device px). The old 2-world-px camera grid moved the
+  // background in 4 CSS px hops while Shibas moved in 1 px steps, so the player visibly wobbled against the world (jitter).
+  const q = 1 / (ZOOM * dpr), snapQ = (v) => Math.round(v / q) * q; snapPx = snapQ;
+  const ox = snapQ(vw / 2 - cam.x), oy = snapQ(vh / 2 - cam.y);
+  globalThis.__camDbg = { x: ox * ZOOM, y: oy * ZOOM, px: (ox + snapQ(state.player.x)) * ZOOM, py: (oy + snapQ(state.player.y)) * ZOOM }; // jitter probe: bg offset + player screen pos (CSS px)
+  const G = mapImg.ground, sx = Math.max(0, Math.floor(-ox / SCALE)), sy = Math.max(0, Math.floor(-oy / SCALE)), sw = Math.min(G.width - sx, Math.ceil(vw / SCALE) + 1), sh = Math.min(G.height - sy, Math.ceil(vh / SCALE) + 1);
   ctx.drawImage(G, sx, sy, sw, sh, ox + sx * SCALE, oy + sy * SCALE, sw * SCALE, sh * SCALE);
   ctx.save(); ctx.translate(ox, oy);
   { // animated water (native pixels, scaled)
@@ -459,7 +464,7 @@ function renderWorld() {
     if (!it.a) { it.d(ctx); continue; }
     const a = it.a;
     if (a.statue) { ctx.fillStyle = '#6a6080'; ctx.fillRect(Math.round(a.x - 34), Math.round(a.y - 4), 68, 18); ctx.fillStyle = '#d4a640'; ctx.fillRect(Math.round(a.x - 38), Math.round(a.y - 8), 76, 5); ctx.fillStyle = '#121a36'; ctx.font = '8px Silkscreen, monospace'; ctx.textAlign = 'center'; ctx.fillText('PRESIDENT INU', Math.round(a.x), Math.round(a.y + 8)); ctx.save(); ctx.filter = 'sepia(1) saturate(2.6) brightness(1.05)'; drawShiba(ctx, a.x, a.y - 10, { art: a.art, scale: 1.5, shadow: false }); ctx.restore(); continue; }
-    ctx.save(); ctx.translate(Math.round(a.x * 2) / 2, Math.round(a.y * 2) / 2); ctx.scale(0.5, 0.5);
+    ctx.save(); ctx.translate(snapPx(a.x), snapPx(a.y)); ctx.scale(0.5, 0.5);
     if (a.me) { ctx.fillStyle = 'rgba(242,204,104,0.45)'; ctx.fillRect(-20, 9, 40, 4); ctx.fillRect(-14, 7, 28, 8); }
     if (a.petSpecies) { drawPetActor(ctx, a); ctx.restore(); continue; }
     if (a.president) { drawPresident(ctx, a); if (a.emote) drawEmote(ctx, 0, -14, a.emote.kind, time); ctx.restore(); continue; }
