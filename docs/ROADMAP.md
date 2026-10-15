@@ -79,3 +79,60 @@ Short banner version: "Advisory vote: the council or owner can veto results. Fre
 - **Phase 2: wallet-signed voting.** One vote per wallet with SIWS, the minimum holding and age checks, and live counts on the results board.
 - **Phase 3: holder proposals and moderation.** The submission form, the moderation queue, rate limits, and duplicate merging.
 - **Phase 4: council and owner tooling.** Veto and accept actions with a mandatory reason, the Planned and Shipped workflow linked to releases, and an audit log of decisions.
+
+## Living World (vision)
+
+Plan only. No code yet. Inu Verse is an Inu remix of the real world: a small living ecosystem of vehicles, buildings, characters and everyday life. The town should feel busy and believable even when no players are around.
+
+### Vehicle roster
+All names are original Inu names. No real brand or model names, and no near-copies of them. Existing store cars (Zoomie GT Coupe, Riviera Convertible, Comet Supercar, Gold Bone-mobile Limo) stay as they are.
+
+| Class | Inu names |
+|---|---|
+| Supercars | Howler X, Fetchfire RS, Moonbark Hyper |
+| Luxury cars | Velvet Paw Sedan, Grand Kennel Tourer, Silkcoat Saloon |
+| Pickup trucks | Mudpaw Ute, Digger Dually |
+| Delivery trucks | Parcel Pup Box Truck, Kibble Hauler |
+| Semi truck | Big Bone Long-Hauler |
+| Fire truck | Rescue Station Hose Hound (ladder and pumper) |
+| Scooters | Zippaw Scoot, Vesp-Inu Glide |
+| Motorbikes | Growler 500, Tailwind Tourer, Dirt Digger MX |
+| Buses | Pack Bus (city), Wag-Wag School Bus, Double-Decker Doggo |
+| Taxis | Pawcab, Night Fetch Cab |
+| Vans | Campout Van, Snack Van, Tradie Pup Van |
+| Ice-cream truck | Mr Scoops Pupsicle Truck |
+| Boats | Splashpaw Runabout, Harbour Hound Ferry, Lazy Tail Sailboat, Dock Dog Tug |
+| Bikes | Pedal Pup Cruiser, Trail Tail MTB, Tandem Twin-Tail |
+| Others | Barkline Tram, Park Ranger Buggy, Paw-Patrol Cruiser, Vet Ambulance |
+
+### Ambient life
+- **NPC pups with daily routines:** home → work, school or shops → park → home, following a day and night cycle with jobs to match (barista, vet, ranger, driver).
+- **Traffic:** cars, buses on routes, taxis picking up pups, boats in the harbour, bikes in the lanes, and the fire truck heading out on staged callouts.
+- **Deliveries:** parcel vans and kibble haulers visiting shops, plus the ice-cream truck's jingle route in summer.
+- **Weather and seasons:** rain, wind, fog and storms. Seasonal palettes include autumn leaves, winter frost and summer beach crowds, and seasonal events follow them.
+- **Wildlife:** birds, possums, ducks on the pond, fish and dolphins in the bay, and butterflies in the gardens.
+- **Shops open and close:** opening hours with lights on and off, signs that flip between OPEN and CLOSED, and quiet streets at night.
+
+### New real-world buildings
+- Hospital and vet clinic (Paws & Claws Vet), with an ambulance bay
+- School (Good Boy Academy), with buses at drop-off and pick-up
+- Police and ranger station (Pup Patrol HQ / Ranger Lodge)
+- Train station (Barkline Central), with a commuter train loop
+- Beach, with a surf club, kiosk and lifeguard tower
+- Gym (Fetch Fitness)
+- These join the existing Rescue Station (home of the Hose Hound fire truck) and the shops and mall.
+
+### Ties to the Materials Store and Community Hall
+- **Realistic materials:** new buildings use the realistic default materials from the Materials / Building Store section (wood grain, stone, render, glass), not coloured bricks. Holder buildings can match their neighbours.
+- **Votes choose what comes next:** holders use the Community Hall's "Add" category to vote on which building or vehicle class comes next. The result is advisory and can be vetoed, as in the Community Hall section.
+- **Expansions:** owned material packs could later reskin a holder's garage or boat shed.
+
+### Vehicles are cosmetic only
+Vehicles are cosmetic and ownership only, with no effect on any prize. This follows kibble-pay `README.md`, "What $KIBBLE can buy", rule (a): "$KIBBLE buys cosmetic items only. No purchase may ever improve the chance of winning a prize." Rule (c) adds no loot boxes or random paid rewards. Owned vehicles never give speed or score advantages in any prize-eligible activity. New vehicles join `config/items.json` as `inu-verse:car-*` and similar fixed-price items.
+
+### Phased outline
+- **Phase 1: ambient basics.** Day and night cycle, NPC pups with simple routines, background traffic using the existing cars, and shop open and close hours.
+- **Phase 2: vehicle roster.** Add the vehicle classes above as ambient traffic first, then as cosmetic store items. Rescue Station fire truck callouts and the ice-cream truck route.
+- **Phase 3: new buildings.** The vet/hospital, school, police/ranger station, train station, beach and gym, built with realistic materials. The Community Hall vote decides the order.
+- **Phase 4: weather, seasons and wildlife.** Weather states, seasonal palettes and events, and animal life.
+- **Phase 5: deeper ecosystem.** Deliveries linked to shops, bus, train and ferry routes, and NPC jobs tied to buildings.
