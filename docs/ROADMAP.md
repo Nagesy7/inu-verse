@@ -179,3 +179,47 @@ Plan only. No code changes yet. Images:
 2. **Fast travel stops and a Mall return option.**
 3. **Rebuild the map** around the Kibble Mall hub (radial avenues, ring roads, district wedges). Migrate saves, remapping plot and home coordinates.
 4. **Fill districts** with Living World buildings that use realistic materials.
+
+## Player Offers & Trading
+
+Plan only. No code yet.
+
+### How Bones work today (from the code)
+- `src/game.js`: new players start with `START_BONES = 500`. Bones are earned through play (shifts, jobs, farm and so on). They are spent on plots (`PLOT_COST` 300), furniture and home upgrades, and selling an item back refunds 50% (`SELL_BACK`).
+- State is saved client-side in localStorage (`src/save.js`, `inuverse.save.v1`).
+- `swapBonesToKibble` converts Bones to *demo* KIBBLE only. `src/wallet.js` says: "Real $KIBBLE never comes from play."
+- Bones are free and never cashed out, so they are the default trading currency. Because they live client-side, player-to-player trading needs a **server-authoritative Bones ledger and inventory first**. Otherwise saves could be edited to fake balances.
+
+### Offers (Bones, default)
+- **Who and what:** any player can make an offer to the owner of a plot or owned item: cars, outfits, furniture, holder buildings and expansions.
+- **Owner responses:** accept, decline or counter. Counters can go back and forth, with a limit of 5 rounds.
+- **Expiry:** offers expire after a set time (default 72 h). On expiry, decline or withdrawal, the escrowed Bones are returned automatically.
+- **Escrow:** the offered Bones are locked in escrow when the offer is made. On accept, the server transfers the item and releases the Bones in one atomic transaction, so both sides happen or neither does. No partial trades.
+- **Trade history:** a per-player log, plus a public item provenance list that shows past owners and prices.
+- **Safety:**
+  - Players can block other players.
+  - Anti-spam limits: maximum open offers per player (for example 10), maximum offers per target per day, and a minimum offer floor (for example 10% of the item's list value) to stop lowball spam.
+  - A cooldown on re-offering after a decline.
+  - Players can report trades, and owners can mute all offers.
+- **Not tradeable:** items tied to prize eligibility, such as the Weekly Quest Chain reward (`inu-verse:quest-chain-reward`), leaderboard titles and season badges. Also excluded: anything whose transfer could move a leaderboard position or score. These items are soulbound.
+
+### $KIBBLE offers (optional later phase). Needs Zachary's decision and a legal check.
+**Flag:** do not build this until you've signed off and had Australian legal advice. It would create a real-value secondary market, which brings:
+- scam and phishing risk
+- possible financial-services or AUSTRAC implications
+- GST, income and capital gains tax questions for sellers
+- consumer-law refund duties
+
+The kibble-pay README already asks for legal advice before taking real money.
+- **Approach:** an on-chain escrow program or a PDA vault. The buyer's $KIBBLE is locked on-chain. Ownership transfers and the release are settled atomically and verified by the server, using the same Solana Pay and verification flow as kibble-pay. The seller never receives funds before the transfer.
+- **Fee option:** a small marketplace fee, for example 1–2%, to the treasury. If any share goes to the prize pool fee, it must be fee-inclusive like `config/items.json` pricing.
+- **Prize rules:** trading must never touch prize odds. This follows the kibble-pay "What $KIBBLE can buy" rules:
+  - (a) cosmetics only: "No purchase may ever improve the chance of winning a prize."
+  - (c) no loot boxes, no random paid rewards, and no paid entry to any prize competition.
+  - Traded items stay cosmetic, and prize-eligible items stay untradeable.
+
+### Phased outline
+1. **Server-authoritative Bones ledger and inventory**, with save migration.
+2. **Bones offers:** make, accept and decline, with escrow, expiry and atomic transfer.
+3. **Counters, trade history and provenance, block and anti-spam limits, reporting.**
+4. **Optional: $KIBBLE offers through on-chain escrow** with a marketplace fee. Only after your decision and the legal check.
