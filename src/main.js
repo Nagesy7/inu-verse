@@ -159,6 +159,9 @@ function startGame(s) { loadProfile(s).catch(() => {}); ENG.ensureEngage(s); ENG
   makeAlive(); mapImg = prerenderMap(); npcs = spawnNpcs(rng, 6); npcs.forEach((n) => { n.art = artKey(n.coat); }); amb = makeAmbient(42);
   Promise.all([artReady, buildingsReady, document.fonts?.load('8px Silkscreen').catch(() => {})]).then(() => { mapImg = prerenderMap(); });
   feel.fade(); $('#hud').classList.add('in');
+  // ?spawn=<building> (from a game's 🏠 Back to Inu Verse): stand just outside that building's door.
+  { const sp = new URLSearchParams(location.search).get('spawn'), d = sp && [ARCADE, ...GAME_DOORS].find((x) => x.id === sp);
+    if (d && d.door) { const o = outsideOf({ ...d.door, id: d.id }); Object.assign(state.player, { x: o.x, y: o.y }); player.face = o.face; } }
   cam.x = state.player.x; cam.y = state.player.y; hud(); persist(); wayUi(true);
   setTimeout(tourCheck, 1400);
 }
@@ -261,7 +264,7 @@ async function fetchArcadeTop() { try { const r = await fetch(ARCADE.url + 'api/
 fetchArcadeTop(); setInterval(fetchArcadeTop, 120000);
 function arcadeUrl() { const p = profileFromState(state), q = new URLSearchParams(); if (/^[1-9A-HJ-NP-Za-km-z]{32,44}$/.test(p.wallet || '')) q.set('wallet', p.wallet);
   try { const lite = { ...p, pets: [] }; q.set('p', btoa(unescape(encodeURIComponent(JSON.stringify(lite)))).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '')); } catch {}
-  q.set('from', 'inu-verse'); return ARCADE.url + '?' + q.toString(); }
+  q.set('from', 'inu-verse'); q.set('spawn', 'arcade'); return ARCADE.url + '?' + q.toString(); }
 function openArcade() { const url = arcadeUrl(), touch = matchMedia('(pointer: coarse)').matches;
   if (touch) { const w = window.open(url, '_blank', 'noopener'); toast(w ? 'Inu Arcade opened in a new tab' : 'Allow pop-ups to open the arcade', w ? 'good' : 'bad'); return; }
   keys.clear(); let ov = document.getElementById('arcade-ov');
@@ -270,7 +273,7 @@ function openArcade() { const url = arcadeUrl(), touch = matchMedia('(pointer: c
   ov.querySelector('#arc-frame').src = url; ov.querySelector('#arc-tab').href = url; ov.hidden = false; arcadeOpen = true; setTimeout(() => ov.querySelector('#arc-frame').focus(), 300); }
 // Rescue Station / Trainer Gate: open Inu Rescue / Inu Quest with the signed-in wallet (public address only; never a session).
 function gameDoorUrl(id) { const g = GAME_DOORS.find((d) => d.id === id), w = state?.walletAddr, q = new URLSearchParams();
-  if (/^[1-9A-HJ-NP-Za-km-z]{32,44}$/.test(w || '')) q.set('wallet', w); if (DEMO) q.set('demo', '1'); q.set('from', 'inu-verse'); return g.url + '?' + q.toString(); }
+  if (/^[1-9A-HJ-NP-Za-km-z]{32,44}$/.test(w || '')) q.set('wallet', w); if (DEMO) q.set('demo', '1'); q.set('from', 'inu-verse'); q.set('spawn', id); return g.url + '?' + q.toString(); }
 function openGameDoor(id) { const url = gameDoorUrl(id), g = GAME_DOORS.find((d) => d.id === id); keys.clear(); const w = window.open(url, '_blank', 'noopener');
   toast(w ? `${g.name} opened in a new tab${/wallet=/.test(url) ? ' with your wallet' : ''}` : 'Allow pop-ups to open ' + g.name, w ? 'good' : 'bad'); }
 globalThis.__doors = { url: gameDoorUrl, open: openGameDoor };
@@ -1072,3 +1075,5 @@ cv.addEventListener('wheel', (e) => { if (mode !== 'world') return; e.preventDef
   cv.addEventListener('touchend', (e) => { if (e.touches.length < 2) pinch = null; }, { passive: true }); }
 document.getElementById('zin')?.addEventListener('click', () => setZoom(stepZoom(ZOOM, 1))); document.getElementById('zout')?.addEventListener('click', () => setZoom(stepZoom(ZOOM, -1)));
 window.__inu = { guide, open: (k, o) => openPanel(k, o), get time() { return time; }, get player() { return player; }, get zoom() { return ZOOM; }, setZoom, president: pres, presVisit: (k) => startVisit(pres, k, { dayLen: DAY_LEN }), setHour: (h) => { dayOffset = timeForHour(h) - time; }, setRain: (r) => { amb.rain = amb.rainTarget = r; amb.weatherT = 999; }, get amb() { return amb; }, get npcs() { return npcs; }, emote: (k) => doEmote(k), cam, get state() { return state; }, get mode() { return mode; }, get panel() { return panel?.kind; }, get panelObj() { return panel; } };
+// Inu Arcade inside the desktop overlay: its 🏠 button asks us to close the overlay instead of reloading.
+addEventListener('message', (e) => { if (e.origin === new URL(ARCADE.url).origin && e.data?.type === 'inu:back-to-verse' && arcadeOpen) { closeArcade(); try { e.source?.postMessage({ type: 'inu:verse-closed' }, e.origin); } catch {} } });
