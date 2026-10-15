@@ -2,6 +2,7 @@ import { drawInuAvatar } from './vendor/inu-avatar.js';
 // All art drawn procedurally - original.
 import { shibaSprite } from './sprite.js';
 import { hires } from './hires.js';
+import { shadeSprite, patternLayer, mkCanvas } from './detail.js';
 // Shared Shiba (vendor/inu-avatar.js, synced from kibble-pay) drawn at 4x its native 18x22 pixel density (Scale2x twice).
 // Same signature + return value as drawInuAvatar; the vendored file and other games are untouched.
 const avHi = new WeakMap();
@@ -10,7 +11,7 @@ export function drawInuAvatarHi(ctx, profile, x, y, opts = {}) {
   const fake = { save() {}, restore() {}, set fillStyle(v) { this._f = v; }, get fillStyle() { return this._f; }, imageSmoothingEnabled: false,
     fillRect(...a) { sh.push([this._f, a]); }, drawImage(s, ...a) { spr = s; dst = a; } };
   const r = drawInuAvatar(fake, profile, x, y, opts); if (!spr) return drawInuAvatar(ctx, profile, x, y, opts);
-  let hi = avHi.get(spr); if (!hi) { hi = hires(spr, 2); avHi.set(spr, hi); }
+  let hi = avHi.get(spr); if (!hi) { hi = hires(spr, 2); if (!globalThis.__noDetail && hi !== spr) shadeSprite(hi, { r: 4, light: 0.3, dark: 0.3, fur: 0.14, glint: true, grad: 0.12 }); avHi.set(spr, hi); }
   ctx.save(); for (const [f, a] of sh) { ctx.fillStyle = f; ctx.fillRect(...a); } ctx.imageSmoothingEnabled = false; ctx.drawImage(hi, ...dst); ctx.restore(); return r;
 }
 import { FURNITURE, footprint, WALLS, FLOORS } from './furniture.js';
@@ -40,7 +41,12 @@ function layeredCanvas(coat, view, frame, equipped) {
   let cv = layerCache.get(key); if (cv) return cv;
   const atlas = ART['outfits/' + coat], [cw, ch] = OUTFIT_ATLAS.canvas[coat], fr = OUTFIT_ATLAS.frames[coat];
   cv = Object.assign(document.createElement('canvas'), { width: cw, height: ch }); const c = cv.getContext('2d');
-  for (const k of outfitLayers(coat, view, frame, equipped)) { const [sx, sy, w, h, ox, oy] = fr[k]; c.drawImage(atlas, sx, sy, w, h, ox, oy, w, h); }
+  const D = !globalThis.__noDetail; // detail pass: fur + form shading on the coat, material patterns per outfit layer, rim light on the whole look
+  for (const k of outfitLayers(coat, view, frame, equipped)) { const [sx, sy, w, h, ox, oy] = fr[k], id = k.split('|')[0];
+    if (!D) { c.drawImage(atlas, sx, sy, w, h, ox, oy, w, h); continue; }
+    const t = mkCanvas(w + 4, h + 4), tc = t.getContext('2d'); tc.drawImage(atlas, sx, sy, w, h, 2, 2, w, h);
+    if (id === 'base') shadeSprite(t, { r: 3, light: 0.22, dark: 0.26, fur: 0.16, glint: true, grad: 0.08, seed: coat.length }); else { patternLayer(tc, id, [2, 2, w, h]); shadeSprite(t, { r: 2, light: 0.2, dark: 0.32, grad: 0.1 }); }
+    c.drawImage(t, ox - 2, oy - 2); }
   const b = fr[`base|${view}|0`]; cv.feet = b[5] + b[3]; // canvas row under the paws
   layerCache.set(key, cv); if (layerCache.size > 400) layerCache.delete(layerCache.keys().next().value);
   return cv;
