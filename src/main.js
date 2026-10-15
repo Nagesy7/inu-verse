@@ -40,6 +40,8 @@ import { squareProps } from './fly5art.js';
 import { arcadeProps } from './arcadeart.js';
 import { ARCADE, GAME_DOORS } from './world.js';
 import { doorProps } from './doorart.js';
+import { createGuide } from './guideui.js';
+import { isRealWallet } from './guide.js';
 import * as PAIR from './pairing.js';
 import { ensureFly, featuredOf, statusGlow, poolsOf, FEATURED_SLOTS, claimPresDrop } from './flywheels.js';
 import { makeTown, townHour, lineFor, playerDid, friendsOf, rivalsOf } from './townai.js';
@@ -139,15 +141,17 @@ function titleScreen() {
 
 function startGame(s) { loadProfile(s).catch(() => {}); ENG.ensureEngage(s); ENG.addSeasonXp(s, 'login', Math.floor((s.clockSec || 0) / DAY_LEN)); F5.ensureFly5(s); F5.holderCheck(s); s.town ||= makeTown(rng); townH = -1; seedTokens(s, rng); REL.ensureRel(s); ensureFarm(s); ensureBiz(s); s.clockSec ??= 0; catchUp(s, Date.now(), { season: seasonOf(Math.floor(s.clockSec / DAY_LEN)), rain: false }); hourIdx = Math.floor(s.clockSec / (DAY_LEN / 24));
   state = s; state.kibble ??= DEMO ? 20 : 0; if (!DEMO) state.kibble = 0; ensureWardrobe(state); ensurePacks(state); ensureMall(state); state.clockSec ??= 0; lastEarned = state.stats.bonesEarned; mode = 'world';
-  $('#title').hidden = true; $('#hud').hidden = false; $('#minimap-wrap').hidden = false;
+  $('#title').hidden = true; $('#hud').hidden = false; $('#minimap-wrap').hidden = false; document.body.classList.add('inworld');
   mapImg = prerenderMap(); npcs = spawnNpcs(rng, 6); npcs.forEach((n) => { n.art = artKey(n.coat); }); amb = makeAmbient(42);
   Promise.all([artReady, buildingsReady, document.fonts?.load('8px Silkscreen').catch(() => {})]).then(() => { mapImg = prerenderMap(); });
   feel.fade(); $('#hud').classList.add('in');
-  cam.x = state.player.x; cam.y = state.player.y; hud(); persist();
+  cam.x = state.player.x; cam.y = state.player.y; hud(); persist(); wayUi(true);
+  setTimeout(tourCheck, 1400);
 }
 
 // ---------------- Input ----------------
 addEventListener('keydown', (e) => {
+  if (guide && guide.onKey(e)) return;
   if (e.target.tagName === 'INPUT') return;
   const k = e.key.toLowerCase(); if (globalThis.__arcade && document.getElementById('arcade-ov') && !document.getElementById('arcade-ov').hidden) { if (k === 'escape') globalThis.__arcade.close(); return; }
   keys.add(k);
@@ -181,7 +185,7 @@ cv.addEventListener('click', (e) => {
     const w = screenToWorld(e.clientX, e.clientY); const ad = adAt(trend, adRot, adIdx, w.x, w.y); if (ad) { blip(990); openPanel('launch', { sel: ad.coin.id }); return; } clickWorldTile(Math.floor(w.x / TILE), Math.floor(w.y / TILE));
   } else if (mode === 'build') buildClick(roomCell(e.clientX, e.clientY));
 });
-$('#minimap').addEventListener('click', (e) => { if (mode === 'world' && !panel) { const r = e.target.getBoundingClientRect(); clickWorldTile(Math.floor((e.clientX - r.left) / 2), Math.floor((e.clientY - r.top) / 2)); } });
+$('#minimap').addEventListener('click', (e) => { if (mode === 'world' && !panel) { if (guide) return guide.openMap(); const r = e.target.getBoundingClientRect(); clickWorldTile(Math.floor((e.clientX - r.left) / 2), Math.floor((e.clientY - r.top) / 2)); } });
 function clickWorldTile(tx, ty) {
     let target = null;
     for (const b of BUILDINGS) if (tx >= b.x && tx < b.x + b.w && ty >= b.y && ty < b.y + b.h) target = interactables(state).find((i) => i.id === b.id);
@@ -256,6 +260,32 @@ function gameDoorUrl(id) { const g = GAME_DOORS.find((d) => d.id === id), w = st
 function openGameDoor(id) { const url = gameDoorUrl(id), g = GAME_DOORS.find((d) => d.id === id); keys.clear(); const w = window.open(url, '_blank', 'noopener');
   toast(w ? `${g.name} opened in a new tab${/wallet=/.test(url) ? ' with your wallet' : ''}` : 'Allow pop-ups to open ' + g.name, w ? 'good' : 'bad'); }
 globalThis.__doors = { url: gameDoorUrl, open: openGameDoor };
+// ---- onboarding tour + wayfinding (src/guide.js, src/guideui.js) ----
+const guide = createGuide({ state: () => state, mode: () => mode, toast: (m, k) => toast(m, k), panelOpen: () => !!panel, persist: () => persist(), miniBase: () => miniBase,
+  wallet: () => state?.walletAddr, saveProfile: () => { if (state && hasCustomLook(state)) saveProfile(state); },
+  walk: (path) => { player.path = path; player.target = null; player.clickMark = null; }, stopWalk: () => { player.path = []; } });
+globalThis.__guide = guide;
+function wayUi(on) { const w = document.getElementById('wayctl'); if (w) w.hidden = !on; }
+async function tourCheck() { if (!state || mode !== 'world') return; const w = state.walletAddr; const prof = isRealWallet(w) ? await profileStore().get(w).catch(() => null) : null; guide.maybeStartTour(prof); }
+// ---- Kibble Bank: read-only view of the wallet (kibble-pay). No deposits, lending or yield. ----
+async function renderBank() { const body = $('#panel-body'), kp = K.kp, w = wallet(), signed = !DEMO && !!kp?.session;
+  const bal = DEMO ? `${state.kibble.toFixed(2)} demo KIBBLE (fake)` : w.live ? (signed ? `${w.balanceUi ?? '…'} KIBBLE` : 'sign in to see') : 'soon (KIBBLE launching soon)';
+  const P = DEMO ? poolsOf(state) : serverPools, fmtU = (u) => (Number(u || 0) / 1e6).toLocaleString('en-US', { maximumFractionDigits: 4 });
+  body.innerHTML = `<h2>Kibble Bank</h2><p class="sub">A read-only window on your wallet. <b>No deposits, no lending, no yield</b>: your $KIBBLE stays in your own wallet.</p>
+   <div class="bank"><div class="card"><b>Wallet</b><small id="bk-addr">${DEMO ? 'Demo mode (no wallet)' : signed ? esc(kp.address) : 'Not signed in'}</small>${!DEMO && !signed ? '<button class="btn" id="bk-sign">Sign in with Phantom</button>' : ''}</div>
+   <div class="card"><b>$KIBBLE balance</b><small id="bk-bal">${esc(bal)}</small></div>
+   <div class="card"><b>Prize pools (public)</b><small>${P ? `Daily ${fmtU(P.daily)} · Weekly ${fmtU(P.weekly)} · Monthly ${fmtU(P.monthly)}` : 'loading…'}</small><small>Burned (opt-in, all wallets): ${P?.burned != null ? fmtU(P.burned) : '–'}</small>
+     <div class="row"><button class="btn alt" id="bk-pools">Prize pool board</button><button class="btn alt" id="bk-burn">Burn board</button><a class="btn ghost" href="https://kibble-pay.vercel.app/prize-rules.html" target="_blank" rel="noopener">Prize Rules ↗</a></div></div></div>
+   <h3>Inventory</h3><div id="bk-inv" class="grid"><div class="card"><small>${DEMO ? 'Demo items live in your local save.' : signed ? 'Loading…' : 'Sign in to see items your wallet owns across every Inu game.'}</small></div></div>
+   <h3>Purchase history</h3><div id="bk-hist"><p class="sub">${DEMO ? 'Demo purchases are not real and have no history.' : signed ? 'Loading…' : 'Sign in to see your purchases and burns.'}</p></div>`;
+  $('#bk-pools').onclick = () => openPanel('city', { tab: 'pools' }); $('#bk-burn').onclick = () => openPanel('fly5', { tab: 'burn' });
+  const sb = $('#bk-sign'); if (sb) sb.onclick = () => $('#btn-phantom').onclick().then(() => panel?.kind === 'bank' && renderBank());
+  if (!signed) return;
+  try { const [inv, hist] = await Promise.all([kp.inventory(), kp.history().catch(() => [])]); if (panel?.kind !== 'bank') return; const names = K.cfg?.items || {};
+    const rows = Object.entries(inv || {}).flatMap(([g, items]) => Object.entries(items).filter(([, n]) => n > 0).map(([id, n]) => ({ g, id, n })));
+    $('#bk-inv').innerHTML = rows.length ? rows.map((r) => `<div class="card"><b>${esc(names[r.id]?.name || r.id.replace(/^burn:/, 'Burn unlock: '))}</b><small>${esc(r.g)} · ×${r.n}</small></div>`).join('') : '<div class="card"><small>No items yet.</small></div>';
+    $('#bk-hist').innerHTML = hist.length ? `<table class="board"><tr><th>When</th><th>What</th><th>Item</th><th>KIBBLE</th><th>Tx</th></tr>${hist.map((x) => `<tr><td>${new Date(x.at).toLocaleDateString()}</td><td>${x.type === 'burn' ? 'Burn (opt-in)' : 'Purchase'}</td><td>${esc(names[x.itemId]?.name || x.itemId || '–')}</td><td>${fmtU(x.amountBaseUnits)}</td><td><a href="https://solscan.io/tx/${encodeURIComponent(x.signature)}" target="_blank" rel="noopener">${esc(String(x.signature).slice(0, 6))}…</a></td></tr>`).join('')}</table>` : '<p class="sub">No purchases yet.</p>';
+  } catch (e) { $('#bk-hist').innerHTML = `<p class="sub">Could not load: ${esc(e.message)}</p>`; } }
 function closeArcade() { const ov = document.getElementById('arcade-ov'); if (ov) { ov.hidden = true; ov.querySelector('#arc-frame').src = 'about:blank'; } arcadeOpen = false; fetchArcadeTop(); }
 let arcadeOpen = false; globalThis.__arcade = { open: openArcade, close: closeArcade, url: arcadeUrl, get top() { return arcadeTop; } };
 globalThis.__eng = ENG; globalThis.__fly5 = F5;
@@ -296,8 +326,9 @@ $('#btn-pools').onclick = () => { initAudio(); uiClick?.(); openPanel('city', { 
 $('#photo-save').onclick = () => { const tmp = document.createElement('canvas'); tmp.width = cv.width; tmp.height = cv.height; const tx = tmp.getContext('2d'); tx.drawImage(cv, 0, 0); F5.watermarkPhoto(tx, tmp.width, tmp.height); const a = document.createElement('a'); a.download = `inu-verse-${Date.now()}.png`; a.href = tmp.toDataURL('image/png'); a.click(); F5.submitPhoto(state, Math.floor(gameDay() / 7), { caption: 'Inu Verse snap' }); toast('Photo saved + entered this week\'s board', 'good'); };
 $('#photo-exit').onclick = () => togglePhoto();
 $('#btn-phantom').onclick = async () => { initAudio(); if (DEMO) return toast('Demo mode: fake KIBBLE, no wallet. Remove ?demo=1 to use Phantom.', ''); if (!K.kp) return toast('Wallet service is offline right now. Try again soon.', 'bad');
-  try { const a = await wallet().connect(); if (state) { state.walletAddr = a; if (hasCustomLook(state)) await saveProfile(state); persist(); hud(); } toast(`Signed in ${a.slice(0, 4)}…${a.slice(-4)}${K.mode === 'live' ? '' : ' · ' + SOON}`, 'good'); } catch (e) { toast(e.message || 'Phantom sign-in failed', 'bad'); } };
+  try { const a = await wallet().connect(); if (state) { state.walletAddr = a; if (hasCustomLook(state)) await saveProfile(state); persist(); hud(); tourCheck(); } toast(`Signed in ${a.slice(0, 4)}…${a.slice(-4)}${K.mode === 'live' ? '' : ' · ' + SOON}`, 'good'); } catch (e) { toast(e.message || 'Phantom sign-in failed', 'bad'); } };
 $('#btn-help').onclick = () => openPanel('help');
+$('#btn-guide').onclick = () => guide?.startTour(true);
 $('#btn-pack').onclick = () => { if (mode === 'world') openPanel('packs'); };
 $('#btn-wardrobe').onclick = () => { if (mode === 'world') openPanel('wardrobe'); };
 $('#btn-garage').onclick = () => { if (mode === 'world') openPanel('garage'); };
@@ -359,7 +390,8 @@ function updateWorld(dt) {
   mailAcc += dt; if (mailAcc > 45) { mailAcc = 0; if (rng() < 0.6 && addMail(state, rng)) { toast('New note in your mailbox!', 'good'); persist(); } }
   // smooth camera
   const k = 1 - Math.pow(0.004, dt), lead = player.moving ? 10 : 0, fx = { left: -1, right: 1 }[player.face] || 0, fy = { up: -1, down: 1 }[player.face] || 0;
-  cam.x += (p.x + fx * lead - cam.x) * k; cam.y += (p.y + fy * lead * 0.6 - cam.y) * k;
+  guide.update(dt); const tc = guide.camTarget(), kk = tc ? 1 - Math.pow(0.02, dt) : k;
+  cam.x += ((tc ? tc.x : p.x + fx * lead) - cam.x) * kk; cam.y += ((tc ? tc.y : p.y + fy * lead * 0.6) - cam.y) * kk;
   Object.assign(cam, clampCam(cam.x, cam.y, innerWidth / ZOOM, innerHeight / ZOOM, MAP_W * TILE, MAP_H * TILE));
   if (globalThis.__camLock) { cam.x = __camLock.x; cam.y = __camLock.y; } // debug/screenshot camera lock
   const it = !panel && nearestInteractable(state, p.x, p.y);
@@ -417,12 +449,14 @@ function renderWorld() {
   feel.drawAir(ctx);
   drawSkyLife(ctx, amb, phase);
   const it = !panel && nearestInteractable(state, state.player.x, state.player.y); if (it) feel.bubble(ctx, (it.tx + 0.5) * TILE, (it.ty) * TILE - 6, time);
+  guide.drawWorld(ctx, time, state.player);
   ctx.restore();
   drawAtmosphere(ctx, amb, phase, { x: vw / 2 - ox, y: vh / 2 - oy }, vw, vh, lightsFor(state, phase, homeId()));
   $('#clock').textContent = `${String(Math.floor(phase.hour)).padStart(2, '0')}:${String(Math.floor((phase.hour % 1) * 60)).padStart(2, '0')} ${amb.rain > 0.3 ? 'rain' : phase.label} · ${seasonOf(gameDay())}`;
   if (!vignette || vignette.width !== SW || vignette.height !== SH) { vignette = document.createElement('canvas'); vignette.width = SW; vignette.height = SH; const v = vignette.getContext('2d'), g = v.createRadialGradient(SW / 2, SH / 2, SH * 0.45, SW / 2, SH / 2, SH * 1.05); g.addColorStop(0, 'rgba(18,26,54,0)'); g.addColorStop(1, 'rgba(12,16,34,0.38)'); v.fillStyle = g; v.fillRect(0, 0, SW, SH); }
   ctx.setTransform(dpr, 0, 0, dpr, 0, 0); ctx.drawImage(vignette, 0, 0);
   minimap(-ox, -oy, vw, vh);
+  guide.drawScreen(ctx, ox, oy, ZOOM, time);
 }
 
 function homeId() { if (mode === 'build' && build && !build.readOnly && !build.pack) return build.plotId; for (const p of PLOTS) if (state.plots[p.id] && Math.abs(state.player.x / TILE - (p.x + 3)) < 5 && Math.abs(state.player.y / TILE - (p.y + 3)) < 5) return p.id; return null; }
@@ -496,6 +530,7 @@ function interact(it) {
   else if (it.kind === 'biz') openPanel('bizboard');
   else if (it.kind === 'arcade') openArcade();
   else if (it.kind === 'gamedoor') openGameDoor(it.id);
+  else if (it.kind === 'bank') openPanel('bank');
   else if (it.kind === 'matchmaker') openPanel('matchmaker');
   else if (it.kind === 'square') openPanel('fly5', { tab: it.id === 'pools' ? 'vip' : it.id === 'burn' ? 'burn' : it.id === 'quests' ? 'quests' : 'vip' });
   else if (it.kind === 'clubhouse') { if (myPack(state)) enterBuild('clubhouse', false); else openPanel('packs'); }
@@ -512,6 +547,7 @@ function openPanel(kind, opts = {}) {
   if (kind === 'chapel') return renderChapel(relCtx());
   if (kind === 'salon') return renderSalon();
   if (kind === 'engage') return renderEngage({ ...farmCtx(), tab: opts.tab, day: gameDay(), open: (t) => openPanel('engage', { tab: t }) });
+  if (kind === 'bank') return renderBank();
   if (kind === 'fly5') return renderFly5({ ...farmCtx(), kp: DEMO ? null : K.kp, tab: opts.tab, day: gameDay(), week: Math.floor(gameDay() / 7), month: Math.floor(gameDay() / 28), nowH: state.clockSec / (DAY_LEN / 24), open: (t) => openPanel('fly5', { tab: t }) });
   if (kind === 'matchmaker') return renderMatchmaker({ ...farmCtx(), tab: opts.tab, weekFrac: ((state.clockSec / DAY_LEN) % WEEK_DAYS) / WEEK_DAYS, open: (t) => openPanel('matchmaker', { tab: t }), startDuo: (partner, jobId) => { if (!partner) return toast('No partner', 'bad'); closePanel(); playDuo(jobId, partner); } });
   if (kind === 'city') return renderCity({ ...farmCtx(), tab: opts.tab, nowH: state.clockSec / (DAY_LEN / 24), dayFrac: (state.clockSec % DAY_LEN) / DAY_LEN, trend, presOn: pres.on && pres.stage === 'visit', presKey: 'visit' + pres.n, open: (t) => openPanel('city', { tab: t }) });
@@ -734,9 +770,9 @@ function enterBuild(id, readOnly) {
   const pack = id === 'clubhouse';
   feel.fade(); uiOpen(); mode = 'build'; const home = pack ? myPack(state).clubhouse : readOnly ? npcHome(id) : state.plots[id];
   build = { plotId: id, readOnly, pack, home, sel: null, hover: null, picked: null };
-  $('#prompt').hidden = true; $('#minimap-wrap').hidden = true; buildBar();
+  $('#prompt').hidden = true; $('#minimap-wrap').hidden = true; wayUi(false); buildBar();
 }
-function exitBuild() { feel.fade(); uiClose(); mode = 'world'; build = null; $('#buildbar').hidden = true; $('#minimap-wrap').hidden = false; persist(); }
+function exitBuild() { feel.fade(); uiClose(); mode = 'world'; build = null; $('#buildbar').hidden = true; $('#minimap-wrap').hidden = false; wayUi(true); persist(); }
 function rotateSel() { if (build?.sel) { build.sel.rot = (build.sel.rot + 1) % 4; } else if (build?.picked) { const it = build.picked; const r = build.pack ? movePackFurniture(state, it.uid, it.x, it.y, (it.rot + 1) % 4) : moveFurniture(state, build.plotId, it.uid, it.x, it.y, (it.rot + 1) % 4); if (!r.ok) toast('No room to rotate here', 'bad'); persist(); } }
 function buildClick(c) {
   if (!build || build.readOnly) return;
@@ -936,4 +972,4 @@ cv.addEventListener('wheel', (e) => { if (mode !== 'world') return; e.preventDef
   cv.addEventListener('touchmove', (e) => { if (!pinch || e.touches.length !== 2) return; const d = dist(e.touches); if (d / pinch > 1.35) { setZoom(stepZoom(ZOOM, 1)); pinch = d; } else if (pinch / d > 1.35) { setZoom(stepZoom(ZOOM, -1)); pinch = d; } }, { passive: true });
   cv.addEventListener('touchend', (e) => { if (e.touches.length < 2) pinch = null; }, { passive: true }); }
 document.getElementById('zin')?.addEventListener('click', () => setZoom(stepZoom(ZOOM, 1))); document.getElementById('zout')?.addEventListener('click', () => setZoom(stepZoom(ZOOM, -1)));
-window.__inu = { get zoom() { return ZOOM; }, setZoom, president: pres, presVisit: (k) => startVisit(pres, k, { dayLen: DAY_LEN }), setHour: (h) => { dayOffset = timeForHour(h) - time; }, setRain: (r) => { amb.rain = amb.rainTarget = r; amb.weatherT = 999; }, get amb() { return amb; }, get npcs() { return npcs; }, emote: (k) => doEmote(k), cam, get state() { return state; }, get mode() { return mode; }, get panel() { return panel?.kind; }, get panelObj() { return panel; } };
+window.__inu = { guide, get player() { return player; }, get zoom() { return ZOOM; }, setZoom, president: pres, presVisit: (k) => startVisit(pres, k, { dayLen: DAY_LEN }), setHour: (h) => { dayOffset = timeForHour(h) - time; }, setRain: (r) => { amb.rain = amb.rainTarget = r; amb.weatherT = 999; }, get amb() { return amb; }, get npcs() { return npcs; }, emote: (k) => doEmote(k), cam, get state() { return state; }, get mode() { return mode; }, get panel() { return panel?.kind; }, get panelObj() { return panel; } };

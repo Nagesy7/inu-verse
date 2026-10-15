@@ -25,12 +25,17 @@ export function arcadeProps(t, top = []) {
     // window with glowing cabinets
     const wy = y + 58, wh = h - 58 - 4; R(c, x + 10, wy, w - 20, wh, INK); R(c, x + 12, wy + 2, w - 24, wh - 4, '#0e0a24');
     c.save(); c.globalAlpha = 0.35 + 0.15 * Math.sin(t * 2); R(c, x + 12, wy + 2, w - 24, wh - 4, '#5a2a9a'); c.restore();
-    txt(c, 'CHOMP · INVADERS · CROSSING · BREAKER', x + w / 2, wy + 16, 5, '#ffe14a', '#ffe14a');
+    txt(c, 'MUNCH · STAR PUPS · ROAD HOP · BRICKS', x + w / 2, wy + 16, 5, '#ffe14a', '#ffe14a');
     for (let i = 0; i < 3; i++) { const sx2 = x + 40 + i * ((w - 80) / 2), on = (Math.floor(t * 2) + i) % 2; c.save(); c.shadowBlur = 8; c.shadowColor = NEON[i]; R(c, sx2 - 8, wy + 26, 16, 2, on ? NEON[i] : '#3a2a5a'); R(c, sx2 - 1, wy + 22, 2, 10, on ? NEON[i] : '#3a2a5a'); c.restore(); }
     const n = Math.floor((w - 40) / 24); for (let i = 0; i < n; i++) { if (x + 20 + i * 24 > x + dx - 26 && x + 20 + i * 24 < x + dx + 14) continue; cabinet(c, x + 20 + i * 24, wy + wh - 36, NEON[i % 4], t, i); }
     // door (front, onto the plaza)
     R(c, x + dx - 14, y + h - 40, 28, 40, INK); R(c, x + dx - 12, y + h - 38, 24, 38, '#3af0ff'); c.save(); c.globalAlpha = 0.5 + 0.3 * Math.sin(t * 4); R(c, x + dx - 10, y + h - 36, 20, 36, '#0e0a24'); c.restore();
     R(c, x + dx - 1, y + h - 36, 2, 36, '#3af0ff'); txt(c, 'OPEN', x + dx, y + h - 44, 7, '#6aff7a', '#6aff7a');
+    // brick plinth, cornice bulbs, striped awning over the door, planters with neon-lit shrubs
+    R(c, x, y + h - 6, w, 6, '#2a2050'); for (let k = 0; k < w; k += 10) R(c, x + k, y + h - 6, 1, 6, '#14102a'); R(c, x - 2, y + h, w + 4, 2, INK);
+    for (let k = 4; k < w; k += 10) { const lit = ((k / 10 | 0) + Math.floor(t * 4)) % 2; R(c, x + k, y - 3, 3, 3, lit ? '#fff6a0' : '#5a4a2a'); }
+    R(c, x + dx - 22, y + h - 52, 44, 4, INK); for (let k = 0; k < 44; k += 8) R(c, x + dx - 22 + k, y + h - 52, 4, 8, k % 16 ? '#3af0ff' : '#ff4fd8'); R(c, x + dx - 22, y + h - 44, 44, 1, INK);
+    for (const px of [x + dx - 40, x + dx + 26]) { R(c, px - 1, y + h - 13, 16, 13, INK); R(c, px, y + h - 12, 14, 11, '#3a2e70'); R(c, px, y + h - 12, 14, 2, '#5a4a9a'); R(c, px + 1, y + h - 22, 12, 10, '#2a8a5a'); R(c, px + 3, y + h - 20, 3, 3, NEON[(px / 7 | 0) % 4]); }
     // top-scores sign out front (left of the door)
     const sx = x + 8, sy = y + h + 4; R(c, sx + 22, sy + 30, 4, 14, '#4a3a5a'); R(c, sx - 2, sy - 2, 52, 36, INK); R(c, sx, sy, 48, 32, '#140c2c');
     txt(c, 'HI-SCORES', sx + 24, sy + 8, 5, '#ffe14a', '#ffe14a');

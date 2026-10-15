@@ -299,6 +299,8 @@ function drawStall(c, tok, s) {
   R(c, x + 2, y + 2, 88, 3, GOLD);
   R(c, x + 34, y + 32, 24, 20, tok.color); R(c, x + 34, y + 32, 24, 2, '#ffffff55');
   pixelText(c, tok.ticker.slice(0, 4), x + 46, y + 42, 22, 7, '#fff', INK);
+  for (const [k, col] of [[8, '#e8c95a'], [64, tok.color]]) { R(c, x + k - 1, y + 49, 20, 12, INK); R(c, x + k, y + 50, 18, 10, '#a8723a'); R(c, x + k, y + 54, 18, 1, '#7a4e22'); for (let j = 0; j < 4; j++) R(c, x + k + 1 + j * 4, y + 46 + (j % 2), 4, 4, col); } // goods crates
+  { const n = !!globalThis.__inuNight; for (const lx of [x + 7, x + 85]) { R(c, lx - 3, y + 20, 6, 7, INK); R(c, lx - 2, y + 21, 4, 5, n ? '#fff0b0' : '#e8c070'); if (n) { c.save(); c.globalCompositeOperation = 'lighter'; c.globalAlpha = 0.5; R(c, lx - 5, y + 19, 10, 10, '#ffb84a'); c.restore(); } } } // lanterns
   c.font = `8px ${FONT}`; const lbl = '$' + tok.ticker + (tok.curve.graduated ? ' *' : ''); const lw = c.measureText(lbl).width + 8;
   R(c, x + 46 - lw / 2, y - 12, lw, 12, NAVY); R(c, x + 46 - lw / 2, y - 1, lw, 1, GOLD);
   c.fillStyle = GOLD_L; c.textAlign = 'center'; c.textBaseline = 'middle'; c.fillText(lbl, x + 46, y - 6);

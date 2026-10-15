@@ -1,3 +1,5 @@
+import { MARKET, CRAFT, LOTS, BARN, CHAPEL } from './world.js';
+import { doorLights } from './doorart.js';
 import { luxuryLights } from './luxury.js';
 // Ambient life: day/night, weather, wildlife, street life, emotes, mail. Purely cosmetic.
 // Pure helpers (dayPhase, makeAmbient, stepAmbient, addMail) are headless-testable; draw* need a canvas.
@@ -186,7 +188,9 @@ export function lightsFor(state, phase, playerHome) {
   for (const b of [...BUILDINGS, ...MALL_BUILDINGS, ...NPC_HOMES]) { // lit doorway pool + window glows
     L.push({ x: (b.x + b.w / 2) * TILE, y: (b.y + b.h - 0.8) * TILE, gy: (b.y + b.h + 0.6) * TILE, r: 64, glow: true, core: 24, flat: 0.5 });
     for (let k = 1; k < b.w; k += 3) L.push({ x: (b.x + k + 0.5) * TILE, y: (b.y + b.h - 2.6) * TILE, r: 26, glow: true, core: 14, flat: 0.8 }); }
-  L.push(...luxuryLights());
+  L.push(...luxuryLights(), ...doorLights());
+  for (const b of [MARKET, CRAFT]) for (const fx of [0.05, 0.95]) L.push({ x: (b.x + b.w * fx) * TILE, y: b.y * TILE + 18, gy: (b.y + b.h) * TILE, r: 60, glow: true, core: 14, flat: 0.6 });
+  for (const b of [...LOTS, BARN, CHAPEL]) L.push({ x: (b.x + b.w / 2) * TILE, y: (b.y + b.h - 1) * TILE, gy: (b.y + b.h + 0.4) * TILE, r: 70, glow: true, core: 22, flat: 0.5 });
   for (const p of PLOTS) if (state.plots[p.id]) L.push({ x: (p.x + 3) * TILE, y: (p.y + 5) * TILE, gy: (p.y + 6.5) * TILE, r: playerHome === p.id ? 150 : 80, glow: true, core: 28 });
   return L;
 }
