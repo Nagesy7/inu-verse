@@ -81,6 +81,7 @@ function setA(label) { const b = document.getElementById('btn-a'); if (b && b.da
 const player = { face: 'down', dir: 1, phase: 0, moving: false, path: [], target: null };
 let build = null; // {plotId, readOnly, home, sel:{kind:'new'|'move', id, uid, rot}, hover:{x,y}, picked}
 let panel = null; // {kind, ...}
+let REG = { coins: [], offline: false, loaded: 0 }; // Launch Hall registered coins
 let packAcc = 0, simAcc = 0, saveAcc = 0, lastT = performance.now(), time = 0;
 const fmt = (n, d = 2) => n >= 1e6 ? (n / 1e6).toFixed(2) + 'M' : n >= 1e3 ? (n / 1e3).toFixed(1) + 'k' : (+n).toFixed(d);
 const fmtP = (p) => fmtPrice(p);
@@ -750,7 +751,6 @@ function cafeUi() {
 // ---- Launch Hall ----
 // Tabs: $KIBBLE (real, live stats) · Launch your coin (pump.fun's own create flow) · Coin board (player-registered, verified) · Practice (play tokens).
 const practice = () => DEMO ? state : new Proxy(state, { get: (t, k) => k === 'kibble' ? (t.practiceKibble ??= 20) : t[k], set: (t, k, v) => { t[k === 'kibble' ? 'practiceKibble' : k] = v; return true; } });
-let REG = { coins: [], offline: false, loaded: 0 };
 async function refreshRegistry(force) { if (!force && Date.now() - REG.loaded < 30000) return; REG.loaded = Date.now();
   const r = await RC.listCoins(); REG = { ...REG, coins: r.coins, offline: !r.ok, reason: r.reason }; await refreshRealStats(); }
 async function refreshRealStats() { await RC.fetchStats([RC.KIBBLE.mint, ...REG.coins.map((c) => c.mint)]); trend = RC.realTrend(REG.coins, 6); if (panel?.kind === 'launch') launchRealUi(); }
