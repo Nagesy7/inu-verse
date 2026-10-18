@@ -4,7 +4,9 @@
 import { chromium } from 'playwright'; import fs from 'fs'; import { execSync } from 'child_process';
 const URL = process.env.URL || 'http://127.0.0.1:8643/', MPU = process.env.MP || 'ws://127.0.0.1:8787', OUT = process.env.OUT || 'proof', G = '/tmp/mpgif';
 fs.rmSync(G, { recursive: true, force: true }); fs.mkdirSync(G, { recursive: true }); fs.mkdirSync(OUT, { recursive: true });
-const res = {}, errs = []; const b = await chromium.launch();
+const res = {}, errs = [];
+// testing the LIVE https site against a LOCAL worker: Chrome's Local Network Access check blocks public->localhost sockets, so lift it for this test browser only
+const b = await chromium.launch(/^https:/.test(URL) && /127\.0\.0\.1|localhost/.test(MPU) ? { args: ['--disable-features=LocalNetworkAccessChecks,BlockInsecurePrivateNetworkRequests'] } : {});
 async function boot(tag, guest, w = 844, h = 390, mp = MPU) { const ctx = await b.newContext({ viewport: { width: w, height: h }, deviceScaleFactor: 1 }); const p = await ctx.newPage();
   p.on('pageerror', (e) => errs.push(`${tag} pageerror ${e.message}`)); p.on('console', (m) => { if (m.type() === 'error' && !/Failed to load resource|net::|kibble-pay|dexscreener|api\/coins|WebSocket connection/i.test(m.text())) errs.push(`${tag} ${m.text()}`); });
   await p.goto(URL + '?mp=' + encodeURIComponent(mp)); await p.evaluate((g) => { localStorage.clear(); localStorage.setItem('inuverse.tour.v1', 'skipped:shots'); localStorage.setItem('inuverse.mp.guest', g); }, guest);
