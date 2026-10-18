@@ -24,4 +24,5 @@ This builds on the existing Pools Monument and the City Board "Prize Pools" tab,
   - It is capped at the real Sydney days since 15 Oct 2026, when that streak launched. The server applies the same cap once per wallet.
   - Example: 12 in-game days → 5 real days on 19 Oct.
 - **Rewards** are cosmetic pins only, with original pixel art: 7 Bronze Paw, 30 Silver Bone, 90 Golden Sun, 180 Sakura Crown. You can wear one on your Shiba (in the world), and it shows on the profile card and the HUD chip. They give no Bones and no $KIBBLE.
+- **Pins count wallet-verified days only** (President Inu's rule): the wallet's pins are exactly the list kibble-pay returns for that wallet. A device-only streak still counts and shows on the device, labelled "device-only", but earns no pins; pins a device earned before this rule stay on that device as device-only and never carry over onto a wallet. The one-time capped migration is unchanged, and so is the in-game daily Bones claim.
 - **The in-game daily Bones claim** (fly5, one per in-game day) is unchanged. It is shown separately in the Streak tab.

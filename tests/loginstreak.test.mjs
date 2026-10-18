@@ -11,12 +11,13 @@ test('migration: the old device streak carries over, capped at real Sydney days 
   const none = {}; LS.ensureStreak(none, at('2026-10-19T02:00:00Z')); assert.equal(none.loginStreak.count, 0); assert.equal(none.loginStreak.migrated, null);
   assert.equal(LS.ensureStreak(s).count, 3, 'migration runs once');
 });
-test('device-only: one count per Sydney day, consecutive days add, a gap restarts, pins at 7/30/90/180', () => {
+test('device-only: one count per Sydney day, consecutive days add, a gap restarts, no pins from device-only days', () => {
   const s = {}; let t = at('2026-11-01T01:00:00Z');
   assert.equal(LS.deviceCheckIn(s, t).counted, true); assert.equal(LS.deviceCheckIn(s, t + 3600e3 * 8).counted, false);
-  let r; for (let d = 1; d < 7; d++) r = LS.deviceCheckIn(s, t + d * D); assert.equal(s.loginStreak.count, 7); assert.deepEqual(r.newPins, [7]);
-  LS.deviceCheckIn(s, t + 9 * D); assert.equal(s.loginStreak.count, 1); assert.equal(s.loginStreak.best, 7); assert.deepEqual(s.loginStreak.unlocked, [7]);
-  const v = LS.view(s, t + 9 * D); assert.equal(v.label, 'device-only'); assert.equal(v.wallet, false); assert.equal(v.next, 7);
+  let r; for (let d = 1; d < 7; d++) r = LS.deviceCheckIn(s, t + d * D); assert.equal(s.loginStreak.count, 7); assert.deepEqual(r.newPins, [], 'device-only days earn no pins');
+  LS.deviceCheckIn(s, t + 9 * D); assert.equal(s.loginStreak.count, 1); assert.equal(s.loginStreak.best, 7); assert.deepEqual(s.loginStreak.unlocked, []); assert.deepEqual(s.loginStreak.devicePins, []);
+  const v = LS.view(s, t + 9 * D); assert.equal(v.label, 'device-only'); assert.equal(v.wallet, false); assert.equal(v.next, null); assert.equal(v.pinsNeedWallet, true);
+  assert.match(LSUI.streakHtml(s), /wallet-verified days only/);
   assert.match(LSUI.streakHtml(s), /Device-only/); assert.match(LSUI.chipHtml(s), /device/);
 });
 test('wallet: sends the device count as the one-time seed, no date; server record wins; device mode again after sign-out', async () => {
@@ -26,7 +27,32 @@ test('wallet: sends the device count as the one-time seed, no date; server recor
   assert.equal(s.loginStreak.source, 'wallet'); assert.equal(s.loginStreak.wallet, 'Wal1etXYZ'); assert.equal(LS.view(s, at('2026-10-19T03:00:00Z')).label, 'saved to wallet');
   await LS.walletCheckIn(s, kp, at('2026-10-19T04:00:00Z')); assert.deepEqual(calls[1], ['inu-verse', 0], 'no seed once the wallet owns the streak');
   assert.equal(LS.deviceCheckIn(s).skipped, 'wallet'); LS.toDevice(s); assert.equal(s.loginStreak.source, 'device'); assert.equal(s.loginStreak.count, 4, 'keeps progress');
-  assert.equal(LS.equipPin(s, 90).ok, false); assert.equal(LS.equipPin(s, 30).ok, true); assert.equal(s.loginStreak.pin, 30);
+  assert.equal(LS.equipPin(s, 30).ok, false, 'wallet pins are not device pins once signed out'); assert.equal(LS.view(s).pins.filter((p) => p.got).length, 0);
+  await LS.walletCheckIn(s, kp, at('2026-10-19T05:00:00Z')); assert.equal(LS.equipPin(s, 90).ok, false); assert.equal(LS.equipPin(s, 30).ok, true); assert.equal(LS.wornPin(s), 30);
+});
+test('wallet-only pins: device-earned pins stay device-only on the device and never carry over onto a wallet', async () => {
+  // a pre-rule device save with 7 + 30 device pins (worn 30)
+  const s = { loginStreak: { v: 1, count: 31, best: 31, last: '2026-10-19', source: 'device', wallet: null, unlocked: [7, 30], pin: 30, migrated: null, syncedAt: null } };
+  let v = LS.view(s, at('2026-10-19T03:00:00Z')); assert.deepEqual(s.loginStreak.devicePins, [7, 30]); assert.deepEqual(s.loginStreak.unlocked, []);
+  assert.equal(v.label, 'device-only'); assert.deepEqual(v.pins.filter((p) => p.got).map((p) => [p.tier, p.deviceOnly]), [[7, true], [30, true]]); assert.equal(LS.wornPin(s), 30);
+  assert.match(LSUI.streakHtml(s), /device-only/); assert.match(LSUI.profileCardHtml(s), /\(device-only\)/); assert.match(LSUI.chipHtml(s), /device/);
+  // more device-only days: still no new pins
+  assert.deepEqual(LS.deviceCheckIn(s, at('2026-10-20T03:00:00Z')).newPins, []); assert.equal(s.loginStreak.count, 32);
+  // sign in: the server knows 3 wallet-verified days and no pins -> wallet shows NO pins, device pin taken off; server list is used as-is
+  const calls = [], kp = { address: 'Wal1etABC', async checkIn(g, seed) { calls.push(seed); return { ok: true, counted: true, count: 3, best: 3, last: '2026-10-20', unlocked: [] }; } };
+  const r = await LS.walletCheckIn(s, kp, at('2026-10-20T04:00:00Z')); assert.deepEqual(r.newPins, []); assert.deepEqual(s.loginStreak.unlocked, []);
+  v = LS.view(s, at('2026-10-20T04:00:00Z')); assert.equal(v.wallet, true); assert.equal(v.pins.filter((p) => p.got).length, 0); assert.equal(LS.wornPin(s), null); assert.equal(LS.equipPin(s, 7).ok, false);
+  assert.equal(calls[0], 32, 'the existing one-time capped migration seed is unchanged (server caps + applies it once)');
+  // a server reply without an unlocked list falls back to the SERVER best only
+  LS.applyServer(s, { count: 8, best: 8, last: '2026-10-21' }, 'Wal1etABC'); assert.deepEqual(s.loginStreak.unlocked, [7]);
+  // sign out: back to device-only with the device's own pins; the wallet's pin does not follow
+  LS.toDevice(s); assert.deepEqual(LS.pinsHere(s), [7, 30]); assert.equal(LS.view(s).label, 'device-only');
+  // a pre-rule wallet save (merged list may hold device pins): dropped until kibble-pay answers
+  const w = { loginStreak: { v: 1, count: 2, best: 2, last: '2026-10-19', source: 'wallet', wallet: 'W2', unlocked: [7, 30], pin: 7, migrated: null } };
+  assert.deepEqual(LS.pinsHere(w), []); assert.equal(LS.wornPin(w), null);
+});
+test('daily Bones claim is untouched by the streak pin rule', () => {
+  const src = fs.readFileSync('src/loginstreak.js', 'utf8'); assert.doesNotMatch(src, /fly5\.streak\.(claimed|count\s*=)/);
 });
 test('rewards are cosmetic pins only, original art exists for each; HUD chip, profile card and streak tab are wired', () => {
   assert.deepEqual(LS.MILESTONES, [7, 30, 90, 180]); for (const m of LS.MILESTONES) assert.ok(LS.PINS[m].name);
