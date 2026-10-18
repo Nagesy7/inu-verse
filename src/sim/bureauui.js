@@ -33,7 +33,8 @@ function demoLog() { const s = sandbox(); s.act(ISSUER, 'pm.issue', 'sim:cop-rex
 
 let W = null, lastSync = 0;
 export const pawWallet = () => (W ||= createPawWallet());
-const syncSoon = (then) => { const now = Date.now(); if (now - lastSync < 2500) return; lastSync = now; pawWallet().sync().then(() => then?.()).catch(() => {}); };
+const syncSoon = (then, tries = 2) => { const now = Date.now(); if (now - lastSync < 2500) return; lastSync = now; // a 429 (server rate limit) retries a little later, at most twice
+  pawWallet().sync().then((st) => { then?.(); if (st?.server === 'busy' && tries > 0) setTimeout(() => { lastSync = 0; syncSoon(then, tries - 1); }, 2600); }).catch(() => {}); };
 const readout = () => { const s = pawWallet().state(); return s.joined ? `<b>${pm(s.balance)}</b>` : 'not joined'; };
 // Small readout for the Kibble Bank (wallet view). Clearly separate from real money: sim-only, can't move here.
 export function simReadout(body) { try { const el = document.createElement('div'); el.className = 'card'; el.dataset.pabReadout = '1'; el.style.cssText = 'margin-top:8px;border-color:#7B4FD6;text-align:left';
