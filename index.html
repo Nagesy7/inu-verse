@@ -5,10 +5,14 @@
 </head><body>
 <canvas id="game"></canvas>
 <div id="title" class="overlay">
+  <canvas id="title-bg" aria-hidden="true"></canvas>
   <div class="title-card">
+    <div class="title-left">
     <h1 class="logo">Inu <span>Verse</span></h1>
     <p class="tag">A cosy neighbourhood for the Inu games network</p>
     <canvas id="preview" width="300" height="180"></canvas>
+    <div id="pv-cap" class="pv-cap" aria-live="polite"></div>
+    </div>
     <label class="lbl">Your Inu's name <input id="name" maxlength="14" value="Kabosu"></label>
     <div id="creator" class="creator"></div>
     <div class="row"><button id="start" class="btn big">Start new life</button><button id="continue" class="btn big alt" hidden>Continue</button></div>

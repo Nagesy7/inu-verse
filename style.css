@@ -156,9 +156,9 @@ body.short.landscape .cafe,body.short.landscape .launch{grid-template-columns:1f
 body.short #buildbar{max-height:42dvh;font-size:10px;padding:2px}
 @media (pointer:coarse){body.short #buildbar{left:calc(max(8px,env(safe-area-inset-left)) + 140px);right:calc(max(8px,env(safe-area-inset-right)) + 160px)}}
 body.short.landscape .title-card{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1.5fr);column-gap:14px;align-items:center;padding:2px 10px}
-body.short.landscape .title-card>.logo{grid-column:1;grid-row:1}body.short.landscape .title-card>.tag{grid-column:1;grid-row:2;font-size:8px}
-body.short.landscape .title-card>#preview{grid-column:1;grid-row:3/span 4;max-width:100%}
-body.short.landscape .title-card>*:not(.logo):not(.tag):not(#preview){grid-column:2}
+body.short.landscape .title-left>.tag{font-size:8px}
+body.short.landscape .title-left{grid-column:1;grid-row:1/span 4;align-self:start;position:sticky;top:0}body.short.landscape .title-left>#preview{max-width:100%}
+body.short.landscape .title-card>*:not(.title-left){grid-column:2}
 body.short .lbl{margin:4px 0 3px;font-size:10px}body.short .lbl input{padding:4px 8px;font-size:13px}
 body.short .coat{font-size:8px;padding:2px}body.short .coat canvas{height:44px;width:auto}
 body.short .row{margin-top:6px}body.short .btn.big{font-size:13px;padding:7px 14px}body.short .title-card .small{margin-top:4px;font-size:8px}
@@ -294,3 +294,26 @@ body:has(#panel:not([hidden])) #crier-banner{display:none}
 body.building #touch,body.building #mp-chip,body.building #mp-pop{display:none!important}
 body.short.landscape #buildbar,body.short.landscape #buildbar:not([hidden]){left:auto!important;right:max(6px,env(safe-area-inset-right))!important;top:calc(max(6px,env(safe-area-inset-top)) + 52px);bottom:max(6px,env(safe-area-inset-bottom))!important;width:min(300px,38vw);max-height:none;flex-direction:column;flex-wrap:nowrap;overflow:auto;animation:none}
 body.short.landscape #buildbar .bb-col{flex:none!important;width:100%}body.short.landscape #buildbar .gb{max-height:none}body.short.landscape #buildbar .btn{padding:4px 6px;font-size:10px}
+/* ---- (C) start screen polish: animated backdrop, logo bob/shine, distinct selected chips, focus rings, press feedback, fade ---- */
+#title{transition:opacity .38s ease}#title.leaving{opacity:0;pointer-events:none}
+#title-bg{position:absolute;inset:0;width:100%;height:100%;z-index:0;image-rendering:pixelated}#title>.title-card{z-index:1}
+.logo{animation:logoBob 3.2s ease-in-out infinite}.logo span{animation:logoShine 4.5s ease-in-out infinite}
+@keyframes logoBob{0%,100%{transform:translateY(0)}50%{transform:translateY(-3px)}}
+@keyframes logoShine{0%,82%,100%{filter:none}88%{filter:brightness(1.6) drop-shadow(0 0 4px #fff6c8)}}
+.title-card .btn{transition:transform .08s,filter .12s}.title-card .btn:hover{filter:brightness(1.12);transform:translateY(-1px)}.title-card .btn:active{transform:translateY(1px) scale(.97);filter:brightness(.92)}
+.chip-o,.ctab{transition:transform .1s,background-color .15s,border-color .15s,box-shadow .15s}
+.chip-o:hover,.ctab:hover{filter:brightness(1.18)}.chip-o:active,.ctab:active{transform:scale(.94)}
+.chip-o.sel{border-color:var(--goldl)!important;color:#fff6c8!important;box-shadow:0 0 0 2px var(--goldl),0 0 8px #f2cc6888!important;transform:scale(1.06);position:relative}
+.chip-o.sel:not(.sw){background:#3a3470!important}.chip-o.sel:not(.sw)::after{content:"✓";position:absolute;top:-7px;right:-6px;background:var(--goldl);color:var(--ink);font-size:8px;line-height:12px;width:12px;height:12px;text-align:center}
+.chip-o.sw.sel{box-shadow:0 0 0 3px #fff,0 0 0 5px var(--goldl)!important;transform:scale(1.15)}
+.chip-o.pop{animation:chipPop .32s ease-out}@keyframes chipPop{0%{transform:scale(.9)}55%{transform:scale(1.18)}100%{transform:scale(1.06)}}
+.chip-o.sw.pop{animation:swPop .32s ease-out}@keyframes swPop{0%{transform:scale(.9)}55%{transform:scale(1.3)}100%{transform:scale(1.15)}}
+.chip-o:focus-visible,.ctab:focus-visible,.title-card .btn:focus-visible,#name:focus-visible{outline:3px dashed #7fd3ff;outline-offset:3px;z-index:2}
+.ctab.sel{box-shadow:inset 0 -3px 0 var(--goldl)}
+#preview.bump{animation:pvBump .3s ease-out}@keyframes pvBump{0%{transform:scale(1)}40%{transform:scale(1.035)}100%{transform:scale(1)}}
+.pv-cap{font-size:9px;line-height:1.35;color:var(--cream);margin:2px auto 4px;max-width:320px;min-height:24px}.pv-cap b{display:block;color:var(--goldl);font-weight:normal}.pv-cap span{opacity:.8}
+.pv-cap.flash .cap-last{animation:capFlash .5s ease-out}@keyframes capFlash{0%{color:#fff;transform:scale(1.08)}100%{color:var(--goldl);transform:none}}
+body.short.landscape .pv-cap{font-size:7px;min-height:0;margin:0 auto}
+body.short .pv-cap{font-size:7px}
+@media (prefers-reduced-motion:reduce){.logo,.logo span,.chip-o.pop,#preview.bump{animation:none}}
+body.short .title-card>.row{position:sticky;bottom:-4px;z-index:3;background:#1b2350;padding:4px 0;margin-top:4px;box-shadow:0 -6px 8px #1b2350}
