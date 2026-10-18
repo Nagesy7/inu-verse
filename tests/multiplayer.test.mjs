@@ -43,7 +43,7 @@ test('rooms: cap 40 per instance, overflow to instance 2, all-full -> 0, room id
   assert.equal(pickInstance(Array(8).fill(40)), 0); assert.equal(validRoom('city'), true); assert.equal(validRoom('int:cafe'), true); assert.equal(validRoom('../x'), false); assert.equal(validRoom('A'.repeat(40)), false);
 });
 test('sanitise: state clamped/rounded, look stripped to known fields', () => {
-  assert.deepEqual(cleanState({ x: 1e9, y: -5, f: 'evil', m: 'yes' }), { x: MP.WORLD_MAX, y: 0, f: 'down', m: 1, r: 0, d: 0, ts: 0 }); assert.equal(cleanState({ x: 'a', y: 1 }), null);
+  assert.deepEqual(cleanState({ x: 1e9, y: -5, f: 'evil', m: 'yes' }), { x: MP.WORLD_MAX, y: 0, f: 'down', m: 1, r: 0, d: 0, p: 0, ts: 0 }); assert.equal(cleanState({ x: 'a', y: 1 }), null);
   const l = cleanLook({ coat: 'tan', eq: { hat: 'cap_red', top: '<img>' }, pl: { look: { coat: '#aabbcc', evil: 'javascript:alert(1)' }, outfit: { hat: { id: 'cap', c: '#ff0000' } } }, extra: 'x'.repeat(5000) });
   assert.deepEqual(l.eq, { hat: 'cap_red' }); assert.deepEqual(l.pl.look, { coat: '#aabbcc' }); assert.equal(JSON.stringify(l).length < 600, true);
 });

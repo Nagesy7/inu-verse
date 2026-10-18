@@ -4,6 +4,7 @@
 // Every failure path (no URL, server down, socket drops, bad frames) silently falls back to solo play.
 import { MP, cleanChat, cleanLook, cleanState, emoteOk, guestName, interpolate, pushSnap, cullPlayers, validRoom } from './mpshared.js';
 import { say, emoteBubble } from './chat.js';
+import { remoteEmote, remoteState, remoteStep } from './actions.js';
 import { artKey } from './art.js';
 import { normalizeProfile } from './vendor/profile-schema.js';
 
@@ -19,12 +20,12 @@ export async function resolveRealtimeUrl({ search = globalThis.location?.search 
   try { const r = await f('/api/config', { cache: 'no-store' }); if (r.ok) { const j = await r.json(); if (ok(j?.realtimeUrl)) return ok(j.realtimeUrl); } } catch {}
   return ok(fallback) || null; }
 
-export function createMultiplayer({ getLocal, toast = () => {}, now = () => performance.now() / 1000, WS = globalThis.WebSocket, doc = globalThis.document, clock = () => Date.now(), coarse = !!globalThis.matchMedia?.('(pointer: coarse)').matches } = {}) {
-  const S = { url: null, ws: null, status: 'off', room: null, inst: 0, id: null, me: null, remotes: new Map(), backoff: 2000, retryAt: 0, lastSend: 0, lastSent: null, lastEmote: null, lastLookKey: '', lastLookAt: 0, leaveAt: 0, hiddenAt: 0, lastChatAt: -9, pingAt: 0, drawCap: coarse ? 12 : 24, anchors: new Map() };
+export function createMultiplayer({ getLocal, toast = () => {}, now = () => performance.now() / 1000, WS = globalThis.WebSocket, doc = globalThis.document, clock = () => Date.now(), coarse = !!globalThis.matchMedia?.('(pointer: coarse)').matches, onActions = null } = {}) {
+  const S = { url: null, ws: null, status: 'off', room: null, inst: 0, id: null, me: null, remotes: new Map(), backoff: 2000, retryAt: 0, lastSend: 0, lastSent: null, lastEmote: null, lastAct: null, lastLookKey: '', lastLookAt: 0, leaveAt: 0, hiddenAt: 0, lastChatAt: -9, pingAt: 0, drawCap: coarse ? 12 : 24, anchors: new Map() };
   S.muted = new Set((() => { try { return JSON.parse(lsGet(K_MUTE) || '[]'); } catch { return []; } })());
   S.optOut = lsGet(K_OFF) === '1';
   let guest = lsGet(K_GUEST); if (!/^Pup\d{4}$/.test(guest || '')) { guest = guestName(); lsSet(K_GUEST, guest); }
-  const ui = makeUi(doc, S, { say: (t) => api.chat(t), mute: (n) => api.toggleMute(n), toggle: () => api.setOptOut(!S.optOut) });
+  const ui = makeUi(doc, S, { say: (t) => api.chat(t), mute: (n) => api.toggleMute(n), toggle: () => api.setOptOut(!S.optOut), actions: onActions });
   const send = (o) => { if (S.ws?.readyState !== 1) return false; try { S.ws.send(JSON.stringify(o)); return true; } catch { return false; } };
   const lookOf = (L) => cleanLook(L?.look);
   function drop(reason) { const ws = S.ws; S.ws = null; S.id = null; S.remotes.clear(); S.anchors.clear(); if (ws) { ws.onopen = ws.onmessage = ws.onclose = ws.onerror = null; try { ws.close(); } catch {} } if (reason) S.status = reason; ui.update(); }
@@ -35,9 +36,9 @@ export function createMultiplayer({ getLocal, toast = () => {}, now = () => perf
     ws.onmessage = (e) => { let m; try { m = JSON.parse(e.data); } catch { return; } try { onMsg(m); } catch {} };
     ws.onclose = () => { if (S.ws === ws) fail(); }; ws.onerror = () => {}; }
   function fail() { drop('offline'); S.retryAt = clock() + S.backoff * (0.8 + Math.random() * 0.4); S.backoff = Math.min(60000, S.backoff * 2); }
-  const local = (L) => ({ x: L.x, y: L.y, f: L.f, m: L.m ? 1 : 0, r: L.r ? 1 : 0, d: L.d ? 1 : 0 });
+  const local = (L) => ({ x: L.x, y: L.y, f: L.f, m: L.m ? 1 : 0, r: L.r ? 1 : 0, d: L.d ? 1 : 0, p: L.p | 0 });
   function addRemote(p) { if (!p?.id || p.id === S.id) return; const r = { id: p.id, name: String(p.name || 'Pup').slice(0, MP.NAME_MAX), w: p.w || null, buf: [], off: null, phase: Math.random() * 6, emote: null, x: 0, y: 0, cur: null };
-    setLook(r, p.look); const s = p.s && cleanState(p.s); if (s) { pushSnap(r, s, clock()); r.x = s.x; r.y = s.y; } S.remotes.set(p.id, r); }
+    setLook(r, p.look); const s = p.s && cleanState(p.s); if (s) { pushSnap(r, s, clock()); r.x = s.x; r.y = s.y; remoteState(r, s, now()); } S.remotes.set(p.id, r); }
   function setLook(r, look) { const l = cleanLook(look); r.coat = l.coat; r.outfit = l.eq; r.art = artKey(l.coat);
     // Kibble Kennel tier rides as pl.look.kennel (cosmetic, self-reported); a pl carrying only that key is not a custom profile
     const kn = l.pl?.look?.kennel; r.kennel = typeof kn === 'string' ? kn : null; const plOnlyKennel = l.pl && Object.keys(l.pl.look).every((k) => k === 'kennel') && !Object.values(l.pl.outfit || {}).some(Boolean);
@@ -48,11 +49,11 @@ export function createMultiplayer({ getLocal, toast = () => {}, now = () => perf
     if (m.t === 'q') { S.remotes.delete(m.id); S.anchors.delete('mp:' + m.id); ui.update(); return; }
     if (m.t === 'no') { toast(m.why || 'Message not sent', 'bad'); return; }
     const r = S.remotes.get(m.id); if (!r) return;
-    if (m.t === 's') { const s = cleanState(m); if (s) pushSnap(r, s, clock()); }
+    if (m.t === 's') { const s = cleanState(m); if (s) { pushSnap(r, s, clock()); remoteState(r, s, t); } }
     else if (m.t === 'l') setLook(r, m.look);
     else if (m.t === 'c') { if (S.muted.has(r.name)) return; const c = cleanChat(m.text); if (c.ok) say('mp:' + r.id, c.text, t, { force: true, life: 4.5 }); } // filtered again client-side
-    else if (m.t === 'e' && emoteOk(m.k)) { r.emote = { kind: m.k, t: m.k === 'zoomies' ? 2.4 : 2.5 }; if (!S.muted.has(r.name)) emoteBubble('mp:' + r.id, m.k, t); } }
-  const changed = (a, b) => !b || Math.abs(a.x - b.x) > 0.5 || Math.abs(a.y - b.y) > 0.5 || a.f !== b.f || a.m !== b.m || a.r !== b.r || a.d !== b.d;
+    else if (m.t === 'e' && emoteOk(m.k)) { if (remoteEmote(r, m.k, t) && m.k !== 'wave') return; r.emote = { kind: m.k, t: m.k === 'zoomies' ? 2.4 : 2.5 }; if (!S.muted.has(r.name)) emoteBubble('mp:' + r.id, m.k, t); } }
+  const changed = (a, b) => !b || Math.abs(a.x - b.x) > 0.5 || Math.abs(a.y - b.y) > 0.5 || a.f !== b.f || a.m !== b.m || a.r !== b.r || a.d !== b.d || (a.p | 0) !== (b.p | 0);
   const api = {
     S, get enabled() { return !!S.url && !S.optOut; }, get status() { return S.status; }, get count() { return S.remotes.size + (S.status === 'online' ? 1 : 0); },
     async start(url) { S.url = url === undefined ? await resolveRealtimeUrl() : url; ui.show(!!S.url); ui.update();
@@ -61,18 +62,19 @@ export function createMultiplayer({ getLocal, toast = () => {}, now = () => perf
       return !!S.url; },
     // per frame: connect/leave/reconnect, send state at most every SEND_MS and only on change, advance remote animation
     step(dt) { const L = (() => { try { return getLocal(); } catch { return null; } })(), ms = clock();
-      for (const r of S.remotes.values()) { r.phase += dt * (r.cur?.m ? (r.cur.r ? 21 : 12) : 2); if (r.emote && (r.emote.t -= dt) <= 0) r.emote = null; }
+      for (const r of S.remotes.values()) { r.phase += dt * (r.cur?.m ? (r.cur.r ? 21 : 12) : 2); if (r.emote && (r.emote.t -= dt) <= 0) r.emote = null; remoteStep(r, now()); }
       if (!S.url || S.optOut || !L) { if (S.ws) drop('off'); return; }
       const hiddenLong = S.hiddenAt && ms - S.hiddenAt > 30000;
       if (!L.room || hiddenLong) { if (S.ws && S.lastSent && !S.lastSent.d) { S.lastSent = { ...S.lastSent, d: 1, ts: ms }; send({ t: 's', ...S.lastSent }); } // vanish for others right away
         if (S.ws && (hiddenLong || (S.leaveAt ||= ms + 15000) < ms)) { drop('idle'); S.leaveAt = 0; } return; }
       S.leaveAt = 0;
       if (!S.ws) { if (ms >= S.retryAt) connect(L); return; }
-      if (S.room !== L.room) return connect(L);
+      if (S.room !== L.room) return connect(L); S.roomName = L.roomName || null;
       if (S.status !== 'online') return;
       const st = local(L);
       if (ms - S.lastSend >= MP.SEND_MS && changed(st, S.lastSent)) { S.lastSend = ms; S.lastSent = st; send({ t: 's', ...st, ts: ms }); }
       if (L.emote && L.emote !== S.lastEmote && emoteOk(L.emote.kind)) send({ t: 'e', k: L.emote.kind }); S.lastEmote = L.emote;
+      if (L.act && L.act !== S.lastAct && emoteOk(L.act.kind)) send({ t: 'e', k: L.act.kind }); S.lastAct = L.act; // Round 3 actions ride the emote path
       if (ms - S.lastLookAt > 5000) { S.lastLookAt = ms; const lk = lookOf(L), key = JSON.stringify(lk); if (key !== S.lastLookKey) { S.lastLookKey = key; send({ t: 'l', look: lk }); } }
       if (ms - S.pingAt > 25000) { S.pingAt = ms; try { S.ws.send('ping'); } catch {} } },
     // renderer-ready actors (same shape main.js draws for NPCs), interpolated, culled to the view, nearest first, capped
@@ -80,7 +82,7 @@ export function createMultiplayer({ getLocal, toast = () => {}, now = () => perf
       const tr = clock() - MP.INTERP_MS, list = [];
       for (const r of S.remotes.values()) { const c = interpolate(r.buf, tr); if (!c) continue; r.cur = c; r.x = c.x; r.y = c.y; if (c.d) { S.anchors.delete('mp:' + r.id); continue; } list.push(r); }
       const vis = view ? cullPlayers(list, view, me || { x: 0, y: 0 }, S.drawCap) : list.slice(0, S.drawCap); S.anchors.clear();
-      return vis.map((r) => { S.anchors.set('mp:' + r.id, { x: r.x, y: r.y - 60 }); return { x: r.x, y: r.y, coat: r.coat, outfit: r.outfit, art: r.art, profile: r.profile, face: r.cur.f, phase: r.phase, moving: !!r.cur.m, name: r.name, emote: r.emote, mp: true, id: 'mp:' + r.id, w: r.w, kennel: r.w ? r.kennel : null }; }); },
+      return vis.map((r) => { S.anchors.set('mp:' + r.id, { x: r.x, y: r.y - 60 }); return { x: r.x, y: r.y, coat: r.coat, outfit: r.outfit, art: r.art, profile: r.profile, face: r.cur.f, phase: r.phase, moving: !!r.cur.m, name: r.name, emote: r.emote, act: r.act || null, mp: true, id: 'mp:' + r.id, w: r.w, kennel: r.w ? r.kennel : null }; }); },
     anchor(id) { return S.anchors.get(id) || null; },
     chat(text) { const c = cleanChat(text); if (!c.ok) { if (c.reason !== 'empty') toast(c.reason, 'bad'); return false; }
       const t = now(); if (t - S.lastChatAt < 1 / MP.CHAT_RATE) { toast('Slow down: one message every 2 seconds.', 'bad'); return false; }
@@ -109,20 +111,21 @@ function makeUi(doc, S, h) {
     pop.innerHTML = `<div class="row" style="justify-content:space-between"><b id="mp-status">Multiplayer</b><button id="mp-x" aria-label="Close">×</button></div>
 <div class="row"><input id="mp-say" maxlength="${MP.CHAT_MAX}" placeholder="Say something nice… (/ to chat)" autocomplete="off" enterkeyhint="send"><button id="mp-send">Say</button></div>
 <small>Be kind. Links, wallet addresses and seed phrases are blocked. Never share your seed phrase.</small><ul id="mp-list"></ul>
-<div class="row"><button id="mp-opt"></button></div>`;
+<div class="row"><button id="mp-act" title="G">Actions (sit, dance…)</button><button id="mp-opt"></button></div>`;
     doc.body.appendChild(pop);
     const input = pop.querySelector('#mp-say'), go = () => { if (h.say(input.value)) { input.value = ''; input.blur(); } };
     chip.onclick = (e) => { e.stopPropagation(); pop.hidden = !pop.hidden; update(); };
     pop.querySelector('#mp-x').onclick = () => { pop.hidden = true; };
     pop.querySelector('#mp-send').onclick = go; input.onkeydown = (e) => { e.stopPropagation(); if (e.key === 'Enter') go(); if (e.key === 'Escape') { input.blur(); pop.hidden = true; } };
     pop.querySelector('#mp-opt').onclick = () => h.toggle();
+    pop.querySelector('#mp-act').onclick = () => { pop.hidden = true; h.actions?.(); }; pop.querySelector('#mp-act').hidden = !h.actions;
     pop.querySelector('#mp-list').onclick = (e) => { const b = e.target.closest('[data-mute]'); if (b) h.mute(b.dataset.mute); };
     doc.addEventListener('keydown', (e) => { if (e.key !== '/' || /INPUT|TEXTAREA/.test(e.target?.tagName || '') || chip.hidden || S.status !== 'online') return; e.preventDefault(); pop.hidden = false; update(); input.focus(); }, true); }
   const esc = (s) => String(s).replace(/[&<>"']/g, (c) => `&#${c.charCodeAt(0)};`);
   function update() { if (!built) return; const n = S.remotes.size + (S.status === 'online' ? 1 : 0), on = S.status === 'online';
     chip.className = 'chip' + (on ? ' on' : S.status === 'connecting' ? ' wait' : ''); chip.querySelector('span').textContent = S.optOut ? 'solo' : on ? `${n} online` : S.status === 'connecting' ? '…' : 'solo';
     if (pop.hidden) return;
-    pop.querySelector('#mp-status').textContent = S.optOut ? 'Multiplayer off (solo)' : on ? `${S.room === 'city' ? 'City' : S.room}${S.inst > 1 ? ' · instance ' + S.inst : ''} · ${n} here` : S.status === 'connecting' ? 'Connecting…' : 'Offline: playing solo';
+    pop.querySelector('#mp-status').textContent = S.optOut ? 'Multiplayer off (solo)' : on ? `${S.room === 'city' ? 'City' : S.roomName || S.room}${S.inst > 1 ? ' · instance ' + S.inst : ''} · ${n} here` : S.status === 'connecting' ? 'Connecting…' : 'Offline: playing solo';
     pop.querySelector('#mp-opt').textContent = S.optOut ? 'Turn multiplayer on' : 'Play solo (hide others)';
     pop.querySelector('#mp-say').disabled = !on; pop.querySelector('#mp-send').disabled = !on;
     const ps = [...S.remotes.values()]; pop.querySelector('#mp-list').innerHTML = (on ? `<li><span>${esc(S.me || 'You')} <small>(you)</small></span></li>` : '') + ps.slice(0, 60).map((r) => `<li><span>${esc(r.name)}${r.w ? ` <small>${esc(r.w)}</small>` : ''}</span><button data-mute="${esc(r.name)}">${S.muted.has(r.name) ? 'Unmute' : 'Mute'}</button></li>`).join(''); }

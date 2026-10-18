@@ -57,6 +57,10 @@ export function faceAt(id, t, { moving = false, face = 'down', emote = null, wag
   if (talking) s.mouth = RM ? 'open' : (Math.floor(t * 9 + r * 3) % 3 === 0 ? 'none' : (Math.floor(t * 9) % 2 ? 'open' : 'tongue'));
   if (emote === 'heart' || emote === 'wave' || emote === 'bork' || emote === 'happy') { s.eye = emote === 'bork' ? 'open' : 'happy'; s.mouth = emote === 'bork' ? 'open' : 'tongue'; s.tail = 1; }
   if (emote === 'sit' && !moving && idle > 6) s.eye = s.eye === 'open' ? 'half' : s.eye;
+  // Round 3 poses (src/actions.js): dances are all smiles, lying down is drowsy, sleeping has the eyes shut
+  if (emote === 'dance') { s.eye = 'happy'; s.mouth = 'tongue'; s.tail = 1; }
+  if (emote === 'lie' && s.eye === 'open') s.eye = 'half';
+  if (emote === 'sleep') { s.eye = 'blink'; s.mouth = 'none'; s.lx = 0; s.ly = 0; s.ear = 0; }
   if (react) { if (react === 'joy') { s.eye = 'happy'; s.mouth = 'tongue'; s.tail = 1; s.ear = 1; } else if (react === 'wow') { s.eye = 'open'; s.ly = -1; s.mouth = 'open'; s.ear = 1; } else if (react === 'curious') { s.lx = -1; s.ly = -1; s.ear = 1; } }
   if (wag > 0) s.tail = 1;
   if (s.tail && !RM) s.tail = Math.sin(t * 18) > 0 ? 1 : -1; else if (RM) s.tail = 0;

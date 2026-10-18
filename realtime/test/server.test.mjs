@@ -48,3 +48,12 @@ test(`server: room cap ${CAP} -> overflow to instance 2`, { skip: !URL0 }, async
   assert.equal(cs[CAP].welcome.players.length, 0); // instance 2 is a separate room
   cs[0].ws.close(); await sleep(300); const back = await client(r); assert.equal(back.welcome.inst, 1); // freed slot is reused
   for (const c of [...cs, back]) c.ws.close(); });
+
+test('server: Round 3 actions ride the emote path (same limits) and the pose code rides state for late joiners', { skip: !URL0 }, async () => {
+  const r = room('p'), A = await client(r, { guest: 'Pup1212' }), B = await client(r, { guest: 'Pup3434' }); await sleep(100);
+  A.ws.send(JSON.stringify({ t: 'e', k: 'dance2' })); A.ws.send(JSON.stringify({ t: 's', x: 120, y: 100, f: 'down', m: 0, p: 4, ts: Date.now() }));
+  A.ws.send(JSON.stringify({ t: 'e', k: 'sleep' })); A.ws.send(JSON.stringify({ t: 'e', k: 'bow' })); A.ws.send(JSON.stringify({ t: 'e', k: 'not-a-pose' })); await sleep(250);
+  assert.deepEqual(of(B, 'e').map((m) => m.k), ['dance2', 'sleep'], 'burst of 2, unknown kinds dropped'); assert.equal(of(B, 's').at(-1).p, 4);
+  const C = await client(r, { guest: 'Pup5656' }); assert.equal(C.welcome.players.find((p) => p.name === 'Pup1212').s.p, 4, 'late joiner sees the pose');
+  A.ws.send(JSON.stringify({ t: 's', x: 120, y: 100, f: 'down', m: 0, p: 77, ts: Date.now() })); await sleep(200); assert.equal(of(B, 's').at(-1).p, 0, 'bad pose codes sanitised');
+  A.ws.close(); B.ws.close(); C.ws.close(); });

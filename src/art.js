@@ -16,9 +16,25 @@ export function drawInuAvatarHi(ctx, profile, x, y, opts = {}) {
   let hi = avHi.get(spr); if (!hi) { hi = hires(spr, 2); if (!globalThis.__noDetail && hi !== spr) { roundCorners(hi, 3); shadeSprite(hi, { r: 4, light: 0.26, dark: 0.28, glint: true, grad: 0.12, bands: [0.18, 0.22] }); } avHi.set(spr, hi); }
   let img = hi; if (opts.fid && !globalThis.__noFace) { const view = opts.face === 'up' ? 'back' : opts.face === 'left' || opts.face === 'right' ? 'side' : 'front'; hi.F ||= {};
     if (!(view in hi.F)) { const c = mkCanvas(hi.width, hi.height), x = c.getContext('2d', { willReadFrequently: true }); x.drawImage(hi, 0, 0); hi.F[view] = view === 'back' ? null : findFace(x.getImageData(0, 0, c.width, c.height).data, c.width, c.height, view); }
-    if (hi.F[view]) img = faceVariant(hi, hi.F[view], faceFor(opts.fid, { moving: !!opts.moving, face: opts.face, emote: opts.emote }), { eyes: true, ears: false }); }
-  ctx.save(); for (const [f, a] of sh) { ctx.fillStyle = f; ctx.fillRect(...a); } ctx.imageSmoothingEnabled = false; ctx.drawImage(img, ...dst); ctx.restore(); return r;
+    if (hi.F[view]) img = faceVariant(hi, hi.F[view], faceFor(opts.fid, { moving: !!opts.moving, face: opts.face, emote: opts.emote, wag: opts.wag || 0 }), { eyes: true, ears: false }); }
+  ctx.save(); for (const [f, a] of sh) { ctx.fillStyle = f; ctx.fillRect(...a); } ctx.imageSmoothingEnabled = false; posed(ctx, opts.pose, x, y, (opts.scale || 1.6) / 1.6, () => ctx.drawImage(img, ...dst)); ctx.restore(); return r;
 }
+// Round 3 poses (src/actions.js poseAt): squash/lean/hop/shuffle applied around the sprite only (shadow + name tag stay put),
+// anchored at the feet, so every renderer below (atlas, reference art, custom profile, pixel fallback) poses the same way.
+function posed(ctx, P, fx, fy, k, draw) { if (!P) return draw(); ctx.save(); ctx.translate(fx + P.dx * k, fy + P.dy * k); if (P.rot) ctx.rotate(P.rot); ctx.scale(P.sx, P.sy); ctx.translate(-fx, -fy); draw(); ctx.restore(); }
+const posedTop = (P, top, feet, k) => (P ? feet - (feet - top) * P.sy + Math.min(0, P.dy) * k : top);
+const withPose = (o) => (o.pose ? { ...o, face: o.pose.face || o.face, emote: o.pose.faceEmote || o.emote, wag: o.wag || o.pose.wag || 0 } : o);
+// overlays for poses: a waving paw and floating Zz (drawn after the Shiba, in the same space; scale = renderer scale)
+export function drawPoseFx(ctx, P, x, y, scale, t, face = 'down') { if (!P) return; ctx.save();
+  if (P.paw) { const dir = face === 'left' ? -1 : 1, side = face === 'left' || face === 'right', px = x + dir * (side ? 25 : 21) * scale + P.dx * scale, py = y + 12 - (30 + P.paw.up * 18) * scale + P.dy * scale, r = 4.6 * scale;
+    ctx.fillStyle = '#3a2418'; ctx.beginPath(); ctx.ellipse(px, py, r + 1.2, r * 1.15 + 1.2, 0, 0, 7); ctx.fill();
+    ctx.fillStyle = '#fbefd8'; ctx.beginPath(); ctx.ellipse(px, py, r, r * 1.15, 0, 0, 7); ctx.fill();
+    ctx.fillStyle = '#e8a0a8'; for (const o of [-1.6, 0, 1.6]) { ctx.beginPath(); ctx.arc(px + o * scale, py - 2.2 * scale, 0.9 * scale, 0, 7); ctx.fill(); } }
+  if (P.zz) { ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.lineJoin = 'round';
+    for (let i = 0; i < 3; i++) { const u = ((t * 0.45 + i / 3) % 1), zx = x + (16 + u * 22) * scale, zy = y - (54 + u * 36) * scale;
+      ctx.globalAlpha = Math.min(1, (1 - u) * 1.8); ctx.font = `${Math.round((17 + u * 10) * scale)}px Silkscreen, monospace`;
+      ctx.lineWidth = 4 * scale; ctx.strokeStyle = '#121a36'; ctx.strokeText('z', zx, zy); ctx.fillStyle = '#f2cc68'; ctx.fillText('z', zx, zy); } }
+  ctx.restore(); }
 import { FURNITURE, footprint, WALLS, FLOORS } from './furniture.js';
 import { OUTFIT_ATLAS } from './outfit-atlas.js';
 import { OUTFITS } from './outfits.js';
@@ -93,31 +109,33 @@ function faceVariant(cv, F, s, flags) { const key = faceKey(s); if (key === NEUT
   const im = c.getImageData(0, 0, v.width, v.height); paintFace(im.data, v.width, v.height, F, s, flags); c.putImageData(im, 0, 0); v.feet = cv.feet;
   cv.faces.set(key, v); if (cv.faces.size > 24) cv.faces.delete(cv.faces.keys().next().value); return v; }
 export { faceOf as __faceOf, layeredCanvas as __layered };
-function drawLayered(ctx, x, y, coat, outfit, { face, phase, moving, scale, name, shadow, badge, emote, fid, wag }) {
+function drawLayered(ctx, x, y, coat, outfit, { face, phase, moving, scale, name, shadow, badge, emote, fid, wag, pose }) {
   const view = face === 'up' ? 'back' : face === 'left' || face === 'right' ? 'side' : 'front';
   const frame = moving ? Math.floor(phase / 1.6) % 4 : 0; let cv = layeredCanvas(coat, view, frame, outfit);
   if (fid) cv = faceCanvas(cv, coat, view, frame, outfit, faceFor(fid, { moving, face, emote, wag }));
-  const k = (64 * scale) / (cv.feet - 6), sit = emote === 'sit' ? 0.82 : 1; // ~64px tall at scale 1, matches the old art sprites
+  const k = (64 * scale) / (cv.feet - 6), sit = emote === 'sit' && !pose ? 0.82 : 1; // ~64px tall at scale 1, matches the old art sprites
   const w = cv.width * k, h = cv.height * k * sit, top = y + 12 - cv.feet * k * sit, bob = moving ? (frame % 2 ? 1.4 * scale : 0) : Math.sin(phase * 0.5) * 0.6; // walk: body rises on the passing frames
   ctx.save(); ctx.imageSmoothingEnabled = true; ctx.imageSmoothingQuality = 'high';
   if (shadow) { ctx.fillStyle = 'rgba(10,14,30,0.3)'; ctx.beginPath(); ctx.ellipse(x, y + 11, w * 0.3, 4 * scale, 0, 0, 7); ctx.fill(); }
   ctx.translate(Math.round(x), 0); if (face === 'left') ctx.scale(-1, 1);
-  ctx.drawImage(mip(cv, h * (ctx.getTransform?.().d || 1)), Math.round(-w / 2), Math.round(top - bob), Math.round(w), Math.round(h));
+  posed(ctx, pose, 0, y + 12, scale, () => ctx.drawImage(mip(cv, h * (ctx.getTransform?.().d || 1)), Math.round(-w / 2), Math.round(top - bob), Math.round(w), Math.round(h)));
   ctx.restore();
-  if (name) nameTag(ctx, x, top, name, badge);
+  if (name) nameTag(ctx, x, posedTop(pose, top, y + 12, scale), name, badge);
 }
 
 // Custom (character-creator) Shibas: shared cross-game renderer, sized to match the layered atlas (~64px at scale 1)
-export function drawProfileShiba(ctx, x, y, profile, { face = 'down', phase = 0, moving = false, scale = 1, name = null, shadow = true, badge = null, fid = null, emote = null } = {}) {
-  const frame = moving ? Math.floor(phase / 1.6) % 4 : 0, r = drawInuAvatarHi(ctx, profile, x, y + 12, { scale: scale * 1.6, face, frame, shadow, fid, emote, moving });
-  if (name) nameTag(ctx, x, y + 12 - r.h, name, badge); }
+export function drawProfileShiba(ctx, x, y, profile, o = {}) {
+  const { face = 'down', phase = 0, moving = false, scale = 1, name = null, shadow = true, badge = null, fid = null, emote = null, wag = 0, pose = null } = withPose(o);
+  const frame = moving ? Math.floor(phase / 1.6) % 4 : 0, r = drawInuAvatarHi(ctx, profile, x, y + 12, { scale: scale * 1.6, face, frame, shadow, fid, emote, moving, wag, pose });
+  if (name) nameTag(ctx, x, posedTop(pose, y + 12 - r.h, y + 12, scale), name, badge); }
 const rr = (ctx, x, y, w, h, r) => { ctx.beginPath(); ctx.roundRect(x, y, w, h, r); };
 
 // Pixel Shiba (see sprite.js). (x,y) = ground point under the feet-ish centre.
-export function drawShiba(ctx, x, y, { coat = 'tan', face = 'down', phase = 0, moving = false, scale = 1, name = null, outfit = null, shadow = true, badge = null, art = null, emote = null, fid = null, wag = 0 } = {}) {
-  if (art && ART[art]) return drawArt(ctx, x, y, ART[art], { face, phase, moving, scale, name, shadow, badge, emote });
+export function drawShiba(ctx, x, y, o = {}) {
+  const { coat = 'tan', face = 'down', phase = 0, moving = false, scale = 1, name = null, outfit = null, shadow = true, badge = null, art = null, emote = null, fid = null, wag = 0, pose = null } = withPose(o);
+  if (art && ART[art]) return drawArt(ctx, x, y, ART[art], { face, phase, moving, scale, name, shadow, badge, emote, pose });
   const lc = art?.startsWith?.('layer:') ? art.slice(6) : coat;
-  if (ART['outfits/' + lc] && OUTFIT_ATLAS.canvas[lc]) return drawLayered(ctx, x, y, lc, outfit || {}, { face, phase, moving, scale, name, shadow, badge, emote, fid, wag });
+  if (ART['outfits/' + lc] && OUTFIT_ATLAS.canvas[lc]) return drawLayered(ctx, x, y, lc, outfit || {}, { face, phase, moving, scale, name, shadow, badge, emote, fid, wag, pose });
   // last resort (atlas failed to load): procedural pixel sprite
   const px = Math.max(1, Math.round(2 * scale));
   const frame = moving ? Math.floor(phase / 1.6) % 4 : 0;
@@ -125,9 +143,9 @@ export function drawShiba(ctx, x, y, { coat = 'tan', face = 'down', phase = 0, m
   const w = spr.width * px / (spr.k || 1), h = spr.height * px / (spr.k || 1), dx = Math.round(x - w / 2), dy = Math.round(y + 12 - h);
   ctx.save(); ctx.imageSmoothingEnabled = false;
   if (shadow) { ctx.fillStyle = 'rgba(10,14,30,0.28)'; ctx.fillRect(Math.round(x - 7 * px), Math.round(y + 12 - 2 * px), 14 * px, 2 * px); ctx.fillRect(Math.round(x - 5 * px), Math.round(y + 12 - 3 * px), 10 * px, 3 * px); }
-  ctx.drawImage(spr, dx, dy, w, h);
+  posed(ctx, pose, x, y + 12, scale, () => ctx.drawImage(spr, dx, dy, w, h));
   ctx.restore();
-  if (name) nameTag(ctx, x, dy, name, badge);
+  if (name) nameTag(ctx, x, posedTop(pose, dy, y + 12, scale), name, badge);
 }
 
 // Pixel emblems for Pack banners. (x,y) top-left, s = pixel unit (shape is ~5x5 units).
@@ -140,19 +158,19 @@ export function drawEmblem(ctx, kind, x, y, s, col) {
 }
 
 // Draw a reference-art sprite: ~3 tiles tall at scale 1.5; walk = bob + squash + flip.
-function drawArt(ctx, x, y, im, { face, phase, moving, scale, name, shadow, badge, emote }) {
+function drawArt(ctx, x, y, im, { face, phase, moving, scale, name, shadow, badge, emote, pose }) {
   const H = Math.round(64 * scale), W = Math.round(im.width * H / im.height);
   const bob = moving ? Math.abs(Math.sin(phase * 0.9)) * 3 * scale : Math.sin(phase * 0.5) * 0.6;
-  const sq = moving ? 1 + Math.sin(phase * 1.8) * 0.035 : 1, sit = emote === 'sit' ? 0.82 : 1;
+  const sq = moving ? 1 + Math.sin(phase * 1.8) * 0.035 : 1, sit = emote === 'sit' && !pose ? 0.82 : 1;
   const h = H * sit / sq, w = W * sq, flip = face === 'left';
   const top = y + 12 - h - bob;
   ctx.save(); ctx.imageSmoothingEnabled = false;
   if (shadow) { ctx.fillStyle = 'rgba(10,14,30,0.3)'; ctx.beginPath(); ctx.ellipse(x, y + 11, w * 0.32, 4 * scale, 0, 0, 7); ctx.fill(); }
   ctx.translate(Math.round(x), 0); if (flip) ctx.scale(-1, 1);
   if (face === 'up') ctx.filter = 'brightness(0.82)';
-  ctx.drawImage(im, Math.round(-w / 2), Math.round(top), Math.round(w), Math.round(h));
+  posed(ctx, pose, 0, y + 12, scale, () => ctx.drawImage(im, Math.round(-w / 2), Math.round(top), Math.round(w), Math.round(h)));
   ctx.restore();
-  if (name) nameTag(ctx, x, top, name, badge);
+  if (name) nameTag(ctx, x, posedTop(pose, top, y + 12, scale), name, badge);
 }
 function nameTag(ctx, x, dy, name, badge) {
   ctx.save(); ctx.font = '8px Silkscreen, monospace'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';

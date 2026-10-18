@@ -20,7 +20,9 @@ export const MP = {
   INTERP_MS: 100,        // remote players are drawn ~100 ms in the past, interpolated between snapshots
   WORLD_MAX: 20000,
 };
-export const EMOTE_KINDS = ['wave', 'sit', 'zoomies', 'dance', 'heart', 'bork', 'happy', 'note', 'angry'];
+export const EMOTE_KINDS = ['wave', 'sit', 'zoomies', 'dance', 'heart', 'bork', 'happy', 'note', 'angry', 'lie', 'dance2', 'dance3', 'wag', 'sleep', 'bow'];
+// Round 3: looping poses also ride the state frame as a tiny code (s.p) so late joiners see them; 0 = standing.
+export const POSES = ['', 'sit', 'lie', 'dance', 'dance2', 'dance3', 'sleep'];
 export const FACES = ['down', 'up', 'left', 'right'];
 export const ROOM_RE = /^[a-z0-9][a-z0-9:_-]{0,31}$/;
 export const validRoom = (r) => typeof r === 'string' && ROOM_RE.test(r);
@@ -89,7 +91,7 @@ export const shortAddr = (a) => (typeof a === 'string' && a.length > 10 ? a.slic
 // ---- state / look sanitising (server and client both apply these to anything that crosses the wire) ----
 const num = (v, lo, hi) => { v = Number(v); return Number.isFinite(v) ? Math.max(lo, Math.min(hi, v)) : null; };
 export function cleanState(m) { const x = num(m?.x, 0, MP.WORLD_MAX), y = num(m?.y, 0, MP.WORLD_MAX); if (x == null || y == null) return null;
-  return { x: Math.round(x * 2) / 2, y: Math.round(y * 2) / 2, f: FACES.includes(m.f) ? m.f : 'down', m: m.m ? 1 : 0, r: m.r ? 1 : 0, d: m.d ? 1 : 0, ts: num(m.ts, 0, 9e15) ?? 0 }; }
+  return { x: Math.round(x * 2) / 2, y: Math.round(y * 2) / 2, f: FACES.includes(m.f) ? m.f : 'down', m: m.m ? 1 : 0, r: m.r ? 1 : 0, d: m.d ? 1 : 0, p: Number.isInteger(m.p) && m.p > 0 && m.p < POSES.length ? m.p : 0, ts: num(m.ts, 0, 9e15) ?? 0 }; }
 const HEX = /^#[0-9a-fA-F]{6}$/, ID = /^[a-z0-9_-]{1,40}$/i, WORD = /^[a-z0-9_-]{1,24}$/i;
 export function cleanLook(l) { if (!l || typeof l !== 'object') return { coat: 'tan', eq: {} };
   const eq = {}; for (const k of ['hat', 'eyes', 'neck', 'top', 'bottom', 'feet']) if (typeof l.eq?.[k] === 'string' && ID.test(l.eq[k])) eq[k] = l.eq[k];

@@ -59,7 +59,9 @@ import { mountCreator, drawPreview, profileOfChoices } from './creatorui.js';
 import { applyCreation, defaultChoices, restyle, SALON_PRICE } from './creator.js';
 import { profileFromState, hasCustomLook, saveProfile, loadProfile, setProfileStore, kibblePayProfileStore, profileStore } from './profile.js';
 import { TRAITS } from './traits.js';
-import { drawProfileShiba } from './art.js';
+import { drawProfileShiba, drawPoseFx } from './art.js';
+import { ACTIONS, makeActor, startAction, stepActor, poseAt, poseCodeOf, isAction } from './actions.js';
+import { mountWheel } from './actionwheel.js';
 import { WORKER_JOB, JOBS as JOB_DEFS, ensureJobs, rankOf } from './jobs.js';
 import { renderFriend, renderChapel, renderFurnStore } from './relui.js';
 import { prerenderMap, dynamicProps, buildingsReady } from './render.js';
@@ -192,6 +194,10 @@ addEventListener('keydown', (e) => {
   if (['arrowup', 'arrowdown', 'arrowleft', 'arrowright', ' '].includes(k)) e.preventDefault();
   if (k === 'escape' && photo) return togglePhoto();
   initAudio();
+  if (wheel.key(k)) { e.preventDefault(); return; }
+  if ((mode === 'world' || mode === 'room') && !panel && state && !drive) { ACT.still = 0; // any key resets the idle clock (auto-sit/doze)
+    if (k === 'g') { wheel.toggle(); return; }
+    const ak = '123456789'.indexOf(k); if (ak >= 0 && k.length === 1) { doAction(ACT_KEYS[ak]); return; } }
   if (mode === 'world' && !panel && state) {
     if (k === 'h' && drive) honk();
     if (k === 'b') { bork(); player.emote = { kind: 'bork', t: 1.2 }; emoteBubble('me', 'bork', time); }
@@ -199,8 +205,6 @@ addEventListener('keydown', (e) => {
     if (k === 'm') toggleMute();
     if (k === '+' || k === '=') setZoom(stepZoom(ZOOM, 1)); if (k === '-' || k === '_') setZoom(stepZoom(ZOOM, -1));
     if (k === 'p') togglePhoto();
-    if (k === 'g') toggleEmotes();
-    const ek = ['1', '2', '3', '4', '5'].indexOf(k); if (ek >= 0) doEmote(Object.keys(EMOTES)[ek]);
   }
   if (feel.talking() && (k === 'e' || k === 'enter' || k === ' ')) { feel.advance(); return; }
   if (k === 'escape') { if (panel) closePanel(); else if (build) exitBuild(); }
@@ -372,12 +376,20 @@ const CHAT_PLACE = { cafe: 'cafe', shop: 'shop', fashion: 'shop', cars: 'shop', 
 function chatPlace(x, y) { const it = nearestInteractable(state, x, y, 5); return it && (CHAT_PLACE[it.id] || CHAT_PLACE[it.kind]); }
 function doEmote(kind) { emoteBubble('me', kind, time); player.emote = { kind, t: kind === 'zoomies' ? 2.4 : 2.5 }; $('#emotes').hidden = true; blip(kind === 'heart' ? 990 : 740);
   for (const n of npcs) if (Math.hypot(n.x - state.player.x, n.y - state.player.y) < 260 && rng() < 0.6) setTimeout(() => { n.emote = { kind: rng() < 0.5 ? kind : 'heart', t: 2 }; }, 400 + rng() * 600); }
-function toggleEmotes() { const e = $('#emotes'); e.hidden = !e.hidden; }
+function toggleEmotes() { $('#emotes').hidden = true; wheel.toggle(); }
+// ---- Round 3: sit / lie down / dances / wave / wag / sleep / bow (src/actions.js), picked from the action wheel ----
+const ACT = makeActor(), ACT_KEYS = ['sit', 'lie', 'dance', 'dance2', 'dance3', 'wave', 'wag', 'sleep', 'bow'];
+const wheel = mountWheel(document, { onAction: (k) => doAction(k), onBubble: (k) => { if (state && (mode === 'world' || mode === 'room')) doEmote(k); }, current: () => (ACT.act && !ACT.act.auto ? ACT.act.kind : null) });
+function doAction(kind) { if (!state || !isAction(kind) || drive || (mode !== 'world' && mode !== 'room')) return;
+  if (mode === 'room') RP.stop(); else stopWalk(); player.v = { x: 0, y: 0 }; player.moving = false; ACT.still = 0;
+  const a = startAction(ACT, kind, time); blip(a ? 820 : 520); if (a && kind === 'wave') emoteBubble('me', 'wave', time); }
+const poseFor = (a) => (a?.act ? poseAt(a.act.kind, time - a.act.t0, a.face) : null);
 $('#emotes').onclick = (e) => { const b = e.target.closest('[data-emote]'); if (b) doEmote(b.dataset.emote); };
 function toggleMute() { setMuted(!isMuted()); $('#btn-mute').textContent = isMuted() ? 'Sound off' : 'Sound on'; }
 function togglePhoto() { photo = !photo; document.body.classList.toggle('photo', photo); if (photo) { const a = document.querySelector('#photo-share'); if (a) a.href = F5.shareXUrl('Snap from Inu Verse'); } }
 $('#btn-mute').onclick = () => { initAudio(); toggleMute(); };
-$('#btn-emote').onclick = () => toggleEmotes();
+$('#btn-emote').onclick = () => toggleEmotes(); $('#btn-emote').textContent = 'Actions'; $('#btn-emote').title = 'Sit, dance, wave… (G)';
+document.addEventListener('pointerdown', () => { ACT.still = 0; }, true);
 $('#btn-photo').onclick = () => togglePhoto();
 $('#btn-engage').onclick = () => { initAudio(); uiClick?.(); openPanel('engage'); };
 $('#btn-pools').onclick = () => { initAudio(); uiClick?.(); openPanel('city', { tab: 'pools' }); };
@@ -451,6 +463,7 @@ function updateWorld(dt) {
   { const pet = activePet(state); if (pet && !drive) { if (!petF.id || petF.id !== pet.id) Object.assign(petF, { id: pet.id, x: p.x - 20, y: p.y + 4 }); followStep(petF, p.x - player.dir * 22, p.y + 2, dt); if (petF.love > 0) petF.love -= dt; } else if (drive) Object.assign(petF, { x: p.x, y: p.y }); }
   if (honkT > 0) honkT -= dt;
   if (player.emote) { player.emote.t -= dt; if (player.emote.kind === 'zoomies') { const a = player.emote.t * 5; moveBody(p, Math.cos(a) * 150 * dt, Math.sin(a) * 150 * dt); player.moving = true; player.phase += dt * 20; player.face = Math.cos(a + 1.57) > 0 ? 'right' : 'left'; } if (player.emote.t <= 0) player.emote = null; }
+  stepActor(ACT, dt, time, { moving: player.moving || !!drive, busy: !!panel || !!scene });
   { const vw = innerWidth / ZOOM, vh = innerHeight / ZOOM; stepAlive(ALIVE, dt, { x0: cam.x - vw / 2, y0: cam.y - vh / 2, x1: cam.x + vw / 2, y1: cam.y + vh / 2 }); }
   for (const e of stepAmbient(amb, dt, p, npcs)) { if (e.kind === 'flush') chirp(); if (e.kind === 'fetched') toast(`${e.who} brought the ball back!`, 'good'); }
   if (rng() < dt * 0.08) chirp();
@@ -505,7 +518,7 @@ function renderWorld() {
   const view = { x0: -ox, y0: -oy, x1: -ox + vw, y1: -oy + vh };
   drawGroundLife(ctx, amb, phase); drawAliveGround(ctx, ALIVE, view, phase); feel.drawGround(ctx);
   if (player.clickMark && player.pw.pts.length) drawMark(ctx, player.clickMark, time);
-  const actors = [MWd.crierActor(time, artKey), ...npcs.map((n, i) => ({ ...n, npc: true, idx: i, badge: badgeOf(packOfName(state, n.name)) })), ...(drive ? [] : [{ x: state.player.x, y: state.player.y, coat: state.player.coat, outfit: state.wardrobe.equipped, face: player.face, phase: player.phase, moving: player.moving, name: state.player.name, me: true, badge: badgeOf(myPack(state)), emote: player.emote, art: artKey(state.player.coat, state.wardrobe.equipped), profile: hasCustomLook(state) ? myProfile() : null }]), ...streetPups(), ...presActors(), ...petActors(), ...crewActors(), ...pupActors(), ...MPL.actors(view, state.player)];
+  const actors = [MWd.crierActor(time, artKey), ...npcs.map((n, i) => ({ ...n, npc: true, idx: i, badge: badgeOf(packOfName(state, n.name)) })), ...(drive ? [] : [{ x: state.player.x, y: state.player.y, coat: state.player.coat, outfit: state.wardrobe.equipped, face: player.face, phase: player.phase, moving: player.moving, name: state.player.name, me: true, badge: badgeOf(myPack(state)), emote: player.emote, act: ACT.act, art: artKey(state.player.coat, state.wardrobe.equipped), profile: hasCustomLook(state) ? myProfile() : null }]), ...streetPups(), ...presActors(), ...petActors(), ...crewActors(), ...pupActors(), ...MPL.actors(view, state.player)];
   // one depth-sorted list: static props (culled), dynamic props and actors, by ground y
   const L = -ox - 200, Rt = -ox + vw + 200, Tp = -oy - 60, Bt = -oy + vh + 400, list = [];
   for (const p of mapImg.props) if (p.y > Tp && p.y < Bt) list.push(p);
@@ -525,8 +538,10 @@ function renderWorld() {
     if (a.pupScale) { if (a.customPup) drawProfileShiba(ctx, 0, 0, a.profile, { face: a.face, phase: a.phase, moving: a.moving, name: a.name, scale: a.pupScale, fid: a.name }); else { drawShiba(ctx, 0, 0, { coat: a.coat, outfit: a.outfit, face: a.face, phase: a.phase, moving: a.moving, name: a.name, scale: a.pupScale, art: a.art, fid: a.name, wag: a.wag }); ctx.fillStyle = a.pupPatch; ctx.fillRect(-7 * a.pupScale, -30 * a.pupScale, 14 * a.pupScale, 4 * a.pupScale); ctx.fillStyle = a.pupHex; ctx.fillRect(-7 * a.pupScale, -26 * a.pupScale, 14 * a.pupScale, 3 * a.pupScale); } ctx.restore(); continue; }
     if (a.me) { const gl = statusGlow(state); if (gl) drawFlair(ctx, gl, time); }
     const kt = a.me ? kennelMine() : a.mp ? (KN.remoteKennel(a) ? { tier: KN.remoteKennel(a) } : null) : null; if (kt) { KN.drawAura(ctx, kt.tier, time); KENNEL_TAG.cur = KN.tagFor(kt.tier, kt.preview); }
-    if (a.profile) { drawProfileShiba(ctx, 0, 0, a.profile, { face: a.face, phase: a.phase, moving: a.moving, name: a.name, scale: 1.5, badge: a.badge, fid: a.me ? 'me' : a.name, emote: a.emote?.kind }); if (a.emote) drawEmote(ctx, 0, -110, a.emote.kind, time); }
-    else drawShiba(ctx, 0, 0, { coat: a.coat, outfit: a.outfit, face: a.face, phase: a.phase, moving: a.moving, name: a.name, scale: 1.5, badge: a.badge, art: a.art, emote: a.emote?.kind, fid: a.me ? 'me' : a.name || a.id, wag: a.wag || (mm?.wag ? 1 : 0) });
+    const pz = poseFor(a);
+    if (a.profile) { drawProfileShiba(ctx, 0, 0, a.profile, { face: a.face, phase: a.phase, moving: a.moving, name: a.name, scale: 1.5, badge: a.badge, fid: a.me ? 'me' : a.name, emote: a.emote?.kind, pose: pz }); if (a.emote) drawEmote(ctx, 0, -110, a.emote.kind, time); }
+    else drawShiba(ctx, 0, 0, { coat: a.coat, outfit: a.outfit, face: a.face, phase: a.phase, moving: a.moving, name: a.name, scale: 1.5, badge: a.badge, art: a.art, emote: a.emote?.kind, fid: a.me ? 'me' : a.name || a.id, wag: a.wag || (mm?.wag ? 1 : 0), pose: pz });
+    if (pz) drawPoseFx(ctx, pz, 0, 0, 1.5, time, pz.face);
     KENNEL_TAG.cur = null;
     if (a.worker) { drawVest(ctx, a.face); drawTool(ctx, a.worker); }
     if (mm?.umbrella) MWd.drawUmbrella(ctx, time, a.idx || 0); else if (mm?.zz && !a.emote) MWd.drawZz(ctx, time + (a.idx || 0)); if (a.crier) MWd.drawBell(ctx, time, crierRing > 0);
@@ -613,9 +628,14 @@ let roomBuild = null; const gateSt = makePortalState(); const GATE_EXITS = HUB_G
 const roomDoorById = (id) => doorList(state).find((q) => q.id === id) || interactables(state).find((q) => q.id === id);
 function drawRoomActor(c, a, snap) {
   c.save(); c.translate(snap(a.x), snap(a.y)); c.scale(0.5, 0.5);
-  if (a.me) { const look = hasCustomLook(state) ? myProfile() : null, em = player.emote;
-    if (look) { drawProfileShiba(c, 0, 0, look, { face: player.face, phase: player.phase, moving: player.moving, name: state.player.name, scale: 1.5, badge: badgeOf(myPack(state)), fid: 'me', emote: em?.kind }); if (em) drawEmote(c, 0, -110, em.kind, time); }
-    else drawShiba(c, 0, 0, { coat: state.player.coat, outfit: state.wardrobe.equipped, face: player.face, phase: player.phase, moving: player.moving, name: state.player.name, scale: 1.5, badge: badgeOf(myPack(state)), art: artKey(state.player.coat, state.wardrobe.equipped), emote: em?.kind, fid: 'me' }); }
+  if (a.me) { const look = hasCustomLook(state) ? myProfile() : null, em = player.emote, pz = poseFor({ act: ACT.act, face: player.face });
+    if (look) { drawProfileShiba(c, 0, 0, look, { face: player.face, phase: player.phase, moving: player.moving, name: state.player.name, scale: 1.5, badge: badgeOf(myPack(state)), fid: 'me', emote: em?.kind, pose: pz }); if (em) drawEmote(c, 0, -110, em.kind, time); }
+    else drawShiba(c, 0, 0, { coat: state.player.coat, outfit: state.wardrobe.equipped, face: player.face, phase: player.phase, moving: player.moving, name: state.player.name, scale: 1.5, badge: badgeOf(myPack(state)), art: artKey(state.player.coat, state.wardrobe.equipped), emote: em?.kind, fid: 'me', pose: pz });
+    if (pz) drawPoseFx(c, pz, 0, 0, 1.5, time, pz.face); if (em && !look) drawEmote(c, 0, -14, em.kind, time); }
+  else if (a.mp) { const pz = poseFor(a); // live players in the same room/zone (Round 3)
+    if (a.profile) drawProfileShiba(c, 0, 0, a.profile, { face: a.face, phase: a.phase, moving: a.moving, name: a.name, scale: 1.5, fid: a.name, emote: a.emote?.kind, pose: pz });
+    else drawShiba(c, 0, 0, { coat: a.coat, outfit: a.outfit, face: a.face, phase: a.phase, moving: a.moving, name: a.name, scale: 1.5, art: a.art, emote: a.emote?.kind, fid: a.id, pose: pz });
+    if (pz) drawPoseFx(c, pz, 0, 0, 1.5, time, pz.face); if (a.emote) drawEmote(c, 0, a.profile ? -110 : -14, a.emote.kind, time); }
   else drawShiba(c, 0, 0, { coat: a.coat, outfit: a.outfit || {}, face: a.face, phase: a.phase, moving: a.moving, name: a.name, scale: 1.5, art: artKey(a.coat, a.outfit || {}), fid: a.name, wag: !a.moving });
   c.restore(); }
 const RP = makeRoomPlay({ player, zoom: () => ZOOM, time: () => time, blocked: () => !!panel || feel.talking() || mode !== 'room',
@@ -625,7 +645,7 @@ const RP = makeRoomPlay({ player, zoom: () => ZOOM, time: () => time, blocked: (
   say: (n, t) => feel.say(n, t, blip), emote: (k) => { player.emote = { kind: k, t: 1.4 }; emoteBubble('me', k, time); }, bell: () => blip(1320), blip: (f) => blip(f),
   chat: (id, t) => chatSay(id, t, time), fade: () => feel.fade(), dust: (x, y) => feel.dust(x, y), portal: (ex) => roomPortal(ex),
   drawGround: (c) => feel.drawGround(c), drawAir: (c) => feel.drawAir(c), drawMark: (c, m, t) => drawMark(c, m, t), bubble: (c, x, y, t) => feel.bubble(c, x, y, t),
-  drawChat: (c, res) => drawChat(c, res, time), drawActor: drawRoomActor, night: () => !!globalThis.__inuNight, arrived: (sc) => roomUi(sc) });
+  drawChat: (c, res) => drawChat(c, res, time), drawActor: drawRoomActor, remotes: (view, me) => MPL.actors(view, me), anchor: (id) => MPL.anchor(id), night: () => !!globalThis.__inuNight, arrived: (sc) => roomUi(sc) });
 function roomUi(sc) { $('#minimap-wrap').hidden = true; wayUi(false); toast(sc.name, ''); globalThis.__roomVisits = (globalThis.__roomVisits || 0) + 1; }
 function enterRoom(id, at, door = null) { if (mode === 'room' && RP.id === id) return; stopWalk(); keys.clear(); player.v = { x: 0, y: 0 }; feel.fade(); blip(660);
   if (door) { const o = outsideOf(door); Object.assign(state.player, { x: o.x, y: o.y }); } // saves/reloads/Back-to-Verse always land you outside, never inside a room
@@ -637,7 +657,7 @@ function roomPortal(ex) { if (RP.R.busy) return; const r = resolveExit(ex, { out
   RP.R.busy = true; RP.stop(); feel.fade(); blip(520);
   setTimeout(() => { RP.R.busy = false; mode = 'world'; Object.assign(state.player, { x: r.x, y: r.y }); player.face = r.face; player.v = { x: 0, y: 0 }; stopWalk(); doorExit(doorSt, time); gateSt.tile = Math.floor(r.y / TILE) * 1000 + Math.floor(r.x / TILE); gateSt.until = time + 0.8;
     cam.x = r.x; cam.y = r.y; $('#minimap-wrap').hidden = false; wayUi(true); persist(); }, 70); }
-function updateRoom(dt) { feel.step(dt); RP.update(dt);
+function updateRoom(dt) { feel.step(dt); RP.update(dt); stepActor(ACT, dt, time, { moving: player.moving, busy: !!panel || feel.talking() });
   const pr = $('#prompt'), tch = COARSE.matches, s = !panel && RP.nearSpot(); if (s) { pr.hidden = false; pr.innerHTML = `<kbd${tch ? ' class="ta"' : ''}>${tch ? 'A' : 'E'}</kbd>${esc(s.label || s.name)}`; setA((s.verb || 'USE').toUpperCase()); } else { pr.hidden = true; setA(''); } }
 globalThis.__goScene = (id, at) => { mode = 'room'; RP.enter(id, at); roomUi(RP.sc); };
 globalThis.__room = () => mode === 'room' ? { id: RP.id, x: RP.R.p.x, y: RP.R.p.y, tx: Math.floor(RP.R.p.x / 32), ty: Math.floor(RP.R.p.y / 32), pts: player.pw.pts.length, face: player.face, npcs: RP.R.npcs.length, busy: RP.R.busy, cam: { ...RP.R.cam } } : null;
@@ -1189,7 +1209,8 @@ function frame(now) {
   requestAnimationFrame(frame);
 }
 // Live multiplayer: other players in the same room ('city' while walking the world). Off unless /api/config has a realtimeUrl.
-const MPL = createMultiplayer({ toast, now: () => time, getLocal: () => state && { room: mode === 'world' ? 'city' : null, x: state.player.x, y: state.player.y, f: player.face, m: player.moving, r: player.running, d: !!drive, emote: player.emote,
+const MPL = createMultiplayer({ toast, onActions: () => wheel.open(), now: () => time, getLocal: () => state && { room: mode === 'world' ? 'city' : mode === 'room' && RP.id ? 'r-' + RP.id : null, roomName: mode === 'room' ? RP.sc?.name : null,
+  x: mode === 'room' ? RP.R.p.x : state.player.x, y: mode === 'room' ? RP.R.p.y : state.player.y, f: player.face, m: player.moving, r: player.running, d: !!drive, emote: player.emote, act: ACT.act, p: poseCodeOf(ACT),
   name: state.player.name, token: K.kp?.session || null, look: { coat: state.player.coat, eq: state.wardrobe.equipped, pl: mpProfile() } } });
 MPL.start().catch(() => {});
 // ---- $KIBBLE town mood (src/kibblemood.js + src/moodworld.js): one shared /api/kibble-mood fetch per minute, paused when hidden ----
@@ -1225,3 +1246,4 @@ document.getElementById('zin')?.addEventListener('click', () => setZoom(stepZoom
 window.__inu = { guide, open: (k, o) => openPanel(k, o), get time() { return time; }, get player() { return player; }, get zoom() { return ZOOM; }, setZoom, president: pres, presVisit: (k) => startVisit(pres, k, { dayLen: DAY_LEN }), setHour: (h) => { dayOffset = timeForHour(h) - time; }, setRain: (r) => { amb.rain = amb.rainTarget = r; amb.weatherT = 999; }, get amb() { return amb; }, get npcs() { return npcs; }, get mood() { return { ...MOOD.current, shown: MWd.MW.mood }; }, emote: (k) => doEmote(k), cam, get state() { return state; }, get mode() { return mode; }, get panel() { return panel?.kind; }, get panelObj() { return panel; }, mp: MPL };
 // Inu Arcade inside the desktop overlay: its 🏠 button asks us to close the overlay instead of reloading.
 addEventListener('message', (e) => { if (e.origin === new URL(ARCADE.url).origin && e.data?.type === 'inu:back-to-verse' && arcadeOpen) { closeArcade(); try { e.source?.postMessage({ type: 'inu:verse-closed' }, e.origin); } catch {} } });
+Object.assign(window.__inu, { act: ACT, doAction: (k) => doAction(k), wheel }); // Round 3 test hooks (actions + wheel)

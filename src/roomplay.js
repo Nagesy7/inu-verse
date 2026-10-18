@@ -75,9 +75,10 @@ export function makeRoomPlay(D) {
     if (P.clickMark && P.pw.pts.length) D.drawMark(c, P.clickMark, t);
     const list = sceneProps(sc, t, night).filter((p) => p.y > -oy - 80 && p.y < -oy + vh + 120);
     for (const n of R.npcs) list.push({ y: n.y + 6, a: { ...n, npc: true } });
+    for (const a of D.remotes?.({ x0: -ox, y0: -oy, x1: -ox + vw, y1: -oy + vh }, R.p) || []) list.push({ y: a.y + 6, a }); // live players in this room/zone
     list.push({ y: R.p.y + 6, a: { me: true, x: R.p.x, y: R.p.y } }); list.sort((a, b) => a.y - b.y);
     for (const it of list) { if (!it.a) { it.d(c); continue; } D.drawActor(c, it.a, snap); }
-    D.drawAir(c); D.drawChat(c, (id) => id === 'me' ? { x: R.p.x, y: R.p.y - 60 } : (() => { const n = R.npcs.find((q) => q.name === id); return n && { x: n.x, y: n.y - 60 }; })());
+    D.drawAir(c); D.drawChat(c, (id) => id === 'me' ? { x: R.p.x, y: R.p.y - 60 } : (() => { const n = R.npcs.find((q) => q.name === id); return n ? { x: n.x, y: n.y - 60 } : D.anchor?.(id) || null; })());
     const s = !D.blocked() && nearestSpot(sc, R.p.x, R.p.y); if (s) D.bubble(c, (s.tx + 0.5) * ST, (s.ty + 0.5) * ST - 62, t); // above your head (you stand on the spot)
     c.restore(); if (night) { c.setTransform(dpr, 0, 0, dpr, 0, 0); c.fillStyle = 'rgba(20,24,70,.35)'; c.fillRect(0, 0, SW, SH); }
     globalThis.__roomCam = { ox, oy, Z }; }
