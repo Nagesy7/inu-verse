@@ -95,3 +95,26 @@ test('history helpers', () => {
   assert.equal(addSample(h, 15 * 240_000 + 1000, { price: 2 }).length, 16, 'samples at most every 4 min');
   assert.equal(parseCurve(Buffer.alloc(10).toString('base64')), null);
 });
+test('server: changes fall back to GeckoTerminal, then pump.fun candles, then our samples; never invented', async () => {
+  const { changesFromGecko, changesFromPumpCandles, candleChange } = await import('../api/kibble-mood.js');
+  const H = 3600_000, now = 100 * H;
+  // pump.fun candles only exist for hours with trades: carry the last close forward; younger than the window -> null
+  const cs = [{ timestamp: 60 * H, open: '1', close: '1' }, { timestamp: 75 * H, open: '1', close: '2' }, { timestamp: 99.5 * H, open: '2', close: '2.2' }];
+  assert.equal(candleChange(cs, now, 30 * H, 2.2).toFixed(1), '120.0', 'price 30h ago = close of the last candle before it'); assert.equal(candleChange(cs, now, 24 * H, 2.2).toFixed(1), '10.0');
+  assert.equal(candleChange([...cs.slice(0, 2), { timestamp: 99.5 * H, open: '1.1', close: '2.2' }], now, 0.3 * H, 2.2).toFixed(1), '100.0', 'T inside a candle -> its open');
+  assert.equal(candleChange(cs, now, 48 * H, 2.2), null, 'coin younger than 48h -> null'); assert.equal(candleChange([], now, H, 1), null); assert.equal(candleChange(cs, now, H, null), null);
+  const gk = (h1, h24) => ({ ok: true, json: async () => ({ data: [{ attributes: { reserve_in_usd: '20', price_change_percentage: { h1, h24 } } }] }) });
+  assert.deepEqual(await changesFromGecko(async () => gk('1.5', '-3')), { change1h: 1.5, change24h: -3, source: 'geckoterminal' });
+  assert.deepEqual(await changesFromGecko(async () => gk(null, '')), { change1h: null, change24h: null, source: 'geckoterminal' });
+  // full handler: DexScreener has no pair (bonding-curve coin), pump.fun gives price; Gecko down -> candles fill both
+  let t = 200 * H; const st = { calls: [] }; const f = async (u) => { u = String(u); st.calls.push(u);
+    if (u.includes('dexscreener')) return { ok: true, json: async () => [] };
+    if (u.includes('geckoterminal')) return st.geckoDown ? { ok: false, status: 429 } : gk('2', null);
+    if (u.includes('/candles')) return st.candlesDown ? { ok: false, status: 500 } : { ok: true, json: async () => [{ timestamp: 150 * H, open: '0.000002', close: '0.000002' }] };
+    if (u.includes('pump.fun')) return { ok: true, json: async () => ({ usd_market_cap: 3000, total_supply_str: '1000000000000000', base_decimals: 6 }) };
+    return { ok: false, status: 500 }; };
+  const kv = memoryKv(() => t), h = makeHandler({ env: {}, kv, f, now: () => t });
+  let r = await call(h); assert.equal(r.body.change1h, 2, 'gecko h1'); assert.equal(r.body.change24h, 50, 'gecko had no h24 -> candles (0.000003 vs 0.000002)'); assert.equal(r.body.changeSource, '1h: geckoterminal · 24h: pump.fun candles');
+  st.geckoDown = true; st.candlesDown = true; t += 61_000; r = await call(h); assert.equal(r.body.change1h, null); assert.equal(r.body.change24h, null, 'no source, no samples old enough -> stays null');
+  assert.equal(r.body.samples, 1, 'samples persisted in Upstash across calls (one per 4 min)'); assert.ok(JSON.parse(await kv.get(HIST)).length >= 1);
+});

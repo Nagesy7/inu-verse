@@ -31,6 +31,23 @@ export async function fromChain(f, env) { const r = await f(rpcUrl(env), { metho
   const priceSol = (c.virtualSolReserves / 1e9) / (c.virtualTokenReserves / 10 ** DEC), usd = await solUsd(f);
   return { source: "onchain", priceSol, price: usd ? priceSol * usd : null, change1h: null, change24h: null, liquidityUsd: usd ? (c.realSolReserves / 1e9) * usd : null, graduated: c.complete }; }
 
+// ---- % change fallbacks (keyless, public). Used only when the price source gave no change. Never invented: no data -> null.
+// GeckoTerminal indexes the pump.fun bonding curve as a pool and publishes h1/h24 price change (computed from real trades).
+export async function changesFromGecko(f) { const r = await f(`https://api.geckoterminal.com/api/v2/networks/solana/tokens/${MINT}/pools?page=1`, { headers: { accept: "application/json" } });
+  if (!r.ok) throw new Error("geckoterminal " + r.status); const a = ((await r.json())?.data || []).map((d) => d?.attributes).filter((x) => x?.price_change_percentage);
+  if (!a.length) return null; const p = a.sort((x, y) => (n(y.reserve_in_usd) || 0) - (n(x.reserve_in_usd) || 0))[0], c = p.price_change_percentage;
+  return { change1h: n(c.h1), change24h: n(c.h24), source: "geckoterminal" }; }
+// pump.fun 1h candles exist only for hours with trades, so the price at time T is the close of the last candle at or before T
+// (no trade since = same price). If the coin has no candle at or before T (younger than the window), the change is null.
+export function candleChange(candles, now, ago, price) { if (price == null || !Array.isArray(candles) || !candles.length) return null; const T = now - ago, H = 3600_000;
+  const c = candles.map((k) => ({ t: Number(k.timestamp), open: n(k.open), close: n(k.close) })).filter((k) => Number.isFinite(k.t) && k.close > 0).sort((a, b) => a.t - b.t);
+  let at = null; for (const k of c) { if (k.t + H <= T) at = k.close; else { if (k.t <= T && k.open > 0) at = k.open; break; } } // a candle containing T: use its open (the price before its trades)
+  return at ? ((price - at) / at) * 100 : null; }
+export async function changesFromPumpCandles(f, now, price) { if (price == null) return null;
+  const r = await f(`https://swap-api.pump.fun/v2/coins/${MINT}/candles?interval=1h&limit=1000&currency=USD&createdTs=${now - 30 * 86400_000}`, { headers: { accept: "application/json", "user-agent": "Mozilla/5.0 (InuVerse mood)" } });
+  if (!r.ok) throw new Error("pump.fun candles " + r.status); const l = await r.json(); if (!Array.isArray(l) || !l.length) return null;
+  return { change1h: candleChange(l, now, 3600_000, price), change24h: candleChange(l, now, 24 * 3600_000, price), source: "pump.fun candles" }; }
+
 // change vs the sample nearest to `ago` ms back, only if one exists within the tolerance window
 export function changeFrom(hist, now, price, ago, tol, unit = "usd") { if (price == null) return null; let best = null;
   for (const s of hist || []) { const v = s[unit]; if (v == null) continue; const d = Math.abs(now - ago - s.t); if (d <= tol && (!best || d < best.d)) best = { d, v }; }
@@ -41,13 +58,17 @@ export function addSample(hist, now, q) { const h = (hist || []).filter((s) => n
 export async function refresh({ prev, hist, now, f, env }) { let q = null; const errors = [];
   for (const src of [() => fromDex(f), () => fromPump(f), () => fromChain(f, env)]) { try { q = await src(); if (q) break; } catch (e) { errors.push(redact(e?.message || String(e), env).slice(0, 80)); } }
   if (!q) return { resp: prev?.resp ? { ...prev.resp, stale: true, cached: true } : { price: null, change1h: null, change24h: null, mood: FALLBACK, updatedAt: null, stale: true, source: "none", mint: MINT }, state: prev?.state || null, hist, at: prev?.at || 0, failed: true, errors };
-  const h = addSample(hist, now, q), unit = q.price != null ? "usd" : "sol", p = q.price ?? q.priceSol, derived = q.change1h == null && q.change24h == null;
-  if (q.change1h == null) q.change1h = changeFrom(hist, now, p, 3600_000, 20 * 60_000, unit);
-  if (q.change24h == null) q.change24h = changeFrom(hist, now, p, 24 * 3600_000, 3 * 3600_000, unit);
+  const h = addSample(hist, now, q), unit = q.price != null ? "usd" : "sol", p = q.price ?? q.priceSol, src = { h1: q.change1h != null ? q.source : null, h24: q.change24h != null ? q.source : null };
+  // fill missing changes: GeckoTerminal -> pump.fun candles (USD price only) -> our own Upstash price samples. Each field keeps the first real value.
+  const fill = (c) => { if (!c) return; if (q.change1h == null && c.change1h != null) { q.change1h = c.change1h; src.h1 = c.source; } if (q.change24h == null && c.change24h != null) { q.change24h = c.change24h; src.h24 = c.source; } };
+  if (q.change1h == null || q.change24h == null) { try { fill(await changesFromGecko(f)); } catch (e) { errors.push(redact(e?.message || String(e), env).slice(0, 80)); } }
+  if ((q.change1h == null || q.change24h == null) && q.price != null) { try { fill(await changesFromPumpCandles(f, now, q.price)); } catch (e) { errors.push(redact(e?.message || String(e), env).slice(0, 80)); } }
+  fill({ change1h: changeFrom(hist, now, p, 3600_000, 20 * 60_000, unit), change24h: changeFrom(hist, now, p, 24 * 3600_000, 3 * 3600_000, unit), source: "Inu Verse price samples" });
+  const changeSource = src.h1 === src.h24 ? src.h1 : [src.h1 && "1h: " + src.h1, src.h24 && "24h: " + src.h24].filter(Boolean).join(" · ") || null;
   const raw = classify(q.change1h, q.change24h), state = stepMood(prev?.state, raw);
   const r1 = (x, d = 2) => x == null ? null : Math.round(x * 10 ** d) / 10 ** d;
   const resp = { mint: MINT, symbol: "KIBBLE", price: q.price ?? null, priceSol: q.priceSol ?? null, change1h: r1(q.change1h), change24h: r1(q.change24h), mood: state.mood, rawMood: raw, pendingMood: state.pending,
-    updatedAt: new Date(now).toISOString(), source: q.source, changeSource: derived ? "computed from Inu Verse price samples" : q.source, liquidityUsd: r1(q.liquidityUsd), marketCapUsd: r1(q.marketCapUsd), stale: false };
+    updatedAt: new Date(now).toISOString(), source: q.source, changeSource, samples: h.length, samplesSinceMin: h.length ? Math.round((now - h[0].t) / 60000) : 0, liquidityUsd: r1(q.liquidityUsd), marketCapUsd: r1(q.marketCapUsd), stale: false };
   return { resp, state, hist: h, at: now }; }
 
 let MEM = null; // fallback store when Upstash env is missing (local dev)
