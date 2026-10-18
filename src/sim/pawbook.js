@@ -10,6 +10,7 @@ import { guardedFetch, SIM_UNIT, FirewallError } from './firewall.js';
 import { OPT_IN_KEY } from './engine.js';
 import { POLICE, fineFor, heldNow, canPolice } from './police.js';
 import { COURT, hear } from './court.js';
+import { MED, AILMENTS, callAt, canInjure, canTreat, hurtNow, slowFactor, freshMed } from './medical.js';
 export const STORE_KEY = 'inu.sim.pm.v1', MAX_UNSYNCED = 200;
 const hex = (bytes) => { const a = new Uint8Array(bytes); globalThis.crypto.getRandomValues(a); return Array.from(a, (b) => b.toString(16).padStart(2, '0')).join(''); };
 
@@ -29,7 +30,7 @@ export function createPawWallet({ store = globalThis.localStorage, now = () => D
   const w = {
     get pid() { return st.pid; }, account: acct,
     state: () => { const c = cur(), ps = c.police || {}; return { balance: c.balance, joined: c.joined, seq: c.seq, head: c.head, unsynced: st.entries.length, anchoredSeq: st.base.seq, server: status.server, note: status.note,
-      held: heldNow(ps, now()) ? { ...ps.held, leftMs: ps.held.ts + ps.held.sec * 1000 - now() } : null, heldRecord: ps.held || null, owed: { ...(ps.owed || {}) }, citesToday: ps.day === Math.floor(now() / 864e5) ? ps.cites : 0, verdictsToday: ps.court?.day === Math.floor(now() / 864e5) ? ps.court.verdicts : 0 }; },
+      held: heldNow(ps, now()) ? { ...ps.held, leftMs: ps.held.ts + ps.held.sec * 1000 - now() } : null, heldRecord: ps.held || null, owed: { ...(ps.owed || {}) }, citesToday: ps.day === Math.floor(now() / 864e5) ? ps.cites : 0, verdictsToday: ps.court?.day === Math.floor(now() / 864e5) ? ps.court.verdicts : 0, med: medState(c.med, now()) }; },
     joined: () => cur().joined, balance: () => cur().balance, entries: () => st.entries.map((e) => ({ ...e })),
     join() { if (cur().joined) return null; try { store?.setItem(OPT_IN_KEY, 'yes'); } catch {} return append('wallet.join', acct(), acct()); },
     leave() { if (!cur().joined) return null; try { store?.removeItem(OPT_IN_KEY); } catch {} return append('wallet.leave', acct(), acct()); },
@@ -54,6 +55,20 @@ export function createPawWallet({ store = globalThis.localStorage, now = () => D
       const v = append('court.verdict', acct(), COURT.judge, 0, { for: Number(seq), ground, outcome, opened: Math.round(opened) });
       const paid = cur().police.file[seq]?.paid || 0, refund = outcome === 'dismissed' && paid ? append('pm.refund', acct(), ISSUER, paid, { for: Number(seq) }) : null;
       return { verdict: v, outcome, refund, refunded: refund ? paid : 0 }; },
+    // Phase 5 clinic. Cartoon bumps need the side economy AND bumps switched on; every rule is the server's (medical.js).
+    bumpsOn() { const c = cur(); if (!c.joined) throw new FirewallError('optin', 'join the side economy first'); return c.med?.opted ? null : append('med.optin', acct(), acct()); },
+    bumpsOff() { return cur().med?.opted ? append('med.optout', acct(), acct()) : null; },
+    canInjure: () => canInjure(cur().med, now(), cur().joined),
+    injure(ail, tx, ty) { const a = AILMENTS[ail]; if (!a) throw new FirewallError('evidence', 'unknown bump'); return append('med.injury', acct(), a.cause, 0, { ail, tx, ty, sec: a.sec }); },
+    heal(how) { const h = cur().med?.hurt; return h ? append('med.heal', acct(), acct(), 0, { for: h.seq, how }) : null; },
+    // free treatment by the clinic doctor (never blocked: no balance needed); chipping in the co-pay is a separate choice
+    care() { const h = cur().med?.hurt; if (!h) throw new FirewallError('harm', 'nothing to treat'); return append('med.care', acct(), MED.doctor, 0, { for: h.seq }); },
+    copay(careSeq) { return append('pm.copay', SINK, acct(), MED.copay, { for: Number(careSeq) }); },
+    canTreat: (slot) => cur().joined && canTreat(cur().med, now(), slot),
+    // a medic shift: treat the sim pup on this call, then the normal sim wage (shared cap, cooldown, diminishing returns)
+    treatCall(slot, slips = 0) { const c = callAt(slot); if (!cur().joined) throw new FirewallError('optin', 'join the side economy first'); if (!c) throw new FirewallError('evidence', 'no such call');
+      const t = append('med.treat', c.pt, acct(), 0, { call: c.slot, ail: c.ail, slips }); const q = w.quote('wage'); let wage = null;
+      if (q.ok) wage = append('pm.wage', acct(), ISSUER, q.amount, { why: 'medic shift', for: t.seq }); return { treat: t, wage, reason: q.ok ? '' : q.reason }; },
     // push unsynced entries to the anchor; on a fork the server checkpoint wins (it is the record)
     async sync() {
       try {
@@ -68,4 +83,7 @@ export function createPawWallet({ store = globalThis.localStorage, now = () => D
   };
   return w;
 }
-const cpOf = (a) => ({ seq: a.seq, head: a.head, ts: a.ts, balance: a.balance, joined: a.joined, flows: a.flows || {}, police: a.police || freshCheckpoint().police });
+const cpOf = (a) => ({ seq: a.seq, head: a.head, ts: a.ts, balance: a.balance, joined: a.joined, flows: a.flows || {}, police: a.police || freshCheckpoint().police, med: a.med || freshMed() });
+function medState(md0, t) { const md = { ...freshMed(), ...(md0 || {}) }, today = md.day === Math.floor(t / 864e5);
+  return { bumps: !!md.opted, hurt: md.hurt ? { ...md.hurt, live: hurtNow(md, t), leftMs: Math.max(0, md.hurt.ts + md.hurt.sec * 1000 - t), label: AILMENTS[md.hurt.ail]?.label } : null, slow: slowFactor(md, t),
+    injuriesToday: today ? md.injuries : 0, treatsToday: today ? md.treats : 0, calls: [...md.calls], cares: { ...md.cares } }; }

@@ -19,7 +19,7 @@ import { ISSUER } from './pawmarks.js';
 import { DAY_MS } from './economy.js';
 export const COURT = Object.freeze({ trialSec: 90, verdictsPerDay: 3, windowMs: DAY_MS, clearViewTiles: 4, slackTiles: 1, judge: 'sim:ct-judge' });
 export const BENCH = Object.freeze([
-  { id: 'sim:ct-judge', name: 'Judge Rosalind Barkwell', role: 'judge', title: 'Presiding Judge', coat: 'cream', outfit: { bottom: 'slacks_navy', feet: 'loafers' }, post: [41.4, 71.7],
+  { id: 'sim:ct-judge', name: 'Judge Rosalind Barkwell', role: 'judge', title: 'Presiding Judge', coat: 'cream', outfit: { bottom: 'slacks_navy', feet: 'loafers' }, post: [42.25, 72.0],
     line: 'This court reads the record. It never rewrites it.' },
   { id: 'sim:ct-clerk', name: 'Clerk Tobias Inkpaw', role: 'clerk', title: 'Clerk of the Court', coat: 'tan', outfit: { bottom: 'chinos', feet: 'loafers' }, post: [45.6, 71.7],
     line: 'Every exhibit comes straight from the anchored log. Hashes and all.' },

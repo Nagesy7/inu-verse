@@ -11,7 +11,7 @@ test('street layout copy matches world.js; zebra crossings are road tiles; kiosk
   for (const r of W.ROADS) for (let dy = 0; dy < 3; dy++) for (const zx of [W.AVENUE - 2, W.AVENUE + 4]) { assert.ok(isCrossing(zx, r + dy)); assert.equal(W.MAP[r + dy][zx], T.ROAD); }
   assert.ok(!isCrossing(10, 43) && !isCrossing(W.AVENUE + 1, 25) && isCrossing(W.AVENUE + 1, 41));
   for (const p of [PL.PRECINCT, PL.RANGER_HUT]) { for (let x = p.x; x < p.x + p.w; x++) assert.ok(W.isSolid(x, p.y)); assert.ok(!W.isSolid(p.tx, p.ty)); assert.ok(W.findPath(31, 70, p.tx, p.ty), p.id); }
-  const ids = W.interactables({ plots: {}, homeShare: {} }).filter((i) => i.kind === 'bureau').map((i) => i.id + ':' + (i.tab || '')); assert.deepEqual(ids.sort(), ['bureau:', 'court:court', 'precinct:precinct', 'rangers:rangers']); });
+  const ids = W.interactables({ plots: {}, homeShare: {} }).filter((i) => i.kind === 'bureau').map((i) => i.id + ':' + (i.tab || '')); assert.deepEqual(ids.sort(), ['bureau:', 'clinic:clinic', 'court:court', 'precinct:precinct', 'rangers:rangers']); });
 test('patrols: 4 police + 3 rangers, original names, every patrol point walkable, smooth time-only motion', () => {
   assert.equal(OFFICERS.filter((o) => o.force === 'police').length, 4); assert.equal(OFFICERS.filter((o) => o.force === 'rangers').length, 3);
   for (const o of OFFICERS) { for (let t = 0; t < 120; t += 0.5) { const p = officerPose(o, t); assert.ok(!W.isSolid(Math.floor(p.x / 32), Math.floor(p.y / 32)), `${o.id} at t=${t}`); }

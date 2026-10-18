@@ -6,7 +6,7 @@ import { PAWMARK } from './pawmarks.js';
 import { CURRENCY } from './currency.js';
 import { POLICE } from './police.js';
 export const SEVERITY = ['critical', 'high', 'medium', 'low', 'info'];
-export const PHASE = 'Phase 4: courts (Paw Audit Bureau re-run)';
+export const PHASE = 'Phase 5: medical (Paw Audit Bureau re-run)';
 
 // Standing findings: the Bureau's own reading of the code. `when` decides from the static scan whether it still applies.
 export const STANDING = [
@@ -21,7 +21,7 @@ export const STANDING = [
   { id: 'PAB-003', severity: 'low', check: 4, title: 'A Bones to practice-KIBBLE swap exists in the Launch Hall', when: (S) => S.context.bonesSwap,
     detail: 'The main game converts Bones into practice KIBBLE for the Launch Hall trainer. It is the obvious route a side currency would try to reach.',
     repro: ['Open the Launch Hall.', 'Use "Swap bones to practice KIBBLE".'],
-    fix: `${CURRENCY.name} never become Bones, so they cannot reach the swap. The main-game module is deny-listed, the currency has no conversion export, and the anchor accepts only join, leave, wage, fine, bail, police, verdict and refund entries (a refund only returns a dismissed record's own fine or bail).`, status: 'guarded' },
+    fix: `${CURRENCY.name} never become Bones, so they cannot reach the swap. The main-game module is deny-listed, the currency has no conversion export, and the anchor accepts only join, leave, wage, fine, bail, police, verdict, refund and clinic entries (a refund only returns a dismissed record's own fine or bail; the optional clinic co-pay is destroyed).`, status: 'guarded' },
   { id: 'PAB-004', severity: 'low', check: 2, title: 'A grep alone misses URLs built at runtime',
     detail: 'A static scan finds literal paths only. A URL assembled from pieces would slip past it.',
     repro: ['Build a URL from string pieces inside sim code.', 'The grep does not see the endpoint.'],
@@ -48,9 +48,13 @@ export const STANDING = [
   { id: 'PAB-015', severity: 'low', check: 7, title: 'A modified client can win back a fine it made up for itself',
     detail: `Citations are still spotted in the browser (PAB-012). A modified client could post a citation against itself where an officer really was 4 to 5 tiles away, pay the fine, then win it back in court with "too far to see". It ends exactly where it started: a refund is always exactly what that record paid, once, so no wallet, pair of wallets or loop of self-made records can gain a single ${CURRENCY.name}. Records with no officer within ${POLICE.seeTiles + 1} tiles on the patrol schedule are inadmissible.`,
     repro: ['Post a forged police.cite + pm.fine for your own wallet (officer 4.5 tiles away on the patrol schedule).', 'Contest it: dismissed, the same 5 PM comes back. Net change 0.', 'Forge one with no officer nearby: the court refuses it (422, kind "collusion").'],
-    fix: 'Refunds capped at what was paid, once per record, inadmissibility check on the patrol schedule, 3 verdicts a day (court.js, shared by client and server). Moving detection server-side would close it fully (see PAB-012).', status: 'mitigated' },
+    fix: 'Refunds capped at what was paid, once per record, inadmissibility check on the patrol schedule, 3 verdicts a day (court.js, shared by client and server). Moving detection server-side would close it fully (see PAB-012).', status: 'accepted (President Inu)' },
+  { id: 'PAB-018', severity: 'low', check: 11, title: 'Medic shifts are worked in the browser',
+    detail: `Like the desk and ranger shifts (PAB-009), the server cannot see the player walk to the sim pup or tap the treatment steps. A scripted client could claim a medic wage for each open call without walking over. It still needs a real call from the fixed timetable (one every ${2} min, each once), at most ${6} calls a day, and every medic wage is an ordinary sim wage inside the same daily cap, cooldown and diminishing returns as every other job, so it can never earn more than honest shifts would.`,
+    repro: ['Post med.treat for the open call + pm.wage {why: "medic shift"} straight to /api/sim-log.', 'Accepted only for the call that is open, once, inside the shared wage cap; a treatment of yourself, another player or the wrong pup is refused (422).'],
+    fix: 'Server-side call timetable, once-per-call, 6 calls a day and the shared wage rules (medical.js + economy.js, shared by client and server). Server-issued tasks would close it fully.', status: 'mitigated (optional: President Inu)' },
   { id: 'PAB-005', severity: 'info', check: 6, title: 'The corrupt-cop branch is not built yet',
-    detail: 'Phase 4 built the courthouse, so check 7 (trial and evidence) is now enforced against real trials on anchored evidence, like check 11 for arrests. Check 6 still runs against the framework guards the corrupt-cop branch will use (rate limits, diminishing returns, pair flow caps). Bribes exist only as a ledger primitive between sim agents.',
+    detail: 'Phase 4 built the courthouse, so check 7 (trial and evidence) is now enforced against real trials on anchored evidence, like check 11 for arrests (and, since Phase 5, for cartoon bumps and medic shifts). Check 6 still runs against the framework guards the corrupt-cop branch will use (rate limits, diminishing returns, pair flow caps). Bribes exist only as a ledger primitive between sim agents.',
     repro: ['Run the Bureau checks: check 6 shows scope "guarded", checks 7 and 11 "enforced".'], fix: 'Re-audit when the corrupt-cop branch (Phase 7) lands, before anything ships.', status: 'deferred' },
   { id: 'PAB-016', severity: 'info', check: 7, title: 'A wrong defence is final; walking out is free',
     detail: `Each record is tried once: picking a defence the evidence does not back means upheld, and it cannot be retried. Walking out (or the ${90} s cap) logs nothing and keeps the record open for another try within the day. Nothing is lost either way: there is no fee and an upheld record changes nothing.`,
@@ -58,8 +62,16 @@ export const STANDING = [
   { id: 'PAB-017', severity: 'info', check: 7, title: 'Only anchored evidence can be tried',
     detail: 'The court reads the server\'s checkpoint, never the copy on the device. A citation made while offline shows as "syncing" and can be contested once it reaches the sim server (records stay contestable for a day).',
     repro: ['Get cited with the network off.', 'Open the courthouse: the record is listed as syncing, not contestable.'], fix: 'By design: the court only trusts what the server anchored.', status: 'by design' },
+  { id: 'PAB-019', severity: 'info', check: 11, title: 'Cartoon bumps are spotted in the browser',
+    detail: 'Like the police (PAB-012), the browser decides when a bump happens (a run into a wall, the park bees, a long nap in the sun, the café). A modified client can skip them, which only spares itself, or post its own, which only costs itself: a bump pays nothing, treatment is free, and a bump can never be turned into a medic wage (patients are only sim pups from the call list).',
+    repro: ['Post a med.injury for your own wallet.', 'Accepted only with bumps switched on, within 3 a day, 5 min apart, 60 s max and in the right place (a bee sting only in the park, a tummy ache only near the café); a medic wage that names it is refused (422).'],
+    fix: 'By design: nothing is gained by faking one; the caps and opt-in are server-side (medical.js).', status: 'by design' },
+  { id: 'PAB-020', severity: 'info', check: 11, title: 'A stubbed paw or tummy ache slows walking a little',
+    detail: 'The only effect that is not purely cosmetic: walking speed x0.85 (stubbed paw, 30 s) or x0.9 (tummy ache, 30 s), only in the hub world while walking, never driving, never inside any game, never past 60 s. It ends early by walking 12 tiles, switching bumps off or free treatment. Bee stings and sunburn are only looks.',
+    repro: ['Switch bumps on at the clinic, sprint into a wall: "Stubbed paw", walking x0.85 for 30 s.', 'Walk 12 tiles: walked it off.'],
+    fix: 'By design (the brief allows a minor slowdown); the multiplier is clamped to >= 0.85 and to the bump\'s own timer.', status: 'by design' },
   { id: 'PAB-006', severity: 'info', check: 11, title: 'Opt-in is per device and off by default',
-    detail: 'Joining the side economy is an explicit switch at the Bureau desk; leaving stops wages at once and the server refuses wages for anyone not joined. Phase 3 police and rangers act only on joined players; leaving ends any detention and clears unpaid citations at once.',
+    detail: 'Joining the side economy is an explicit switch at the Bureau desk; leaving stops wages at once and the server refuses wages for anyone not joined. Phase 3 police and rangers act only on joined players; leaving ends any detention and clears unpaid citations at once. Phase 5 cartoon bumps need a second, separate switch at the clinic (off by default); leaving the side economy switches them off too.',
     repro: ['Open the desk: the wallet says "not joined" until you join.'], fix: 'Keep it explicit.', status: 'by design' },
   { id: 'PAB-011', severity: 'info', check: 12, title: 'Hiding Connect Wallet behind open panels relies on CSS :has()',
     detail: 'On phones the Connect Wallet button hides while a panel is open and comes back when it closes. Phase 4 does the same for the ☰ menu button over the panel close button (proof/sim4-panels-*). Browsers without :has() (Safari before 15.4) keep the old overlap.',

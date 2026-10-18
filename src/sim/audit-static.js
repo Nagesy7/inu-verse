@@ -8,6 +8,9 @@ export const STATIC = {
   "src/sim/bureauart.js",
   "src/sim/bureauui.js",
   "src/sim/checks.js",
+  "src/sim/clinic.js",
+  "src/sim/clinicart.js",
+  "src/sim/clinicui.js",
   "src/sim/court.js",
   "src/sim/courtart.js",
   "src/sim/courtui.js",
@@ -17,6 +20,7 @@ export const STATIC = {
   "src/sim/firewall.js",
   "src/sim/force.js",
   "src/sim/ledger.js",
+  "src/sim/medical.js",
   "src/sim/patrol.js",
   "src/sim/patrolart.js",
   "src/sim/patrolui.js",
@@ -82,5 +86,5 @@ export const STATIC = {
   "bonesSwap": true,
   "randomPaid": []
  },
- "fingerprint": "f14c45652dd9b0a3"
+ "fingerprint": "cc7f600ef327ad08"
 };

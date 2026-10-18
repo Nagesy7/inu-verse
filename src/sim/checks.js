@@ -17,6 +17,8 @@ import { POLICE, decide, observe, offenseAt, isCrossing } from './police.js';
 import { OFFICERS, OFFICER_IDS, officersAt } from './force.js';
 import { createPatrol } from './patrol.js';
 import { COURT, GROUNDS, hear, facts, createTrial, BENCH_IDS } from './court.js';
+import { MED, AILMENTS, HAZARDS, PATIENT_IDS, MED_ACTIONS, callAt, slotAt, grade, stepOrder } from './medical.js';
+import { createClinic } from './clinic.js';
 
 export const PAWMARK_EXPORTS = ['PAWMARK', 'ISSUER', 'SINK', 'validAccount', 'balances'];
 export const CHECK_NAMES = ['Action log', 'Prize firewall', 'Main economy firewall', 'Side currency is one-way', 'No cash-out', 'Corrupt-cop branch',
@@ -95,6 +97,14 @@ export async function courtRig({ wages = 3 } = {}) { const PR = await policeRig(
     const detained = detain ? w.detain(pip, 'jaywalk', p.tx, p.ty) : null; if (detained && bail) w.payBail(); R.tick(POLICE.cooldownMs + 1); return { ...r, detained }; };
   return { ...PR, cite, pip }; }
 
+// Phase 5: a joined player with cartoon bumps on and some wages, through the real wallet and the in-memory anchor.
+export async function medRig({ wages = 2, bumps = true } = {}) { const PR = await policeRig({ wages }); if (bumps) PR.w.bumpsOn(); return PR; }
+// drive the real clinic tick along a scripted walk (the view is a frozen x/y copy; extra fields are what a rich player carries)
+export function clinicWalk(R, w, script, extra = {}) { const C = createClinic({ wallet: w, now: R.now }), tileAt = (tx, ty) => (ty === 30 && tx >= 20 ? -1 : 2), T = { ROAD: 1, FLOWER: 7, GRASS: 0, WALK: 2 }, out = [];
+  let px = script[0][0], py = script[0][1]; for (const [x, y, ms] of script) { const steps = Math.max(1, Math.round(ms / 50)), x0 = px, y0 = py;
+    for (let i = 1; i <= steps; i++) { R.tick(50); px = x0 + ((x - x0) * i) / steps; py = y0 + ((y - y0) * i) / steps; const e = C.tick(0.05, 0, Object.freeze({ x: px * 32, y: py * 32, driving: false, busy: false, ...extra }), tileAt, T); if (e) out.push(e.data.ail + '@' + Math.round((R.now() % 1e7) / 1000)); } }
+  return { C, out }; }
+
 function c2(S) { const ev = [], bad = RT.prizeUrls;
   const blocked = bad.filter((u) => throwsFw(() => guardUrl(u), 'prize')); const allowed = (() => { try { return guardUrl('/api/sim-audit') === '/api/sim-audit'; } catch { return false; } })();
   const methods = throwsFw(() => guardedFetch('/api/sim-audit', () => null, { method: 'POST', body: {} }), 'prize') && (() => { try { guardedFetch('/api/sim-log?pid=p0', () => null); return true; } catch { return false; } })();
@@ -119,8 +129,8 @@ function c4(S) { const ev = [], keys = Object.keys(PM).sort(), exact = JSON.stri
     `non-sim files reaching into src/sim: ${S.outside.map((o) => o.file).join(', ') || 'none'} (allowed: ${S.allowedOutside.join(', ')})`);
   const LOG_VIA = ['../src/sim/anchor.js', '../src/sim/sha256.js', './_lib/kv.js'], r = Object.fromEntries(S.routes.map((x) => [x.file, x]));
   const routesOk = S.routes.length === 2 && r['api/sim-audit.js'] && !r['api/sim-audit.js'].writes && r['api/sim-log.js'] && r['api/sim-log.js'].via.every((v) => LOG_VIA.includes(v));
-  const actionsOk = PLAYER_ACTIONS.every((a) => ['wallet.join', 'wallet.leave', 'pm.wage', 'pm.fine', 'pm.bail', 'police.cite', 'police.detain', 'police.release', 'court.verdict', 'pm.refund'].includes(a));
-  ev.push(`anchor accepts only ${PLAYER_ACTIONS.join(', ')} (wages in, fines/bail destroyed, police entries and verdicts carry no amount, a refund only returns a dismissed record's own fine/bail; nothing out): ${actionsOk}`);
+  const actionsOk = PLAYER_ACTIONS.every((a) => ['wallet.join', 'wallet.leave', 'pm.wage', 'pm.fine', 'pm.bail', 'police.cite', 'police.detain', 'police.release', 'court.verdict', 'pm.refund', 'med.optin', 'med.optout', 'med.injury', 'med.heal', 'med.care', 'med.treat', 'pm.copay'].includes(a));
+  ev.push(`anchor accepts only ${PLAYER_ACTIONS.join(', ')} (wages in, fines/bail destroyed, police entries, verdicts, bumps, treatments and medic calls carry no amount, a refund only returns a dismissed record's own fine/bail, the optional clinic co-pay is destroyed; nothing out): ${actionsOk}`);
   const outsideOk = S.outside.every((o) => S.allowedOutside.includes(o.file) && o.imports.every((i) => !/pawmarks|engine|ledger/.test(i)));
   return { pass: exact && flags && empty(S.conversion) && routesOk && actionsOk && outsideOk && empty(S.economy), ev }; }
 
@@ -203,7 +213,7 @@ function c8(S) { const s = sandbox(), ev = [];
   ev.push(`random paid reward refused: ${paidChance}`, `gambling-shaped actions refused ${names.length}/5`, `static gambling hits in sim: ${S.gambling.length}`, `main game random-paid-reward scan: ${S.context.randomPaid.length ? S.context.randomPaid.join(', ') : 'none found'}`);
   return { pass: paidChance && names.length === 5 && empty(S.gambling), ev }; }
 
-function c9() { const ev = [], stats = { grit: 5, wits: 5, heart: 5, pace: 5 };
+async function c9() { const ev = [], stats = { grit: 5, wits: 5, heart: 5, pace: 5 };
   // two identical sims; in one, the pup wears the priciest $KIBBLE cosmetics (and tries to smuggle stats in through its look)
   const A = sandbox(), B = sandbox(); A.register({ id: 'sim:x', name: 'Plain', group: 'fire', stats });
   const fancy = B.register({ id: 'sim:x', name: 'Fancy', group: 'fire', stats, look: { hat: 'crown', neck: 'diamond_chain', top: 'gold_suit', eyes: 'plat_shades', kennel: 'alpha', stats: { grit: 10, wits: 10 } } });
@@ -223,7 +233,15 @@ function c9() { const ev = [], stats = { grit: 5, wits: 5, heart: 5, pace: 5 };
     if (a === b) vSame++; const out = JSON.parse(a).outcome; if (out === 'dismissed') vDismissed++; if (out === 'upheld') vUpheld++; }
   ev.push(`200 police/ranger decisions identical for a plain pup and one with the priciest $KIBBLE cosmetics, Bones and score: ${pSame === 200} (${pHits} were citations)`, `the police only ever see x/y: ${viewOnly}`,
     `200 court verdicts identical for a plain pup and one in the priciest $KIBBLE cosmetics: ${vSame === 200} (${vDismissed} dismissed, ${vUpheld} upheld); the court reads only the filed entry and the patrol schedule`);
-  return { pass: same === 200 && onlyStats && pSame === 200 && pHits > 20 && viewOnly && vSame === 200 && vDismissed > 10 && vUpheld > 10, ev }; }
+  // Phase 5: 200 treatment mini-tasks graded for a plain pup and a dressed-up one, the same scripted walk for both (bumps), and the wage
+  let gSame = 0, gDone = 0; for (let i = 0; i < 200; i++) { const ail = Object.keys(AILMENTS)[i % 4], ord = stepOrder(i, ail), taps = i % 5 === 4 ? [2, 2, 1, 2, 0, 1, 2] : [ord[i % 3], ...[0, 1, 2]].slice(i % 2);
+    const a = JSON.stringify(grade({ ail, taps })), b = JSON.stringify(grade({ ail, taps, player: rich, look: rich.outfit, kibble: 1e6, cosmetics: ['crown'] })); if (a === b) gSame++; if (JSON.parse(a).done) gDone++; }
+  const walk = [[10.5, 31.5, 50], [16.5, 31.5, 1200], [21.5, 31.5, 1000], [21.5, 31.1, 100], [21.5, 31.1, 500], [21.5, 31.5, 300], [26.5, 31.5, 46e3]];
+  const bump = async (extra) => { const M = await medRig(); M.R.tick(6 * 60e3); const W = clinicWalk(M.R, M.w, walk, extra); return { out: W.out, wage: M.w.quote('wage').amount }; };
+  const bp = await bump({}), br = await bump({ outfit: rich.outfit, kibble: 1e6, bones: 1e9, items: ['alpha_kennel'], score: 99999, vip: true });
+  const medSame = gSame === 200 && JSON.stringify(bp) === JSON.stringify(br) && bp.out.length > 0;
+  ev.push(`clinic: 200 treatment mini-tasks graded identically for a plain pup and one in the priciest $KIBBLE cosmetics: ${gSame === 200} (${gDone} done); the same walk gives the same bumps (${bp.out.join(', ') || 'none'}) and the same medic wage quote (${bp.wage}): ${medSame}`);
+  return { pass: same === 200 && onlyStats && pSame === 200 && pHits > 20 && viewOnly && vSame === 200 && vDismissed > 10 && vUpheld > 10 && medSame && gDone > 20 && gDone < 200, ev }; }
 
 function c10(S) { const s = sandbox(), ev = [];
   const fields = RT.walletFields.filter((k) => throwsFw(() => s.register({ id: 'sim:w', group: 'fire', look: { [k]: 'x' } }), 'wallet'));
@@ -275,8 +293,50 @@ async function c11() { const ev = [], s = sandbox();
   // Phase 4: the court is opt-in too, and leaving the side economy ends it
   const Q = await courtRig(); Q.cite('close'); const qc = Q.cite('far'); await Q.sync(); Q.w.leave(); const courtOptIn = throwsFw(() => Q.w.contest(qc.cite.seq, 'sightline', Q.R.now()), 'optin') && throwsFw(() => walletRig().wallet().contest(1, 'sightline', 0), 'optin');
   ev.push(`courts: only players who opted in can contest, and only their own records (${courtOptIn}); trials are capped at ${COURT.trialSec} s with a walk-out that keeps the original outcome (check 7)`);
-  const arrests = courtOptIn && notJoined && strangerCite === 422 && early && noPriors === 422 && over60 && eLong && longHold === 422 && isHeld && anchoredA && bail && expired && walk && optOut && leave && dSync.unsynced === 0 && walkedAway && self === 422 && eSelf && citeCap && altOk;
+  // ---- Phase 5: the clinic. Opt-in twice, <= 60 s, always a way out, nobody blocked, no farming ----
+  const med = await clinicChecks(); ev.push(...med.ev);
+  const arrests = med.pass && courtOptIn && notJoined && strangerCite === 422 && early && noPriors === 422 && over60 && eLong && longHold === 422 && isHeld && anchoredA && bail && expired && walk && optOut && leave && dSync.unsynced === 0 && walkedAway && self === 422 && eSelf && citeCap && altOk;
   return { pass: noOpt && heldNow && !!held && freed && capped && tooLong && defOff && before && paid && after && srv === 422 && !!w2 && arrests, ev, scope: 'enforced' }; }
+
+async function clinicChecks() { const ev = [], mk = (M, over) => M.forge((acct, cp) => ({ actor: AILMENTS.sunburn.cause, action: 'med.injury', target: acct, data: { ail: 'sunburn', tx: 10, ty: 31, sec: AILMENTS.sunburn.sec }, ...over(acct, cp) }));
+  // opt-in: no bumps before joining, nor after joining until switched on; server agrees
+  const U = walletRig(), uw = U.wallet(), noJoin = throwsFw(() => uw.bumpsOn(), 'optin') && !uw.canInjure();
+  const N = await medRig({ bumps: false }), offByDefault = !N.w.state().med.bumps && !N.w.canInjure(); await N.sync(); const srvOff = await mk(N, () => ({}));
+  // the cap: 60 s max, everywhere
+  const A = await medRig(); await A.sync(); const long = await mk(A, () => ({ data: { ail: 'sunburn', tx: 10, ty: 31, sec: 61 } })), selfHurt = await mk(A, (acct) => ({ actor: acct })), badPlace = await mk(A, () => ({ actor: AILMENTS.sting.cause, data: { ail: 'sting', tx: 10, ty: 31, sec: AILMENTS.sting.sec } }));
+  const eng = (() => { const x = sandbox({ players: ['zachary'] }); return throwsFw(() => x.defineAction('med.coma', { effect: { maxSec: 61 } }), 'harm') && throwsFw(() => x.act('sim:pup-miso', 'med.injury', 'player:zachary', { data: { sec: 61 } }), 'harm')
+    && throwsFw(() => x.act('sim:pup-miso', 'med.treat', 'sim:pup-miso', { data: { sec: 1 } }), 'collusion') && throwsFw(() => sandbox().act('sim:pup-miso', 'med.injury', 'player:zachary', { data: { sec: 5 } }), 'optin'); })();
+  const capsOk = Object.values(AILMENTS).every((a) => a.sec <= MED.maxSec && a.slow >= 0.85) && MED.maxSec <= 60;
+  // ways out, all logged: walk it off, switch bumps off, free treatment with no money, wait it out
+  const B = await medRig({ wages: 0 }); B.R.tick(6 * 60e3); const W1 = clinicWalk(B.R, B.w, [[10.5, 31.5, 46e3]]), hurt = B.w.state().med.hurt?.live && B.w.state().med.slow === 1 && W1.out[0]?.startsWith('sunburn');
+  const W2 = clinicWalk(B.R, B.w, [[10.5, 31.5, 50], [14.5, 31.5, 900], [18.5, 31.5, 900], [14.5, 31.5, 900], [10.5, 31.5, 900], [14.5, 31.5, 900]]), walkedOff = !B.w.state().med.hurt;
+  B.R.tick(MED.injuryGapMs + 1); B.w.injure('paw', 12, 31); const slowNow = B.w.state().med.slow, broke = B.w.balance() === 0, treated = !!B.w.care() && !B.w.state().med.hurt && B.w.balance() === 0;
+  B.R.tick(MED.injuryGapMs + 1); B.w.injure('tummy', 6, 20); B.w.bumpsOff(); const optedOut = !B.w.state().med.hurt && !B.w.state().med.bumps && !B.w.canInjure(); B.w.bumpsOn();
+  const cap3 = throwsFw(() => { B.R.tick(MED.injuryGapMs + 1); B.w.injure('paw', 12, 31); }, 'cap'); const bSync = await B.sync(); void W2;
+  const D = await medRig(); D.R.tick(6 * 60e3); D.w.injure('sunburn', 12, 31); D.R.tick(AILMENTS.sunburn.sec * 1000 + 10); const over = D.w.state().med.slow === 1 && !D.w.state().med.hurt.live; clinicWalk(D.R, D.w, [[10.5, 31.5, 100]]); const timeUp = !D.w.state().med.hurt;
+  const ways = hurt && walkedOff && slowNow === 0.85 && broke && treated && optedOut && over && timeUp && cap3 && bSync.unsynced === 0 && bSync.server === 'ok';
+  // co-pay: optional, exactly 2, once, into the sink
+  const P = await medRig(); P.R.tick(6 * 60e3); P.w.injure('paw', 12, 31); const care = P.w.care(), b0 = P.w.balance(); P.w.copay(care.seq); const twice = throwsFw(() => P.w.copay(care.seq), 'replay'); await P.sync();
+  const toFriend = await P.forge((acct) => ({ actor: acct, action: 'pm.copay', target: 'player:p0000000000000002', value: { amount: MED.copay, unit: 'PAWMARK' }, data: { for: care.seq } }));
+  const copayOk = P.w.balance() === b0 - MED.copay && twice && toFriend === 422;
+  // anti-farm: only sim pups from the call list can be treated for pay; your own bumps (or a friend's) never pay
+  const F = await medRig({ wages: 0 }); F.R.tick(6 * 60e3); const inj = F.w.injure('paw', 12, 31); F.w.care(); await F.sync(); const slot = slotAt(F.R.now()), c = callAt(slot);
+  const treatSelf = await F.forge((acct) => ({ actor: acct, action: 'med.treat', target: acct, data: { call: slot, ail: c.ail, slips: 0 } }));
+  const treatFriend = await F.forge((acct) => ({ actor: acct, action: 'med.treat', target: 'player:p0000000000000002', data: { call: slot, ail: c.ail, slips: 0 } }));
+  const wageForBump = await F.forge((acct) => ({ actor: PM.ISSUER, action: 'pm.wage', target: acct, value: { amount: 10, unit: 'PAWMARK' }, data: { why: 'medic shift', for: inj.seq } }));
+  const wrongPup = await F.forge((acct) => ({ actor: acct, action: 'med.treat', target: PATIENT_IDS.find((p) => p !== c.pt), data: { call: slot, ail: c.ail, slips: 0 } }));
+  const oldCall = await F.forge((acct) => ({ actor: acct, action: 'med.treat', target: callAt(slot - 5).pt, data: { call: slot - 5, ail: callAt(slot - 5).ail, slips: 0 } }));
+  const r1 = F.w.treatCall(slot, 0), paid = r1.wage?.value.amount || 0, again = throwsFw(() => F.w.treatCall(slot, 0), 'replay'); await F.sync();
+  const wageTwice = await F.forge((acct) => ({ actor: PM.ISSUER, action: 'pm.wage', target: acct, value: { amount: 8, unit: 'PAWMARK' }, data: { why: 'medic shift', for: r1.treat.seq } }));
+  let calls = 1; for (let i = 0; i < 12; i++) { F.R.tick(MED.callMs + 1); try { F.w.treatCall(slotAt(F.R.now()), 0); calls++; } catch (e) { if (e.kind === 'cap') break; } } const capped = calls === MED.treatsPerDay;
+  const fs = await F.sync(), shared = F.w.state().balance <= 60 && fs.unsynced === 0 && fs.server === 'ok';
+  const farm = [treatSelf, treatFriend, wageForBump, wrongPup, oldCall, wageTwice].every((x) => x === 422) && paid === 10 && again && capped && shared && PATIENT_IDS.every((p) => p.startsWith('sim:pt-')) && HAZARDS.every((h) => h.startsWith('sim:hz-'));
+  ev.push(`clinic opt-in: no bumps before joining (${noJoin}), off by default after joining (${offByDefault}), server refuses a bump for a player with bumps off (${srvOff})`,
+    `cartoon bumps capped at ${MED.maxSec} s and never slower than x0.85 (${capsOk}): server refuses 61 s (${long}), a player bumping themselves (${selfHurt}), a bee sting outside the park (${badPlace}); engine refuses > 60 s effects and self-treatment (${eng})`,
+    `ways out, all logged and anchored: walk it off ${walkedOff}, free treatment with 0 ${CURRENCY.short} (${broke && treated}), switch bumps off ${optedOut}, wait it out ${over && timeUp}; at most ${MED.injuriesPerDay} a day (${cap3}); stubbed paw walks x${slowNow}, sunburn is just looks (${hurt})`,
+    `co-pay optional, exactly ${MED.copay}, once, into the sink (${copayOk}; to another player ${toFriend})`,
+    `no farming: treating yourself ${treatSelf}, another player ${treatFriend}, a medic wage for your own bump ${wageForBump}, the wrong pup ${wrongPup}, a closed call ${oldCall}, a second wage for one treatment ${wageTwice}; one wage per call (${again}), ${MED.treatsPerDay} calls a day (${capped}), medic pay inside the shared wage cap (${shared})`);
+  return { pass: noJoin && offByDefault && srvOff === 422 && long === 422 && selfHurt === 422 && badPlace === 422 && eng && capsOk && ways && copayOk && farm, ev }; }
 
 const RUN = [c1, c2, c3, c4, c5, c6, c7, c8, c9, c10, c11];
 // Runs checks 1..11. Check 12 (the report itself) is evaluated by report.js once the report exists.

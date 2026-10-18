@@ -37,7 +37,8 @@ export function createSim({ seed = 1, now = null, players = [], limits = LIMITS 
     if (d.chance != null && (d.cost || d.price)) throw new FirewallError('gambling', `no random paid rewards (${name})`);
     if (d.unit) guardUnit(d.unit); if (d.writes) for (const k of [].concat(d.writes)) guardKey(k);
     if (d.hold && !(d.hold.maxSec > 0 && d.hold.maxSec <= L.holdMaxSec)) throw new FirewallError('harm', `holds need a time cap <= ${L.holdMaxSec}s`);
-    actions.set(name, Object.freeze({ name, moves: d.moves || null, once: !!d.once, hold: d.hold || null, investigative: !!d.investigative, diminish: !!d.diminish, groups: d.groups || null })); return name;
+    if (d.effect && !(d.effect.maxSec > 0 && d.effect.maxSec <= 60)) throw new FirewallError('harm', 'effects (cartoon bumps) need a time cap <= 60s');
+    actions.set(name, Object.freeze({ name, moves: d.moves || null, once: !!d.once, hold: d.hold || null, effect: d.effect || null, noSelf: !!d.noSelf, investigative: !!d.investigative, diminish: !!d.diminish, groups: d.groups || null })); return name;
   }
   const canTarget = (t) => agents.has(t) || t === SINK || (t.startsWith('player:') && optIn.has(t));
   function act(actorId, name, targetId, { amount = 0, unit = SIM_UNIT, data = null } = {}) {
@@ -49,11 +50,12 @@ export function createSim({ seed = 1, now = null, players = [], limits = LIMITS 
     if (sys && d.moves !== 'issue') throw new Error('issuer can only issue');
     const actor = sys ? { group: 'sim' } : agents.get(actorId);
     if (d.groups && !d.groups.includes(actor.group)) throw new FirewallError('permission', `${actor.group} may not ${name}`);
-    if ((d.investigative || d.hold) && actorId === targetId) throw new FirewallError('collusion', `nobody can ${name} themselves`);
+    if ((d.investigative || d.hold || d.effect || d.noSelf) && actorId === targetId) throw new FirewallError('collusion', `nobody can ${name} themselves`);
     if (isWatchdog(targetId) && actor.group !== 'watchdogs' && (d.investigative || d.hold)) throw new FirewallError('independence', 'the Watchdogs cannot be investigated, held or tried by sim agents');
     if (amount > 0 && (isWatchdog(actorId) || isWatchdog(targetId))) throw new FirewallError('independence', 'the Watchdogs have no balance, no wages and cannot be bribed');
     if (data != null) { guardNoWallet(data, 'data'); if (typeof data === 'object') for (const k of Object.keys(data)) guardKey(k); }
     if (d.once) { const k = name + ':' + String(data?.key ?? ''); if (!data?.key) throw new Error(`${name} needs data.key`); if (once.has(k)) throw new FirewallError('replay', `${name} already done for ${data.key}`); }
+    if (d.effect) { const sec = Number(data?.sec); if (!(sec > 0 && sec <= d.effect.maxSec)) throw new FirewallError('harm', `effects last 1..${d.effect.maxSec}s`); }
     if (d.hold) { const sec = Number(data?.sec); if (!(sec > 0 && sec <= d.hold.maxSec)) throw new FirewallError('harm', `hold must be 1..${d.hold.maxSec}s`); }
     // rate limit + diminishing returns per actor/action (sim minutes)
     const rk = actorId + '|' + name, recent = (rate.get(rk) || []).filter((t) => t > clock - 60);
@@ -98,6 +100,9 @@ export function createSim({ seed = 1, now = null, players = [], limits = LIMITS 
   defineAction('police.cite', { investigative: true, groups: ['police', 'rangers'] }); defineAction('police.detain', { hold: { maxSec: 60 }, investigative: true, groups: ['police', 'rangers'] }); defineAction('hold', { hold: { maxSec: L.holdMaxSec }, investigative: true });
   // Phase 4: courts. One verdict per case (once), only by the courts group, never on oneself; refunds are issued by the sim.
   defineAction('court.verdict', { once: true, investigative: true, groups: ['courts'] }); defineAction('pm.refund', { moves: 'issue' });
+  // Phase 5: medical. Cartoon bumps are effects capped at 60 s (players: opt-in only, canTarget); only medics treat or give
+  // care, never to themselves; the co-pay is destroyed like a fee.
+  defineAction('med.injury', { effect: { maxSec: 60 } }); defineAction('med.treat', { groups: ['medical'], noSelf: true }); defineAction('med.care', { groups: ['medical'], noSelf: true }); defineAction('pm.copay', { moves: 'sink' });
   return { log, register, defineAction, act, release, step, resolve, on, view: readOnly, fetch: guardedFetch, limits: L,
     get clock() { return clock; }, agents: () => [...agents.values()], holds: () => new Map(holds), isOptedIn: (id) => optIn.has(id),
     quote: (acct, kind) => quote(flows, acct, kind, tsNow()),

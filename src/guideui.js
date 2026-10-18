@@ -86,12 +86,18 @@ export function createGuide(h) {
     const by = f.stand.y - 70 - Math.abs(Math.sin(t * 4)) * 16; ctx.save(); ctx.translate(f.stand.x, by); ctx.rotate(Math.PI / 2); arrowShape(ctx, 18, f.tour ? '#ffd84a' : '#4cf08a'); ctx.restore(); }
   function arrowShape(c, s, col) { c.fillStyle = '#141a2e'; c.beginPath(); c.moveTo(s + 3, 0); c.lineTo(-s * 0.6 - 2, -s * 0.8 - 2); c.lineTo(-s * 0.2, 0); c.lineTo(-s * 0.6 - 2, s * 0.8 + 2); c.closePath(); c.fill(); c.fillStyle = col; c.beginPath(); c.moveTo(s, 0); c.lineTo(-s * 0.6, -s * 0.8); c.lineTo(-s * 0.2, 0); c.lineTo(-s * 0.6, s * 0.8); c.closePath(); c.fill(); }
   // screen space (CSS px): edge arrow + label when the focus is off-screen
-  function drawScreen(ctx, ox, oy, zoom, t) { const f = focus(); if (!f) return; const W = innerWidth, H = innerHeight, sx = (f.stand.x + ox) * zoom, sy = (f.stand.y + oy) * zoom, m = 46;
+  function drawScreen(ctx, ox, oy, zoom, t, avoid = []) { const f = focus(); if (!f) return; const W = innerWidth, H = innerHeight, sx = (f.stand.x + ox) * zoom, sy = (f.stand.y + oy) * zoom, m = 46;
     const on = sx > m && sx < W - m && sy > m && sy < H - m; document.body.dataset.edge = on ? 'off' : 'on'; if (on) return;
     const cx = W / 2, cy = H / 2, a = Math.atan2(sy - cy, sx - cx), k = Math.min((W / 2 - m) / Math.abs(Math.cos(a) || 1e-6), (H / 2 - m) / Math.abs(Math.sin(a) || 1e-6)), ex = cx + Math.cos(a) * k, ey = cy + Math.sin(a) * k;
     ctx.save(); ctx.translate(ex, ey); ctx.rotate(a); const b = Math.sin(t * 6) * 4; ctx.translate(b, 0); arrowShape(ctx, 20, f.tour ? '#ffd84a' : '#4cf08a'); ctx.restore();
-    const name = (G.tour?.place || G.guide).name.replace(/ \(.*\)$/, ''); ctx.save(); ctx.font = '10px Silkscreen, monospace'; ctx.textAlign = 'center'; const lx = Math.max(60, Math.min(W - 60, ex - Math.cos(a) * 34)), ly = Math.max(20, Math.min(H - 14, ey - Math.sin(a) * 26));
-    ctx.fillStyle = '#141a2ecc'; const w = ctx.measureText(name).width + 10; ctx.fillRect(lx - w / 2, ly - 10, w, 14); ctx.fillStyle = '#fff6e0'; ctx.fillText(name, lx, ly + 1); ctx.restore(); }
+    const name = (G.tour?.place || G.guide).name.replace(/ \(.*\)$/, ''); ctx.save(); ctx.font = '10px Silkscreen, monospace'; ctx.textAlign = 'center'; const w = ctx.measureText(name).width + 10;
+    const [lx, ly] = labelSpot(Math.max(60, Math.min(W - 60, ex - Math.cos(a) * 34)), Math.max(20, Math.min(H - 14, ey - Math.sin(a) * 26)), w, W, H, avoid.map((r) => ({ x: (r.x + ox) * zoom, y: (r.y + oy) * zoom, w: r.w * zoom, h: r.h * zoom })));
+    ctx.fillStyle = '#141a2ecc'; ctx.fillRect(lx - w / 2, ly - 10, w, 14); ctx.fillStyle = '#fff6e0'; ctx.fillText(name, lx, ly + 1); ctx.restore(); const lb = `${Math.round(lx - w / 2)},${Math.round(ly - 10)},${Math.round(w)},14`; if (document.body.dataset.edgeLabel !== lb) document.body.dataset.edgeLabel = lb; }
+  // the pointer label's spot: where it would go, nudged sideways (else up/down) just enough to clear a sim building's front
+  function labelSpot(lx, ly, w, W, H, rects) { const hit = (x, y) => rects.some((r) => x - w / 2 < r.x + r.w && x + w / 2 > r.x && y - 10 < r.y + r.h && y + 4 > r.y);
+    if (!rects.length || !hit(lx, ly)) return [lx, ly];
+    for (const side of [true, false]) for (let d = 8; d <= 260; d += 8) for (const [x, y] of side ? [[lx - d, ly], [lx + d, ly]] : [[lx, ly - d], [lx, ly + d]]) if (x >= w / 2 + 4 && x <= W - w / 2 - 4 && y >= 16 && y <= H - 8 && !hit(x, y)) return [x, y]; // sideways first: off the building, not onto its door
+    return [lx, ly]; }
   function onKey(e) { const k = e.key.toLowerCase(); if (e.target?.tagName === 'INPUT' && k !== 'escape') return false;
     if (G.tour) { if (k === 'escape') { endTour('skipped'); e.preventDefault(); return true; } if (k === 'enter' || k === 'arrowright' && e.shiftKey) { go(1); e.preventDefault(); return true; } }
     if (G.placesOpen || G.mapOpen) { if (k === 'escape') { closePlaces(); closeMap(); return true; } return G.placesOpen; }

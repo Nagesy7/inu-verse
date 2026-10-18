@@ -456,7 +456,7 @@ function updateWorld(dt) {
   const sx0 = !panel ? touch.x : 0, sy0 = !panel ? touch.y : 0;
   const inp = MOB.pickInput({ keys: { x: dx, y: dy }, stick: { x: sx0, y: sy0 }, stickMag: touch.mag || 0, shift: keys.has('shift'), holdRun: player.holdRun, path: player.pw.pts.length > 0, pathRun: player.pw.run });
   if (inp.source === 'stick' || inp.source === 'keys') { dx = inp.dir.x; dy = inp.dir.y; } else { dx = dy = 0; }
-  const speed = MOB.WALK_SPEED; // world px/s (world is zoomed 2x, so ~184 screen px/s); run = x1.75
+  const speed = MOB.WALK_SPEED * PAB.walkFactor(); // world px/s (world is zoomed 2x, so ~184 screen px/s); run = x1.75. walkFactor: 1, or >= 0.85 for <= 60 s while an opted-in sim cartoon bump is on (src/sim/clinic.js)
   if (drive) { stopWalk(); const m = CAR_MODELS[drive.car.model], top = m.speed, l = Math.hypot(dx, dy);
     if (l) { drive.v = Math.min(top, drive.v + 260 * dt); drive.vx = dx / l; drive.vy = dy / l; drive.dir = Math.abs(dx) >= Math.abs(dy) ? (dx > 0 ? 'east' : 'west') : (dy > 0 ? 'south' : 'north'); } else drive.v = Math.max(0, drive.v - 320 * dt);
     if (drive.v > 0) { const bx = p.x, by = p.y; moveBody(p, drive.vx * drive.v * dt, drive.vy * drive.v * dt, 14); if (Math.hypot(p.x - bx, p.y - by) < drive.v * dt * 0.3 && l) { drive.v *= 0.3; if (drive.bump <= 0) { blip(180); drive.bump = 0.4; } } }
@@ -588,7 +588,7 @@ function renderWorld() {
   if (!vignette || vignette.width !== SW || vignette.height !== SH) { vignette = document.createElement('canvas'); vignette.width = SW; vignette.height = SH; const v = vignette.getContext('2d'), g = v.createRadialGradient(SW / 2, SH / 2, SH * 0.45, SW / 2, SH / 2, SH * 1.05); g.addColorStop(0, 'rgba(18,26,54,0)'); g.addColorStop(1, 'rgba(12,16,34,0.38)'); v.fillStyle = g; v.fillRect(0, 0, SW, SH); }
   ctx.setTransform(dpr, 0, 0, dpr, 0, 0); MWd.drawWeather(ctx, time, SW, SH, { reduced: matchMedia('(prefers-reduced-motion: reduce)').matches }); ctx.drawImage(vignette, 0, 0);
   minimap(-ox, -oy, vw, vh);
-  guide.drawScreen(ctx, ox, oy, ZOOM, time);
+  guide.drawScreen(ctx, ox, oy, ZOOM, time, PAB.signRects()); // the off-screen pointer label steers clear of the sim buildings' signs
 }
 
 function homeId() { if (mode === 'build' && build && !build.readOnly && !build.pack) return build.plotId; for (const p of PLOTS) if (state.plots[p.id] && Math.abs(state.player.x / TILE - (p.x + 3)) < 5 && Math.abs(state.player.y / TILE - (p.y + 3)) < 5) return p.id; return null; }

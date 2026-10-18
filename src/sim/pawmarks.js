@@ -14,8 +14,8 @@ export function validAccount(id) {
   return id;
 }
 // Replay. Created by the sim: pm.issue, pm.wage, pm.refund (ISSUER -> target; a refund is exactly a dismissed record's own fine/bail). Moved: pm.pay, pm.bribe (actor -> target).
-// Destroyed: pm.sink, pm.fine, pm.bail (actor -> SINK). Everything else moves nothing. start = balances at a checkpoint.
-const CREATE = ['pm.issue', 'pm.wage', 'pm.refund'], MOVE = ['pm.pay', 'pm.bribe'], DESTROY = ['pm.sink', 'pm.fine', 'pm.bail'];
+// Destroyed: pm.sink, pm.fine, pm.bail, pm.copay (actor -> SINK; the clinic co-pay is optional). Everything else moves nothing. start = balances at a checkpoint.
+const CREATE = ['pm.issue', 'pm.wage', 'pm.refund'], MOVE = ['pm.pay', 'pm.bribe'], DESTROY = ['pm.sink', 'pm.fine', 'pm.bail', 'pm.copay'];
 export function balances(entries, start = null) {
   const b = new Map(Object.entries(start || {})), add = (k, v) => b.set(k, (b.get(k) || 0) + v);
   for (const e of entries) { const a = e.value?.amount || 0; if (!a || e.value.unit !== SIM_UNIT) continue;
