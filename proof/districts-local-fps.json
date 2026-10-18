@@ -1,0 +1,268 @@
+{
+  "label": "LOCAL build (static server), not deployed",
+  "url": "http://127.0.0.1:8731/",
+  "when": "Mon Oct 19 2026 03:03:41 GMT+1100 (Australian Eastern Daylight Time)",
+  "method": "rAF frames over 3 s, median of 3 runs, in-game 11:00, no rain, player idle",
+  "results": {
+    "844x390 hub-street @1x": {
+      "median": 60.1,
+      "runs": [
+        60.1,
+        60.1,
+        60.1
+      ],
+      "room": "hub"
+    },
+    "844x390 d-arcade-row @1x": {
+      "median": 60.1,
+      "runs": [
+        60.1,
+        60.1,
+        60.1
+      ],
+      "room": "districts"
+    },
+    "844x390 d-arena @1x": {
+      "median": 60.1,
+      "runs": [
+        60.1,
+        60.1,
+        60.2
+      ],
+      "room": "districts"
+    },
+    "844x390 d-fud-field @1x": {
+      "median": 60.1,
+      "runs": [
+        60.1,
+        60.1,
+        60.2
+      ],
+      "room": "districts"
+    },
+    "844x390 d-stadium @1x": {
+      "median": 60.1,
+      "runs": [
+        60.1,
+        60.1,
+        60.2
+      ],
+      "room": "districts"
+    },
+    "844x390 d-parkour @1x": {
+      "median": 60.1,
+      "runs": [
+        60.1,
+        60.1,
+        60.2
+      ],
+      "room": "districts"
+    },
+    "844x390 d-race-park @1x": {
+      "median": 60.1,
+      "runs": [
+        60.1,
+        60.1,
+        60.2
+      ],
+      "room": "districts"
+    },
+    "844x390 hub-street @4x": {
+      "median": 27.1,
+      "runs": [
+        21.3,
+        27.1,
+        27.3
+      ],
+      "room": "hub"
+    },
+    "844x390 d-arcade-row @4x": {
+      "median": 60.1,
+      "runs": [
+        58.9,
+        60.1,
+        60.2
+      ],
+      "room": "districts"
+    },
+    "844x390 d-arena @4x": {
+      "median": 60.1,
+      "runs": [
+        59.9,
+        60.1,
+        60.3
+      ],
+      "room": "districts"
+    },
+    "844x390 d-fud-field @4x": {
+      "median": 60.2,
+      "runs": [
+        60.2,
+        60.2,
+        60.2
+      ],
+      "room": "districts"
+    },
+    "844x390 d-stadium @4x": {
+      "median": 60.2,
+      "runs": [
+        59.1,
+        60.2,
+        60.2
+      ],
+      "room": "districts"
+    },
+    "844x390 d-parkour @4x": {
+      "median": 60.2,
+      "runs": [
+        60.2,
+        60.2,
+        60.2
+      ],
+      "room": "districts"
+    },
+    "844x390 d-race-park @4x": {
+      "median": 60.2,
+      "runs": [
+        60.2,
+        60.2,
+        60.2
+      ],
+      "room": "districts"
+    },
+    "667x375 hub-street @1x": {
+      "median": 60.1,
+      "runs": [
+        60,
+        60.1,
+        60.2
+      ],
+      "room": "hub"
+    },
+    "667x375 d-arcade-row @1x": {
+      "median": 60.1,
+      "runs": [
+        60,
+        60.1,
+        60.3
+      ],
+      "room": "districts"
+    },
+    "667x375 d-arena @1x": {
+      "median": 60.1,
+      "runs": [
+        60,
+        60.1,
+        60.2
+      ],
+      "room": "districts"
+    },
+    "667x375 d-fud-field @1x": {
+      "median": 60.1,
+      "runs": [
+        60,
+        60.1,
+        60.2
+      ],
+      "room": "districts"
+    },
+    "667x375 d-stadium @1x": {
+      "median": 60.1,
+      "runs": [
+        60,
+        60.1,
+        60.2
+      ],
+      "room": "districts"
+    },
+    "667x375 d-parkour @1x": {
+      "median": 60.1,
+      "runs": [
+        60,
+        60.1,
+        60.2
+      ],
+      "room": "districts"
+    },
+    "667x375 d-race-park @1x": {
+      "median": 60.1,
+      "runs": [
+        60.1,
+        60.1,
+        60.2
+      ],
+      "room": "districts"
+    },
+    "667x375 hub-street @4x": {
+      "median": 30,
+      "runs": [
+        22.3,
+        30,
+        30.2
+      ],
+      "room": "hub"
+    },
+    "667x375 d-arcade-row @4x": {
+      "median": 60.1,
+      "runs": [
+        59.9,
+        60.1,
+        60.2
+      ],
+      "room": "districts"
+    },
+    "667x375 d-arena @4x": {
+      "median": 59.2,
+      "runs": [
+        59.1,
+        59.2,
+        60.2
+      ],
+      "room": "districts"
+    },
+    "667x375 d-fud-field @4x": {
+      "median": 60.2,
+      "runs": [
+        60.1,
+        60.2,
+        60.2
+      ],
+      "room": "districts"
+    },
+    "667x375 d-stadium @4x": {
+      "median": 60.2,
+      "runs": [
+        60,
+        60.2,
+        60.3
+      ],
+      "room": "districts"
+    },
+    "667x375 d-parkour @4x": {
+      "median": 60.2,
+      "runs": [
+        59.9,
+        60.2,
+        60.4
+      ],
+      "room": "districts"
+    },
+    "667x375 d-race-park @4x": {
+      "median": 59.2,
+      "runs": [
+        55.7,
+        59.2,
+        60.3
+      ],
+      "room": "districts"
+    }
+  },
+  "chunks": {
+    "844x390": {
+      "chunkBakes": 8
+    },
+    "667x375": {
+      "chunkBakes": 8
+    }
+  }
+}

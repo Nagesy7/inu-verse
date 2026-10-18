@@ -1,0 +1,286 @@
+{
+ "label": "LOCAL build (static server) – not deployed. Round trip uses the LIVE Inu Arcade; prod Verse origin is served from the local checkout inside the test browser only.",
+ "at": "Mon Oct 19 2026 03:02:02 GMT+1100 (Australian Eastern Daylight Time)",
+ "steps": {
+  "gate": {
+   "room": "districts",
+   "portals": 1
+  },
+  "districts": {
+   "arcade-row": {
+    "id": "districts",
+    "x": 144,
+    "y": 275.2,
+    "tx": 4,
+    "ty": 8,
+    "pts": 0,
+    "face": "up",
+    "npcs": 4,
+    "busy": false,
+    "cam": {
+     "x": 211,
+     "y": 211.2
+    }
+   },
+   "arena": {
+    "id": "districts",
+    "x": 1296,
+    "y": 275.2,
+    "tx": 40,
+    "ty": 8,
+    "pts": 0,
+    "face": "up",
+    "npcs": 4,
+    "busy": false,
+    "cam": {
+     "x": 1296,
+     "y": 211.2
+    }
+   },
+   "fud-field": {
+    "id": "districts",
+    "x": 1968,
+    "y": 275.2,
+    "tx": 61,
+    "ty": 8,
+    "pts": 0,
+    "face": "up",
+    "npcs": 4,
+    "busy": false,
+    "cam": {
+     "x": 1968,
+     "y": 211.2
+    }
+   },
+   "stadium": {
+    "id": "districts",
+    "x": 2672,
+    "y": 275.2,
+    "tx": 83,
+    "ty": 8,
+    "pts": 0,
+    "face": "up",
+    "npcs": 4,
+    "busy": false,
+    "cam": {
+     "x": 2672,
+     "y": 211.2
+    }
+   },
+   "parkour": {
+    "id": "districts",
+    "x": 3312,
+    "y": 275.2,
+    "tx": 103,
+    "ty": 8,
+    "pts": 0,
+    "face": "up",
+    "npcs": 4,
+    "busy": false,
+    "cam": {
+     "x": 3312,
+     "y": 211.2
+    }
+   },
+   "race-park": {
+    "id": "districts",
+    "x": 3920,
+    "y": 275.2,
+    "tx": 122,
+    "ty": 8,
+    "pts": 0,
+    "face": "up",
+    "npcs": 4,
+    "busy": false,
+    "cam": {
+     "x": 3920,
+     "y": 211.2
+    }
+   }
+  },
+  "doorKibbleChomp": {
+   "mode": "room",
+   "room": {
+    "id": "districts",
+    "x": 144,
+    "y": 254.47719399999977,
+    "tx": 4,
+    "ty": 7,
+    "pts": 0,
+    "face": "up",
+    "npcs": 4,
+    "busy": false,
+    "cam": {
+     "x": 211,
+     "y": 190.4773643693454
+    }
+   },
+   "panel": "Kibble Chomp",
+   "lastNav": null
+  },
+  "arcadeRowUrls": {
+   "kibble-chomp": "https://inu-arcade.vercel.app/kibble-chomp?from=verse&district=arcade-row&spawn=door-kibble-chomp&return=https%3A%2F%2Finu-verse-tawny.vercel.app%2F%3Fspawn%3Ddoor-kibble-chomp%26district%3Darcade-row",
+   "bark-invaders": "https://inu-arcade.vercel.app/bark-invaders?from=verse&district=arcade-row&spawn=door-bark-invaders&return=https%3A%2F%2Finu-verse-tawny.vercel.app%2F%3Fspawn%3Ddoor-bark-invaders%26district%3Darcade-row",
+   "pup-crossing": "https://inu-arcade.vercel.app/pup-crossing?from=verse&district=arcade-row&spawn=door-pup-crossing&return=https%3A%2F%2Finu-verse-tawny.vercel.app%2F%3Fspawn%3Ddoor-pup-crossing%26district%3Darcade-row",
+   "bone-breaker": "https://inu-arcade.vercel.app/bone-breaker?from=verse&district=arcade-row&spawn=door-bone-breaker&return=https%3A%2F%2Finu-verse-tawny.vercel.app%2F%3Fspawn%3Ddoor-bone-breaker%26district%3Darcade-row",
+   "street-sniffer": "https://inu-arcade.vercel.app/street-sniffer?from=verse&district=arcade-row&spawn=door-street-sniffer&return=https%3A%2F%2Finu-verse-tawny.vercel.app%2F%3Fspawn%3Ddoor-street-sniffer%26district%3Darcade-row",
+   "paw-fu-tower": "https://inu-arcade.vercel.app/paw-fu-tower?from=verse&district=arcade-row&spawn=door-paw-fu-tower&return=https%3A%2F%2Finu-verse-tawny.vercel.app%2F%3Fspawn%3Ddoor-paw-fu-tower%26district%3Darcade-row",
+   "bone-digger": "https://inu-arcade.vercel.app/bone-digger?from=verse&district=arcade-row&spawn=door-bone-digger&return=https%3A%2F%2Finu-verse-tawny.vercel.app%2F%3Fspawn%3Ddoor-bone-digger%26district%3Darcade-row",
+   "pips-big-bark": "https://inu-arcade.vercel.app/pips-big-bark?from=verse&district=arcade-row&spawn=door-pips-big-bark&return=https%3A%2F%2Finu-verse-tawny.vercel.app%2F%3Fspawn%3Ddoor-pips-big-bark%26district%3Darcade-row"
+  },
+  "comingSoon": {
+   "mode": "room",
+   "room": {
+    "id": "districts",
+    "x": 2672,
+    "y": 254.49688799999984,
+    "tx": 83,
+    "ty": 7,
+    "pts": 0,
+    "face": "up",
+    "npcs": 4,
+    "busy": false,
+    "cam": {
+     "x": 2672,
+     "y": 190.4970581438349
+    }
+   },
+   "panel": "Stadium Cabinet",
+   "lastNav": null,
+   "play": false,
+   "text": "STADIUM CABINET Stadium · Inu Arcade cabinet Coming soon. This cabinet is still being built. The gate opens as soon as it's ready. OK Just for fun here: playing never changes your Bones, $KIBBLE or pr"
+  },
+  "fastTravel": {
+   "mode": "room",
+   "room": {
+    "id": "districts",
+    "x": 3824,
+    "y": 368,
+    "tx": 119,
+    "ty": 11,
+    "pts": 0,
+    "face": "down",
+    "npcs": 4,
+    "busy": false,
+    "cam": {
+     "x": 3824,
+     "y": 304
+    }
+   },
+   "panel": null,
+   "lastNav": null,
+   "travels": 1
+  },
+  "fastTravelTown": {
+   "room": null,
+   "x": 62,
+   "y": 58
+  },
+  "roundTrip": {
+   "outbound": "https://inu-arcade.vercel.app/shiba-scuffle?from=verse&district=arena&spawn=door-shiba-scuffle&return=https%3A%2F%2Finu-verse-tawny.vercel.app%2F%3Fspawn%3Ddoor-shiba-scuffle%26district%3Darena&p=eyJ2IjoxLCJ3YWxsZXQiOiJsb2NhbC1rYWJvc3UtMyIsIm5hbWUiOiJLYWJvc3UiLCJwcm9ub3VucyI6InRoZXkvdGhlbSIsImxvb2siOnsiY29hdCI6IiNlOGEyNWEiLCJwYXR0ZXJuIjoibm9uZSIsImV5ZVNoYXBlIjoicm91bmQiLCJleWVDb2xvciI6IiMyYTFhMTIiLCJlYXJzIjoicG9pbnR5IiwidGFpbCI6ImN1cmwiLCJtYXJraW5ncyI6Im5vbmUiLCJzaXplIjoibWVkaXVtIiwiYWNjZW50IjoiI2ZmZjZlOCJ9LCJvdXRmaXQiOnsiaGF0IjpudWxsLCJleWVzIjpudWxsLCJuZWNrIjpudWxsLCJ0b3AiOnsiaWQiOiJoYXdhaWlhbiIsImtpbmQiOiJoYXdhaWlhbiIsImMiOiIjMWMyYTUyIiwiZCI6IiMxMjFjM2EiLCJhY2NlbnQiOiIjZTNiMzQxIiwiZnVsbCI6ZmFsc2V9LCJib3R0b20iOnsiaWQiOiJjaGlub3MiLCJraW5kIjpudWxsLCJjIjoiI2Q4YzhhMiIsImQiOiIjYjdhNTdjIiwiYWNjZW50IjpudWxsLCJmdWxsIjpmYWxzZX0sImZlZXQiOnsiaWQiOiJzbmVha2Vyc19yZWQiLCJraW5kIjpudWxsLCJjIjoiI2IzMjAyYyIsImQiOm51bGwsImFjY2VudCI6bnVsbCwiZnVsbCI6ZmFsc2V9fSwiY29zbWV0aWNzIjpbImhhd2FpaWFuIiwiY2hpbm9zIiwic25lYWtlcnNfcmVkIl0sInRyYWl0IjoiaGFyZHdvcmtlciIsInBldHMiOltdLCJ1cGRhdGVkQXQiOjB9",
+   "outboundParams": {
+    "from": "verse",
+    "district": "arena",
+    "spawn": "door-shiba-scuffle",
+    "return": "https://inu-verse-tawny.vercel.app/?spawn=door-shiba-scuffle&district=arena",
+    "p": "eyJ2IjoxLCJ3YWxsZXQiOiJsb2NhbC1rYWJvc3UtMyIsIm5hbWUiOiJLYWJvc3UiLCJwcm9ub3VucyI6InRoZXkvdGhlbSIsImxvb2siOnsiY29hdCI6IiNlOGEyNWEiLCJwYXR0ZXJuIjoibm9uZSIsImV5ZVNoYXBlIjoicm91bmQiLCJleWVDb2xvciI6IiMyYTFhMTIiLCJlYXJzIjoicG9pbnR5IiwidGFpbCI6ImN1cmwiLCJtYXJraW5ncyI6Im5vbmUiLCJzaXplIjoibWVkaXVtIiwiYWNjZW50IjoiI2ZmZjZlOCJ9LCJvdXRmaXQiOnsiaGF0IjpudWxsLCJleWVzIjpudWxsLCJuZWNrIjpudWxsLCJ0b3AiOnsiaWQiOiJoYXdhaWlhbiIsImtpbmQiOiJoYXdhaWlhbiIsImMiOiIjMWMyYTUyIiwiZCI6IiMxMjFjM2EiLCJhY2NlbnQiOiIjZTNiMzQxIiwiZnVsbCI6ZmFsc2V9LCJib3R0b20iOnsiaWQiOiJjaGlub3MiLCJraW5kIjpudWxsLCJjIjoiI2Q4YzhhMiIsImQiOiIjYjdhNTdjIiwiYWNjZW50IjpudWxsLCJmdWxsIjpmYWxzZX0sImZlZXQiOnsiaWQiOiJzbmVha2Vyc19yZWQiLCJraW5kIjpudWxsLCJjIjoiI2IzMjAyYyIsImQiOm51bGwsImFjY2VudCI6bnVsbCwiZnVsbCI6ZmFsc2V9fSwiY29zbWV0aWNzIjpbImhhd2FpaWFuIiwiY2hpbm9zIiwic25lYWtlcnNfcmVkIl0sInRyYWl0IjoiaGFyZHdvcmtlciIsInBldHMiOltdLCJ1cGRhdGVkQXQiOjB9"
+   },
+   "homeButton": true,
+   "contractUrl": "https://inu-arcade.vercel.app/shiba-scuffle?from=verse&district=arena&spawn=door-shiba-scuffle&return=https%3A%2F%2Finu-verse-tawny.vercel.app%2F%3Fspawn%3Ddoor-shiba-scuffle%26district%3Darena",
+   "returnUrl": "https://inu-verse-tawny.vercel.app/?spawn=door-shiba-scuffle&district=arena",
+   "landed": {
+    "room": {
+     "id": "districts",
+     "x": 1296,
+     "y": 272,
+     "tx": 40,
+     "ty": 8,
+     "pts": 0,
+     "face": "down",
+     "npcs": 4,
+     "busy": false,
+     "cam": {
+      "x": 1296,
+      "y": 208
+     }
+    },
+    "ret": {
+     "district": "arena",
+     "cabinet": "shiba-scuffle",
+     "spawn": "door-shiba-scuffle"
+    },
+    "toast": [
+     "Arcade Districts",
+     "Welcome back from Shiba Scuffle!"
+    ]
+   }
+  },
+  "titleButton": "#continue",
+  "simulatedReturn": {
+   "room": {
+    "id": "districts",
+    "x": 1296,
+    "y": 272,
+    "tx": 40,
+    "ty": 8,
+    "pts": 0,
+    "face": "down",
+    "npcs": 4,
+    "busy": false,
+    "cam": {
+     "x": 1296,
+     "y": 208
+    }
+   },
+   "ret": {
+    "district": "arena",
+    "cabinet": "shiba-scuffle",
+    "spawn": "door-shiba-scuffle"
+   }
+  },
+  "framed": {
+   "afterOpen": {
+    "msgs": [
+     {
+      "kind": "ready",
+      "cabinetId": "arcade"
+     }
+    ],
+    "bar": "INU ARCADE",
+    "open": true
+   },
+   "scoreToast": {
+    "toasts": [
+     "Shiba Scuffle: 4,200 points! Nice run."
+    ],
+    "z": "9100",
+    "ovOpen": true
+   },
+   "afterHome": {
+    "msgs": [
+     {
+      "kind": "ready",
+      "cabinetId": "arcade"
+     },
+     {
+      "kind": "score",
+      "cabinetId": "shiba-scuffle",
+      "score": 4200,
+      "mode": "classic"
+     },
+     {
+      "kind": "exit",
+      "cabinetId": "arcade"
+     },
+     {
+      "kind": "exit",
+      "cabinetId": null
+     }
+    ],
+    "open": false,
+    "url": "https://inu-verse-tawny.vercel.app/"
+   }
+  }
+ },
+ "errors": []
+}
