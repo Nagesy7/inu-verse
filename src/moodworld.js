@@ -2,6 +2,7 @@
 // change once), The Daily Bone newsstand, fire pit, mood banners, a light weather overlay and NPC mood touches.
 // Data comes from src/kibblemood.js (shared with kibble-pay's /kibble-mood.js). Cosmetic only: no buttons that trade anything.
 import { TILE, KIBBLE_PLAZA as KP } from './world.js';
+import { VOICES, makeVoices } from './npcvoices.js';
 import { MOODS, LINES, HEADLINES, CRIER, BANNER, COPY, MINT, lineFor, headlineFor, moodLedger, FALLBACK } from './kibblemood.js';
 const INK = '#0c1022', NAVY = '#121a36', GOLD = '#d4a640', GOLD_L = '#f2cc68', GOLD_D = '#8f6a22', CREAM = '#fff6e0', STONE = '#8a8296', STONE_D = '#5e5870', STONE_L = '#b4acc0', WOOD = '#8a5a30', WOOD_D = '#5a3820', WOOD_L = '#b07a48';
 const R = (c, x, y, w, h, col) => { c.fillStyle = col; c.fillRect(Math.round(x), Math.round(y), Math.round(w), Math.round(h)); };
@@ -36,7 +37,9 @@ export function npcMood(mood, n, t, i = 0) {
 export const HUDDLE = [[-1, 0], [1, 0], [0, 1], [-1, 1], [1, 1], [0, -1]].map(([dx, dy]) => [KP.firepit.x + dx, KP.firepit.y + dy]);
 export const huddleGoal = (mood, i) => mood === 'doghouse' ? HUDDLE[i % HUDDLE.length] : null;
 // a mood line for an NPC: at most one per NPC per visit
-export const moodLine = (name, rng) => MW.ledger.take(name, MW.mood, rng);
+// named pups use their own voice + daily cap (npcvoices.js); anyone else falls back to the brief's pool, one per visit
+let VOX = null; export const voices = () => (VOX ||= makeVoices());
+export const moodLine = (name, rng) => VOICES[name] ? voices().take(name, MW.mood, rng) : MW.ledger.take(name, MW.mood, rng);
 
 export function drawUmbrella(c, t, i = 0) { // drawn in actor space (scale 0.5 already applied, origin at feet)
   const sway = Math.round(Math.sin(t * 2 + i) * 2), cols = ['#c8323c', '#2f6fbd', '#e3b341', '#4f9a4a'], col = cols[i % cols.length];
@@ -139,7 +142,7 @@ export function moodCardHtml(d, esc = (s) => String(s)) { const m = MOODS[d?.moo
   <div class="stats"><div>$KIBBLE price<b>${fmtUsd(d?.price)}</b>USD</div><div>24h change<b class="${d?.change24h == null ? '' : d.change24h >= 0 ? 'up' : 'dn'}">${fmtPct(d?.change24h)}</b>${d?.change24h == null ? 'not enough data yet' : '24 hours'}</div><div>1h change<b class="${d?.change1h == null ? '' : d.change1h >= 0 ? 'up' : 'dn'}">${fmtPct(d?.change1h)}</b>${d?.change1h == null ? 'not enough data yet' : '1 hour'}</div></div>
   <div class="small">Contract address (the only real $KIBBLE):</div><div class="ca"><code id="kmood-ca">${MINT}</code><button class="btn alt" data-copy="${MINT}" id="kmood-copy">Copy</button></div>
   <div class="small">${d?.stale ? COPY.stale : `Source: ${esc(d?.source || '—')}${d?.changeSource && d.changeSource !== d.source ? ' · change ' + esc(d.changeSource) : ''}${ago != null ? ' · updated ' + ago + 's ago' : ''}`}</div></div>
-  <div class="nfa"><b>${COPY.nfa}</b></div>`; }
+  <div class="row" style="justify-content:flex-start"><button class="btn ghost tiny" data-npcrules>How the town talks</button></div><div class="nfa"><b>${COPY.nfa}</b></div>`; }
 export function dailyBoneHtml(mood) { const [h, sub] = headlineFor(mood); return `<h2>The Daily Bone</h2><div class="card dailybone" style="text-align:left"><div class="small">Inu Verse's favourite paper · today's edition</div><h3 class="db-head">${h}</h3><p>${sub}.</p><p class="small"><i>"${lineFor(mood)}"</i> · overheard at the plaza</p></div><div class="nfa">${COPY.nfa}</div>`; }
 
 function hexA(hex, a) { const n = parseInt(hex.slice(1), 16); return `rgba(${n >> 16},${(n >> 8) & 255},${n & 255},${Math.max(0, Math.min(1, a)).toFixed(3)})`; }

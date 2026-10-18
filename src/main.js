@@ -29,6 +29,7 @@ import { trending, adProps, adAt } from './coinads.js';
 import * as MOB from './mobility.js';
 import * as RC from './realcoins.js';
 import * as CL from './cleanlaunch.js';
+import * as NV from './npcvoices.js';
 import { ensureFarm, tickFarm, seasonOf, marketHour, rollFarmWeek, catchUp, fishCatch, WEEK_DAYS } from './farm.js';
 import { ensureBiz, bizHour, bizDay, rollBizWeek } from './biz.js';
 import { renderField, renderFarm, renderLot, renderBizBoard } from './farmui.js';
@@ -683,8 +684,9 @@ function openPanel(kind, opts = {}) {
   if (kind === 'salon') return renderSalon();
   if (kind === 'engage') return renderEngage({ ...farmCtx(), tab: opts.tab, day: gameDay(), open: (t) => openPanel('engage', { tab: t }) });
   if (kind === 'bank') return renderBank();
-  if (kind === 'kibblemood') { body.innerHTML = MWd.moodCardHtml(MOOD.current, esc); body.querySelectorAll('[data-copy]').forEach((b) => b.onclick = () => copyText(b.dataset.copy)); return; }
-  if (kind === 'dailybone') { body.innerHTML = MWd.dailyBoneHtml(MWd.MW.mood); return; }
+  if (kind === 'kibblemood') { body.innerHTML = MWd.moodCardHtml(MOOD.current, esc); body.querySelectorAll('[data-copy]').forEach((b) => b.onclick = () => copyText(b.dataset.copy)); body.querySelector('[data-npcrules]').onclick = () => openPanel('npcrules'); return; }
+  if (kind === 'dailybone') { body.innerHTML = MWd.dailyBoneHtml(MWd.MW.mood) + '<div class="row" style="justify-content:flex-start"><button class="btn ghost tiny" data-npcrules>How the town talks</button></div>'; body.querySelector('[data-npcrules]').onclick = () => openPanel('npcrules'); return; }
+  if (kind === 'npcrules') { body.innerHTML = NV.rulesHtml(MWd.voices()); return; }
   if (kind === 'fly5') return renderFly5({ ...farmCtx(), kp: DEMO ? null : K.kp, tab: opts.tab, day: gameDay(), week: Math.floor(gameDay() / 7), month: Math.floor(gameDay() / 28), nowH: state.clockSec / (DAY_LEN / 24), open: (t) => openPanel('fly5', { tab: t }) });
   if (kind === 'matchmaker') return renderMatchmaker({ ...farmCtx(), tab: opts.tab, weekFrac: ((state.clockSec / DAY_LEN) % WEEK_DAYS) / WEEK_DAYS, open: (t) => openPanel('matchmaker', { tab: t }), startDuo: (partner, jobId) => { if (!partner) return toast('No partner', 'bad'); closePanel(); playDuo(jobId, partner); } });
   if (kind === 'city') return renderCity({ ...farmCtx(), tab: opts.tab, nowH: state.clockSec / (DAY_LEN / 24), dayFrac: (state.clockSec % DAY_LEN) / DAY_LEN, trend, presOn: pres.on && pres.stage === 'visit', presKey: 'visit' + pres.n, open: (t) => openPanel('city', { tab: t }) });

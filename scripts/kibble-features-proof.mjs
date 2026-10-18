@@ -28,7 +28,7 @@ if (what === 'card' || what === 'all') {
   const said = await p.evaluate(() => globalThis.__crierSaid || []); L('crier announced: ' + JSON.stringify(said)); await shot(p, 'crier');
   await p.evaluate(() => __inu.open('kibblemood')); await p.waitForTimeout(400); await shot(p, 'statue-card');
   const ca = await p.textContent('#kmood-ca'); L('card CA: ' + ca + ' · NFA: ' + (await p.textContent('.nfa')));
-  await p.evaluate(() => __inu.open('dailybone')); await p.waitForTimeout(300); await shot(p, 'daily-bone');
+  await p.evaluate(() => __inu.open('dailybone')); await p.waitForTimeout(300); await shot(p, 'daily-bone'); await p.click('[data-npcrules]'); await p.waitForTimeout(400); await shot(p, 'npc-rules'); L('npc lines said so far today: ' + await p.evaluate(() => localStorage.getItem('inuverse.npc.lines')));
   await p.evaluate(() => document.getElementById('panel-close').click()); await p.reload(); await p.waitForTimeout(500); await p.click('#start').catch(() => {}); await p.waitForTimeout(3000);
   L('after reload crier announced again? ' + JSON.stringify(await p.evaluate(() => globalThis.__crierSaid || []))); await p.context().close();
   for (const v of VIEWS) { const q = await open('?mood=grumpy', v); await at(q, 22, 50, [22, 47.5]); await q.waitForTimeout(2500); await shot(q, `weather-grumpy-${v[0]}x${v[1]}`); await q.evaluate(() => __inu.open('kibblemood')); await q.waitForTimeout(300); await shot(q, `statue-card-${v[0]}x${v[1]}`); await q.context().close(); } }

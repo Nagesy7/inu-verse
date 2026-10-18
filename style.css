@@ -287,3 +287,4 @@ body.short.landscape .launch.rboard{grid-template-columns:1fr 1.2fr}body.short .
 .cl-list li.cl-pass>b{color:#7ed957}.cl-list li.cl-warn>b{color:#ffd84a}.cl-list li.cl-fail>b{color:#ff6b6b}.cl-list li.cl-unknown>b{color:#9aa3b8}
 body:has(#panel:not([hidden])) #crier-banner{display:none}
 .cl-t{font:9px Silkscreen,monospace;color:#f2cc68;margin-right:2px}
+.npc-rules,.npc-pups{text-align:left;margin:0 0 6px;padding-left:18px;font-size:11px;line-height:1.45}.npc-pups{list-style:none;padding-left:0}.npc-pups li{padding:3px 0;border-bottom:1px dashed #2a3358}
