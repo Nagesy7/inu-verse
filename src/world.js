@@ -164,7 +164,7 @@ export function interactables(state) {
   for (const g of GAME_DOORS) list.push({ kind: 'gamedoor', id: g.id, name: g.name, tx: g.door.tx, ty: g.door.ty });
   list.push({ kind: 'community', id: COMMUNITY.id, name: COMMUNITY.name, tx: COMMUNITY.x, ty: COMMUNITY.y + 1 });
   list.push({ kind: 'matchmaker', id: 'matchmaker', name: 'Park Matchmaker', tx: MATCHMAKER.x, ty: MATCHMAKER.y + 1 });
-  list.push({ kind: 'square', id: 'pools', name: 'Pools Monument', tx: Math.round(SQUARE.pools.x), ty: SQUARE.pools.y + 2 });
+  list.push({ kind: 'square', id: 'pools', name: 'Pools Monument · Weekly Pool Board', tx: Math.round(SQUARE.pools.x), ty: SQUARE.pools.y + 2 });
   list.push({ kind: 'square', id: 'burn', name: 'Burn Festival Monument', tx: Math.round(SQUARE.burn.x), ty: SQUARE.burn.y + 2 });
   list.push({ kind: 'square', id: 'quests', name: 'Quest Board', tx: Math.round(SQUARE.quest.x), ty: SQUARE.quest.y + 1 });
   for (const l of BIZ_LOTS) list.push({ kind: 'lot', id: l.id, name: l.name, tx: l.x + 3, ty: l.y + l.h });

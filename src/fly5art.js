@@ -1,5 +1,7 @@
 // Original pixel art for Item 5 town-square props: pools monument, burn festival monument, quest board.
 import { TILE, SQUARE } from './world.js';
+import * as PB from './poolboard.js';
+import { ensureFarm } from './farm.js'; import { ensureBiz } from './biz.js';
 import { poolsMonument, burnStage, BURN_STAGES, ensureFly5, BURN_GOAL_U, questProgress } from './fly5.js';
 const INK = '#141a2e';
 const R = (c, x, y, w, h, col) => { c.fillStyle = col; c.fillRect(Math.round(x), Math.round(y), w, h); };
@@ -9,7 +11,7 @@ export function squareProps(state, t, week = 0) {
   if (!state) return [];
   const out = [];
   // 9. pools monument: obelisk with three lit pool bars + treasury plaque
-  { const P = poolsMonument(state), x = SQUARE.pools.x * TILE, y = SQUARE.pools.y * TILE;
+  { const P = { ...poolsMonument(state), ...(globalThis.__livePools || {}) }, x = SQUARE.pools.x * TILE, y = SQUARE.pools.y * TILE;
     out.push({ y: y + 52, d: (c) => {
       R(c, x - 22, y + 40, 44, 12, '#6a5a4a'); R(c, x - 20, y + 40, 40, 2, '#8a7a6a');
       R(c, x - 12, y - 30, 24, 72, INK); R(c, x - 11, y - 29, 22, 70, '#e8dcc4'); R(c, x - 11, y - 29, 4, 70, '#fff6e0');
@@ -18,6 +20,20 @@ export function squareProps(state, t, week = 0) {
       vals.forEach((v, i) => { const h = 6 + Math.round((v / mx) * 34); R(c, x - 8 + i * 6, y + 30 - h, 4, h, cols[i]); R(c, x - 8 + i * 6, y + 30 - h, 4, 1, '#fff'); });
       R(c, x - 34, y + 54, 68, 22, INK); R(c, x - 33, y + 55, 66, 20, '#1e2a4e');
       txt(c, 'POOLS', x, y + 62, 6, '#ffe7a3'); txt(c, `D${k(P.daily)} W${k(P.weekly)} M${k(P.monthly)}`, x, y + 71, 5, '#fff');
+    } }); }
+  // 9b. Weekly Pool Board: walk-up plaza board left of the monument (live figures from poolboard.js; "n/a" when a board has no pool figure)
+  { const x = SQUARE.pools.x * TILE - 100, y = SQUARE.pools.y * TILE - 26, raw = PB.cached();
+    const B = PB.buildBoard(raw, { farmPool: ensureFarm(state).pool, bizPool: ensureBiz(state).pool });
+    out.push({ y: y + 58, d: (c) => {
+      R(c, x + 4, y + 40, 4, 18, INK); R(c, x + 56, y + 40, 4, 18, INK); R(c, x + 5, y + 40, 2, 18, '#7a5a3a'); R(c, x + 57, y + 40, 2, 18, '#7a5a3a');
+      R(c, x - 2, y - 26, 68, 70, INK); R(c, x - 1, y - 25, 66, 68, '#c8a46a'); R(c, x + 1, y - 23, 62, 64, '#1e2a4e');
+      R(c, x + 24, y - 32, 16, 7, INK); R(c, x + 25, y - 31, 14, 5, '#e3b341'); R(c, x + 30, y - 30, 4, 3, '#fff1b0'); // bone crest
+      txt(c, 'WEEKLY BOARDS', x + 32, y - 16, 5, '#ffe7a3');
+      txt(c, B.weekly.base == null ? 'POOL N/A' : `POOL ${k(B.weekly.base)} KIB`, x + 32, y - 9, 5, '#9fe6a8');
+      const ab = { farm: 'FARMER', biz: 'BUSINESS', 'meme-brawl': 'BRAWL', 'street-sniffer': 'SNIFFER', 'kibble-chomp': 'CHOMP', 'inu-score': 'INU SCORE' };
+      B.rows.forEach((r, i) => { const ry = y - 1 + i * 6.5; R(c, x + 3, ry - 4, 3, 3, r.live ? '#5fb36a' : '#6a6a7a');
+        c.font = '5px Silkscreen, monospace'; c.textAlign = 'left'; c.fillStyle = '#fff'; c.fillText(ab[r.id], x + 8, ry);
+        c.textAlign = 'right'; c.fillStyle = r.figure === PB.NA ? '#a8a8b8' : '#ffe7a3'; c.fillText(r.figure === PB.NA ? 'n/a' : r.figure.replace(' Bones', 'B'), x + 61, ry); });
     } }); }
   // 2. burn festival monument: brazier pillar with 4 flames that light up in stages
   { const st = burnStage(state), F = ensureFly5(state).burnFest, x = SQUARE.burn.x * TILE, y = SQUARE.burn.y * TILE;

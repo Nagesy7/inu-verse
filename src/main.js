@@ -48,6 +48,8 @@ import { renderField, renderFarm, renderLot, renderBizBoard } from './farmui.js'
 import * as REL from './relations.js';
 import { startJob } from './jobui.js';
 import { renderCity } from './flyui.js';
+import * as PB from './poolboard.js';
+import * as LS from './loginstreak.js'; import * as LSUI from './streakui.js'; import { drawWornPin } from './streakart.js';
 import { renderMatchmaker } from './pairui.js';
 import { renderEngage } from './engageui.js';
 import * as ENG from './engage.js';
@@ -131,7 +133,19 @@ function drawFlair(c, col, t) { const r = 40 + Math.sin(t * 3) * 3; c.save(); c.
 function featuredMap() { const nowH = state.clockSec / (DAY_LEN / 24), out = {}; for (const id of Object.keys(FEATURED_SLOTS)) { const r = featuredOf(state, id, nowH); if (r) out[id] = { ...r, label: 'FEATURED' }; const sp = F5.sponsorOf(state, id, nowH); if (sp) out[id] = { ticker: sp.brand, by: sp.by, untilH: sp.untilH, featured: true, sponsored: true, label: 'SPONSORED' }; } return out; }
 // ---- real $KIBBLE (kibble-pay, live: mint 4VE9sy4fEMJdZ6i7MkYPbnqDJd2oqzJQmg44WJ3opump). Demo only with ?demo=1; otherwise no fake balances.
 let K = { mode: DEMO ? 'demo' : 'offline', kp: null }, serverPools = null;
-async function refreshPools() { try { const r = await K.kp.pools(); const u = (p) => Number(r.pools[p].accruedBaseUnits); serverPools = { daily: u('daily'), weekly: u('weekly'), monthly: u('monthly'), burned: Number(r.burnedAllBaseUnits) }; if (state) hud(); } catch {} }
+async function refreshPools() { try { const r = await K.kp.pools(); const u = (p) => Number(r.pools[p].accruedBaseUnits); serverPools = { daily: u('daily'), weekly: u('weekly'), monthly: u('monthly'), burned: Number(r.burnedAllBaseUnits) }; globalThis.__livePools = serverPools; if (state) hud(); } catch {} }
+// Login streak: wallet (server, Sydney day) when signed in, else device-only. Re-checks when the Sydney day rolls over.
+let streakBusy = false, streakDay = null;
+async function syncStreak(why = '') { if (!state || streakBusy) return; streakBusy = true;
+  try { let r; const kp = K.kp;
+    if (!DEMO && kp?.signedIn) { try { r = await LS.walletCheckIn(state, kp); } catch (e) { r = /429|slow/i.test(e.message || '') ? { counted: false, newPins: [] } : LS.deviceCheckIn(state); } }
+    else { LS.toDevice(state); r = LS.deviceCheckIn(state); }
+    streakDay = LS.sydneyDay();
+    if (r.counted && why !== 'quiet') toast(`Login streak: day ${LS.view(state).count}${state.loginStreak.wallet ? '' : ' (device-only)'}`, 'good');
+    for (const m of r.newPins) toast(`Streak pin unlocked: ${LS.PINS[m].name}! Wear it from the Streak tab.`, 'good');
+    persist(); hud(); } finally { streakBusy = false; } }
+setInterval(() => { if (state && LS.sydneyDay() !== streakDay) syncStreak(); }, 60_000);
+addEventListener('kibble:wallet', () => setTimeout(() => syncStreak(), 300));
 async function bootKibble() {
   try { const G = await import('https://kibble-pay.vercel.app/inu-games.js'); K = await G.initKibble({ game: KGAME }); G.mountFooter(K.mode);
     // Connect Wallet (title + in-game): cloud save keyed by wallet, holder tier from on-chain $KIBBLE (VIP perks read the real balance).
@@ -139,10 +153,12 @@ async function bootKibble() {
     G.mountWallet(K, { game: KGAME, keys: ['inuverse.save.v1', 'inu.profile.v1:'], position: 'top-center',
       progress: (g) => { const s = js(g); return s ? Math.floor((s.stats?.bonesEarned || 0) + (s.stats?.shifts || 0) * 10 + (s.clockSec || 0) / 60) : 0; },
       label: (g) => { const s = js(g); return s ? `${s.player?.name || 'Shiba'} · ${Math.floor(s.stats?.bonesEarned || 0)} bones earned` : ''; },
-      onWallet: () => { if (K.kp?.session) wallet().refresh?.().then(() => state && hud()).catch(() => {}); } }); }
+      onWallet: () => { if (K.kp?.session) wallet().refresh?.().then(() => state && hud()).catch(() => {}); syncStreak(); } }); }
   catch (e) { K = { mode: DEMO ? 'demo' : 'offline', kp: null }; }
   document.body.dataset.kibble = K.mode;
+  if (!DEMO) { PB.load(globalThis.__poolFetch || fetch).catch(() => {}); setInterval(() => { if (document.visibilityState === 'visible') PB.load(globalThis.__poolFetch || fetch).catch(() => {}); }, PB.CACHE_MS); }
   if (K.kp) { setWallet(kibblePayWallet(K.kp)); setProfileStore(kibblePayProfileStore(K.kp)); refreshPools(); if (K.kp.session) wallet().refresh().catch(() => {}); }
+  syncStreak();
   const b = $('#btn-phantom'); if (b) { b.title = DEMO ? 'Demo mode: no wallet' : 'Sign in with Phantom'; b.innerHTML = DEMO ? 'Demo mode <small>(fake KIBBLE)</small>' : 'Phantom'; }
   if (state) hud();
 }
@@ -151,7 +167,7 @@ addEventListener('kibble:failed', (e) => toast(e.detail.reason || 'Payment faile
 addEventListener('kibble:wallet', () => { if (state) { state.walletAddr = wallet().address; hud(); } });
 bootKibble(); refreshRegistry(true);
 if (localStorage.getItem('inu.noext.resume')) import('./launchui.js').then((m) => m.resumeAuth({ toast })).catch(() => {}); // finish Google/Apple sign-in after Phantom's redirect
-function hud() { GOLD.name = F5.isVip(state) ? state.player.name : null; { const P = DEMO ? poolsOf(state) : serverPools, el = $('#pools'); if (el) el.textContent = P ? `D${(P.daily / 1e6).toFixed(2)} W${(P.weekly / 1e6).toFixed(2)} M${(P.monthly / 1e6).toFixed(2)}` : 'pools'; } $('#bones').textContent = Math.floor(state.bones); $('#kibble').textContent = DEMO ? state.kibble.toFixed(2) : (wallet().live ? (wallet().balanceUi ?? '–') : 'soon'); $('#hud-name').textContent = state.player.name; }
+function hud() { GOLD.name = F5.isVip(state) ? state.player.name : null; { const P = DEMO ? poolsOf(state) : serverPools, el = $('#pools'); if (el) el.textContent = P ? `D${(P.daily / 1e6).toFixed(2)} W${(P.weekly / 1e6).toFixed(2)} M${(P.monthly / 1e6).toFixed(2)}` : 'pools'; } $('#bones').textContent = Math.floor(state.bones); $('#kibble').textContent = DEMO ? state.kibble.toFixed(2) : (wallet().live ? (wallet().balanceUi ?? '–') : 'soon'); $('#hud-name').textContent = state.player.name; { const ch = $('#streak-chip'); if (ch) { const k = JSON.stringify(LS.view(state)); if (ch.dataset.k !== k) { ch.dataset.k = k; ch.innerHTML = LSUI.chipHtml(state); ch.classList.toggle('device', !state.loginStreak?.wallet); } } } }
 
 function resize() { const nw = Math.round(innerWidth * devicePixelRatio), nh = Math.round(innerHeight * devicePixelRatio); if (cv.width !== nw || cv.height !== nh) { cv.width = nw; cv.height = nh; vignette = null; } // only touch the backing store on a real size change (visualViewport fires during address-bar moves; re-setting width clears the canvas)
   document.body.classList.toggle('landscape', innerWidth > innerHeight); document.body.classList.toggle('short', innerHeight < 520); }
@@ -193,7 +209,7 @@ function titleScreen() {
 }
 
 function startGame(s) { loadProfile(s).catch(() => {}); ENG.ensureEngage(s); ENG.addSeasonXp(s, 'login', Math.floor((s.clockSec || 0) / DAY_LEN)); F5.ensureFly5(s); F5.holderCheck(s); s.town ||= makeTown(rng); townH = -1; seedTokens(s, rng); REL.ensureRel(s); ensureFarm(s); ensureBiz(s); s.clockSec ??= 0; catchUp(s, Date.now(), { season: seasonOf(Math.floor(s.clockSec / DAY_LEN)), rain: false }); hourIdx = Math.floor(s.clockSec / (DAY_LEN / 24));
-  state = s; state.kibble ??= DEMO ? 20 : 0; if (!DEMO) state.kibble = 0; ensureWardrobe(state); ensurePacks(state); ensureMall(state); state.clockSec ??= 0; lastEarned = state.stats.bonesEarned; mode = 'world';
+  state = s; state.kibble ??= DEMO ? 20 : 0; if (!DEMO) state.kibble = 0; ensureWardrobe(state); ensurePacks(state); ensureMall(state); state.clockSec ??= 0; lastEarned = state.stats.bonesEarned; mode = 'world'; LS.ensureStreak(state); setTimeout(() => syncStreak(), 0);
   buildDrawer(document, { joystick: joyApi, bork: () => { initAudio(); bork(); player.emote = { kind: 'bork', t: 1.2 }; emoteBubble('me', 'bork', time); } }); $('#title').hidden = true; $('#hud').hidden = false; $('#minimap-wrap').hidden = false; document.body.classList.add('inworld');
   makeAlive(); mapImg = prerenderMap(); npcs = spawnNpcs(rng, 6); npcs.forEach((n) => { n.art = artKey(n.coat); }); amb = makeAmbient(42);
   Promise.all([artReady, buildingsReady, document.fonts?.load('8px Silkscreen').catch(() => {})]).then(() => { mapImg = prerenderMap(); });
@@ -417,6 +433,7 @@ $('#btn-emote').onclick = () => toggleEmotes(); $('#btn-emote').textContent = 'A
 document.addEventListener('pointerdown', () => { ACT.still = 0; }, true);
 $('#btn-photo').onclick = () => togglePhoto();
 $('#btn-engage').onclick = () => { initAudio(); uiClick?.(); openPanel('engage'); };
+{ const sc = $('#streak-chip'), go = () => { initAudio(); uiClick?.(); openPanel('fly5', { tab: 'streak' }); }; sc.onclick = go; sc.onkeydown = (e) => { if (e.key === 'Enter' || e.key === ' ') go(); }; }
 $('#btn-pools').onclick = () => { initAudio(); uiClick?.(); openPanel('city', { tab: 'pools' }); };
 $('#photo-save').onclick = () => { const tmp = document.createElement('canvas'); tmp.width = cv.width; tmp.height = cv.height; const tx = tmp.getContext('2d'); tx.drawImage(cv, 0, 0); F5.watermarkPhoto(tx, tmp.width, tmp.height); const a = document.createElement('a'); a.download = `inu-verse-${Date.now()}.png`; a.href = tmp.toDataURL('image/png'); a.click(); F5.submitPhoto(state, Math.floor(gameDay() / 7), { caption: 'Inu Verse snap' }); toast('Photo saved + entered this week\'s board', 'good'); };
 $('#photo-exit').onclick = () => togglePhoto();
@@ -572,7 +589,7 @@ function renderWorld() {
     if (a.profile) { drawProfileShiba(ctx, 0, 0, a.profile, { face: a.face, phase: a.phase, moving: a.moving, name: a.name, scale: 1.5, badge: a.badge, fid: a.me ? 'me' : a.name, emote: a.emote?.kind, pose: pz }); if (a.emote) drawEmote(ctx, 0, -110, a.emote.kind, time); }
     else drawShiba(ctx, 0, 0, { coat: a.coat, outfit: a.outfit, face: a.face, phase: a.phase, moving: a.moving, name: a.name, scale: 1.5, badge: a.badge, art: a.art, emote: a.emote?.kind, fid: a.me ? 'me' : a.name || a.id, wag: a.wag || (mm?.wag ? 1 : 0), pose: pz });
     if (pz) drawPoseFx(ctx, pz, 0, 0, 1.5, time, pz.face);
-    KENNEL_TAG.cur = null;
+    KENNEL_TAG.cur = null; if (a.me && state.loginStreak?.pin) drawWornPin(ctx, state.loginStreak.pin, time);
     if (a.worker) { drawVest(ctx, a.face); drawTool(ctx, a.worker); }
     if (mm?.umbrella) MWd.drawUmbrella(ctx, time, a.idx || 0); else if (mm?.zz && !a.emote) MWd.drawZz(ctx, time + (a.idx || 0)); if (a.crier) MWd.drawBell(ctx, time, crierRing > 0);
     if (a.emote) drawEmote(ctx, 0, a.name ? -14 : 0, a.emote.kind, time); ctx.restore();
@@ -773,6 +790,7 @@ function interact(it, viaDoor = false) { if (!viaDoor && isWalkDoor(it)) { toast
   else if (it.kind === 'gamedoor') openGameDoor(it.id);
   else if (it.kind === 'bank') openPanel('bank');
   else if (it.kind === 'matchmaker') openPanel('matchmaker');
+  else if (it.kind === 'square' && it.id === 'pools') openPanel('city', { tab: 'pools' }); // Pools Monument -> Weekly Pool Board (live)
   else if (it.kind === 'square') openPanel('fly5', { tab: it.id === 'pools' ? 'vip' : it.id === 'burn' ? 'burn' : it.id === 'quests' ? 'quests' : 'vip' });
   else if (it.kind === 'clubhouse') { if (myPack(state)) enterBuild('clubhouse', false); else openPanel('packs'); }
   else if (it.kind === 'kibble') kibbleSpot(it.id);
@@ -913,9 +931,9 @@ function renderSalon() {
 }
 function renderWardrobe() {
   const body = $('#panel-body'), w = state.wardrobe;
-  body.innerHTML = `<h2>Wardrobe</h2><p class="sub">Equip the clothes you own. One item per slot; gowns replace bottoms.${w.owned.length ? '' : ' <b>Nothing yet - visit Fetch Fashion!</b>'}</p>
+  body.innerHTML = `<h2>Wardrobe</h2>${LSUI.profileCardHtml(state)}<p class="sub">Equip the clothes you own. One item per slot; gowns replace bottoms.${w.owned.length ? '' : ' <b>Nothing yet - visit Fetch Fashion!</b>'}</p>
     <div class="wardrobe"><div class="mirror" id="mirror"></div><div id="slots"></div></div><p><button class="btn alt" id="tosalon">Mirror: restyle look (${SALON_PRICE} Bones)</button></p>`;
-  $('#tosalon').onclick = () => openPanel('salon');
+  $('#tosalon').onclick = () => openPanel('salon'); { const so = body.querySelector('[data-streak-open]'); if (so) so.onclick = () => openPanel('fly5', { tab: 'streak' }); }
   const m = $('#mirror'); m.appendChild(playerCanvas(168, 220, 3));
   m.insertAdjacentHTML('beforeend', `<div class="mname">${esc(state.player.name)}</div><div class="small">${COATS[state.player.coat].name}</div>`);
   $('#slots').innerHTML = SLOTS.map((slot) => { const items = w.owned.filter((id) => OUTFITS[id].slot === slot);
@@ -1457,4 +1475,4 @@ document.getElementById('zin')?.addEventListener('click', () => setZoom(stepZoom
 window.__inu = { guide, open: (k, o) => openPanel(k, o), get time() { return time; }, get player() { return player; }, get zoom() { return ZOOM; }, setZoom, president: pres, presVisit: (k) => startVisit(pres, k, { dayLen: DAY_LEN }), setHour: (h) => { dayOffset = timeForHour(h) - time; }, setRain: (r) => { amb.rain = amb.rainTarget = r; amb.weatherT = 999; }, get amb() { return amb; }, get npcs() { return npcs; }, get mood() { return { ...MOOD.current, shown: MWd.MW.mood }; }, emote: (k) => doEmote(k), cam, get state() { return state; }, get mode() { return mode; }, get panel() { return panel?.kind; }, get panelObj() { return panel; }, mp: MPL };
 // Inu Arcade inside the desktop overlay: its 🏠 button asks us to close the overlay instead of reloading.
 addEventListener('message', (e) => { if (e.origin === new URL(ARCADE.url).origin && e.data?.type === 'inu:back-to-verse' && arcadeOpen) { closeArcade(); try { e.source?.postMessage({ type: 'inu:verse-closed' }, e.origin); } catch {} } });
-Object.assign(window.__inu, { act: ACT, doAction: (k) => doAction(k), wheel }); // Round 3 test hooks (actions + wheel)
+Object.assign(window.__inu, { act: ACT, doAction: (k) => doAction(k), wheel, hud: () => state && hud() }); // Round 3 test hooks (actions + wheel)

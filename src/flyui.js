@@ -1,5 +1,6 @@
 // City Board panel: Prize Pools, Featured billboards, Burn-for-status, President drops.
 import { walletHtml, walletText } from './wallets.js';
+import * as PB from './poolboard.js';
 import * as F from './flywheels.js'; import { fmtK, POOL_RULES } from './mall.js'; import { jobBoard } from './jobs.js'; import { farmBoard, ensureFarm } from './farm.js'; import { bizBoard, ensureBiz } from './biz.js';
 const esc = (s) => String(s).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c]);
 const top = (rows, n = 3) => rows.slice(0, n).map((r, i) => `<li${r.me ? ' class="me"' : ''}>${i + 1}. ${esc(r.name)} <b>${Math.floor(r.score)}</b></li>`).join('');
@@ -8,7 +9,9 @@ export function renderCity(ctx) { const s = ctx.state, f = F.ensureFly(s), P = F
   const tabs = [['pools', 'Prize Pools'], ['featured', 'Featured Ads'], ['status', 'Burn for Status'], ['drops', 'President Drops']];
   let html = `<h2>City Board</h2><div class="ctabs">${tabs.map(([k, n]) => `<button class="ctab ${k === tab ? 'sel' : ''}" data-ctab="${k}">${n}</button>`).join('')}</div>`;
   if (tab === 'pools') { const fm = ensureFarm(s), bz = ensureBiz(s);
-    html += `<p class="sub">Pools grow from the transparent 2% Mall fee, the 5% market fee and business rent. Winners are decided by <b>skill and rank only</b>: no entry fee, no luck.</p>
+    const town = { farmPool: fm.pool, bizPool: bz.pool, farmTop: farmBoard(s, ctx.weekFrac), bizTop: bizBoard(s, ctx.weekFrac) };
+    html += PB.boardHtml(PB.buildBoard(PB.cached(), town)); setTimeout(() => fillPoolBoard(town), 0);
+    html += `<p class="sub">Pools grow from the transparent 2% Mall fee, the 5% market fee and business rent. Winners are decided by <b>skill and rank only</b>: no entry fee.</p>
     <div class="grid pools">
       <div class="card"><b>Daily · ${fmtK(P.daily)} KIBBLE</b><small>${POOL_RULES.daily}</small><ol class="lb">${top(jobBoard(s, ctx.day, ctx.dayFrac))}</ol><small>Job board: today's shift pay</small></div>
       <div class="card"><b>Weekly · ${fmtK(P.weekly)} KIBBLE</b><small>${POOL_RULES.weekly}</small><small>+ ${Math.floor(fm.pool)} Bones Top Farmer · ${Math.floor(bz.pool)} Bones Top Business</small>
@@ -34,6 +37,8 @@ export function renderCity(ctx) { const s = ctx.state, f = F.ensureFly(s), P = F
 
 // Live prize wallet board from kibble-pay /api/pools (display only; shortened wallets; tx links to the explorer).
 const KP = 'https://kibble-pay.vercel.app';
+async function fillPoolBoard(town) { const raw = await PB.load(globalThis.__poolFetch || fetch).catch(() => null), el = document.getElementById('pool-board'); if (!el || !raw) return;
+  el.outerHTML = PB.boardHtml(PB.buildBoard(raw, town)); }
 async function fillPrizeWallet() {
   const el = document.getElementById('prize-wallet-board'); if (!el) return;
   const e = (x) => String(x ?? '').replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c]);

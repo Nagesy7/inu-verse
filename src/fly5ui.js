@@ -1,4 +1,5 @@
 // Item 5 City Loop panel: holder VIP, burn fest, quests, sponsors, photos, tourney, UGC, streak.
+import * as LS from './loginstreak.js'; import * as LSUI from './streakui.js';
 import * as F5 from './fly5.js';
 import { OUTFITS } from './outfits.js';
 import { fmtK } from './mall.js';
@@ -65,10 +66,8 @@ export function renderFly5(ctx) {
         ${!d.listed ? `<button class="btn alt" data-act="ugclist:${d.id}">List</button>` : `<button class="btn alt" data-act="ugcbuy:${d.id}">Buy</button>`}
         <button class="btn" data-act="ugcfeat:${d.id}">Feature</button></div>`).join('') || '<p class="small">No designs yet.</p>'}</div>`;
   }
-  if (tab === 'streak') {
-    html += `<p class="sub">Daily login streak. Bones grow each consecutive day. Day ${F5.STREAK_DAY_REWARD} unlocks a free cosmetic.</p>
-      <div class="card"><b>Streak: ${F.streak.count} days</b><small>Last claim day ${F.streak.day < 0 ? '—' : F.streak.day}</small></div>
-      <button class="btn" data-act="streak">Claim today's Bones</button>`;
+  if (tab === 'streak') { html += LSUI.streakHtml(s, { signedIn: !!ctx.kp?.signedIn, address: ctx.kp?.address });
+    html += `<h3>In-game daily Bones</h3><p class="small">Separate from the login streak: one Bones claim per in-game day (${F.streak.count} in a row). Unchanged.</p><button class="btn alt" data-act="streak">Claim today's Bones</button>`;
   }
 
   ctx.body.innerHTML = html;
@@ -76,6 +75,7 @@ export function renderFly5(ctx) {
   ctx.body.onclick = (e) => {
     const t = e.target.closest('[data-f5]'); if (t) return ctx.open(t.dataset.f5);
     const b = e.target.closest('[data-act]'); if (!b) return;
+    if (b.dataset.act.startsWith('pin:')) { const v = b.dataset.act.slice(4), r = LS.equipPin(s, v === 'off' ? null : +v); if (!r.ok) return ctx.toast(r.reason, 'bad'); ctx.persist?.(); ctx.hud?.(); return ctx.open('streak'); }
     const act = b.dataset.act, cut = act.indexOf(':'), a = cut < 0 ? act : act.slice(0, cut), id = cut < 0 ? '' : act.slice(cut + 1);
     let r;
     if (a === 'burnclaim') r = F5.claimBurnFest(s, month);

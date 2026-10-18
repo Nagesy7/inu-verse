@@ -327,3 +327,13 @@ body.short .title-card>.row{position:sticky;bottom:-4px;z-index:3;background:#1b
 
 /* shop interiors editor: big touch targets in phone landscape */
 #buildbar .shopinv button,#buildbar .shopbar .up .btn{min-height:34px;min-width:44px}body.short.landscape #buildbar .shopinv{max-height:34dvh;overflow:auto}
+/* Weekly Pool Board (Pools Monument / City Board) */
+.poolboard { overflow-x: auto; }
+.poolboard .pbt { width: 100%; border-collapse: collapse; font-size: 12px; margin: 4px 0; }
+.poolboard .pbt th, .poolboard .pbt td { text-align: left; padding: 3px 5px; border-bottom: 1px solid rgba(255,255,255,.12); vertical-align: top; }
+.poolboard .pbt td.na { color: #a8a8b8; font-style: italic; }
+.poolboard .pb-upd { opacity: .8; }
+/* Login streak: HUD chip, profile card, pins */
+#hud .chip.streak{cursor:pointer;min-height:28px}#hud .chip.streak img{image-rendering:pixelated}#hud .chip.streak.device small{color:#ffb84a}
+.profstreak{display:flex;flex-direction:row;align-items:center;gap:10px;margin:6px 0}.profstreak>div{flex:1;display:flex;flex-direction:column}.profstreak img,.pins img{image-rendering:pixelated}
+.grid.pins .card.locked{opacity:.65}.grid.pins .card{align-items:center;text-align:center}
