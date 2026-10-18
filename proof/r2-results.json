@@ -1,5 +1,5 @@
 {
- "url": "http://localhost:8642/",
+ "url": "https://inu-verse-tawny.vercel.app/",
  "rooms": {
   "cafe": {
    "entered": "cafe",
@@ -251,6 +251,6 @@
  "fps_cafe_667x375@4x": 60,
  "fps_park_667x375@1x": 60,
  "fps_park_667x375@4x": 60,
- "gifFrames": 273,
+ "gifFrames": 276,
  "consoleErrors": []
 }
