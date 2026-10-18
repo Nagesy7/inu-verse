@@ -35,6 +35,29 @@ export const MALL_ITEMS = {
   gold_throne:  { cat: 'furniture', name: 'Golden Throne', price: 100000, grants: { furniture: 'gold_throne' } },
   gold_statue:  { cat: 'furniture', name: 'Mini Shiba Statue', price: 75000, grants: { furniture: 'gold_statue' } },
   gold_lamp:    { cat: 'furniture', name: 'Gilded Lamp', price: 30000, grants: { furniture: 'gold_lamp' } },
+  // Gilded Collar Jewelers
+  rose_tiara:    { cat: 'jewelry', name: 'Rose Gold Tiara', price: 85000, grants: { outfit: 'rose_tiara' } },
+  sapphire_crown:{ cat: 'jewelry', name: 'Sapphire Crown', price: 110000, grants: { outfit: 'sapphire_crown' } },
+  ruby_chain:    { cat: 'jewelry', name: 'Ruby Paw Chain', price: 75000, grants: { outfit: 'ruby_chain' } },
+  emerald_chain: { cat: 'jewelry', name: 'Emerald Link Chain', price: 65000, grants: { outfit: 'emerald_chain' } },
+  rose_shades:   { cat: 'jewelry', name: 'Rose Gold Shades', price: 50000, grants: { outfit: 'rose_shades' } },
+  pearl_brooch:  { cat: 'jewelry', name: 'Pearl Paw Brooch', price: 45000, grants: { outfit: 'pearl_brooch' } },
+  // Royal Paws Designer
+  plat_suit:     { cat: 'outfit', name: 'Platinum Designer Suit', price: 125000, grants: { outfit: 'plat_suit' } },
+  rose_gown:     { cat: 'outfit', name: 'Rose Velvet Gown', price: 140000, grants: { outfit: 'rose_gown' } },
+  emerald_gown:  { cat: 'outfit', name: 'Emerald Velvet Gown', price: 140000, grants: { outfit: 'emerald_gown' } },
+  royal_tux:     { cat: 'outfit', name: 'Royal Plum Tuxedo', price: 115000, grants: { outfit: 'royal_tux' } },
+  champagne_gown:{ cat: 'outfit', name: 'Champagne Silk Gown', price: 130000, grants: { outfit: 'champagne_gown' } },
+  gilded_hoodie: { cat: 'outfit', name: 'Gilded Paw Hoodie', price: 95000, grants: { outfit: 'gilded_hoodie' } },
+  ivory_suit:    { cat: 'outfit', name: 'Ivory Silk Suit', price: 110000, grants: { outfit: 'ivory_suit' } },
+  // Golden Den Furniture
+  gold_bed:      { cat: 'furniture', name: 'Gilded Four-Poster Bed', price: 100000, grants: { furniture: 'gold_bed' } },
+  gold_sofa:     { cat: 'furniture', name: 'Golden Velvet Sofa', price: 85000, grants: { furniture: 'gold_sofa' } },
+  gold_table:    { cat: 'furniture', name: 'Gold Leaf Dining Table', price: 60000, grants: { furniture: 'gold_table' } },
+  gold_rug:      { cat: 'furniture', name: 'Royal Bone Rug', price: 40000, grants: { furniture: 'gold_rug' } },
+  gold_art:      { cat: 'furniture', name: 'Golden Paw Portrait', price: 35000, grants: { furniture: 'gold_art' } },
+  gold_plant:    { cat: 'furniture', name: 'Gilded Bonsai', price: 25000, grants: { furniture: 'gold_plant' } },
+  gold_pupbed:   { cat: 'furniture', name: 'Gold Silk Pup Cushion', price: 45000, grants: { furniture: 'gold_pupbed' } },
   car_coupe:    { cat: 'car', name: 'Zoomie GT Coupe (preview)', price: 400000, grants: { car: 'coupe' } },
   car_limo:     { cat: 'car', name: 'Bone-mobile Limo (preview)', price: 650000, grants: { car: 'limo' } },
 };
@@ -72,6 +95,11 @@ export function buyMallItem(s, id) {
   m.owned.push(id);
   return { ok: true, quote: q };
 }
+// President's Office treasury line. The Office is an information page: it shows the address and the fee split and never sends
+// or receives anything itself. Demo (?demo=1) says so; live says where real $KIBBLE purchases go (Phantom -> kibble-pay -> treasury).
+export function officeTreasuryNote(demo) { return demo ? '(simulated — demo KIBBLE only, no on-chain transfers)'
+  : '$KIBBLE is live: Mall and district purchases are paid in $KIBBLE with Phantom through kibble-pay, and the full price goes to this treasury address. This office only shows the address and the fee split; it does not send or move any funds.'; }
+export const officeLedgerNote = (demo) => demo ? null : 'Live purchase fees are recorded in the kibble-pay server ledger, not on this page.';
 // DEMO-mode settlement (local ledger). Real purchases are settled by kibble-pay's server ledger.
 export function settle(m, q, item) {
   m.treasury += q.owner; m.pools.daily += q.daily; m.pools.weekly += q.weekly; m.pools.monthly += q.monthly;

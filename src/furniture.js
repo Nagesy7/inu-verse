@@ -14,6 +14,14 @@ export const FURNITURE = {
   gold_throne: { name: 'Golden Throne', w: 1, h: 1, price: 250, color: '#e3b341', layer: 'obj', mall: true },
   gold_statue: { name: 'Mini Shiba Statue', w: 1, h: 1, price: 190, color: '#d4a640', layer: 'obj', mall: true },
   gold_lamp:   { name: 'Gilded Lamp', w: 1, h: 1, price: 75, color: '#f2cc68', layer: 'obj', mall: true },
+  // Golden Den Furniture stock (mall, $KIBBLE): drawn with the shared furniture art kinds in gold / luxe colours
+  gold_bed:     { name: 'Gilded Four-Poster Bed', w: 2, h: 3, price: 300, color: '#e3b341', layer: 'obj', mall: true, draw: 'bed' },
+  gold_sofa:    { name: 'Golden Velvet Sofa', w: 3, h: 1, price: 240, color: '#c9a23a', layer: 'obj', mall: true, draw: 'sofa' },
+  gold_table:   { name: 'Gold Leaf Dining Table', w: 2, h: 2, price: 180, color: '#f2cc68', layer: 'obj', mall: true, draw: 'table' },
+  gold_rug:     { name: 'Royal Bone Rug', w: 3, h: 2, price: 120, color: '#b8323a', layer: 'floor', mall: true, draw: 'rug' },
+  gold_art:     { name: 'Golden Paw Portrait', w: 1, h: 1, price: 110, color: '#d4a640', layer: 'obj', mall: true, draw: 'art' },
+  gold_plant:   { name: 'Gilded Bonsai', w: 1, h: 1, price: 90, color: '#e3b341', layer: 'obj', mall: true, draw: 'plant' },
+  gold_pupbed:  { name: 'Gold Silk Pup Cushion', w: 1, h: 1, price: 140, color: '#f2cc68', layer: 'obj', mall: true, draw: 'pupbed' },
   arcade:   { name: 'Inu Arcade',    w: 1, h: 1, price: 150, color: '#6c5ce7', layer: 'obj' },
 };
 // Furniture stores (outer district). store 'cosy' = Cosy Corner (Bones), 'royal' = Maison Royale ($KIBBLE, 2% split).
