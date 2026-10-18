@@ -53,7 +53,7 @@ for (const v of VIEWS) { const tag = `${v[0]}x${v[1]}`;
     await label(p, who === 'creator' ? 'TEST FIXTURE wallet: stopped at the Phantom "Sign message" prompt, nothing signed' : 'TEST FIXTURE wallet: President\'s Vault is not the on-chain creator'); await shot(p, `kibble-split-optin-${who}-${tag}`);
     const req = await p.evaluate(() => window.__fixtureSignRequests || []);
     L(`[${tag}] ${who}: sign button disabled=${disabled} · sign requests=${req.length} · status="${await p.evaluate(() => (document.querySelector('[data-ks="sign"]')?.innerText || '') + ' ' + (document.querySelector('.ksign .bad')?.innerText || ''))}"`);
-    if (req.length) L(`[${tag}] message at the prompt:\n${req[0]}`);
+    if (req.length) L(`[${tag}] message at the prompt (request ${req.length}; earlier ones are the existing kibble-pay sign-in on connect):\n${req[req.length - 1]}`);
     if (p.errs.length) L(`[${tag}] page errors: ${p.errs.join(' | ')}`); await p.context().close(); } }
 fs.writeFileSync('proof/kibble-split-log.txt', log.join('\n') + '\n');
 await browser.close();

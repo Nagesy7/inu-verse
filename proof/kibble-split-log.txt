@@ -1,0 +1,114 @@
+saved proof/kibble-split-card-844x390.png
+[844x390] card split: Creator fee split 40% community pool Kennel Chest Akk3…6fn ↗ 35% creator President's Vault BzLY…NGJ ↗ 25% dev wallet Bone Vault Bv35…W8Y ↗ Bone Vault receives the 25% dev share for hosting, tools and art, with part of it seeding the next Inu project after Inu Verse. How $KIBBLE creator fees are shared, published for transparency. This is not a payout promise to holders and there are no returns.
+[844x390] live $KIBBLE Verified slot (not opted in): ""
+[844x390] live API: {"verified":null,"creator":"Akk3DdxeRRLZABfpkFKYoDBk6Zim5wNLRYemNFjv56fn","optIn":false,"declaration":false}
+saved proof/wallet-names-office-844x390.png
+[844x390] office: President's Vault BzLY…NGJ ↗
+saved proof/wallet-names-autos-844x390.png
+saved proof/wallet-names-prizewallet-844x390.png
+[844x390] prize wallet: Prize wallet (live, on-chain) | Kennel Chest Akk3…6fn ↗ · balance 0 KIBBLE
+saved proof/kibble-split-breakdown-844x390.png
+[844x390] fixture breakdown fee row: PASS Creator fee split published Published by creator — not enforced on-chain: 40% Kennel Chest, 35% President's Vault, 25% Bone Vault 40% community pool Kennel Chest Akk3…6fn ↗ 35% creator President's Vault BzLY…NGJ ↗ 25% dev wallet Bone Vault Bv35…W8Y ↗ Bone Vault receives the 25% dev share for hosting, tools and art, with part of it seeding the next Inu project after Inu Verse. How $KIBBLE creator fees are shared, published for transparency. This is not a payout promise to holders and there are no returns. Source: Published by creator — not enforced on-chain: declaration signed by the on-chain creator Kennel Chest Akk3…56fn (ed25519 signature checked by our server); on-chain fee-sharing config D81S…HzM8 not found
+saved proof/kibble-split-optin-wrongwallet-844x390.png
+[844x390] wrongwallet: sign button disabled=true · sign requests=2 · status="SIGN ONCE IN PHANTOM This wallet is not the on-chain creator. Switch to Kennel Chest Akk3…6fn in Phantom and connect again."
+[844x390] message at the prompt (request 2; earlier ones are the existing kibble-pay sign-in on connect):
+kibble-pay.vercel.app wants you to sign in with your Solana account:
+BzLYTFAfUsjzQ5x8bx5BbPK4DFtaHrLCuferkvkxTNGJ
+
+Sign in to Inu games to buy items with KIBBLE.
+
+URI: https://kibble-pay.vercel.app
+Version: 1
+Chain ID: mainnet
+Nonce: 2434eb9077a60411ef58fe95
+Issued At: 2026-10-18T13:48:34.308Z
+saved proof/kibble-split-optin-start-844x390.png
+saved proof/kibble-split-optin-creator-844x390.png
+[844x390] creator: sign button disabled=false · sign requests=3 · status="APPROVE IN PHANTOM… "
+[844x390] message at the prompt (request 3; earlier ones are the existing kibble-pay sign-in on connect):
+Inu Verse · Verified Launch opt-in + creator fee split declaration (v1)
+Coin: $KIBBLE 4VE9sy4fEMJdZ6i7MkYPbnqDJd2oqzJQmg44WJ3opump
+I am this coin's creator and I opt it in to the Verified Launch checks.
+Creator fee split:
+40.00% -> Akk3DdxeRRLZABfpkFKYoDBk6Zim5wNLRYemNFjv56fn (Kennel Chest)
+35.00% -> BzLYTFAfUsjzQ5x8bx5BbPK4DFtaHrLCuferkvkxTNGJ (President's Vault)
+25.00% -> Bv35NAj1XvfSGrQKpHHw29ojZmY4NYyUZr7rwXpPhW8Y (Bone Vault)
+Signer: Akk3DdxeRRLZABfpkFKYoDBk6Zim5wNLRYemNFjv56fn
+Issued: 2026-10-18T13:48:43.077Z
+This is a signed message, not a transaction. It moves no funds.
+saved proof/kibble-split-card-667x375.png
+[667x375] card split: Creator fee split 40% community pool Kennel Chest Akk3…6fn ↗ 35% creator President's Vault BzLY…NGJ ↗ 25% dev wallet Bone Vault Bv35…W8Y ↗ Bone Vault receives the 25% dev share for hosting, tools and art, with part of it seeding the next Inu project after Inu Verse. How $KIBBLE creator fees are shared, published for transparency. This is not a payout promise to holders and there are no returns.
+[667x375] live $KIBBLE Verified slot (not opted in): ""
+[667x375] live API: {"verified":null,"creator":"Akk3DdxeRRLZABfpkFKYoDBk6Zim5wNLRYemNFjv56fn","optIn":false,"declaration":false}
+saved proof/wallet-names-office-667x375.png
+[667x375] office: President's Vault BzLY…NGJ ↗
+saved proof/wallet-names-autos-667x375.png
+saved proof/wallet-names-prizewallet-667x375.png
+[667x375] prize wallet: Prize wallet (live, on-chain) | Kennel Chest Akk3…6fn ↗ · balance 0 KIBBLE
+saved proof/kibble-split-breakdown-667x375.png
+[667x375] fixture breakdown fee row: PASS Creator fee split published Published by creator — not enforced on-chain: 40% Kennel Chest, 35% President's Vault, 25% Bone Vault 40% community pool Kennel Chest Akk3…6fn ↗ 35% creator President's Vault BzLY…NGJ ↗ 25% dev wallet Bone Vault Bv35…W8Y ↗ Bone Vault receives the 25% dev share for hosting, tools and art, with part of it seeding the next Inu project after Inu Verse. How $KIBBLE creator fees are shared, published for transparency. This is not a payout promise to holders and there are no returns. Source: Published by creator — not enforced on-chain: declaration signed by the on-chain creator Kennel Chest Akk3…56fn (ed25519 signature checked by our server); on-chain fee-sharing config D81S…HzM8 not found
+saved proof/kibble-split-optin-wrongwallet-667x375.png
+[667x375] wrongwallet: sign button disabled=true · sign requests=2 · status="SIGN ONCE IN PHANTOM This wallet is not the on-chain creator. Switch to Kennel Chest Akk3…6fn in Phantom and connect again."
+[667x375] message at the prompt (request 2; earlier ones are the existing kibble-pay sign-in on connect):
+kibble-pay.vercel.app wants you to sign in with your Solana account:
+BzLYTFAfUsjzQ5x8bx5BbPK4DFtaHrLCuferkvkxTNGJ
+
+Sign in to Inu games to buy items with KIBBLE.
+
+URI: https://kibble-pay.vercel.app
+Version: 1
+Chain ID: mainnet
+Nonce: 97eff4e77a9d1bc646935efd
+Issued At: 2026-10-18T13:49:04.596Z
+saved proof/kibble-split-optin-start-667x375.png
+saved proof/kibble-split-optin-creator-667x375.png
+[667x375] creator: sign button disabled=false · sign requests=3 · status="APPROVE IN PHANTOM… "
+[667x375] message at the prompt (request 3; earlier ones are the existing kibble-pay sign-in on connect):
+Inu Verse · Verified Launch opt-in + creator fee split declaration (v1)
+Coin: $KIBBLE 4VE9sy4fEMJdZ6i7MkYPbnqDJd2oqzJQmg44WJ3opump
+I am this coin's creator and I opt it in to the Verified Launch checks.
+Creator fee split:
+40.00% -> Akk3DdxeRRLZABfpkFKYoDBk6Zim5wNLRYemNFjv56fn (Kennel Chest)
+35.00% -> BzLYTFAfUsjzQ5x8bx5BbPK4DFtaHrLCuferkvkxTNGJ (President's Vault)
+25.00% -> Bv35NAj1XvfSGrQKpHHw29ojZmY4NYyUZr7rwXpPhW8Y (Bone Vault)
+Signer: Akk3DdxeRRLZABfpkFKYoDBk6Zim5wNLRYemNFjv56fn
+Issued: 2026-10-18T13:49:13.488Z
+This is a signed message, not a transaction. It moves no funds.
+saved proof/kibble-split-card-1280x800.png
+[1280x800] card split: Creator fee split 40% community pool Kennel Chest Akk3…6fn ↗ 35% creator President's Vault BzLY…NGJ ↗ 25% dev wallet Bone Vault Bv35…W8Y ↗ Bone Vault receives the 25% dev share for hosting, tools and art, with part of it seeding the next Inu project after Inu Verse. How $KIBBLE creator fees are shared, published for transparency. This is not a payout promise to holders and there are no returns.
+[1280x800] live $KIBBLE Verified slot (not opted in): ""
+[1280x800] live API: {"verified":null,"creator":"Akk3DdxeRRLZABfpkFKYoDBk6Zim5wNLRYemNFjv56fn","optIn":false,"declaration":false}
+saved proof/wallet-names-office-1280x800.png
+[1280x800] office: President's Vault BzLY…NGJ ↗
+saved proof/wallet-names-autos-1280x800.png
+saved proof/wallet-names-prizewallet-1280x800.png
+[1280x800] prize wallet: Prize wallet (live, on-chain) | Kennel Chest Akk3…6fn ↗ · balance 0 KIBBLE
+saved proof/kibble-split-breakdown-1280x800.png
+[1280x800] fixture breakdown fee row: PASS Creator fee split published Published by creator — not enforced on-chain: 40% Kennel Chest, 35% President's Vault, 25% Bone Vault 40% community pool Kennel Chest Akk3…6fn ↗ 35% creator President's Vault BzLY…NGJ ↗ 25% dev wallet Bone Vault Bv35…W8Y ↗ Bone Vault receives the 25% dev share for hosting, tools and art, with part of it seeding the next Inu project after Inu Verse. How $KIBBLE creator fees are shared, published for transparency. This is not a payout promise to holders and there are no returns. Source: Published by creator — not enforced on-chain: declaration signed by the on-chain creator Kennel Chest Akk3…56fn (ed25519 signature checked by our server); on-chain fee-sharing config D81S…HzM8 not found
+saved proof/kibble-split-optin-wrongwallet-1280x800.png
+[1280x800] wrongwallet: sign button disabled=true · sign requests=2 · status="SIGN ONCE IN PHANTOM This wallet is not the on-chain creator. Switch to Kennel Chest Akk3…6fn in Phantom and connect again."
+[1280x800] message at the prompt (request 2; earlier ones are the existing kibble-pay sign-in on connect):
+kibble-pay.vercel.app wants you to sign in with your Solana account:
+BzLYTFAfUsjzQ5x8bx5BbPK4DFtaHrLCuferkvkxTNGJ
+
+Sign in to Inu games to buy items with KIBBLE.
+
+URI: https://kibble-pay.vercel.app
+Version: 1
+Chain ID: mainnet
+Nonce: c9750ac5d2255095b2ce322d
+Issued At: 2026-10-18T13:49:35.961Z
+saved proof/kibble-split-optin-start-1280x800.png
+saved proof/kibble-split-optin-creator-1280x800.png
+[1280x800] creator: sign button disabled=false · sign requests=3 · status="APPROVE IN PHANTOM… "
+[1280x800] message at the prompt (request 3; earlier ones are the existing kibble-pay sign-in on connect):
+Inu Verse · Verified Launch opt-in + creator fee split declaration (v1)
+Coin: $KIBBLE 4VE9sy4fEMJdZ6i7MkYPbnqDJd2oqzJQmg44WJ3opump
+I am this coin's creator and I opt it in to the Verified Launch checks.
+Creator fee split:
+40.00% -> Akk3DdxeRRLZABfpkFKYoDBk6Zim5wNLRYemNFjv56fn (Kennel Chest)
+35.00% -> BzLYTFAfUsjzQ5x8bx5BbPK4DFtaHrLCuferkvkxTNGJ (President's Vault)
+25.00% -> Bv35NAj1XvfSGrQKpHHw29ojZmY4NYyUZr7rwXpPhW8Y (Bone Vault)
+Signer: Akk3DdxeRRLZABfpkFKYoDBk6Zim5wNLRYemNFjv56fn
+Issued: 2026-10-18T13:49:45.039Z
+This is a signed message, not a transaction. It moves no funds.
