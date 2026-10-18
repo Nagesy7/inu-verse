@@ -10,7 +10,9 @@ export const localProfileStore = (ls = globalThis.localStorage) => ({ id: 'local
   async put(p) { const n = { ...normalizeProfile(p, p.wallet), updatedAt: Date.now() }; ls?.setItem(LOCAL_KEY + n.wallet, JSON.stringify(n)); return n; } });
 export const kibblePayProfileStore = (kp, local = localProfileStore()) => ({ id: 'kibble-pay',
   async get(wallet) { try { return await kp.getProfile(wallet); } catch { return local.get(wallet); } },
-  async put(p) { const n = await local.put(p); try { return await kp.saveProfile(n); } catch { return n; } } });
+  // only when already signed in: a background profile save must never open a Phantom sign-in by itself (that was an unprompted
+  // extra sign request on top of the Connect tap). Signed out, the profile stays local until the player connects.
+  async put(p) { const n = await local.put(p); if (!kp.signedIn) return n; try { return await kp.saveProfile(n); } catch { return n; } } });
 let store = localProfileStore();
 export const setProfileStore = (s) => (store = s || localProfileStore());
 export const profileStore = () => store;

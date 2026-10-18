@@ -16,4 +16,7 @@ test('legacy saves keep their look; salon restyle costs bones', () => { const ol
 test('shared profile: versioned, wallet-keyed, outfit slots self-describing, local store round-trip', async () => { const s = mk({ outfit: 'street', trait: 'charmer' }); const p = P.profileFromState(s);
   assert.equal(p.v, 1); assert.ok(p.wallet); assert.equal(p.outfit.top.id, 'jacket_black'); assert.ok(p.outfit.top.c); assert.equal(p.trait, 'charmer');
   const mem = new Map(), ls = { getItem: (k) => mem.get(k) ?? null, setItem: (k, v) => mem.set(k, v) }; const st = P.localProfileStore(ls); await st.put(p); const back = await st.get(p.wallet); assert.equal(back.look.coat, p.look.coat); assert.ok([...mem.keys()][0].startsWith('inu.profile.v1:'));
-  const kp = { saved: null, async getProfile() { return this.saved; }, async saveProfile(x) { this.saved = { ...x, server: true }; return this.saved; } }; const ks = P.kibblePayProfileStore(kp, st); const r = await ks.put(p); assert.equal(r.server, true); });
+  const kp = { signedIn: true, saved: null, async getProfile() { return this.saved; }, async saveProfile(x) { this.saved = { ...x, server: true }; return this.saved; } }; const ks = P.kibblePayProfileStore(kp, st); const r = await ks.put(p); assert.equal(r.server, true);
+  // signed out: a background profile save stays local and never starts a Phantom sign-in (no unprompted sign request)
+  let calls = 0; const out = { signedIn: false, async saveProfile() { calls++; throw new Error('would open Phantom'); } }; const r2 = await P.kibblePayProfileStore(out, st).put(p);
+  assert.equal(calls, 0); assert.equal(r2.server, undefined); assert.equal((await st.get(p.wallet)).look.coat, p.look.coat); });
