@@ -26,7 +26,7 @@ The checks are real on-chain reads through the server RPC (`api/_lib/clean.js`, 
 - liquidity
 
 A check that can't run is "unknown" and nothing is guessed. PASS needs every check verified, fee split included, so an unknown caps the badge at WARN.
-Results are cached 30 min per coin in Upstash (`launchhall:clean:<mint>`), and at most 2 fresh checks run per request.
+Results are cached 30 min per coin in Upstash (`launchhall:clean:v2:<mint>`), and at most 2 fresh checks run per request.
 
 ## Kibble Kennel look (cosmetics only)
 Tiers come from kibble-pay `GET /api/kennel?wallet=` (contract: `/workspace/inu-shared/kennel-api.md`; owner: the Inu Empires keeper).

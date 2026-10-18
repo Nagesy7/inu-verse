@@ -72,7 +72,7 @@ export async function pumpCreator(mint, { rpc, f = fetch } = {}) {
 // "fee payer == pump.fun bonding-curve creator" is the same creator-vs-wallet check as a signed-in session.
 export const LAUNCH_PROOF_MAX_AGE_S = 24 * 3600;
 export async function launchTx(sig, { rpc, f = fetch } = {}) {
-  const r = await f(rpc, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ jsonrpc: "2.0", id: 1, method: "getTransaction", params: [sig, { encoding: "json", commitment: "confirmed", maxSupportedTransactionVersion: 0 }] }) });
+  const r = await f(rpc, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ jsonrpc: "2.0", id: 1, method: "getTransaction", params: [sig, { encoding: "json", commitment: "confirmed", maxSupportedTransactionVersion: 1 }] }) });
   const t = (await r.json()).result; if (!t) return { ok: false, reason: "launch transaction not found yet, try again in a few seconds" };
   if (t.meta?.err) return { ok: false, reason: "that launch transaction failed on-chain" };
   const keys = t.transaction?.message?.accountKeys || []; return { ok: true, feePayer: keys[0], keys, blockTime: t.blockTime || 0 }; }
@@ -84,19 +84,20 @@ export async function dexInfo(mint, f = fetch) { try { const r = await f(`https:
 // Real on-chain checks through the server RPC (api/_lib/clean.js), cached per coin in Upstash (launchhall:clean:<mint>) for
 // CLEAN_TTL so the Helius free tier is only hit about twice an hour per coin; stale results are served while one request
 // recomputes (lock launchhall:cleanlock:<mint>). At most CLEAN_PER_REQ coins are computed per request; the rest say pending.
+export const CLEAN_KEY = "clean:v2:"; // bump when the checks change so old results are not served
 export const CLEAN_TTL_MS = 30 * 60_000, CLEAN_MAX_AGE_MS = 24 * 3600_000, CLEAN_PER_REQ = 2, CLEAN_MAX = 12;
 export async function dexLiquidity(mint, f = fetch) { try { const r = await f(`https://api.dexscreener.com/tokens/v1/solana/${mint}`); if (!r.ok) return null; const a = (await r.json() || []).filter((p) => p.baseToken?.address === mint);
   return a.length ? a.reduce((s, p) => s + Number(p.liquidity?.usd || 0), 0) : null; } catch { return null; } }
 export async function solUsd(f = fetch) { try { const r = await f("https://api.coinbase.com/v2/prices/SOL-USD/spot"); if (!r.ok) return null; const v = Number((await r.json())?.data?.amount); return v > 0 ? v : null; } catch { return null; } }
 async function cleanFor(store, mints, D) { const out = {}; let budget = CLEAN_PER_REQ;
-  for (const m of mints) { let hit = null; try { hit = JSON.parse((await store.get("clean:" + m)) || "null"); } catch {}
+  for (const m of mints) { let hit = null; try { hit = JSON.parse((await store.get(CLEAN_KEY + m)) || "null"); } catch {}
     const age = hit ? D.now() - hit.checkedAt : Infinity;
     if (hit && age < CLEAN_TTL_MS) { out[m] = { ...hit, cached: true }; continue; }
     if (m !== KIBBLE_MINT) { const c = await store.get("coin:" + m); if (!c || JSON.parse(c).removed) { out[m] = { mint: m, overall: "unknown", error: "not on the Launch Hall board" }; continue; } }
     let mine = budget > 0; if (mine) mine = await store.setNX("cleanlock:" + m, String(D.now())).catch(() => false); if (mine) { try { await store.expire("cleanlock:" + m, 120); } catch {} }
     if (!mine) { out[m] = hit && age < CLEAN_MAX_AGE_MS ? { ...hit, cached: true, stale: true } : { mint: m, overall: "unknown", pending: true }; continue; }
     budget--; let creatorHint = null; try { creatorHint = m === KIBBLE_MINT ? null : JSON.parse((await store.get("coin:" + m)) || "{}").creator || null; } catch {}
-    try { const r = await D.clean(m, creatorHint); await store.set("clean:" + m, JSON.stringify(r)); out[m] = r; }
+    try { const r = await D.clean(m, creatorHint); await store.set(CLEAN_KEY + m, JSON.stringify(r)); out[m] = r; }
     catch (e) { out[m] = hit ? { ...hit, cached: true, stale: true } : { mint: m, overall: "unknown", error: "checks unavailable right now" }; }
     try { await store.del("cleanlock:" + m); } catch {} }
   return out; }

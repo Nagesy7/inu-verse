@@ -59,3 +59,7 @@ test('badge always flags dev + top-10 holdings and shows unknown honestly', asyn
   const html = CL.badgeHtml(MINT); assert.match(html, /Dev 0%/); assert.match(html, /Top10 12%/); assert.match(html, /CHECK NOTES/); assert.match(html, /Creator fee split published \+ locked/);
   await CL.fetchClean([W(40)], { f: async () => { throw new Error('offline'); } }); const u = CL.badgeHtml(W(40)); assert.match(u, /Dev \?/); assert.match(u, /NOT CHECKED YET/); });
 test('clean launch copy has no banned words', () => { for (const f of ['src/cleanlaunch.js', 'api/_lib/clean.js']) assert.deepEqual(bannedIn(fs.readFileSync(f, 'utf8').replace(/^\s*\/\/.*$/gm, '')), [], f); });
+test('unreadable transactions never count as clean (first-slot + dev history -> unknown)', async () => {
+  const rpc = fakeRpc(); rpc.batch = async (reqs) => reqs.map(() => null); const r = await cleanChecks(MINT, { rpc, solUsd: async () => 150 });
+  assert.equal(r.checks.snipes.status, 'unknown'); assert.match(r.checks.snipes.note, /Could not read/); assert.notEqual(r.overall, 'pass');
+  assert.match(fs.readFileSync('api/_lib/clean.js', 'utf8'), /maxSupportedTransactionVersion: 1/); });

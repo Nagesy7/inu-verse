@@ -22,9 +22,16 @@ export const ataOf = (owner, mint, prog = TOKEN) => findPda([b58decode(owner), b
 export function makeRpc(url, f = fetch, env = process.env) { let id = 0; let calls = 0;
   const one = async (method, params) => { calls++; const r = await f(url, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ jsonrpc: "2.0", id: ++id, method, params }) });
     const j = await r.json().catch(() => ({})); if (j.error || !r.ok) throw new Error(redact(j.error?.message || "rpc " + r.status, env)); return j.result; };
-  const batch = async (reqs) => { if (!reqs.length) return []; calls += reqs.length; const body = reqs.map(([method, params], i) => ({ jsonrpc: "2.0", id: i, method, params }));
+  // JSON-RPC batches in chunks of 10; if a provider rejects batches (some free tiers) or drops entries, fall back to single
+  // calls (3 at a time) for what's missing. Entries that still fail stay null and the caller reports "unknown".
+  const raw = async (reqs) => { calls += reqs.length; const body = reqs.map(([method, params], i) => ({ jsonrpc: "2.0", id: i, method, params }));
     const r = await f(url, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify(body) }); const j = await r.json().catch(() => null);
     if (!Array.isArray(j)) throw new Error("rpc batch " + r.status); const out = []; for (const x of j) out[x.id] = x.error ? null : x.result; return out; };
+  const batch = async (reqs) => { if (!reqs.length) return []; const out = new Array(reqs.length).fill(null);
+    for (let i = 0; i < reqs.length; i += 10) { const chunk = reqs.slice(i, i + 10); try { (await raw(chunk)).forEach((v, k) => { out[i + k] = v ?? null; }); } catch {} }
+    for (let pass = 0; pass < 2; pass++) { const miss = out.map((v, i) => (v == null ? i : -1)).filter((i) => i >= 0); if (!miss.length) break; if (pass) await new Promise((r) => setTimeout(r, 600));
+      for (let k = 0; k < miss.length; k += 3) await Promise.all(miss.slice(k, k + 3).map(async (i) => { try { out[i] = await one(reqs[i][0], reqs[i][1]); } catch {} })); }
+    return out; };
   return { one, batch, get calls() { return calls; } }; }
 
 const st = (status, value, note, extra = {}) => ({ status, value, note, ...extra });
@@ -76,7 +83,7 @@ export async function cleanChecks(mint, { rpc, creatorHint = null, dexLiquidityU
       let sigs = []; for (const a of addrs) sigs.push(...((await rpc.one("getSignaturesForAddress", [a, { limit: LIMITS.creatorTxs }])) || []).map((s) => ({ ...s, acct: a })));
       const partial = sigs.length >= LIMITS.creatorTxs; sigs = [...new Map(sigs.filter((s) => !s.err).map((s) => [s.signature, s])).values()].slice(0, LIMITS.creatorTxs);
       if (!sigs.length) c.creatorSold = st("pass", 0, "Creator never held this coin");
-      else { const txs = await rpc.batch(sigs.map((s) => ["getTransaction", [s.signature, { encoding: "json", maxSupportedTransactionVersion: 0, commitment: "confirmed" }]]));
+      else { const txs = await rpc.batch(sigs.map((s) => ["getTransaction", [s.signature, { encoding: "json", maxSupportedTransactionVersion: 1, commitment: "confirmed" }]]));
         let out = 0, inn = 0, missing = 0; for (const t of txs) { if (!t) { missing++; continue; } const d = bal(t.meta?.postTokenBalances, ctx.creator, mint) - bal(t.meta?.preTokenBalances, ctx.creator, mint); if (d < 0) out += -d; else inn += d; }
         const peak = Math.max(inn, out, 1), frac = out / peak;
         if (missing > sigs.length / 2) c.creatorSold = unknown("Creator history unavailable from RPC right now");
@@ -88,11 +95,11 @@ export async function cleanChecks(mint, { rpc, creatorHint = null, dexLiquidityU
     if (!all.length) c.snipes = unknown(ctx.curve ? "No bonding-curve history found" : "Not a pump.fun bonding-curve coin: first-slot check not available");
     else if (!done) c.snipes = unknown(`More than ${LIMITS.historyPages * 1000} curve transactions: creation slot not reached`);
     else { const slot = all[all.length - 1].slot, first = all.filter((s) => s.slot === slot && !s.err);
-      const txs = await rpc.batch(first.map((s) => ["getTransaction", [s.signature, { encoding: "json", maxSupportedTransactionVersion: 0, commitment: "confirmed" }]]));
-      const buyers = new Set(); for (const t of txs) { if (!t) continue;
+      const txs = await rpc.batch(first.map((s) => ["getTransaction", [s.signature, { encoding: "json", maxSupportedTransactionVersion: 1, commitment: "confirmed" }]]));
+      const buyers = new Set(); let missing = 0; for (const t of txs) { if (!t) { missing++; continue; }
         for (const b of t.meta?.postTokenBalances || []) { if (b.mint !== mint || b.owner === curveAddr || !b.owner || b.owner === ctx.creator) continue; const before0 = bal(t.meta?.preTokenBalances, b.owner, mint), after0 = bal(t.meta?.postTokenBalances, b.owner, mint); if (after0 > before0) buyers.add(b.owner); }
       }
-      const n = buyers.size; c.snipes = st(n < LIMITS.snipers[0] ? "pass" : n < LIMITS.snipers[1] ? "warn" : "fail", n, n ? `${n} other wallet${n === 1 ? "" : "s"} picked up tokens in the creation slot (${slot}): bundled or sniped` : `No other wallet picked up tokens in the creation slot (${slot})`, { slot, txsInSlot: first.length }); } }
+      const n = buyers.size; if (missing && n < LIMITS.snipers[1]) c.snipes = unknown(`Could not read ${missing} of ${txs.length} creation-slot transactions`); else c.snipes = st(n < LIMITS.snipers[0] ? "pass" : n < LIMITS.snipers[1] ? "warn" : "fail", n, n ? `${n} other wallet${n === 1 ? "" : "s"} picked up tokens in the creation slot (${slot}): bundled or sniped` : `No other wallet picked up tokens in the creation slot (${slot})`, { slot, txsInSlot: first.length }); } }
   catch { c.snipes = unknown("Could not read the coin's first transactions"); }
   // 7) creator fee split: pump.fun fee-sharing config must exist (published) and have its admin revoked (locked)
   try { const sc = sharingConfigOf(mint), a = await rpc.one("getAccountInfo", [sc, { encoding: "base64" }]), v = a?.value;
