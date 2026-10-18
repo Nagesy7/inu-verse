@@ -1,0 +1,50 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Inu Verse · Cosmetic Reveal</title>
+<link rel="preconnect" href="https://fonts.googleapis.com"><link href="https://fonts.googleapis.com/css2?family=Silkscreen&display=swap" rel="stylesheet">
+<style>
+:root{--ink:#0c1022;--navy:#121a36;--gold:#d4a640;--goldl:#f2cc68;--goldd:#8f6a22;--cream:#fff6e0;--red:#d84a54}
+*{box-sizing:border-box}html,body{margin:0;height:100%}body{background:radial-gradient(ellipse at 50% 0%,#24305c,#0c1022 70%);color:var(--cream);font-family:Silkscreen,monospace;overflow:hidden}
+body.obs-green{background:#00b140}body.obs-clear{background:transparent}
+#app{position:absolute;inset:0;display:flex;flex-direction:column;padding:2.2vh 2.4vw;gap:1.6vh}
+header{display:flex;align-items:baseline;justify-content:space-between;gap:2vw}h1{margin:0;color:var(--goldl);font-weight:normal;font-size:min(4.4vw,7.2vh);text-shadow:.3vh .3vh 0 var(--ink);line-height:1}
+.prog{font-size:min(2.6vw,4.6vh);color:var(--cream);white-space:nowrap}
+.grid{flex:1;display:grid;grid-template-columns:repeat(var(--n),1fr);gap:1.4vw;min-height:0}
+.card{position:relative;background:var(--navy);border:.6vh solid var(--goldd);box-shadow:0 0 0 .5vh var(--ink);display:flex;flex-direction:column;align-items:center;justify-content:center;padding:1.4vh .8vw;text-align:center;min-height:0;overflow:hidden}
+.card .n{position:absolute;top:.8vh;left:.8vw;font-size:min(2vw,3.6vh);color:var(--goldl)}.card .t{position:absolute;top:.8vh;right:.8vw;font-size:min(1.4vw,2.6vh);color:#cfc6a4}
+.card canvas{width:min(12vw,30vh);height:auto;image-rendering:pixelated}.card .nm{font-size:min(2.2vw,4.4vh);color:var(--goldl);margin-top:1vh;line-height:1.1}.card .sl{font-size:min(1.5vw,2.8vh);color:#cfc6a4;margin-top:.6vh}.card .wh{font-size:min(1.3vw,2.4vh);color:var(--cream);margin-top:.6vh;opacity:.85}
+.card.sealed{background:repeating-linear-gradient(45deg,#121a36,#121a36 1vh,#162046 1vh,#162046 2vh)}.card.sealed .q{font-size:min(8vw,16vh);color:var(--goldd)}.card.sealed .nm{color:#cfd3e6}.card.sealed .q{font-size:min(5vw,10vh)}
+.card.current{border-color:var(--goldl);animation:pop .5s cubic-bezier(.2,1.4,.4,1);box-shadow:0 0 0 .5vh var(--ink),0 0 4vh #f2cc6888}
+@keyframes pop{0%{transform:scale(.85)}100%{transform:scale(1)}}
+.big{flex:1;display:flex;align-items:center;justify-content:center;gap:4vw;min-height:0}.big canvas{width:min(28vw,52vh);height:auto;image-rendering:pixelated}.big .info{max-width:44vw}
+.big .nm{font-size:min(5.4vw,10vh);color:var(--goldl);line-height:1.05;text-shadow:.4vh .4vh 0 var(--ink)}.big .sl{font-size:min(2.6vw,5vh);margin-top:2vh}.big .wh{font-size:min(2vw,4vh);margin-top:1.4vh;opacity:.9}
+footer{display:flex;justify-content:space-between;align-items:center;gap:2vw;font-size:min(1.3vw,2.4vh);color:#cfc6a4}footer code{color:var(--cream);font-family:monospace;font-size:min(1.3vw,2.4vh)}.ok{color:#7fe0a0}.bad{color:#ff8f8f}
+.help{position:absolute;right:2vw;bottom:6vh;background:#0c1022cc;border:.3vh solid var(--goldd);padding:1vh 1vw;font-size:min(1.2vw,2.2vh);line-height:1.5}body.nohelp .help{display:none}
+</style></head><body><div id="app"><header><h1 id="title">Cosmetic Reveal</h1><div class="prog" id="prog"></div></header><main id="main" class="grid"></main>
+<footer><span id="rules"></span><span>Manifest SHA-256 <code id="hash">…</code> <b id="hashok"></b></span></footer></div>
+<div class="help">→ / Space next · ← back · S schedule · H hide</div>
+<script type="module">
+import * as RV from '../src/reveal.js';
+import { OUTFITS } from '../src/outfits.js';
+import { drawInuAvatar } from '../src/vendor/inu-avatar.js';
+import { defaultProfile } from '../src/vendor/profile-schema.js';
+const q = new URLSearchParams(location.search), esc = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+if (q.get('obs')) document.body.classList.add('obs-' + q.get('obs')); if (q.get('help') === '0') document.body.classList.add('nohelp');
+const m = await (await fetch('./manifest.json', { cache: 'no-store' })).json(), published = (await (await fetch('./manifest.sha256', { cache: 'no-store' })).text()).trim();
+const errs = RV.checkManifest(m), hash = await RV.sha256Hex(RV.canonicalItems(m.items));
+document.getElementById('hash').textContent = hash.slice(0, 16) + '…'; const ok = hash === published && !errs.length;
+document.getElementById('hashok').innerHTML = ok ? '<span class="ok">✓ matches published</span>' : '<span class="bad">✗ ' + esc(errs[0] || 'hash mismatch') + '</span>';
+document.getElementById('rules').textContent = 'Fixed in advance · never random · cosmetics only · NFA';
+let step = RV.clampStep(q.get('step') ?? 0, m);
+const slotOf = (id) => { const d = OUTFITS[id]; const L = d.look || {}; return { id, kind: L.kind || null, c: L.c || L.frame || null, d: L.d || null, accent: L.accent || L.band || L.pin || null, full: !!d.full }; };
+function pup(id, scale) { const p = defaultProfile(null); const it = OUTFITS[id]; if (it) p.outfit = { ...p.outfit, [it.slot]: slotOf(id) }; const u = Math.round(2 * scale * 1.15), c = document.createElement('canvas'); c.width = 18 * u + 4; c.height = 23 * u + 4; drawInuAvatar(c.getContext('2d'), p, c.width / 2, c.height - 2, { scale }); return c; }
+function render() { const v = RV.viewModel(m, step, q.get('start')), main = document.getElementById('main'); document.getElementById('title').textContent = v.title;
+  document.getElementById('prog').textContent = step === 0 ? `Published manifest · ${v.total} reveals` : `Reveal ${step} of ${v.total}`;
+  const time = (t) => (t ? new Date(t).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' }) : '');
+  if (step > 0 && q.get('view') !== 'grid') { const c = v.cards[step - 1]; main.className = 'big'; main.innerHTML = `<div class="info"><div class="sl">#${c.step} · ${esc(c.slot)}</div><div class="nm">${esc(c.name)}</div><div class="wh">${esc(c.where)}</div></div>`; main.prepend(pup(c.id, 6));
+    main.insertAdjacentHTML('beforeend', `<div class="info" style="max-width:20vw">${v.cards.map((x) => `<div class="sl" style="font-size:min(1.6vw,3vh);margin:.6vh 0;${x.revealed ? '' : 'opacity:.5'}">${x.step}. ${esc(x.name)}${x.at ? ' · ' + time(x.at) : ''}</div>`).join('')}</div>`); return; }
+  main.className = 'grid'; main.style.setProperty('--n', Math.min(6, v.total));
+  main.innerHTML = v.cards.map((c) => `<div class="card ${c.revealed ? 'open' : 'sealed'} ${c.current ? 'current' : ''}" data-step="${c.step}"><div class="n">#${c.step}</div>${c.at ? `<div class="t">${time(c.at)}</div>` : ''}${c.revealed ? '' : '<div class="q">?</div>'}<div class="nm">${esc(c.name)}</div><div class="sl">${esc(c.slot)}</div><div class="wh">${c.revealed ? esc(c.where) : 'reveal ' + c.step + (c.at ? ' · ' + time(c.at) : '')}</div></div>`).join('');
+  main.querySelectorAll('.card.open').forEach((el) => el.insertBefore(pup(m.items[+el.dataset.step - 1].id, 4), el.querySelector('.nm'))); }
+addEventListener('keydown', (e) => { const k = e.key.toLowerCase(); if (k === 'arrowright' || k === ' ' || k === 'enter') step = RV.clampStep(step + 1, m); else if (k === 'arrowleft' || k === 'backspace') step = RV.clampStep(step - 1, m); else if (k === 's') step = 0; else if (k === 'h') document.body.classList.toggle('nohelp'); else return; e.preventDefault(); render(); const u = new URL(location); u.searchParams.set('step', step); history.replaceState(null, '', u); });
+addEventListener('click', () => { step = RV.clampStep(step + 1, m); render(); });
+render(); globalThis.__reveal = { get step() { return step; }, hash, ok };
+</script></body></html>

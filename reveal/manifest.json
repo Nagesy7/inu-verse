@@ -1,0 +1,57 @@
+{
+ "v": 1,
+ "id": "inu-reveal-01",
+ "title": "Inu Verse Cosmetic Reveal \u00b7 Drop 01",
+ "host": "Zachary Nagle",
+ "rules": [
+  "Every item and its order are fixed in this file before the stream starts. Nothing is random.",
+  "The SHA-256 of the items list is published with the file, so anyone can check nothing changed.",
+  "Cosmetics only: they never change scores, damage, ranks or prizes in any Inu game.",
+  "Not financial advice."
+ ],
+ "intervalMin": 5,
+ "items": [
+  {
+   "step": 1,
+   "id": "gold_shades",
+   "name": "Gold Shades",
+   "slot": "eyes",
+   "where": "Inu Verse wardrobe, bones only"
+  },
+  {
+   "step": 2,
+   "id": "hoodie_maroon",
+   "name": "Maroon Paw Hoodie",
+   "slot": "top",
+   "where": "Inu Verse wardrobe, bones only"
+  },
+  {
+   "step": 3,
+   "id": "top_hat",
+   "name": "Top Hat",
+   "slot": "hat",
+   "where": "Inu Verse wardrobe, bones only"
+  },
+  {
+   "step": 4,
+   "id": "chain_gold",
+   "name": "Gold Chain",
+   "slot": "neck",
+   "where": "Inu Verse wardrobe, bones only"
+  },
+  {
+   "step": 5,
+   "id": "velvet_gown",
+   "name": "Midnight Velvet Gown",
+   "slot": "top",
+   "where": "Kibble Mall boutique"
+  },
+  {
+   "step": 6,
+   "id": "crown",
+   "name": "Little Gold Crown",
+   "slot": "hat",
+   "where": "Kibble Mall boutique"
+  }
+ ]
+}
