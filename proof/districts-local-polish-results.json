@@ -1,0 +1,83 @@
+{
+ "label": "LOCAL build (static server), not deployed",
+ "at": "Mon Oct 19 2026 03:19:38 GMT+1100 (Australian Eastern Daylight Time)",
+ "sizes": {
+  "844x390": {
+   "tour": {
+    "step": "5",
+    "place": "shuttle",
+    "title": "Arcade Districts"
+   },
+   "minimap": {
+    "on": true,
+    "visible": true
+   },
+   "places": [
+    "Arcade Districts (gate + fast travel)8 m"
+   ],
+   "05-arena-banner-zoom2": {
+    "hudBottom": 50,
+    "room": "districts",
+    "cam": {
+     "x": 1296,
+     "y": 211.2
+    }
+   },
+   "06-arcade-row-marquees-zoom2": {
+    "hudBottom": 50,
+    "room": "districts",
+    "cam": {
+     "x": 336,
+     "y": 211.2
+    }
+   },
+   "07-stadium-banner-zoom2": {
+    "hudBottom": 50,
+    "room": "districts",
+    "cam": {
+     "x": 2672,
+     "y": 211.2
+    }
+   }
+  },
+  "667x375": {
+   "tour": {
+    "step": "5",
+    "place": "shuttle",
+    "title": "Arcade Districts"
+   },
+   "minimap": {
+    "on": true,
+    "visible": true
+   },
+   "places": [
+    "Arcade Districts (gate + fast travel)8 m"
+   ],
+   "05-arena-banner-zoom2": {
+    "hudBottom": 50,
+    "room": "districts",
+    "cam": {
+     "x": 1296,
+     "y": 211.2
+    }
+   },
+   "06-arcade-row-marquees-zoom2": {
+    "hudBottom": 50,
+    "room": "districts",
+    "cam": {
+     "x": 336,
+     "y": 211.2
+    }
+   },
+   "07-stadium-banner-zoom2": {
+    "hudBottom": 50,
+    "room": "districts",
+    "cam": {
+     "x": 2672,
+     "y": 211.2
+    }
+   }
+  }
+ },
+ "errors": []
+}
