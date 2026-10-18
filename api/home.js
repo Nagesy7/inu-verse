@@ -6,12 +6,20 @@
 // POST { op:"sign", id, name, text }           anyone; same filter as chat (cleanChat/cleanName); rate limits per hashed IP:
 //                                              one entry per 15 s anywhere and one per home per 60 s (429 + retryAfter)
 // POST { op:"del", id, key, entry }            owner deletes one guestbook entry
+// GET  ?shop=<shop id>                      -> { id, owner, layout, updatedAt }   shop interiors (src/interiors.js), 404 if none
+// POST { op:"shop", id, key, owner, layout }  owner only. The shop id is "s" + the player's home id: if a shop record exists its
+//                                              key must match; else if the home record exists the HOME key must match (ids are
+//                                              only broadcast after a home is published, so nobody can pre-claim someone's shop);
+//                                              else the first publish claims it. Strict validation (known props for that theme
+//                                              only, on the grid, no overlaps, door clear, prop cap from Bigger Shelves level,
+//                                              <= 2 KB layout / 4 KB body), rate limits: one save per shop per 3 s, one per IP per 1 s.
 // No tokens, wallets or payments here: a home is furniture the player already owns, copied for others to look at.
 import { createHash, randomBytes } from "node:crypto";
 import { upstashKv, memoryKv } from "./_lib/kv.js";
 import { validHomeId, cleanLayout, cleanEntry, homeOwnerName, GB } from "../src/homeshare.js";
+import { SHOP_RE, homeIdOf, cleanShopPayload } from "../src/interiors.js";
 
-export const TTL_S = 90 * 86400, SIGN_GAP_S = 15, SIGN_HOME_GAP_S = 60, PUBLISH_GAP_S = 2;
+export const TTL_S = 90 * 86400, SIGN_GAP_S = 15, SIGN_HOME_GAP_S = 60, PUBLISH_GAP_S = 2, SHOP_GAP_S = 3, SHOP_IP_GAP_S = 1, SHOP_BODY_MAX = 4096;
 const sha = (s) => createHash("sha256").update(String(s)).digest("hex");
 const ipOf = (req) => String(req.headers?.["x-forwarded-for"] || req.socket?.remoteAddress || "?").split(",")[0].trim();
 let MEM = null;
@@ -26,12 +34,27 @@ export function makeHandler({ env = process.env, kv, now = () => Date.now(), sle
     const send = (code, o) => { res.statusCode = code; res.end(JSON.stringify(o)); };
     if (req.method === "OPTIONS") { res.statusCode = 204; return res.end(); }
     try {
+      if (req.method === "GET" && (req.query?.shop ?? new URL(req.url, "http://x").searchParams.get("shop")) != null) { const id = String(req.query?.shop ?? new URL(req.url, "http://x").searchParams.get("shop"));
+        if (!SHOP_RE.test(id)) return send(400, { error: "bad shop id" }); const r = await getJ("shop:v1:" + id, null); if (!r) return send(404, { error: "This shop hasn't been opened to visitors yet." });
+        return send(200, { id, owner: r.owner, layout: r.layout, updatedAt: r.updatedAt }); }
       if (req.method === "GET") { const id = String((req.query?.id) ?? new URL(req.url, "http://x").searchParams.get("id") ?? "");
         if (!validHomeId(id)) return send(400, { error: "bad home id" });
         const h = await getJ("home:v1:" + id, null); if (!h) return send(404, { error: "This home hasn't been opened to visitors yet." });
         const book = await getJ("book:v1:" + id, []); return send(200, { id, name: h.name, layout: h.layout, updatedAt: h.updatedAt, book, count: book.length }); }
       if (req.method !== "POST") return send(405, { error: "GET or POST" });
+      const rawLen = typeof req.body === "string" ? req.body.length : JSON.stringify(req.body || {}).length; if (rawLen > SHOP_BODY_MAX * 4) return send(413, { error: "too big" });
       const b = typeof req.body === "string" ? JSON.parse(req.body || "{}") : req.body || {};
+      if (b.op === "shop") { if (rawLen > SHOP_BODY_MAX) return send(413, { error: `layout too big (max ${SHOP_BODY_MAX} bytes)` });
+        const sid = String(b.id || ""), hid = homeIdOf(sid); if (!hid) return send(400, { error: "bad shop id" });
+        if (typeof b.key !== "string" || !/^[0-9a-f]{32}$/.test(b.key)) return send(400, { error: "bad key" });
+        const c = cleanShopPayload(b.layout); if (!c.ok) return send(400, { error: c.reason });
+        const ip = sha(salt + "|" + ipOf(req)).slice(0, 24);
+        if (!(await store.setNX("shop:rl:ip:" + ip, "1", SHOP_IP_GAP_S))) return send(429, { error: "Saving too fast", retryAfter: SHOP_IP_GAP_S });
+        if (!(await store.setNX("shop:rl:p:" + sid, "1", SHOP_GAP_S))) return send(429, { error: "Saving too fast", retryAfter: SHOP_GAP_S });
+        return await locked(sid, async () => { const cur = await getJ("shop:v1:" + sid, null), home = cur ? null : await getJ("home:v1:" + hid, null), kh = sha(b.key);
+          if ((cur && cur.kh !== kh) || (!cur && home && home.kh !== kh)) return send(403, { error: "not your shop" });
+          const rec = { kh, owner: homeOwnerName(b.owner), layout: c.layout, updatedAt: new Date(now()).toISOString() };
+          await store.set("shop:v1:" + sid, JSON.stringify(rec), TTL_S); return send(200, { ok: true, id: sid, items: c.layout.items.length, updatedAt: rec.updatedAt }); }); }
       const id = String(b.id || ""); if (!validHomeId(id)) return send(400, { error: "bad home id" });
       if (b.op === "publish") { if (typeof b.key !== "string" || !/^[0-9a-f]{32}$/.test(b.key)) return send(400, { error: "bad key" });
         const layout = cleanLayout(b.layout); if (!layout) return send(400, { error: "bad layout" });

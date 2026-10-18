@@ -324,3 +324,6 @@ body.short .title-card>.row{position:sticky;bottom:-4px;z-index:3;background:#1b
 /* (C) room for the selected ring, scale and check badge so they never cover the row label */
 .crow .chips{padding-top:5px;padding-right:4px}
 @media(max-width:700px){.crow .chips{padding-top:9px}}
+
+/* shop interiors editor: big touch targets in phone landscape */
+#buildbar .shopinv button,#buildbar .shopbar .up .btn{min-height:34px;min-width:44px}body.short.landscape #buildbar .shopinv{max-height:34dvh;overflow:auto}

@@ -4,6 +4,8 @@ import { TILE, FIELDS, BARN, POND, MARKET, CRAFT, PEN, ORCHARD, FARM_SIGNS, LOTS
 import { CROPS, ensureFarm, stageOf, COSMETICS } from './farm.js';
 import { ensureBiz, TYPES, rivalAt, PREMIUM_LOOKS } from './biz.js';
 import { sponsorOf } from './fly5.js';
+import { windowShows, interiorOf } from './interiors.js';
+import { windowMini } from './interiorart.js';
 const N = 16, INK = '#141a2e';
 const R = (c, x, y, w, h, col) => { c.fillStyle = col; c.fillRect(Math.round(x), Math.round(y), w, h); };
 function txt(c, s, x, y, size = 7, col = '#fff', align = 'center') { c.font = `${size}px Silkscreen, monospace`; c.textAlign = align; c.fillStyle = INK; c.fillText(s, x, y + 1); c.fillStyle = col; c.fillText(s, x, y); }
@@ -107,12 +109,13 @@ function cow(c, x, y, t, i) { const b = Math.sin(t * 2 + i) > 0.6 ? 1 : 0; R(c, 
 function fruitTree(c, x, y, fruit, ready, i) { R(c, x + 6, y + 4, 22, 5, 'rgba(0,0,0,.18)'); R(c, x + 13, y - 14, 6, 20, '#6a4422'); R(c, x + 13, y - 14, 2, 20, '#8a5a32');
   const rows = [[10, 12], [4, 24], [0, 32], [0, 32], [2, 28], [8, 16]]; rows.forEach(([o, w], k) => { R(c, x + o, y - 44 + k * 5, w, 5, k < 2 ? '#4caf50' : k > 3 ? '#2a6a32' : '#3a8c3e'); }); R(c, x + 8, y - 38, 8, 4, '#7ad06a');
   if (fruit && ready > 0) for (let k = 0; k < Math.min(6, Math.ceil(ready / 2)); k++) { const fx = x + 4 + ((k * 11 + i * 7) % 22), fy = y - 38 + ((k * 7 + i * 5) % 18); R(c, fx, fy, 5, 5, fruit === 'apple' ? '#e8344a' : '#ffa07a'); R(c, fx + 1, fy + 1, 2, 1, '#fff'); } }
+// Window Display upgrade (level 1+): the owner's arranged interior shows through the shop window (cached mini canvas, cosmetic)
 function storefront(c, L, m, rival, t, sponsor = null) { const x = L.x * TILE, y = L.y * TILE, w = L.w * TILE, h = L.h * TILE; const type = m ? m.type : rival?.type, T = TYPES[type], col = T ? T.color : '#9aa0b0', look = m?.look;
   R(c, x - 4, y - 8, w + 8, 18, INK); R(c, x - 2, y - 6, w + 4, 14, look === 'gold' ? '#c9a23a' : look === 'marble' ? '#e8e4dc' : '#5a4a6a');
   R(c, x, y + 8, w, h - 8, look === 'marble' ? '#f2efe8' : look === 'gold' ? '#2a2440' : look === 'sakura' ? '#ffd6e4' : '#e8dcc4'); for (let r = y + 16; r < y + h; r += 8) R(c, x, r, w, 1, 'rgba(0,0,0,.08)');
   if (T) { for (let i = 0; i < w; i += 16) { R(c, x + i, y + 36, 8, 14, col); R(c, x + i + 8, y + 36, 8, 14, '#fff'); } R(c, x, y + 50, w, 3, INK); }
   R(c, x - 2, y + 8, 2, h - 8, INK); R(c, x + w, y + 8, 2, h - 8, INK); R(c, x - 2, y + h - 6, w + 4, 6, '#b8ac98'); R(c, x - 2, y + h - 1, w + 4, 1, INK); R(c, x, y + 8, w, 3, '#00000030'); // outline, plinth, cornice shade
-  R(c, x + 8, y + 54, 64, h - 58, INK); R(c, x + 9, y + 55, 62, h - 60, '#f4ead2'); R(c, x + 10, y + 56, 60, h - 62, T ? (NIGHT() ? '#ffd890' : '#bfe6ff') : '#6a7080'); R(c, x + 10, y + 56, 60, 3, '#fff'); R(c, x + 39, y + 56, 2, h - 62, '#f4ead2'); R(c, x + 6, y + h - 8, 68, 3, '#c8b490'); R(c, x + w - 56, y + 56, 44, h - 62, INK); R(c, x + w - 54, y + 58, 40, h - 64, T ? '#7a4a2a' : '#4a5060'); R(c, x + w - 50, y + 62, 32, 12, T ? (NIGHT() ? '#ffd890' : '#a8d4f4') : '#3a4050'); if (T) { lantern(c, x + w - 62, y + 66); lantern(c, x + w - 6, y + 66); } R(c, x + w - 22, y + 84, 4, 4, '#ffd23a');
+  R(c, x + 8, y + 54, 64, h - 58, INK); R(c, x + 9, y + 55, 62, h - 60, '#f4ead2'); R(c, x + 10, y + 56, 60, h - 62, T ? (NIGHT() ? '#ffd890' : '#bfe6ff') : '#6a7080'); R(c, x + 10, y + 56, 60, 3, '#fff'); if (m && windowShows(m) && globalThis.document) { try { const sm = c.imageSmoothingEnabled; c.imageSmoothingEnabled = false; c.drawImage(windowMini(m.type, interiorOf(m.type, m), 120, (h - 62) * 2, m.interior?.rev | 0), x + 10, y + 56, 60, h - 62); c.imageSmoothingEnabled = sm; c.fillStyle = 'rgba(191,230,255,.25)'; c.fillRect(x + 10, y + 56, 60, h - 62); } catch {} } R(c, x + 39, y + 56, 2, h - 62, '#f4ead2'); R(c, x + 6, y + h - 8, 68, 3, '#c8b490'); R(c, x + w - 56, y + 56, 44, h - 62, INK); R(c, x + w - 54, y + 58, 40, h - 64, T ? '#7a4a2a' : '#4a5060'); R(c, x + w - 50, y + 62, 32, 12, T ? (NIGHT() ? '#ffd890' : '#a8d4f4') : '#3a4050'); if (T) { lantern(c, x + w - 62, y + 66); lantern(c, x + w - 6, y + 66); } R(c, x + w - 22, y + 84, 4, 4, '#ffd23a');
   if (T) for (let k = 0; k < 4; k++) R(c, x + 16 + k * 13, y + h - 20 - (k % 2) * 6, 8, 8, ['#ffd86a', '#e87aa8', '#9fd8c0', '#c08a4a'][k]);
   const name = m ? m.name : rival ? rival.name : 'FOR LEASE'; R(c, x + 8, y + 14, w - 16, 18, INK); R(c, x + 9, y + 15, w - 18, 16, T ? col : '#fff1d0'); txt(c, name.toUpperCase().slice(0, 16), x + w / 2, y + 26, 7, T ? '#fff' : '#a8323a');
   if (!T) { R(c, x + 16, y + 60, 40, 22, '#fff'); txt(c, L.prime ? 'PRIME' : 'LEASE', x + 36, y + 70, 6, '#a8323a'); txt(c, `${L.rent}/DAY`, x + 36, y + 79, 5, INK); }

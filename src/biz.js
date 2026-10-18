@@ -3,6 +3,7 @@ import { perk } from './traits.js';
 // Prime lots by the mall are owned by President Inu; their rent is paid to the President's treasury ledger.
 // Pure logic (no DOM). NPC shoppers are a demand model evaluated once per in-game hour.
 import { GOODS, ensureFarm } from './farm.js';
+import { returnKibbleProps } from './interiors.js'; // shop interiors are cosmetic: nothing below reads them
 export const LOTS = [
   { id: 'P1', name: 'Prime Lot 1 (Mall Row)', x: 41, y: 74, w: 6, h: 4, prime: true, rent: 120, foot: 1.7 },
   { id: 'P2', name: 'Prime Lot 2 (Mall Row)', x: 48, y: 74, w: 6, h: 4, prime: true, rent: 120, foot: 1.7 },
@@ -42,7 +43,7 @@ export function lease(s, lotId, type, name, day) { const b = ensureBiz(s), L = l
   return { ok: true, cost }; }
 const blankDay = (day) => ({ day, revenue: 0, cogs: 0, wages: 0, rent: 0, sold: 0, shoppers: 0 });
 function payRent(b, L, amt) { b.pool += Math.round(amt * BIZ_POOL_SHARE); if (L.prime) b.treasuryRent += amt; } // prime rent -> President Inu's treasury
-export function closeBiz(s) { const b = ensureBiz(s); if (!b.mine) return { ok: false }; const T = TYPES[b.mine.type]; let refund = 0; for (const [k, n] of Object.entries(b.mine.stock)) refund += Math.floor((T.goods[k]?.wholesale || 0) * n * 0.5); s.bones += refund; b.mine = null; return { ok: true, refund }; }
+export function closeBiz(s) { const b = ensureBiz(s); if (!b.mine) return { ok: false }; const T = TYPES[b.mine.type]; let refund = 0; for (const [k, n] of Object.entries(b.mine.stock)) refund += Math.floor((T.goods[k]?.wholesale || 0) * n * 0.5); s.bones += refund; returnKibbleProps(s); b.mine = null; return { ok: true, refund }; }
 export const capOf = (m) => 20 + m.up.shelves * UPGRADES.shelves.cap;
 export const stockCount = (m) => Object.values(m.stock).reduce((a, n) => a + n, 0);
 export function refOf(m, item) { const T = TYPES[m.type]; return T.goods[item]?.ref ?? Math.round((GOODS[item]?.base || 5) * 1.8); }

@@ -79,7 +79,7 @@ test('multiplayer client: home id sent in hello and on change, peers get "Visit 
 
 test('main/ui wiring: Visit home in the player list, guestbook in build mode, landscape side panel, no paid mechanics', () => {
   const m = fs.readFileSync(new URL('../src/main.js', import.meta.url), 'utf8'), mp = fs.readFileSync(new URL('../src/multiplayer.js', import.meta.url), 'utf8'), css = fs.readFileSync(new URL('../style.css', import.meta.url), 'utf8');
-  assert.match(mp, /data-visit=/); assert.match(mp, />Visit home</); assert.match(m, /onVisit: \(id, name\) => visitShared\(id, name\)/);
+  assert.match(mp, /data-visit=/); assert.match(mp, />Visit home</); assert.match(m, /onVisit: \(id, name(, kind)?\) => [^\n]*visitShared\(id, name\)/); // + 'Visit shop' (shop interiors) on the same entry
   assert.match(m, /function sharedBuildBar/); assert.match(m, /data-gbdel/); assert.match(m, /HOME\.sign\(/); assert.match(m, /HOME\.del\(/);
   assert.match(m, /const buildSide = \(\) => innerHeight < 520 && innerWidth > innerHeight/); assert.match(css, /body\.short\.landscape #buildbar/);
   const r4 = m.slice(m.indexOf('// ---- Round 4: share your home'), m.indexOf('function enterBuild('));
