@@ -43,6 +43,21 @@ const bal = (list, owner, mint) => (list || []).filter((b) => b.owner === owner 
 export function parseCurve(buf) { if (!buf || buf.length < 49) return null; const u = (o) => buf.readBigUInt64LE(o);
   return { virtualTokenReserves: u(8), virtualSolReserves: u(16), realTokenReserves: u(24), realSolReserves: u(32), tokenTotalSupply: u(40), complete: buf[48] === 1, creator: buf.length >= 81 ? b58encode(buf.subarray(49, 81)) : null }; }
 
+// Largest token accounts -> owners, with the pump.fun bonding curve and AMM / Raydium pool vaults split out (shared with
+// the Verified Launch checks in ./verified.js). getTokenLargestAccounts returns the 20 largest token accounts.
+export async function holderTable(mint, rpc, curveAddr = bondingCurveOf(mint)) {
+  const big = (await rpc.one("getTokenLargestAccounts", [mint]))?.value || [];
+  const accs = big.length ? (await rpc.one("getMultipleAccounts", [big.map((b) => b.address), { encoding: "jsonParsed" }]))?.value || [] : [];
+  const owners = accs.map((a) => a?.data?.parsed?.info?.owner || null), uniq = [...new Set(owners.filter(Boolean))];
+  const oa = uniq.length ? (await rpc.one("getMultipleAccounts", [uniq, { encoding: "base64", dataSlice: { offset: 0, length: 0 } }]))?.value || [] : [];
+  const progOf = Object.fromEntries(uniq.map((o, i) => [o, oa[i]?.owner || null]));
+  const isPool = (o) => o === curveAddr || o === RAYDIUM_AUTH || [PUMP_PROGRAM, PUMP_AMM].includes(progOf[o]);
+  const rows = big.map((b, i) => ({ owner: owners[i], amount: Number(b.amount) })).filter((r) => r.owner);
+  const excluded = rows.filter((r) => isPool(r.owner)), holders = new Map();
+  for (const r of rows) if (!isPool(r.owner)) holders.set(r.owner, (holders.get(r.owner) || 0) + r.amount);
+  return { holders, excluded, accounts: big.length, unresolved: big.length - rows.length };
+}
+
 export async function cleanChecks(mint, { rpc, creatorHint = null, dexLiquidityUsd = async () => null, solUsd = async () => null, now = Date.now() } = {}) {
   const c = {}, ctx = {};
   // 1) mint account: authorities, supply, token program
@@ -57,15 +72,7 @@ export async function cleanChecks(mint, { rpc, creatorHint = null, dexLiquidityU
     if (v && v.owner === PUMP_PROGRAM) { ctx.curve = parseCurve(Buffer.from(v.data[0], "base64")); } } catch { ctx.curveErr = true; }
   ctx.creator = ctx.curve?.creator || creatorHint || null;
   // 3) holders: top 20 token accounts -> owners -> drop the curve / AMM pool vaults
-  if (ctx.supply > 0) try { const big = (await rpc.one("getTokenLargestAccounts", [mint]))?.value || [];
-      const accs = big.length ? (await rpc.one("getMultipleAccounts", [big.map((b) => b.address), { encoding: "jsonParsed" }]))?.value || [] : [];
-      const owners = accs.map((a) => a?.data?.parsed?.info?.owner || null), uniq = [...new Set(owners.filter(Boolean))];
-      const oa = uniq.length ? (await rpc.one("getMultipleAccounts", [uniq, { encoding: "base64", dataSlice: { offset: 0, length: 0 } }]))?.value || [] : [];
-      const progOf = Object.fromEntries(uniq.map((o, i) => [o, oa[i]?.owner || null]));
-      const isPool = (o) => o === curveAddr || o === RAYDIUM_AUTH || [PUMP_PROGRAM, PUMP_AMM].includes(progOf[o]);
-      const rows = big.map((b, i) => ({ owner: owners[i], amount: Number(b.amount) })).filter((r) => r.owner);
-      const excluded = rows.filter((r) => isPool(r.owner)), holders = rows.filter((r) => !isPool(r.owner));
-      const byOwner = new Map(); for (const r of holders) byOwner.set(r.owner, (byOwner.get(r.owner) || 0) + r.amount);
+  if (ctx.supply > 0) try { const { holders: byOwner, excluded } = await holderTable(mint, rpc, curveAddr);
       const top = [...byOwner.values()].sort((a, b) => b - a).slice(0, 10), t10 = pct(top.reduce((s, x) => s + x, 0), ctx.supply);
       c.top10 = st(grade(t10, LIMITS.top10Pct), t10, `${t10}% of supply held by the 10 largest wallets (excluding ${excluded.length ? 'the pump.fun curve / pool vaults' : 'nothing: no pool vault found'})`, { excludedPct: pct(excluded.reduce((s, r) => s + r.amount, 0), ctx.supply) });
       ctx.holders = byOwner; }

@@ -19,6 +19,7 @@ import crypto from "node:crypto";
 import { evaluatePairs, PAIR_CANDIDATES } from "./_lib/pairs.js";
 import { rpcUrl, redact } from "./_lib/rpc.js";
 import { cleanChecks, makeRpc } from "./_lib/clean.js";
+import { verifiedChecks, nextRecord, publicRecord, queueAnnouncement, releaseNews, VKEY, SNIPE_KEY, VLOCK, VERIFIED_TTL_MS, VERIFY_PER_REQ, SNIPE_SLOTS, ANNOUNCE_GAP_S } from "./_lib/verified.js";
 
 export const KIBBLE_MINT = "4VE9sy4fEMJdZ6i7MkYPbnqDJd2oqzJQmg44WJ3opump";
 export const OWNER_WALLET = "BzLYTFAfUsjzQ5x8bx5BbPK4DFtaHrLCuferkvkxTNGJ";
@@ -27,12 +28,18 @@ export const REPORTS_TO_HIDE = 3;
 const KP = "https://kibble-pay.vercel.app";
 const B58 = /^[1-9A-HJ-NP-Za-km-z]{32,44}$/;
 
-export function memoryStore() { const m = new Map(); return {
-  async get(k) { return m.has(k) ? m.get(k) : null; }, async set(k, v) { m.set(k, String(v)); },
-  async del(k) { m.delete(k); }, async setNX(k, v) { if (m.has(k)) return false; m.set(k, String(v)); return true; },
-  async sadd(k, v) { const s = new Set(JSON.parse(m.get(k) || "[]")); s.add(v); m.set(k, JSON.stringify([...s])); },
-  async srem(k, v) { const s = new Set(JSON.parse(m.get(k) || "[]")); s.delete(v); m.set(k, JSON.stringify([...s])); },
-  async smembers(k) { return JSON.parse(m.get(k) || "[]"); }, async incr(k) { const n = Number(m.get(k) || 0) + 1; m.set(k, String(n)); return n; }, async expire() {} }; }
+export function memoryStore(now = () => Date.now()) { const m = new Map(), exp = new Map(); const L = (k) => JSON.parse(m.get(k) || "[]");
+  const live = (k) => { if (exp.has(k) && exp.get(k) <= now()) { m.delete(k); exp.delete(k); } return m.has(k); };
+  return {
+  async get(k) { return live(k) ? m.get(k) : null; }, async set(k, v) { m.set(k, String(v)); exp.delete(k); },
+  async del(k) { m.delete(k); exp.delete(k); }, async setNX(k, v) { if (live(k)) return false; m.set(k, String(v)); return true; },
+  async setNXEx(k, v, sec) { if (live(k)) return false; m.set(k, String(v)); exp.set(k, now() + sec * 1000); return true; },
+  async sadd(k, v) { const s = new Set(L(k)); const had = s.has(v); s.add(v); m.set(k, JSON.stringify([...s])); return had ? 0 : 1; },
+  async srem(k, v) { const s = new Set(L(k)); s.delete(v); m.set(k, JSON.stringify([...s])); },
+  async smembers(k) { return L(k); }, async incr(k) { const n = Number(m.get(k) || 0) + 1; m.set(k, String(n)); return n; }, async expire() {},
+  async rpush(k, v) { const a = L(k); a.push(String(v)); m.set(k, JSON.stringify(a)); return a.length; }, async lpush(k, v) { const a = L(k); a.unshift(String(v)); m.set(k, JSON.stringify(a)); return a.length; },
+  async lpop(k) { const a = L(k); const v = a.shift(); m.set(k, JSON.stringify(a)); return v ?? null; }, async ltrim(k, a0, b0) { m.set(k, JSON.stringify(L(k).slice(a0, b0 + 1))); },
+  async lrange(k, a0, b0) { return L(k).slice(a0, b0 + 1); } }; }
 export function upstashStore(env = process.env, f = fetch) {
   const url = env.UPSTASH_REDIS_REST_URL || env.KV_REST_API_URL, tok = env.UPSTASH_REDIS_REST_TOKEN || env.KV_REST_API_TOKEN;
   if (!url || !tok) return null;
@@ -40,7 +47,9 @@ export function upstashStore(env = process.env, f = fetch) {
   const P = env.REGISTRY_PREFIX || "launchhall:"; // distinct namespace: this Upstash DB is shared with Kibble Pay
   return { get: (k) => cmd("GET", P + k), set: (k, v) => cmd("SET", P + k, String(v)), del: (k) => cmd("DEL", P + k),
     setNX: async (k, v) => (await cmd("SET", P + k, String(v), "NX")) === "OK", sadd: (k, v) => cmd("SADD", P + k, v), srem: (k, v) => cmd("SREM", P + k, v),
-    smembers: (k) => cmd("SMEMBERS", P + k), incr: (k) => cmd("INCR", P + k), expire: (k, sec) => cmd("EXPIRE", P + k, sec) }; }
+    smembers: (k) => cmd("SMEMBERS", P + k), incr: (k) => cmd("INCR", P + k), expire: (k, sec) => cmd("EXPIRE", P + k, sec),
+    setNXEx: async (k, v, sec) => (await cmd("SET", P + k, String(v), "NX", "EX", Math.max(1, Math.round(sec)))) === "OK",
+    rpush: (k, v) => cmd("RPUSH", P + k, v), lpush: (k, v) => cmd("LPUSH", P + k, v), lpop: (k) => cmd("LPOP", P + k), ltrim: (k, a, b) => cmd("LTRIM", P + k, a, b), lrange: (k, a, b) => cmd("LRANGE", P + k, a, b) }; }
 
 // ---- base58 + PDA (no deps) ----
 const ALPH = "123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz";
@@ -102,6 +111,26 @@ async function cleanFor(store, mints, D) { const out = {}; let budget = CLEAN_PE
     try { await store.del("cleanlock:" + m); } catch {} }
   return out; }
 
+// ---- Verified Launch (opt-in) · GET /api/coins?verified=<mint>[,...] and GET /api/coins?news=1 (see api/_lib/verified.js) ----
+// Lazy re-check with a TTL: a stored record (launchhall:verified:v1:<mint>) older than VERIFIED_TTL_MS is recomputed on read,
+// at most VERIFY_PER_REQ coins per request, one lock per coin. Coins that did not opt in get null (the client shows nothing).
+async function verifiedFor(store, mints, D) { const out = {}; let budget = VERIFY_PER_REQ;
+  for (const m of mints) { let coin = null; try { coin = JSON.parse((await store.get("coin:" + m)) || "null"); } catch {}
+    if (!coin || coin.removed || coin.hidden || !coin.verifiedOptIn) { out[m] = null; continue; }
+    let rec = null; try { rec = JSON.parse((await store.get(VKEY + m)) || "null"); } catch {}
+    const age = rec?.checkedAt ? D.now() - Math.max(rec.checkedAt, rec.lastAttemptAt || 0) : Infinity;
+    if (rec && age < VERIFIED_TTL_MS) { out[m] = publicRecord(rec); continue; }
+    let mine = budget > 0; if (mine) mine = await store.setNX(VLOCK + m, String(D.now())).catch(() => false); if (mine) { try { await store.expire(VLOCK + m, 120); } catch {} }
+    if (!mine) { out[m] = rec ? { ...publicRecord(rec), stale: true } : { mint: m, optIn: true, status: "pending" }; continue; }
+    budget--;
+    try { const snipeCache = { get: async (x) => JSON.parse((await store.get(SNIPE_KEY + x)) || "null"), set: (x, v) => store.set(SNIPE_KEY + x, JSON.stringify(v)) };
+      const r = await D.verify(m, coin.creator, snipeCache); const next = nextRecord(rec, r, r.checkedAt);
+      if (next.newly) { try { await queueAnnouncement(store, coin, next); } catch {} }
+      await store.set(VKEY + m, JSON.stringify({ ...next, newly: false })); out[m] = publicRecord(next); }
+    catch { out[m] = rec ? { ...publicRecord(rec), stale: true } : { mint: m, optIn: true, status: "unknown", error: "checks unavailable right now" }; }
+    try { await store.del(VLOCK + m); } catch {} }
+  return out; }
+
 const json = (res, code, o) => { res.statusCode = code; res.setHeader("content-type", "application/json"); res.setHeader("cache-control", code === 200 ? "public, max-age=15" : "no-store"); res.end(redact(JSON.stringify(o), json.env || process.env)); }; // never leak the RPC URL/key
 const clean = (s, n) => String(s || "").replace(/[<>\u0000-\u001f]/g, "").slice(0, n);
 async function listCoins(store, all) { const ids = await store.smembers("coins"); const out = [];
@@ -114,7 +143,8 @@ const bearer = (req) => (req.headers.authorization || "").replace(/^Bearer /, ""
 export function makeHandler({ env = process.env, store = upstashStore(env), deps = {} } = {}) {
   json.env = env;
   const RPC = rpcUrl(env);
-  const D = { sessionWallet: (t) => sessionWallet(t), pumpCreator: (m) => pumpCreator(m, { rpc: RPC }), launchTx: (s) => launchTx(s, { rpc: RPC }), now: () => Date.now(), dexInfo: (m) => dexInfo(m), pairs: () => evaluatePairs(), clean: (m, creatorHint) => cleanChecks(m, { rpc: makeRpc(RPC, fetch, env), creatorHint, dexLiquidityUsd: (x) => dexLiquidity(x), solUsd: () => solUsd() }), ...deps };
+  const D = { sessionWallet: (t) => sessionWallet(t), pumpCreator: (m) => pumpCreator(m, { rpc: RPC }), launchTx: (s) => launchTx(s, { rpc: RPC }), now: () => Date.now(), dexInfo: (m) => dexInfo(m), pairs: () => evaluatePairs(), clean: (m, creatorHint) => cleanChecks(m, { rpc: makeRpc(RPC, fetch, env), creatorHint, dexLiquidityUsd: (x) => dexLiquidity(x), solUsd: () => solUsd() }),
+    verify: (m, creatorHint, snipeCache) => verifiedChecks(m, { rpc: makeRpc(RPC, fetch, env), creatorHint, snipeCache }), ...deps };
   return async function handler(req, res) {
     if (req.method === "OPTIONS") { res.statusCode = 204; return res.end(); }
     if (req.method === "GET" && /[?&]pairs=1/.test(req.url || "")) return json(res, 200, await D.pairs());
@@ -124,6 +154,9 @@ export function makeHandler({ env = process.env, store = upstashStore(env), deps
       if (req.method === "GET" && q.pairs === "1") return json(res, 200, await D.pairs());
       if (req.method === "GET" && q.clean) { const mints = [...new Set(String(q.clean).split(",").map((x) => x.trim()).filter((x) => B58.test(x)))].slice(0, CLEAN_MAX);
         if (!mints.length) return json(res, 400, { error: "clean=<mint>[,<mint>...]" }); return json(res, 200, { clean: await cleanFor(store, mints, D), ttlMs: CLEAN_TTL_MS }); }
+      if (req.method === "GET" && q.verified) { const mints = [...new Set(String(q.verified).split(",").map((x) => x.trim()).filter((x) => B58.test(x)))].slice(0, CLEAN_MAX);
+        if (!mints.length) return json(res, 400, { error: "verified=<mint>[,<mint>...]" }); return json(res, 200, { verified: await verifiedFor(store, mints, D), ttlMs: VERIFIED_TTL_MS, snipeSlots: SNIPE_SLOTS }); }
+      if (req.method === "GET" && q.news) return json(res, 200, { news: await releaseNews(store, D.now()), gapS: ANNOUNCE_GAP_S });
       if (req.method === "GET") { const all = q.all === "1"; if (all && !(await isAdmin(req, env, D))) return json(res, 403, { error: "admin only" });
         return json(res, 200, { coins: await listCoins(store, all), reportsToHide: REPORTS_TO_HIDE, kibble: KIBBLE_MINT, verification: "pump.fun bonding-curve creator == signed-in wallet" }); }
       if (req.method !== "POST") return json(res, 405, { error: "GET or POST" });
@@ -140,13 +173,16 @@ export function makeHandler({ env = process.env, store = upstashStore(env), deps
           wallet = B58.test(lt.feePayer || "") ? lt.feePayer : null; via = "launch transaction"; }
         if (!wallet) return json(res, 401, { error: "sign in with Phantom first" });
         if (mint === KIBBLE_MINT) return json(res, 400, { error: "$KIBBLE is already featured" });
-        const prev = await store.get(key); if (prev) { const p = JSON.parse(prev); if (p.removed) return json(res, 403, { error: "this coin was removed by moderation" }); return json(res, 200, { ok: true, coin: p, already: true }); }
+        const optIn = body.verified === true; // Verified Launch is opt-in (checkbox in the create + register flows)
+        const prev = await store.get(key); if (prev) { const p = JSON.parse(prev); if (p.removed) return json(res, 403, { error: "this coin was removed by moderation" });
+          if (optIn && !p.verifiedOptIn && p.creator === wallet) { p.verifiedOptIn = true; p.verifiedOptInAt = D.now(); await store.set(key, JSON.stringify(p)); return json(res, 200, { ok: true, coin: p, already: true, optedIn: true }); }
+          return json(res, 200, { ok: true, coin: p, already: true }); }
         const pc = await D.pumpCreator(mint); if (!pc.ok) return json(res, 400, { error: pc.reason });
         if (pc.creator !== wallet) return json(res, 403, { error: `pump.fun lists ${pc.creator.slice(0, 4)}…${pc.creator.slice(-4)} as the creator, not your wallet` });
         const dx = await D.dexInfo(mint);
         const lk = via === "launch transaction" && lt0?.keys?.includes(KIBBLE_MINT); // brand-new coins are not on DexScreener yet
         const coin = { mint, creator: wallet, name: clean(dx?.name || (via !== "session" ? body.name : ""), 32), symbol: clean(dx?.symbol || (via !== "session" ? body.symbol : ""), 12).replace(/^\$/, ""), pairedWithKibble: !!dx?.pairedWithKibble || !!lk, quote: clean(dx?.quote || (lk ? "KIBBLE" : ""), 12), quoteMint: clean(dx?.quoteMint || (lk ? KIBBLE_MINT : ""), 44),
-          verifiedBy: "pump.fun bonding-curve creator", proof: via, launchedInHall: via === "launch transaction", registeredAt: Date.now(), reports: 0, hidden: false };
+          verifiedBy: "pump.fun bonding-curve creator", proof: via, launchedInHall: via === "launch transaction", registeredAt: Date.now(), reports: 0, hidden: false, ...(optIn ? { verifiedOptIn: true, verifiedOptInAt: D.now() } : {}) };
         await store.set(key, JSON.stringify(coin)); await store.sadd("coins", mint); return json(res, 200, { ok: true, coin }); }
       const raw = await store.get(key); if (!raw) return json(res, 404, { error: "coin not registered" }); const coin = JSON.parse(raw);
       if (body.action === "report") {

@@ -20,7 +20,7 @@ export function apiClient(f = globalThis.fetch, base = '') {
     send: (tx) => post('/api/launch', { action: 'send', tx }),
     status: (sig) => get('/api/launch?sig=' + encodeURIComponent(sig)),
     balance: (a) => get('/api/launch?balance=' + encodeURIComponent(a)),
-    register: (mint, signature, name, symbol) => post('/api/coins', { action: 'register', mint, signature, name, symbol }),
+    register: (mint, signature, name, symbol, verified = false) => post('/api/coins', { action: 'register', mint, signature, name, symbol, ...(verified ? { verified: true } : {}) }),
   };
 }
 export const b64ToBytes = (s) => Uint8Array.from(atob(s), (c) => c.charCodeAt(0));
@@ -90,7 +90,7 @@ export async function launchCoin({ form, wallet, kit, api, review = null, onStep
   for (let i = 0; i < confirmTries; i++) { try { const s = await api.status(signature); status = s.status; if (s.status === 'failed') throw Object.assign(new Error('The launch failed on-chain: ' + (s.err || '')), { signature }); if (s.status === 'confirmed' || s.status === 'finalized') break; } catch (e) { if (e.signature) throw e; } await sleep(1500); }
   onStep('register', 'Confirmed! Adding your coin to the Hall board…', { signature, mint });
   let registered = null, regError = null;
-  for (let i = 0; i < registerTries; i++) { try { registered = await api.register(mint, signature, form.name, form.symbol); break; } catch (e) { regError = e.message; if (e.status === 403) break; await sleep(2500); } }
+  for (let i = 0; i < registerTries; i++) { try { registered = await api.register(mint, signature, form.name, form.symbol, !!form.verified); break; } catch (e) { regError = e.message; if (e.status === 403) break; await sleep(2500); } }
   onStep('done', registered ? 'Launched and listed on the Coin board!' : 'Launched! Board listing pending: ' + (regError || ''), { signature, mint, registered: !!registered });
   return { mint, signature, status, registered: !!registered, regError, built, meta };
 }

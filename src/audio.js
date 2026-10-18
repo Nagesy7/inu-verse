@@ -62,3 +62,6 @@ export function munch() { if (!ac || muted || !gate('eat', 0.9, 0.2)) return; co
 export function sip() { if (!ac || muted || !gate('eat', 0.9, 0.25)) return; const t = ac.currentTime; const o = tone(520, t, 0.18, 0.02, 'sine', master); o.frequency.exponentialRampToValueAtTime(780, t + 0.16); }
 export function clink() { if (!ac || muted || !gate('clink', 0.8, 0.2)) return; const t = ac.currentTime; tone(2637, t, 0.12, 0.02, 'triangle', master); tone(3136, t + 0.05, 0.1, 0.015, 'triangle', master); }
 export function fanfare() { if (!ac || muted || !gate('fanfare', 1.5, 1.8)) return; const t = ac.currentTime; [[523, 0, .18], [659, .18, .18], [784, .36, .18], [1047, .54, .5], [784, .9, .16], [1047, 1.06, .7]].forEach(([f, d, l]) => { tone(f, t + d, l, 0.05, 'square', master); tone(f / 2, t + d, l, 0.03, 'sawtooth', master); }); }
+// Town crier "EXTRA!" bell for Verified Launch news: ONE sound, own gate with a long cooldown, so headlines never stack sounds.
+export const CRIER_SFX_CD = 20;
+export function crierBell() { if (!ac || muted || !gate('crier', CRIER_SFX_CD, 1.2)) return false; const t = ac.currentTime; [[1318, 0], [988, 0.16], [1318, 0.32]].forEach(([f, d]) => { tone(f, t + d, 0.35, 0.04, 'triangle', master); tone(f * 2, t + d, 0.2, 0.012, 'sine', master); }); return true; }

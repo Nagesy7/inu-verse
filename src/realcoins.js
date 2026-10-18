@@ -49,9 +49,10 @@ export async function postCoins(body, { session, admin, f = globalThis.fetch, ba
   catch { return { ok: false, reason: 'registry unavailable' }; } }
 
 // Billboard/ad views: $KIBBLE first, then registered coins. pct = DexScreener 24h change, or null when unavailable.
-export function realTrend(coins = [], n = 6) {
-  const v = (mint, symbol, name, color) => { const s = statsOf(mint); return { id: 'real:' + mint, mint, real: true, ticker: (s?.symbol || symbol || '???').slice(0, 10), name: s?.name || name || short(mint), color, pct: s?.change24 ?? null, heat: s?.vol24 || 0 }; };
-  return [v(KIBBLE.mint, KIBBLE.symbol, KIBBLE.name, KIBBLE.color), ...coins.filter((c) => !c.hidden).map((c) => v(c.mint, c.symbol, c.name, hue(c.mint))).sort((a, b) => b.heat - a.heat)].slice(0, n);
+// tag(mint, coin) adds display flags (Verified Launch seal, fixture label) from src/verified.js.
+export function realTrend(coins = [], n = 6, tag = () => ({})) {
+  const v = (mint, symbol, name, color, c) => { const s = statsOf(mint); return { id: 'real:' + mint, mint, real: true, ticker: (s?.symbol || symbol || '???').slice(0, 10), name: s?.name || name || short(mint), color, pct: s?.change24 ?? null, heat: s?.vol24 || 0, ...tag(mint, c) }; };
+  return [v(KIBBLE.mint, KIBBLE.symbol, KIBBLE.name, KIBBLE.color), ...coins.filter((c) => !c.hidden).map((c) => v(c.mint, c.symbol, c.name, hue(c.mint), c)).sort((a, b) => b.heat - a.heat)].slice(0, n);
 }
 // Eligible pair assets (server-checked live: $KIBBLE first + Inu/Doge coins over the mcap/liquidity/RugCheck bar).
 export async function listPairs({ f = globalThis.fetch, base = '' } = {}) {

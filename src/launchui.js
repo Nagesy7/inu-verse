@@ -1,6 +1,7 @@
 // Launch Hall → "Launch your coin" tab: no-extension launch UI (wallet → top up → launch form → one-tap sign → board).
 // Logic lives in noext.js; this file is DOM only. Styles are injected here so the shared style.css stays untouched.
 import * as NX from './noext.js';
+import { verifiedOptHtml } from './verified.js';
 const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 const short = (a) => (a ? `${a.slice(0, 4)}…${a.slice(-4)}` : '');
 const CSS = `.noext{display:grid;grid-template-columns:1fr 1fr;gap:8px;text-align:left;margin-bottom:8px}@media (max-width:560px){.noext{grid-template-columns:1fr}}
@@ -15,7 +16,7 @@ const CSS = `.noext{display:grid;grid-template-columns:1fr 1fr;gap:8px;text-alig
 body.short .noext .qr svg{width:80px;height:80px}body.short .noext .small{margin-top:4px}`;
 function injectCss() { if (document.getElementById('noext-css')) return; const s = document.createElement('style'); s.id = 'noext-css'; s.textContent = CSS; document.head.appendChild(s); }
 
-const S = { cfg: null, wallet: null, balance: null, balT: 0, busy: false, result: null, steps: [], err: '', form: { pair: 'KIBBLE', devBuySol: 0, slippageBps: 300 }, review: null, api: NX.apiClient() };
+const S = { cfg: null, wallet: null, balance: null, balT: 0, busy: false, result: null, steps: [], err: '', form: { pair: 'KIBBLE', devBuySol: 0, slippageBps: 300, verified: false }, review: null, api: NX.apiClient() };
 const STEP_ORDER = ['meta', 'build', 'review', 'sign', 'confirm', 'register', 'done'];
 const STEP_TEXT = { meta: 'Upload image + details', build: 'Server builds unsigned tx + mainnet dry run', review: 'You check the route + every fee', sign: 'You approve in Phantom', confirm: 'Solana confirms', register: 'Added to the Coin board', done: 'Done' };
 let root = null, ctx = {};
@@ -81,6 +82,7 @@ function formCard() { const f = S.form, n = need(), kib = f.pair === 'KIBBLE';
     ${kib && f.devBuySol > 0 ? `<label>Slippage limit (SOL → $KIBBLE leg)<select id="nx-slip">${NX.SLIPPAGE_CHOICES.map((b) => `<option value="${b}" ${b === f.slippageBps ? 'selected' : ''}>${b / 100}%</option>`).join('')}</select></label>` : ''}
     <div class="small" style="margin:2px 0">${kib ? '★ $KIBBLE pair (pump.fun Custom Pairs): pump.fun\'s official create_v2 takes $KIBBLE as the quote, so your coin trades against $KIBBLE. An opening swap is paid in SOL and routed SOL → $KIBBLE → your coin in the same transaction. The server dry-runs it on mainnet first; if pump.fun refuses the pair at that moment you will be told, and you can pick SOL.' : 'SOL pair: standard pump.fun bonding curve. ★ $KIBBLE is the default pair. Other pairs: use pump.fun\'s own page (guide below).'}</div>
     ${routePlan()}
+    ${verifiedOptHtml(f.verified, 'nx-verified')}
     <div class="warnbox"><b>Read before launching:</b> this launches a REAL token on Solana mainnet from <b>your</b> wallet. You are the creator and pay about <b>${NX.sol(n.total - n.parts.reserve)} SOL</b>${n.parts.devBuy ? ' including your opening swap' : ''}. It cannot be undone or deleted. Memecoins usually go to zero. Inu Verse never holds your SOL, tokens or keys and never signs for you, and will <b>never ask for your seed phrase or private key</b>. Not financial advice.
       <label style="color:#f3d7d7"><input id="nx-ack" type="checkbox" style="width:auto" ${f.ack ? 'checked' : ''}> I understand and want to launch this coin myself.</label></div>
     <div class="row"><button class="btn green big" id="nx-go" ${canLaunch() ? '' : 'disabled'}>${S.busy ? 'Launching…' : 'Launch coin (one tap in Phantom)'}</button></div>${progress()}</div>`; }
@@ -117,6 +119,7 @@ function bind() {
   const sl = v('#nx-slip'); if (sl) sl.onchange = () => { f.slippageBps = Number(sl.value); render(); };
   root.querySelectorAll('[data-rv]').forEach((b) => b.onclick = () => { const r = S.review; if (!r) return; S.review = null; r.done(b.dataset.rv === 'ok'); render(); });
   const dv = v('#nx-dev'); if (dv) dv.onchange = () => { f.devBuySol = Math.max(0, Math.min(5, Number(dv.value) || 0)); render(); };
+  const vo = v('#nx-verified'); if (vo) vo.onchange = () => { f.verified = vo.checked; };
   const ack = v('#nx-ack'); if (ack) ack.onchange = () => { f.ack = ack.checked; paintBalance(); };
   const im = v('#nx-image'); if (im) im.onchange = async () => { const file = im.files?.[0]; if (!file) return; try { f.image = await NX.imageToDataUrl(file); render(); } catch { ctx.toast?.('Could not read that image', 'bad'); } };
   const go = v('#nx-go'); if (go) go.onclick = launch;

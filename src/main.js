@@ -16,7 +16,8 @@ import { carProps } from './ambient.js';
 import { drawCar } from './cars.js';
 import { makeAlive, stepAlive, drawAliveGround, drawAliveSky, ALIVE } from './alive.js';
 import { makeAmbient, stepAmbient, throwBall, dayPhase, timeForHour, drawGroundLife, drawSkyLife, drawAtmosphere, drawEmote, lightsFor, addMail, unreadMail, EMOTES, DAY_LEN } from './ambient.js';
-import { initAudio, setMusicActive, setMuted, isMuted, footstep, chirp, bork, blip, uiClick, uiOpen, uiClose, textBlip, rustle, fanfare, cafeChime, munch, sip, clink } from './audio.js';
+import { initAudio, setMusicActive, setMuted, isMuted, footstep, chirp, bork, blip, uiClick, uiOpen, uiClose, textBlip, rustle, fanfare, cafeChime, munch, sip, clink, crierBell } from './audio.js';
+import * as VF from './verified.js'; // Verified Launch badge (opt-in) + town crier news
 import { DISHES, order as dinerOrder, favourite as dinerFav, dishById } from './diner.js';
 import { makeCafePlay } from './cafeplay.js';
 import { drawDishIcon } from './dinerart.js';
@@ -237,7 +238,7 @@ const screenToWorld = (sx, sy) => ({ x: (sx - innerWidth / 2) / ZOOM + cam.x, y:
 cv.addEventListener('mousemove', (e) => { if (mode === 'build') build.hover = roomCell(e.clientX, e.clientY); });
 cv.addEventListener('click', (e) => {
   if (mode === 'world' && !panel) {
-    const w = screenToWorld(e.clientX, e.clientY); const ad = adAt(trend, adRot, adIdx, w.x, w.y); if (ad) { blip(990); openPanel('launch', ad.coin.real ? { tab: ad.coin.mint === RC.KIBBLE.mint ? 'kibble' : 'board' } : { sel: ad.coin.id }); return; } clickWorldTile(Math.floor(w.x / TILE), Math.floor(w.y / TILE), w.x, w.y);
+    const w = screenToWorld(e.clientX, e.clientY); const ad = adAt(trend, adRot, adIdx, w.x, w.y); if (ad) { blip(990); openPanel('launch', ad.coin.real ? (ad.coin.mint === RC.KIBBLE.mint ? { tab: 'kibble' } : { tab: 'board', coin: ad.coin.mint, vfOpen: !!ad.coin.verified }) : { sel: ad.coin.id }); return; } clickWorldTile(Math.floor(w.x / TILE), Math.floor(w.y / TILE), w.x, w.y);
   } else if (mode === 'room' && !panel && !feel.talking()) RP.click(e.clientX, e.clientY, groundTap(performance.now()));
   else if (mode === 'build') buildClick(roomCell(e.clientX, e.clientY));
 });
@@ -475,7 +476,7 @@ function updateWorld(dt) {
   { const nowH = ((time + dayOffset) / DAY_LEN) * 24;
     if (PRES_Q && !presForced) { presForced = true; startVisit(pres, PRES_KINDS.includes(PRES_Q) ? PRES_Q : null, { dayLen: DAY_LEN }); }
     updatePresident(pres, dt, { nowH, dayLen: DAY_LEN, npcs, rng, toast: (s) => toast(s, 'good'), banner: presBanner, fanfare, snack: () => toast('President Inu bought a taiyaki from the snack cart!', 'good') }); }
-  adT += dt; if (adT > 8 || !trend.length) { adT = 0; adRot++; trend = RC.realTrend(REG.coins, 6); if (adRot % 8 === 1) refreshRegistry(); }
+  adT += dt; if (adT > 8 || !trend.length) { adT = 0; adRot++; trend = RC.realTrend(REG.coins, 6, VF.trendTag); if (adRot % 8 === 1) refreshRegistry(); }
   farmTick(dt); if (state.bones < 0) state.bones = 0;
   stepCrew(crew, dt, dayPhase(time + dayOffset).hour, () => { adIdx++; });
   stepScene(dt); stepConfetti(dt); stepPups(dt);
@@ -962,8 +963,25 @@ function cafeUi() {
 // Tabs: $KIBBLE (real, live stats) · Launch your coin (pump.fun's own create flow) · Coin board (player-registered, verified) · Practice (play tokens).
 const practice = () => DEMO ? state : new Proxy(state, { get: (t, k) => k === 'kibble' ? (t.practiceKibble ??= 20) : t[k], set: (t, k, v) => { t[k === 'kibble' ? 'practiceKibble' : k] = v; return true; } });
 async function refreshRegistry(force) { if (!force && Date.now() - REG.loaded < 30000) return; REG.loaded = Date.now();
-  const r = await RC.listCoins(); REG = { ...REG, coins: r.coins, offline: !r.ok, reason: r.reason }; await refreshRealStats(); }
-async function refreshRealStats() { await RC.fetchStats([RC.KIBBLE.mint, ...REG.coins.map((c) => c.mint)]); trend = RC.realTrend(REG.coins, 6); if (panel?.kind === 'launch') launchRealUi(); }
+  const r = await RC.listCoins(); const fx = VFX.on ? VFX.data.coins : []; REG = { ...REG, coins: [...fx, ...r.coins], offline: !r.ok && !fx.length, reason: r.reason }; await loadVerified(); await refreshRealStats(); }
+async function refreshRealStats() { await RC.fetchStats([RC.KIBBLE.mint, ...REG.coins.filter((c) => !c.fixture).map((c) => c.mint)]); trend = RC.realTrend(REG.coins, 6, VF.trendTag); if (panel?.kind === 'launch') launchRealUi(); }
+// ---- Verified Launch (opt-in) + crier news. ?verifiedpreview=1 adds labelled TEST FIXTURE coins for proof shots only. ----
+const VFX = { on: /[?&]verifiedpreview=1/.test(location.search), data: null }; if (VFX.on) { VFX.data = VF.fixtures(); for (const [m, r] of Object.entries(VFX.data.recs)) VF.setRecord(m, r); }
+VF.injectCss();
+async function loadVerified() { const want = REG.coins.filter((c) => c.verifiedOptIn && !c.fixture).map((c) => c.mint); if (want.length) await VF.fetchVerified(want);
+  document.querySelectorAll('[data-vfslot]').forEach((el) => { const m = el.dataset.vfslot, open = !!el.querySelector('details[open]'); el.innerHTML = vfBadge(m, open); }); }
+const vfBadge = (mint, open) => VF.badgeHtml(mint, { open, fixture: !!REG.coins.find((c) => c.mint === mint)?.fixture });
+const vfSlot = (mint, open = false) => `<div class="vfslot" data-vfslot="${mint}">${vfBadge(mint, open)}</div>`;
+const NEWS = { list: [], crier: VF.makeCrier(), pending: null };
+async function refreshNews() { if (document.hidden) return; const real = await VF.fetchNews(); NEWS.list = [...(VFX.on ? VFX.data.news : []), ...real];
+  const it = NEWS.crier.pick(NEWS.list); if (it) NEWS.pending = it; const el = document.getElementById('vfnews'); if (el) el.innerHTML = VF.newsCardHtml(NEWS.list, { fixture: !!NEWS.list[0]?.fixture }); }
+function crierNewsTick() { if (!NEWS.pending || mode !== 'world' || panel || !state) return; const it = NEWS.pending; NEWS.pending = null; const line = VF.headline(it);
+  crierRing = 3; crierBell(); chatSay(MWd.CRIER_NAME, line, time, { force: true, life: 7 });
+  let b = document.getElementById('crier-banner'); if (!b) { b = document.createElement('div'); b.id = 'crier-banner'; b.setAttribute('role', 'status'); document.body.appendChild(b); }
+  b.innerHTML = `<b>${esc(MWd.CRIER_NAME)} · THE DAILY BONE${it.fixture ? ' · TEST FIXTURE' : ''}</b><span>${esc(line)}</span><a href="${esc(it.pump)}" target="_blank" rel="noopener noreferrer">$${esc(it.symbol || '???')} on pump.fun ↗</a>`; b.className = 'show news'; clearTimeout(b._t); b._t = setTimeout(() => { b.className = ''; }, 8000);
+  globalThis.__crierNews = [...(globalThis.__crierNews || []), it.id]; }
+setTimeout(refreshNews, 4000); setInterval(refreshNews, 120_000);
+globalThis.__verified = () => ({ preview: VFX.on, news: NEWS.list, pending: NEWS.pending, recs: REG.coins.map((c) => [c.mint, VF.recOf(c.mint)]) });
 const NFA = '<div class="nfa">Not financial advice. No price promises. Coins here are user-launched memecoins on pump.fun: they can go to zero. Always check the contract address.</div>';
 const isMobile = () => matchMedia('(pointer:coarse)').matches || /Android|iPhone|iPad/i.test(navigator.userAgent);
 function statBox(mint) { const st = RC.statsOf(mint); return `<div class="stats rstats" data-stats="${mint}"><div>Price<b>${RC.fmtUsd(st?.priceUsd)}</b>USD</div><div>Market cap<b>${RC.fmtUsd(st?.mcap)}</b>USD</div><div>24h<b class="${st?.change24 == null ? '' : st.change24 >= 0 ? 'up' : 'dn'}">${RC.fmtPct(st?.change24)}</b>change</div><div>24h volume<b>${RC.fmtUsd(st?.vol24)}</b>USD</div></div>`; }
@@ -984,8 +1002,8 @@ function renderLaunch() {
      <div class="row" style="justify-content:flex-start"><button class="btn green" id="go-pump">Open pump.fun create ↗</button>${isMobile() ? '<button class="btn alt" id="go-phantom">Open in Phantom app ↗</button>' : ''}</div></details>${NFA}`;
   else if (tab === 'board') body.innerHTML = `${head}<div class="launch rboard"><div><div class="card form" style="text-align:left"><b>Register a coin you launched</b>
      <div class="small">Sign in with Phantom, paste your coin's mint. We check pump.fun's on-chain record that <i>your wallet</i> created it.</div>
-     <input id="reg-mint" placeholder="Your coin's mint address" maxlength="44" autocomplete="off" spellcheck="false"><button class="btn green" id="reg-go">${K.kp?.signedIn ? 'Register coin' : 'Sign in & register'}</button><div class="small" id="reg-msg"></div></div>${NFA}</div>
-     <div><b>Registered coins</b><div class="regboard" id="regboard"></div></div></div>`;
+     <input id="reg-mint" placeholder="Your coin's mint address" maxlength="44" autocomplete="off" spellcheck="false">${VF.verifiedOptHtml(false, 'reg-verified')}<button class="btn green" id="reg-go">${K.kp?.signedIn ? 'Register coin' : 'Sign in & register'}</button><div class="small" id="reg-msg"></div></div>${NFA}</div>
+     <div><div id="vfcard">${coinCardHtml(panel.coin)}</div><div id="vfnews">${VF.newsCardHtml(NEWS.list, { fixture: !!NEWS.list[0]?.fixture })}</div><b>Registered coins</b><div class="regboard" id="regboard"></div></div></div>`;
   else { body.innerHTML = `${head}<div class="demo-banner">Practice – play tokens on a pretend bonding curve. Not on-chain, not real $KIBBLE, worth nothing.</div>
   <p class="sub">Practise launching and trading against practice KIBBLE. NPC Inu traders buy and sell; when the curve fills the token <b>graduates</b>. You have <b id="prac-bal">${practice().kibble.toFixed(2)}</b> practice KIBBLE.</p>
   <div class="launch"><div>
@@ -1020,19 +1038,22 @@ async function registerCoin() {
   if (!K.kp) return say('Wallet sign-in is unavailable right now. Try again in a moment.', true);
   try { if (!K.kp.signedIn) { say('Approve the sign-in message in Phantom…'); if (!K.kp.address) await K.kp.connect?.(); await K.kp.signIn(); } } catch (e) { return say('Sign-in cancelled: ' + (e.message || e), true); }
   say('Checking pump.fun creator on-chain…');
-  const r = await RC.postCoins({ action: 'register', mint }, { session: K.kp.session });
+  const verified = !!$('#reg-verified')?.checked;
+  const r = await RC.postCoins({ action: 'register', mint, ...(verified ? { verified: true } : {}) }, { session: K.kp.session });
   if (!r.ok) return say(r.reason, true);
-  say(r.already ? 'Already registered.' : `Registered! Verified you created it${r.coin.pairedWithKibble ? ' · paired with $KIBBLE ✓' : ''}.`); refreshRegistry(true);
+  say((r.already ? (r.optedIn ? 'Already registered: opted in to Verified Launch checks.' : 'Already registered.') : `Registered! Verified you created it${r.coin.pairedWithKibble ? ' · paired with $KIBBLE ✓' : ''}.`) + (verified && (r.optedIn || !r.already) ? ' Verified Launch checks start now (about 15 minutes per refresh).' : '')); refreshRegistry(true);
 }
 function renderRegBoard() { const el = $('#regboard'); if (!el) return;
+  const cc = $('#vfcard'); if (cc && panel?.coin) { if (cc.querySelector('[data-vfslot] details[open]')) panel.vfOpen = true; cc.innerHTML = coinCardHtml(panel.coin); }
   if (REG.offline) { el.innerHTML = `<p class="small">Coin board is offline right now (${esc(REG.reason || 'unavailable')}). Your coin is still live on pump.fun.</p>`; return; }
   if (!REG.coins.length) { el.innerHTML = '<p class="small">No player coins registered yet. Be the first: launch on pump.fun, then register it here.</p>'; return; }
   el.innerHTML = REG.coins.map((c) => { const st = RC.statsOf(c.mint); return `<div class="regcoin" data-mint="${c.mint}"><div><b>$${esc(st?.symbol || c.symbol || '???')}</b> ${esc(st?.name || c.name || '')} ${c.pairedWithKibble ? '<span class="chip">paired with $KIBBLE</span>' : c.quote && c.quote !== 'SOL' ? `<span class="chip">paired with $${esc(c.quote)}</span>` : ''}
      <div class="small">CA <code>${RC.short(c.mint)}</code> · creator ${RC.short(c.creator)} (verified)</div>
-     <div class="small">Price ${RC.fmtUsd(st?.priceUsd)} · MC ${RC.fmtUsd(st?.mcap)} · 24h ${RC.fmtPct(st?.change24)}</div>${cleanSlot(c.mint)}</div>
-     <div class="row"><a class="btn tiny green" href="${RC.PUMP_COIN(c.mint)}" target="_blank" rel="noopener noreferrer">pump.fun</a><button class="btn tiny ghost" data-copy="${c.mint}">Copy CA</button><button class="btn tiny red" data-report="${c.mint}">Report</button></div></div>`; }).join('');
+     <div class="small">Price ${RC.fmtUsd(st?.priceUsd)} · MC ${RC.fmtUsd(st?.mcap)} · 24h ${RC.fmtPct(st?.change24)}</div>${c.fixture ? '<span class="vf-fx">TEST FIXTURE</span>' : ''}${vfSlot(c.mint)}${c.fixture ? '' : cleanSlot(c.mint)}</div>
+     <div class="row"><a class="btn tiny green" href="${RC.PUMP_COIN(c.mint)}" target="_blank" rel="noopener noreferrer">pump.fun</a><button class="btn tiny alt" data-card="${c.mint}">Card</button><button class="btn tiny ghost" data-copy="${c.mint}">Copy CA</button><button class="btn tiny red" data-report="${c.mint}">Report</button></div></div>`; }).join('');
   el.querySelectorAll('[data-copy]').forEach((b) => b.onclick = () => copyText(b.dataset.copy));
-  loadClean(REG.coins.map((c) => c.mint));
+  el.querySelectorAll('[data-card]').forEach((b) => b.onclick = () => { panel.coin = b.dataset.card; panel.vfOpen = false; const cc = $('#vfcard'); if (cc) { cc.innerHTML = coinCardHtml(panel.coin); bindCoinCard(); cc.scrollIntoView?.({ block: 'nearest' }); } });
+  bindCoinCard(); loadClean(REG.coins.filter((c) => !c.fixture).map((c) => c.mint));
   el.querySelectorAll('[data-report]').forEach((b) => b.onclick = async () => { if (!confirm('Report this coin as a scam, impersonation or offensive? Coins with several reports are hidden until reviewed.')) return;
     const r = await RC.postCoins({ action: 'report', mint: b.dataset.report, reason: 'player report' }); toast(r.ok ? (r.hidden ? 'Reported. Hidden pending review.' : 'Reported. Thanks!') : r.reason, r.ok ? 'good' : 'bad'); refreshRegistry(true); });
 }
@@ -1044,6 +1065,12 @@ async function loadClean(mints, force, tries = 0) { const want = mints.filter((m
   document.querySelectorAll('[data-cleanslot]').forEach((el) => { const m = el.dataset.cleanslot; if (!want.includes(m)) return; const open = !!el.querySelector('details[open]'); el.innerHTML = CL.badgeHtml(m, { open }); });
   if (want.some((m) => CL.pending(CL.cleanOf(m)))) { if (tries < 6) setTimeout(() => loadClean(want.filter((m) => CL.pending(CL.cleanOf(m))), true, tries + 1), 8000); } }
 globalThis.__clean = (m) => CL.cleanOf(m);
+// Coin card (from a board row's Card button or a tapped coin ad): name, ticker, CA, live stats, links + the Verified Launch badge.
+function coinCardHtml(mint) { const c = mint && REG.coins.find((x) => x.mint === mint); if (!c) return ''; const st = RC.statsOf(mint);
+  return `<div class="vf-card" data-coincard="${esc(mint)}"><div class="row" style="justify-content:space-between;margin:0"><h3>$${esc(st?.symbol || c.symbol || '???')} <span class="small">${esc(st?.name || c.name || '')}</span></h3><button class="btn tiny ghost" data-cardclose>✕</button></div>
+    ${c.fixture ? '<span class="vf-fx">TEST FIXTURE</span>' : ''}<div class="small">CA <code>${esc(mint)}</code></div><div class="small">Price ${RC.fmtUsd(st?.priceUsd)} · MC ${RC.fmtUsd(st?.mcap)} · 24h ${RC.fmtPct(st?.change24)}</div>
+    ${vfSlot(mint, !!panel?.vfOpen)}<div class="row" style="justify-content:flex-start"><a class="btn tiny green" href="${RC.PUMP_COIN(mint)}" target="_blank" rel="noopener noreferrer">pump.fun ↗</a><a class="btn tiny ghost" href="${RC.DEX_URL(mint)}" target="_blank" rel="noopener noreferrer">DexScreener ↗</a></div></div>`; }
+function bindCoinCard() { const x = document.querySelector('[data-cardclose]'); if (x) x.onclick = () => { panel.coin = null; const cc = $('#vfcard'); if (cc) cc.innerHTML = ''; }; }
 function launchRealUi() { document.querySelectorAll('[data-stats]').forEach((el) => { el.outerHTML = statBox(el.dataset.stats); }); renderRegBoard(); }
 // Owner moderation from the console: __launchAdmin('hide'|'show'|'delete', mint, adminToken?) (wallet session for the owner wallet also works).
 globalThis.__launchAdmin = async (op, mint, admin) => { const r = await RC.postCoins({ action: 'moderate', op, mint }, { session: K.kp?.session, admin }); refreshRegistry(true); return r; };
@@ -1333,7 +1360,7 @@ MPL.start().catch(() => {});
 // ---- $KIBBLE town mood (src/kibblemood.js + src/moodworld.js): one shared /api/kibble-mood fetch per minute, paused when hidden ----
 let crierRing = 0, crierPending = false;
 const MOOD = KM.startMood({ apiBase: '', onMood: (m) => { MWd.setMood(m, time); crierPending = true; } });
-function moodTick(dt) { if (crierRing > 0) crierRing -= dt; if (crierPending && mode === 'world' && !panel && state) { crierPending = false; announceMood(MWd.MW.mood); } if (panel?.kind === 'kibblemood' && MOOD.current !== panel.shown) { panel.shown = MOOD.current; } }
+function moodTick(dt) { if (crierRing > 0) crierRing -= dt; crierNewsTick(); if (crierPending && mode === 'world' && !panel && state) { crierPending = false; announceMood(MWd.MW.mood); } if (panel?.kind === 'kibblemood' && MOOD.current !== panel.shown) { panel.shown = MOOD.current; } }
 function announceMood(mood) { if (!MWd.shouldAnnounce(mood, { override: !!MOOD.forced })) return; const line = MWd.crierLine(mood); crierRing = 3; blip(988); setTimeout(() => blip(1318), 140);
   chatSay(MWd.CRIER_NAME, line, time, { force: true, life: 6 }); crierBanner(line); globalThis.__crierSaid = [...(globalThis.__crierSaid || []), mood]; }
 function crierBanner(line) { let b = document.getElementById('crier-banner'); if (!b) { b = document.createElement('div'); b.id = 'crier-banner'; b.setAttribute('role', 'status'); document.body.appendChild(b); }
