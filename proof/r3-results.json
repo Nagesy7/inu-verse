@@ -1,0 +1,314 @@
+{
+ "mp": {
+  "A": {
+   "status": "online",
+   "count": 2
+  },
+  "B": {
+   "status": "online",
+   "count": 2
+  }
+ },
+ "wheel844": [
+  [
+   "sit",
+   70,
+   18,
+   88
+  ],
+  [
+   "lie",
+   70,
+   52,
+   122
+  ],
+  [
+   "dance",
+   70,
+   139,
+   209
+  ],
+  [
+   "dance2",
+   70,
+   237,
+   307
+  ],
+  [
+   "dance3",
+   70,
+   301,
+   371
+  ],
+  [
+   "wave",
+   70,
+   301,
+   371
+  ],
+  [
+   "wag",
+   70,
+   237,
+   307
+  ],
+  [
+   "sleep",
+   70,
+   139,
+   209
+  ],
+  [
+   "bow",
+   70,
+   52,
+   122
+  ],
+  [
+   "heart",
+   52,
+   106,
+   158
+  ],
+  [
+   "happy",
+   52,
+   173,
+   225
+  ],
+  [
+   "note",
+   52,
+   240,
+   292
+  ],
+  [
+   "angry",
+   52,
+   240,
+   292
+  ],
+  [
+   "bork",
+   52,
+   173,
+   225
+  ],
+  [
+   "zoomies",
+   52,
+   106,
+   158
+  ],
+  [
+   "close",
+   48,
+   175,
+   223
+  ]
+ ],
+ "B_sees_A": {
+  "name": "Pup1001",
+  "act": "dance2",
+  "x": 880,
+  "y": 720
+ },
+ "wheel667": [
+  [
+   "sit",
+   67,
+   19,
+   86
+  ],
+  [
+   "lie",
+   67,
+   51,
+   118
+  ],
+  [
+   "dance",
+   67,
+   134,
+   201
+  ],
+  [
+   "dance2",
+   67,
+   228,
+   295
+  ],
+  [
+   "dance3",
+   67,
+   290,
+   357
+  ],
+  [
+   "wave",
+   67,
+   290,
+   357
+  ],
+  [
+   "wag",
+   67,
+   229,
+   296
+  ],
+  [
+   "sleep",
+   67,
+   134,
+   201
+  ],
+  [
+   "bow",
+   67,
+   51,
+   118
+  ],
+  [
+   "heart",
+   50,
+   103,
+   153
+  ],
+  [
+   "happy",
+   50,
+   167,
+   217
+  ],
+  [
+   "note",
+   50,
+   230,
+   280
+  ],
+  [
+   "angry",
+   50,
+   230,
+   280
+  ],
+  [
+   "bork",
+   50,
+   167,
+   217
+  ],
+  [
+   "zoomies",
+   50,
+   103,
+   153
+  ],
+  [
+   "close",
+   48,
+   168,
+   216
+  ]
+ ],
+ "A_sees_B": {
+  "name": "Pup2002",
+  "act": "dance",
+  "x": 976,
+  "y": 720
+ },
+ "B_sees_A_tailtwist": {
+  "name": "Pup1001",
+  "act": "dance3",
+  "x": 880,
+  "y": 720
+ },
+ "moveCancels": {
+  "A_local": null,
+  "B_sees_A": {
+   "name": "Pup1001",
+   "act": null,
+   "x": 924,
+   "y": 720
+  }
+ },
+ "gallery_seen_by_B": {
+  "sit": {
+   "name": "Pup1001",
+   "act": "sit",
+   "x": 912,
+   "y": 816
+  },
+  "lie": {
+   "name": "Pup1001",
+   "act": "lie",
+   "x": 912,
+   "y": 816
+  },
+  "wave": {
+   "name": "Pup1001",
+   "act": "wave",
+   "x": 912,
+   "y": 816
+  },
+  "wag": {
+   "name": "Pup1001",
+   "act": "wag",
+   "x": 912,
+   "y": 816
+  },
+  "sleep": {
+   "name": "Pup1001",
+   "act": "sleep",
+   "x": 912,
+   "y": 816
+  },
+  "bow": {
+   "name": "Pup1001",
+   "act": "bow",
+   "x": 912,
+   "y": 816
+  }
+ },
+ "idleSit": {
+  "kind": "sit",
+  "auto": true
+ },
+ "idleDoze": {
+  "kind": "sleep",
+  "auto": true
+ },
+ "B_sees_doze": {
+  "name": "Pup1001",
+  "act": "sleep",
+  "x": 912,
+  "y": 816
+ },
+ "room-cafe": {
+  "A_room": "cafe",
+  "B_mp": {
+   "status": "online",
+   "room": "r-cafe"
+  },
+  "B_sees_A": {
+   "name": "Pup1001",
+   "act": "dance2",
+   "x": 272,
+   "y": 304
+  }
+ },
+ "zone-park": {
+  "A_room": "park",
+  "B_mp": {
+   "status": "online",
+   "room": "r-park"
+  },
+  "B_sees_A": {
+   "name": "Pup1001",
+   "act": "dance2",
+   "x": 80,
+   "y": 240
+  }
+ },
+ "errors": []
+}
