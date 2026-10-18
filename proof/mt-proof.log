@@ -1,0 +1,29 @@
+[844x390] default pair: KIBBLE
+saved proof/mt-launch-route-844x390.png
+[844x390] live dry run: ok=true units=311278 size=1109 lookupTable=Hyif6eWb8x88RVrvjPfabsgRYnwkVnyByEXTVTXbUcyP total=0.0179 SOL
+saved proof/mt-launch-review-844x390.png
+saved proof/mt-launch-review-fees-844x390.png
+saved proof/mt-raid-gate-844x390.png
+saved proof/mt-raid-panel-844x390.png
+saved proof/mt-raid-fight-844x390.png
+[844x390] raid state: {"boss":"fog-badger","tick":42,"inputs":6,"dmg":0}
+saved proof/mt-raid-rules-844x390.png
+saved proof/mt-reveal-manifest-844x390.png
+saved proof/mt-reveal-step3-844x390.png
+[844x390] reveal: {"step":3,"hashOk":true,"hash":"25e5f8d96128c8c0aa6da596b63b9fc104359a0813b2fe58a83bf09a68e4ab54"}
+saved proof/mt-inu-score-844x390.png
+[667x375] default pair: KIBBLE
+saved proof/mt-launch-route-667x375.png
+[667x375] live dry run: ok=true units=309778 size=1109 lookupTable=Hyif6eWb8x88RVrvjPfabsgRYnwkVnyByEXTVTXbUcyP total=0.0179 SOL
+saved proof/mt-launch-review-667x375.png
+saved proof/mt-launch-review-fees-667x375.png
+saved proof/mt-raid-gate-667x375.png
+saved proof/mt-raid-panel-667x375.png
+saved proof/mt-raid-fight-667x375.png
+[667x375] raid state: {"boss":"fog-badger","tick":37,"inputs":6,"dmg":0}
+saved proof/mt-raid-rules-667x375.png
+saved proof/mt-reveal-manifest-667x375.png
+saved proof/mt-reveal-step3-667x375.png
+[667x375] reveal: {"step":3,"hashOk":true,"hash":"25e5f8d96128c8c0aa6da596b63b9fc104359a0813b2fe58a83bf09a68e4ab54"}
+saved proof/mt-inu-score-667x375.png
+saved proof/mt-reveal-obs-1920x1080.png

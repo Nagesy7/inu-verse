@@ -1,17 +1,17 @@
 {
- "at": "2026-10-18T07:02:40.625Z",
- "source": "local builder + public RPC",
+ "at": "2026-10-18T07:19:47.147Z",
+ "source": "https://inu-verse-tawny.vercel.app",
  "note": "simulation only; nothing signed or sent",
  "results": [
   {
    "case": "$KIBBLE default + 0.01 SOL opening swap",
    "ok": true,
    "err": null,
-   "units": 326278,
+   "units": 302278,
    "size": 1109,
    "signers": [
     "9WzDXwBbmkg8ZTbNMqUxvQRAyrZzDsGYdLVL9zYtAWWM",
-    "DSXxHZMz3kBNCy5w2DoZwcCeAFuXH8FW3RSGEcskbDyE"
+    "HrBjghZ67B9Cv8YoRcY8E7ac9JgtpNKN34KCgEyAU8YZ"
    ],
    "unsigned": true,
    "lookupTable": "Hyif6eWb8x88RVrvjPfabsgRYnwkVnyByEXTVTXbUcyP",
@@ -101,11 +101,11 @@
    "case": "$KIBBLE default, create only",
    "ok": true,
    "err": null,
-   "units": 144178,
+   "units": 148678,
    "size": 1002,
    "signers": [
     "9WzDXwBbmkg8ZTbNMqUxvQRAyrZzDsGYdLVL9zYtAWWM",
-    "ApHc8DykgeeLkT97xfPe8wprSoDNN5A6iXqX63ALdQox"
+    "8UCaBWXCmhdtYM6tAJjE2ii4biTE7TSd4HavXfrto3t8"
    ],
    "unsigned": true,
    "lookupTable": null,
@@ -151,11 +151,11 @@
    "case": "SOL pair + 0.01 SOL",
    "ok": true,
    "err": null,
-   "units": 192200,
+   "units": 222329,
    "size": 1214,
    "signers": [
     "9WzDXwBbmkg8ZTbNMqUxvQRAyrZzDsGYdLVL9zYtAWWM",
-    "wAHjvzaPL2NfRxXvQ9vTnqAGqhmWvGMj1hZiWmDAG59"
+    "2Atvh6niQmVFdjJfgYuzst93tzrjEwuKDz6z3RUCPPnS"
    ],
    "unsigned": true,
    "lookupTable": null,
