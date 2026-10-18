@@ -215,12 +215,32 @@ export const solidAt = (sc, x, y) => { const c = sc.at(x, y); return !c || c.sol
 export const exitAt = (sc, tx, ty) => sc.exits.find((e) => e.tiles.some(([x, y]) => x === tx && y === ty)) || null;
 export function spawnOf(id, key) { const sc = scene(id); const s = sc.spawns[key] || Object.values(sc.spawns)[0]; return { x: (s[0] + 0.5) * ST, y: (s[1] + 0.5) * ST, face: s[2] }; }
 export function nearestSpot(sc, px, py, max = 1.1) { let best = null, bd = max; for (const s of sc.spots) { const d = Math.hypot(px / ST - (s.tx + 0.5), py / ST - (s.ty + 0.5)); if (d < bd) { bd = d; best = s; } } return best; }
-// portals: walking (moving + facing the exit direction) on an exit tile triggers it once; re-arms only after stepping off + cooldown
+// portals (room exits, zone gates, hub gates): same generous rule as doors.js. The trigger zone is the exit tiles plus the
+// tiles beside them (lateral) and the diagonals behind those; it fires once when you are pushing into the exit: on an exit
+// tile unless heading back in, beside it pushing toward it or out through the wall line, diagonally pushing toward it in both
+// axes. Arms only when you step onto a zone tile; spawning (tile pre-set) or walking away never fires.
+const PFACE = { up: [0, -1], down: [0, 1], left: [-1, 0], right: [1, 0] };
 export function makePortalState() { return { tile: -1, armed: false, until: 0 }; }
+export function portalZone(e) { const [fx, fy] = PFACE[e.face] || [0, 0], lx = fy !== 0 ? 1 : 0, ly = fx !== 0 ? 1 : 0, out = [];
+  for (const [x, y] of e.tiles) out.push([x, y, 'door']);
+  for (const [x, y] of e.tiles) for (const sg of [-1, 1]) { const sx = x + sg * lx, sy = y + sg * ly; if (!e.tiles.some(([a, b]) => a === sx && b === sy)) { out.push([sx, sy, 'side', x, y]); out.push([sx - fx, sy - fy, 'diag', x, y]); } }
+  return out; }
 export function portalStep(st, sc, p, now, exitsOverride) { const tx = Math.floor(p.x / ST), ty = Math.floor(p.y / ST), k = ty * 1000 + tx, list = exitsOverride || sc.exits;
-  const e = list.find((q) => q.tiles.some(([x, y]) => x === tx && y === ty));
-  if (k !== st.tile) { st.tile = k; st.armed = !!e; }
-  if (!e || !st.armed || !p.moving || now < st.until || p.face !== e.face) return null; st.armed = false; st.until = now + 0.8; return e; }
+  const hits = []; for (const e of list) for (const z of portalZone(e)) if (z[0] === tx && z[1] === ty) hits.push([e, z]);
+  if (k !== st.tile) { st.tile = k; st.armed = hits.length > 0; }
+  if (!hits.length || !st.armed || now < st.until) return null;
+  let px = p.push?.x || 0, py = p.push?.y || 0; if (!px && !py && p.moving) [px, py] = PFACE[p.face] || [0, 0];
+  const pl = Math.hypot(px, py); if (pl < 1e-6) return null; px /= pl; py /= pl;
+  for (const [e, z] of hits) { const [fx, fy] = PFACE[e.face] || [0, 0], out = px * fx + py * fy; let ok;
+    if (z[2] === 'door') ok = out > -0.5;
+    else { const cx = (z[3] + 0.5) * ST, cy = (z[4] + 0.5) * ST, lat = fy !== 0 ? cx - p.x : cy - p.y, toward = (fy !== 0 ? px : py) * Math.sign(lat);
+      ok = z[2] === 'side' ? toward > 0.35 || out > 0.5 : toward > 0.25 && out > 0.25; }
+    if (ok) { st.armed = false; st.until = now + 0.8; return e; } }
+  return null; }
+// travel spots (the ferries) are walk-in too: the tile you stand on to use the spot acts as an exit facing the spot
+export function walkInExits(sc) { if (sc._walkIn) return sc._walkIn; const out = [];
+  for (const sp of sc.spots || []) { if (!sp.act?.travel) continue; const [fx, fy] = PFACE[sp.face] || [0, 1], x = sp.tx - fx, y = sp.ty - fy; if (!solidAt(sc, x, y)) out.push({ tiles: [[x, y]], face: sp.face, spot: sp }); }
+  return (sc._walkIn = out); }
 export function hubGateAt(tx, ty) { return HUB_GATES.find((g) => g.tx === tx && g.ty === ty) || null; }
 // where a portal sends you: { scene: 'hub'|id, x, y, face }
 export function resolveExit(e, { outsideOf, doorById } = {}) {

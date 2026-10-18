@@ -1,7 +1,7 @@
 // Runtime for Round 2 rooms & zones: own camera (clamped to the room), tap-to-walk with A*, the Round 1 motion model
 // (accel/decel, run, dust), portals (exit mats, gates, ferry), interactable spots, wandering/staff NPCs with chat.
 import * as MOB from './mobility.js';
-import { ST, scene, solidAt, spawnOf, nearestSpot, makePortalState, portalStep, wanderTarget, exitAt } from './scenes.js';
+import { ST, scene, solidAt, spawnOf, nearestSpot, makePortalState, portalStep, wanderTarget, exitAt, walkInExits } from './scenes.js';
 import { sceneGround, sceneProps, drawSceneWater } from './sceneart.js';
 export function makeRoomPlay(D) {
   const R = { sc: null, p: { x: 0, y: 0 }, cam: { x: 0, y: 0 }, npcs: [], portal: makePortalState(), busy: false, chatT: 2, hist: [] };
@@ -38,25 +38,26 @@ export function makeRoomPlay(D) {
   function nearNpc() { let b = null, bd = 40; for (const n of R.npcs) { const d = Math.hypot(n.x - R.p.x, n.y - R.p.y); if (d < bd) { bd = d; b = n; } } return b; }
   function act() { const s = nearestSpot(R.sc, R.p.x, R.p.y); if (s) return useSpot(s); const n = nearNpc(); if (n) return talk(n);
     const ex = exitAt(R.sc, Math.floor(R.p.x / ST), Math.floor(R.p.y / ST)); if (ex) return D.portal(ex); }
-  function travel(to, at, how) { if (R.busy) return; R.busy = true; stop(); D.fade(); setTimeout(() => { R.busy = false; enter(to, at); D.arrived?.(R.sc, how); }, 80); }
+  function travel(to, at, how) { if (R.busy) return; globalThis.__portalFires = (globalThis.__portalFires || 0) + 1; R.busy = true; stop(); D.fade(); setTimeout(() => { R.busy = false; enter(to, at); D.arrived?.(R.sc, how); }, 80); }
   function arrive() { const s = P.target, n = P.npcT, ex = P.exitT; P.target = P.npcT = P.exitT = null; P.clickMark = null;
     if (s) useSpot(s); else if (n) { if (Math.hypot(n.x - R.p.x, n.y - R.p.y) < 44) talk(n); else if (P.pw.replans++ < 3) planTo([Math.floor(n.x / ST), Math.floor(n.y / ST)], { npc: n, mark: false }); }
     else if (ex) { P.face = ex.face; D.portal(ex); } }
   function update(dt) { D.dt = dt; const sc = R.sc; if (!sc) return; const inp0 = D.input();
     const inp = MOB.pickInput({ keys: { x: inp0.dx, y: inp0.dy }, stick: inp0.stick, stickMag: inp0.mag, shift: inp0.shift, holdRun: inp0.holdRun, path: P.pw.pts.length > 0, pathRun: P.pw.run });
-    if (R.busy || D.blocked()) { P.v = { x: 0, y: 0 }; P.moving = false; } else {
+    if (R.busy || D.blocked()) { P.v = { x: 0, y: 0 }; P.moving = false; P.push = null; } else {
       if (inp.cancelPath && P.pw.pts.length) stop();
       const top = MOB.WALK_SPEED * (inp.run ? MOB.RUN_MULT : 1); let want = inp.source === 'none' || inp.source === 'path' ? { x: 0, y: 0 } : { x: inp.dir.x * top, y: inp.dir.y * top };
       if (inp.source === 'path') { const f = MOB.followStep(P.pw, R.p, top, dt, ST);
         if (f?.stuck && P.pw.goal && P.pw.replans++ < 3) planTo(P.pw.goal, { spot: P.target, npc: P.npcT, exit: P.exitT, run: P.pw.run, mark: false }); else if (f?.stuck) stop();
         if (f) { want = f.want; if (f.arrive) { P.v = { x: 0, y: 0 }; if (f.snap) moveBody(R.p, f.snap.x - R.p.x, f.snap.y - R.p.y); arrive(); } } }
+      P.push = { x: want.x, y: want.y }; // what the player is trying to do (walls kill velocity, not intent): portals use it
       P.v = MOB.stepVelocity(P.v, want, dt);
       if (P.v.x || P.v.y) { const bx = R.p.x, by = R.p.y; moveBody(R.p, P.v.x * dt, P.v.y * dt); if (inp.source !== 'path') { if (Math.abs(R.p.x - bx) < 1e-4) P.v.x = 0; if (Math.abs(R.p.y - by) < 1e-4) P.v.y = 0; } }
       const sp = Math.hypot(P.v.x, P.v.y); P.moving = sp > 12 || (inp.source !== 'none' && inp.source !== 'path' && (inp.dir.x || inp.dir.y)); P.running = inp.run && sp > MOB.WALK_SPEED * 1.1;
       if (sp > 12) { if (Math.abs(P.v.x) > 1) P.dir = P.v.x > 0 ? 1 : -1; P.face = MOB.faceOf(P.v.x, P.v.y, P.face); }
       else if (inp.source === 'keys' || inp.source === 'stick') P.face = MOB.faceOf(inp.dir.x * 50, inp.dir.y * 50, P.face);
       if (P.running) { R.dust = (R.dust || 0) + dt; if (R.dust > 0.11) { R.dust = 0; D.dust(R.p.x - P.dir * 6, R.p.y + 11); } }
-      const ex = portalStep(R.portal, sc, { x: R.p.x, y: R.p.y, face: P.face, moving: P.moving }, D.time()); if (ex) D.portal(ex); }
+      const ex = portalStep(R.portal, sc, { x: R.p.x, y: R.p.y, face: P.face, moving: P.moving, push: P.push }, D.time(), [...sc.exits, ...walkInExits(sc)]); if (ex) { if (ex.spot) useSpot(ex.spot); else D.portal(ex); } }
     P.phase += P.moving ? dt * (P.running ? 21 : 12) : dt * 2;
     // NPCs: staff stay put (turn to face you when near), customers wander
     for (const n of R.npcs) { if (n.held > 0) { n.held -= dt; n.moving = false; n.phase += dt * 2; continue; }

@@ -12,10 +12,12 @@ test('every game has a building with a reachable door, a Places entry and a corr
   assert.ok(!JSON.stringify(all).includes('meme-kombat'), 'old Meme Brawl link');
   assert.match(COMMUNITY.url, /^https:\/\/t\.me\/\+L1LZkNnEsAA2M2Jl$/); assert.ok(interactables(null).some((i) => i.kind === 'community')); });
 const at = (d, face, moving = true) => ({ x: (d.tx + 0.5) * TILE, y: (d.ty + 0.5) * TILE, face, moving });
-test('walking into a door enters it; standing or facing away does not', () => { const doors = doorList(null), d = doors.find((x) => x.id === 'memebrawl'), st = makeDoorState();
+// arrive from the tile in front (a fresh state never arms the tile you start/spawn on)
+const from = (st, d, doors, now) => { const r = doorDir(d); doorStep(st, { x: (d.tx - r.dx + 0.5) * TILE, y: (d.ty - r.dy + 0.5) * TILE, face: r.face, moving: false }, doors, now); };
+test('walking into a door enters it; standing or facing away does not', () => { const doors = doorList(null), d = doors.find((x) => x.id === 'memebrawl'), st = makeDoorState(); from(st, d, doors, 9);
   assert.equal(doorStep(st, at(d, 'down'), doors, 10), null); assert.equal(doorStep(st, at(d, 'up', false), doors, 10), null); assert.equal(doorStep(st, at(d, 'up'), doors, 10)?.id, 'memebrawl');
-  const side = doors.find((x) => x.side === 'left' || x.side === 'right'); if (side) { const s2 = makeDoorState(); assert.equal(doorStep(s2, at(side, doorDir(side).face), doors, 5)?.id, side.id); } });
-test('no re-trigger on exit: must step off the door tile and wait out the cooldown', () => { const doors = doorList(null), d = doors.find((x) => x.id === 'bank'), st = makeDoorState();
+  const side = doors.find((x) => x.side === 'left' || x.side === 'right'); if (side) { const s2 = makeDoorState(); from(s2, side, doors, 4); assert.equal(doorStep(s2, at(side, doorDir(side).face), doors, 5)?.id, side.id); } });
+test('no re-trigger on exit: must step off the door tile and wait out the cooldown', () => { const doors = doorList(null), d = doors.find((x) => x.id === 'bank'), st = makeDoorState(); from(st, d, doors, 0.5);
   assert.ok(doorStep(st, at(d, 'up'), doors, 1)); doorExit(st, 2);
   for (let t = 2; t < 6; t += 0.1) assert.equal(doorStep(st, at(d, 'up'), doors, t), null, 'still on tile');
   const o = outsideOf(d); assert.ok(!isSolid(Math.floor(o.x / TILE), Math.floor(o.y / TILE)), 'spawn outside is walkable'); assert.ok(Math.floor(o.y / TILE) !== d.ty || Math.floor(o.x / TILE) !== d.tx, 'spawn is off the door tile');

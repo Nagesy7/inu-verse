@@ -70,7 +70,7 @@ import { feel } from './feel.js';
 import { faceTalk, faceReact } from './face.js';
 import { stepChat, drawChat, emoteBubble, say as chatSay } from './chat.js';
 import { makeRoomPlay } from './roomplay.js';
-import { sceneForDoor, HUB_GATES, resolveExit, makePortalState, portalStep, SCENES } from './scenes.js';
+import { sceneForDoor, HUB_GATES, resolveExit, makePortalState, portalStep, SCENES, scene as sceneOf, walkInExits, solidAt as sceneSolid } from './scenes.js';
 import { hubGateProp } from './sceneart.js';
 import { buildDrawer, drawerOpen } from './hudmenu.js';
 import { makeDoorState, doorStep, doorExit, outsideOf } from './doors.js';
@@ -248,13 +248,16 @@ function clickWorldTile(tx, ty, wx, wy) {
     for (const b of BUILDINGS) if (tx >= b.x && tx < b.x + b.w && ty >= b.y && ty < b.y + b.h) target = interactables(state).find((i) => i.id === b.id);
     for (const p of [...PLOTS, ...NPC_HOMES, CLUBHOUSE, ...MALL_BUILDINGS]) if (tx >= p.x && tx < p.x + p.w && ty >= p.y && ty < p.y + p.h) target = interactables(state).find((i) => i.id === p.id);
     if (!target) target = interactables(state).find((i) => i.tx === tx && i.ty === ty) || null;
+    if (!target) target = doorsNow.find((d) => { const v = doorDir(d); return (d.tx === tx && d.ty === ty) || (d.tx + (v.dx || 0) === tx && d.ty + (v.dy || 0) === ty); }) || null; // tapped a door, or the wall/building tile right behind it
     if (!target) { const g = HUB_GATES.find((q) => Math.abs(q.tx - tx) <= 1 && Math.abs(q.ty - ty) <= 1); if (g) return planTo([g.tx, g.ty], { target: { kind: 'hubgate', g, tx: g.tx, ty: g.ty }, run }); }
     planTo(target ? [target.tx, target.ty] : [tx, ty], { target, run });
 }
 globalThis.__walkTo = (tx, ty, run = false) => planTo([tx, ty], { run }); globalThis.__mob = () => ({ v: { ...player.v }, running: player.running, pts: player.pw.pts.length, moving: player.moving, face: player.face, x: state.player.x, y: state.player.y, mark: !!player.clickMark });
 function arrive() { const t = player.target, nt = player.npcT; player.target = null; player.npcT = null; player.clickMark = null;
   if (t?.kind === 'hubgate') { player.face = t.g.face; return enterGate(t.g); }
-  if (t) { if (isWalkDoor(t)) { player.face = doorDir(t).face; if (doorReady()) enterDoor(t); } else interact(t); }
+  if (t) { if (isWalkDoor(t) || WALK_IN_SPOTS.has(t.id)) { player.face = doorDir(t).face; if (doorReady()) enterDoor(t); } else interact(t); }
+  else if (!nt) { const tx = Math.floor(state.player.x / TILE), ty = Math.floor(state.player.y / TILE), d = doorsNow.find((q) => q.tx === tx && q.ty === ty); // a plain tap-walk that ends ON a door tile enters it
+    if (d && doorReady()) { player.face = doorDir(d).face; enterDoor(d); } }
   else if (nt) { const pup = nearPup(); if (pup) nt.n.held = 0; if (pup) petPup(pup); else if (player.pw.replans++ < 3) planTo([Math.floor(nt.x / TILE), Math.floor(nt.y / TILE)], { npcT: nt, run: player.pw.run, mark: false }); } }
 $('#prompt').onclick = () => { if (mode === 'room') return RP.act(); const it = nearestInteractable(state, state.player.x, state.player.y); const pup = nearPup(); if (pup && !it) petPup(pup); else if (it) interact(it); };
 addEventListener('pointerdown', () => initAudio(), { once: true });
@@ -441,6 +444,7 @@ function updateWorld(dt) {
       if (f?.stuck && player.pw.goal && player.pw.replans++ < 3) planTo(player.pw.goal, { target: player.target, npcT: player.npcT, run: player.pw.run, mark: false });
       else if (f?.stuck) { player.pw.pts = []; player.clickMark = null; }
       if (f) { want = f.want; snap = f.snap; if (f.arrive) { player.v = { x: 0, y: 0 }; if (snap) { const bx = snap.x - p.x, by = snap.y - p.y; moveBody(p, bx, by); } arrive(); } } player.path = player.pw.pts; }
+    player.push = { x: want.x, y: want.y }; // intent (keys / stick / sprint / tap-walk path) even when a wall stops the body: doors use it
     player.v = MOB.stepVelocity(player.v, want, dt);
     if (player.v.x || player.v.y) { const bx = p.x, by = p.y; moveBody(p, player.v.x * dt, player.v.y * dt); // wall: kill the blocked axis so speed never builds up against it (path mode re-plans instead)
       if (inp.source !== 'path') { if (Math.abs(p.x - bx) < 1e-4) player.v.x = 0; if (Math.abs(p.y - by) < 1e-4) player.v.y = 0; } }
@@ -470,10 +474,10 @@ function updateWorld(dt) {
   if (rng() < dt * 0.08) chirp();
   if (player.moving) { stepAcc += dt; if (stepAcc > 0.26) { stepAcc = 0; const tt = MAP[Math.floor(p.y / TILE)]?.[Math.floor(p.x / TILE)]; if (tt === T.GRASS || tt === T.FLOWER) { feel.rustle(p.x, p.y + 10); rustle(); } else { feel.dust(p.x, p.y + 11); footstep(); } } }
   feel.step(dt); document.body.classList.toggle('driving', !!drive); moodTick(dt);
-  if (mode === 'world' && !panel && !drive && !entering && !arcadeOpen) { doorAcc -= dt; if (doorAcc <= 0) { doorAcc = 1; doorsNow = doorList(state).filter((d) => d.kind !== 'plot' || state.plots[d.id]); }
-    const ds = player.pw.pts.length ? (player.target && isWalkDoor(player.target) ? doorsNow.filter((q) => q.id === player.target.id && q.kind === player.target.kind) : []) : doorsNow; // tap-walking only enters the door you tapped
-    const d = doorStep(doorSt, { x: p.x, y: p.y, face: player.face, moving: player.moving }, ds, time, doorsNow); if (d) enterDoor(d);
-    else if (!player.pw.pts.length) { const g = portalStep(gateSt, null, { x: p.x, y: p.y, face: player.face, moving: player.moving }, time, GATE_EXITS); if (g) enterGate(g.gate); } }
+  if (mode === 'world' && !panel && !drive && !entering && !arcadeOpen) { doorAcc -= dt; if (doorAcc <= 0) { doorAcc = 1; doorsNow = [...doorList(state).filter((d) => d.kind !== 'plot' || state.plots[d.id]), ...interactables(state).filter((i) => WALK_IN_SPOTS.has(i.id))]; }
+    const ds = player.pw.pts.length ? (player.target && (isWalkDoor(player.target) || WALK_IN_SPOTS.has(player.target.id)) ? doorsNow.filter((q) => q.id === player.target.id && q.kind === player.target.kind) : []) : doorsNow; // tap-walking only enters the door you tapped
+    const d = doorStep(doorSt, { x: p.x, y: p.y, face: player.face, moving: player.moving, push: drive ? null : player.push }, ds, time, doorsNow); if (d) enterDoor(d);
+    else if (!player.pw.pts.length) { const g = portalStep(gateSt, null, { x: p.x, y: p.y, face: player.face, moving: player.moving, push: player.push }, time, GATE_EXITS); if (g) enterGate(g.gate); } }
   { const vw = innerWidth / ZOOM, vh = innerHeight / ZOOM; stepChat({ now: time, player: p, npcs, hour: dayPhase(time + dayOffset).hour, rain: amb.rain > 0.3, rng, moodLine: (n) => rng() < 0.5 ? MWd.moodLine(n.name, rng) : null, inView: (x, y) => Math.abs(x - cam.x) < vw / 2 - 20 && Math.abs(y - cam.y) < vh / 2 - 30, placeOf: chatPlace }); }
   mailAcc += dt; if (mailAcc > 45) { mailAcc = 0; if (rng() < 0.6 && addMail(state, rng)) { toast('New note in your mailbox!', 'good'); persist(); } }
   // smooth camera
@@ -620,6 +624,8 @@ function minimap(vx, vy, vw, vh) {
 { const _say = feel.say; if (_say) feel.say = (who, line, ...r) => { faceTalk(String(who).split(' (')[0], Math.min(4, 1 + String(line || '').length / 25)); return _say.call(feel, who, line, ...r); }; }
 // ---- walk-in doors (src/doors.js): walking into a door enters; A is for talking, signs, shops counters etc. ----
 const doorSt = makeDoorState(); let doorAcc = 0, doorsNow = [], entering = null, lastDoor = null;
+// A-press spots in front of a wall/building that also open when you walk into them (Raid Gate, Kennel wall, Big Barn, Chapel)
+const WALK_IN_SPOTS = new Set(['raidgate', 'kwall', 'barn', 'chapel']);
 const isWalkDoor = (it) => isDoor(it) && (it.kind !== 'plot' || !!state.plots[it.id]);
 function stopWalk() { player.pw.pts = []; player.path = player.pw.pts; player.target = null; player.npcT = null; player.clickMark = null; }
 const doorReady = () => time >= doorSt.until;
@@ -651,20 +657,40 @@ function roomUi(sc) { $('#minimap-wrap').hidden = true; wayUi(false); toast(sc.n
 function enterRoom(id, at, door = null) { if (mode === 'room' && RP.id === id) return; stopWalk(); keys.clear(); player.v = { x: 0, y: 0 }; feel.fade(); blip(660);
   if (door) { const o = outsideOf(door); Object.assign(state.player, { x: o.x, y: o.y }); } // saves/reloads/Back-to-Verse always land you outside, never inside a room
   setTimeout(() => { mode = 'room'; RP.enter(id, at); roomUi(RP.sc); persist(); }, 70); }
-function enterGate(g) { if (mode !== 'world' || panel) return; stopWalk(); Object.assign(state.player, { x: (g.out[0] + 0.5) * TILE, y: (g.out[1] + 0.5) * TILE }); enterRoom(g.to, g.at); }
+function enterGate(g) { if (mode !== 'world' || panel) return; globalThis.__portalFires = (globalThis.__portalFires || 0) + 1; stopWalk(); Object.assign(state.player, { x: (g.out[0] + 0.5) * TILE, y: (g.out[1] + 0.5) * TILE }); enterRoom(g.to, g.at); }
 function roomPortal(ex) { if (RP.R.busy) return; const r = resolveExit(ex, { outsideOf, doorById: roomDoorById }); if (!r) return;
-  if (r.scene !== 'hub') return RP.travel(r.scene, ex.at, 'gate');
+  if (r.scene !== 'hub') return RP.travel(r.scene, ex.at, 'gate'); // (travel counts itself for the e2e)
+  globalThis.__portalFires = (globalThis.__portalFires || 0) + 1;
   if (!Number.isFinite(r.x)) { r.x = state.player.x; r.y = state.player.y; r.face = 'down'; }
   RP.R.busy = true; RP.stop(); feel.fade(); blip(520);
   setTimeout(() => { RP.R.busy = false; mode = 'world'; Object.assign(state.player, { x: r.x, y: r.y }); player.face = r.face; player.v = { x: 0, y: 0 }; stopWalk(); doorExit(doorSt, time); gateSt.tile = Math.floor(r.y / TILE) * 1000 + Math.floor(r.x / TILE); gateSt.until = time + 0.8;
     cam.x = r.x; cam.y = r.y; $('#minimap-wrap').hidden = false; wayUi(true); persist(); }, 70); }
 function updateRoom(dt) { feel.step(dt); RP.update(dt); stepActor(ACT, dt, time, { moving: player.moving, busy: !!panel || feel.talking() });
   const pr = $('#prompt'), tch = COARSE.matches, s = !panel && RP.nearSpot(); if (s) { pr.hidden = false; pr.innerHTML = `<kbd${tch ? ' class="ta"' : ''}>${tch ? 'A' : 'E'}</kbd>${esc(s.label || s.name)}`; setA((s.verb || 'USE').toUpperCase()); } else { pr.hidden = true; setA(''); } }
+// test hooks for the door/portal walk-in e2e (scripts/doors-e2e.mjs): put the player somewhere with every door disarmed,
+// exactly like a real exit/spawn does (doorExit / preset portal tile), minus the cooldown so trials run fast.
+globalThis.__doorTest = {
+  reset(x, y, face = 'down', room = null) { clearTimeout(entering); entering = null; const ov = document.getElementById('enter-ov'); if (ov) ov.hidden = true;
+    if (panel) closePanel(); if (mode === 'build') exitBuild(); keys.clear(); stopWalk(); player.v = { x: 0, y: 0 }; player.push = null; RP.R.busy = false;
+    touch.x = touch.y = 0; touch.mag = 0; touch.id = null; player.holdRun = false;
+    if (room) { mode = 'room'; RP.enter(room, { x, y, face }); RP.R.portal.until = 0; }
+    else { if (mode === 'room') RP.stop(); mode = 'world'; Object.assign(state.player, { x, y }); player.face = face; cam.x = x; cam.y = y; $('#minimap-wrap').hidden = false;
+      doorExit(doorSt, time); doorSt.until = 0; gateSt.tile = Math.floor(y / TILE) * 1000 + Math.floor(x / TILE); gateSt.armed = false; gateSt.until = 0;
+      doorsNow = [...doorList(state).filter((d) => d.kind !== 'plot' || state.plots[d.id]), ...interactables(state).filter((i) => WALK_IN_SPOTS.has(i.id))]; } },
+  doors: () => doorsNow.map((d) => ({ id: d.id, kind: d.kind, name: d.name, tx: d.tx, ty: d.ty, side: d.side || null })),
+  gates: () => HUB_GATES.map((g) => ({ id: g.id, tx: g.tx, ty: g.ty, face: g.face })),
+  solid: (x, y, room = null) => room ? sceneSolid(sceneOf(room), x, y) : solidT(x, y),
+  outside: (id, kind) => { const d = doorsNow.find((q) => q.id === id && q.kind === kind); return d ? outsideOf(d) : null; },
+  rooms: () => Object.keys(SCENES).map((id) => { const sc = sceneOf(id); return { id, exits: [...sc.exits, ...walkInExits(sc)].map((e) => ({ tiles: e.tiles, face: e.face, to: e.to || ('spot:' + e.spot?.id), spot: !!e.spot })) }; }),
+  toScreen: (wx, wy) => mode === 'room' ? (() => { const k = globalThis.__roomCam; return k ? { x: (wx + k.ox) * k.Z, y: (wy + k.oy) * k.Z } : null; })() : { x: (wx - cam.x) * ZOOM + innerWidth / 2, y: (wy - cam.y) * ZOOM + innerHeight / 2 },
+  dbg: () => ({ armed: [...doorSt.armed].map((d) => d.id || d), lastTile: doorSt.lastTile, until: doorSt.until, resync: doorSt.resync, time, push: player.push, entering: !!entering, panel: !!panel, arcadeOpen: !!arcadeOpen, drive: !!drive }),
+  get st() { return { mode, panel: panel?.kind || null, room: mode === 'room' ? RP.id : null, enters: globalThis.__doorEnters || 0, last: globalThis.__lastDoor || null, portals: globalThis.__portalFires || 0, x: state.player.x, y: state.player.y, rx: RP.R.p.x, ry: RP.R.p.y }; },
+};
 globalThis.__goScene = (id, at) => { mode = 'room'; RP.enter(id, at); roomUi(RP.sc); };
 globalThis.__room = () => mode === 'room' ? { id: RP.id, x: RP.R.p.x, y: RP.R.p.y, tx: Math.floor(RP.R.p.x / 32), ty: Math.floor(RP.R.p.y / 32), pts: player.pw.pts.length, face: player.face, npcs: RP.R.npcs.length, busy: RP.R.busy, cam: { ...RP.R.cam } } : null;
 globalThis.__roomWalk = (tx, ty, run) => RP.planTo([tx, ty], { run });
 globalThis.__roomTap = (tx, ty) => { const k = globalThis.__roomCam; if (!k) return; RP.click((tx * 32 + 16 + k.ox) * k.Z, (ty * 32 + 16 + k.oy) * k.Z, false); };
-function enterDoor(d) { lastDoor = d; keys.clear(); stopWalk(); player.v = { x: 0, y: 0 }; doorExit(doorSt, time); globalThis.__doorEnters = (globalThis.__doorEnters || 0) + 1;
+function enterDoor(d) { lastDoor = d; keys.clear(); stopWalk(); player.v = { x: 0, y: 0 }; doorExit(doorSt, time); globalThis.__doorEnters = (globalThis.__doorEnters || 0) + 1; globalThis.__lastDoor = d.kind + ":" + d.id;
   { const sid = sceneForDoor(d); if (sid) return enterRoom(sid, 'door', d); }
   if (d.kind === 'gamedoor' || (d.kind === 'arcade' && COARSE.matches)) return enterExternal(d);
   feel.fade(); interact(d, true); if (panel) panel.viaDoor = true; }

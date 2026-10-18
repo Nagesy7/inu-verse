@@ -88,6 +88,7 @@ test('original names only: no trademarked game names in scene data', () => {
 import { doorStep, makeDoorState } from '../src/doors.js';
 test('hub door arms when you tap-walk onto its tile (path to elsewhere), then walking in enters once', () => {
   const d = doorList(gs).find((q) => q.id === 'cafe'), st = makeDoorState(), at = (moving, face) => ({ x: (d.tx + 0.5) * TILE, y: (d.ty + 0.5) * TILE, face, moving });
+  doorStep(st, { x: (d.tx + 0.5) * TILE, y: (d.ty + 1.5) * TILE, face: 'up', moving: false }, [], -1, [d]); // arrive from the tile in front
   assert.equal(doorStep(st, at(true, 'up'), [], 0, [d]), null, 'path-walking over it does not enter');
   assert.equal(doorStep(st, at(true, 'up'), [d], 1, [d]), d, 'pushing in afterwards enters');
   assert.equal(doorStep(st, at(true, 'up'), [d], 3, [d]), null, 'once');
