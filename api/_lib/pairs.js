@@ -27,8 +27,8 @@ export async function curveStatus(addr, { f = fetch, rpc = process.env.SOLANA_RP
   const v = (await r.json()).result?.value; if (!v) return null; const d = Buffer.from(v.data[0], "base64"); return { graduated: d[48] === 1 }; }
 // Honest note for the featured pair: pump.fun lets a SOL-launched pump.fun coin be a "Secondary Pair Asset" "where the platform permits".
 export function kibbleNote(graduated) { return graduated === true ? "Graduated. Search its CA under Custom Pairs on pump.fun's create page."
-  : graduated === false ? "Not graduated yet (still on its bonding curve). pump.fun may not offer $KIBBLE under Custom Pairs until it graduates — if it doesn't appear when you paste the CA, it isn't available yet; pick another pair below or use SOL."
-  : "Graduation status unavailable right now. If $KIBBLE doesn't appear under Custom Pairs when you paste the CA, it isn't available yet."; }
+  : graduated === false ? "Not graduated yet (still on its bonding curve). pump.fun may not offer $KIBBLE under Custom Pairs until it graduates — if it doesn't appear when you paste the CA, it isn't available yet; pick another pair below or use SOL. Tip: the launcher above pairs your coin with $KIBBLE directly (pump.fun create_v2, checked by a dry run)."
+  : "Graduation status unavailable right now. If $KIBBLE doesn't appear under Custom Pairs when you paste the CA, it isn't available yet. The launcher above can pair with $KIBBLE directly."; }
 let memo = null;
 export async function evaluatePairs({ f = fetch, now = Date.now(), rules = PAIR_RULES, curve = (a) => curveStatus(a, { f }) } = {}) {
   if (memo && now - memo.at < rules.cacheMs) return memo.v;

@@ -31,9 +31,9 @@ await p.fill('#nx-name', 'Shiba Star'); await p.fill('#nx-symbol', 'star'); awai
 await p.setInputFiles('#nx-image', 'assets/shiba-golden.png'); await p.waitForTimeout(800); await p.fill('#nx-dev', '0.05'); await p.dispatchEvent('#nx-dev', 'change'); await p.waitForTimeout(400);
 await p.check('#nx-ack'); await p.evaluate(() => document.querySelector('#nx-name').scrollIntoView()); await p.waitForTimeout(300); await p.screenshot({ path: pre + '3-form-sol-devbuy.png' });
 await p.evaluate(() => document.querySelector('.warnbox').scrollIntoView()); await p.waitForTimeout(200); await p.screenshot({ path: pre + '4-safety-and-launch.png' });
-await p.click('#nx-go'); await p.waitForFunction(() => !document.querySelector('#nx-go')?.textContent.includes('Launching'), null, { timeout: 60000 }).catch(() => {});
+if (!LIVE) { await p.click('#nx-go'); await p.waitForFunction(() => !document.querySelector('#nx-go')?.textContent.includes('Launching'), null, { timeout: 60000 }).catch(() => {});
 await p.waitForTimeout(500); await p.evaluate(() => document.querySelector('.prog')?.scrollIntoView()); await p.screenshot({ path: pre + '5-built-dryrun-then-wallet-reject.png' });
-console.log('after launch click:', JSON.stringify(await p.evaluate(() => document.querySelector('.prog')?.parentElement?.innerText.slice(-260))));
+console.log('after launch click:', JSON.stringify(await p.evaluate(() => document.querySelector('.prog')?.parentElement?.innerText.slice(-260)))); } // live: never uploads or launches
 await p.selectOption('#nx-pair', 'KIBBLE'); await p.waitForTimeout(500); await p.evaluate(() => document.querySelector('#nx-pair').scrollIntoView()); await p.screenshot({ path: pre + '6-kibble-pair.png' });
 await p.evaluate(() => document.querySelector('.noext .full:last-child').scrollIntoView()); await p.screenshot({ path: pre + '7-your-wallet-your-keys.png' });
 await p.evaluate(() => document.querySelector('#noext + details').open = true); await p.evaluate(() => document.querySelector('#noext + details').scrollIntoView()); await p.waitForTimeout(1500); await p.screenshot({ path: pre + '8-pumpfun-page-guide.png' });
