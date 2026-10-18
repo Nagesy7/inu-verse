@@ -269,3 +269,11 @@ body.mm-on #minimap-wrap{top:calc(max(8px,env(safe-area-inset-top)) + 58px)!impo
 a.btn{text-decoration:none;display:inline-flex;align-items:center}
 body.short.landscape .launch.rboard{grid-template-columns:1fr 1.2fr}body.short .regboard{max-height:none}body.short .rstats div{padding:3px}
 .pairlist{display:flex;flex-direction:column;gap:4px;margin:4px 0}.pairrow{display:grid;grid-template-columns:auto 1fr auto auto;gap:6px;align-items:center;background:var(--navy2);border:2px solid var(--goldd);padding:3px 6px}.pairrow.feat{border-color:var(--gold)}.pairrow code{font-size:10px}
+/* ---- $KIBBLE town mood: crier banner, statue card, Daily Bone ---- */
+#crier-banner{position:fixed;left:50%;top:calc(max(8px,env(safe-area-inset-top)) + 52px);transform:translate(-50%,-12px);z-index:41;opacity:0;pointer-events:none;transition:opacity .25s,transform .25s;display:flex;flex-direction:column;align-items:center;gap:3px;max-width:min(560px,88vw);padding:8px 16px;background:#121a36;color:#fff6e0;border:3px solid #d4a640;box-shadow:0 0 0 2px #0c1022,0 4px 0 #0008;font:10px Silkscreen,monospace;text-align:center}
+#crier-banner.show{opacity:1;transform:translate(-50%,0)}
+#crier-banner b{color:#f2cc68;font-size:9px;letter-spacing:1px}#crier-banner span{font-size:11px;line-height:1.35}
+#crier-banner.mood-zoomies{border-color:#ffd84a}#crier-banner.mood-happy{border-color:#7ed957}#crier-banner.mood-grumpy{border-color:#8aa0c8}#crier-banner.mood-doghouse{border-color:#c8323c}
+.kmood-head{display:flex;align-items:center;gap:8px;font-size:14px}.kmood-dot{width:14px;height:14px;display:inline-block;border:2px solid #0c1022;box-shadow:0 0 8px currentColor}
+.dailybone .db-head{font-size:18px;margin:6px 0;letter-spacing:1px;border-bottom:3px double #8a6a2a;padding-bottom:6px}
+@media (max-height:420px){#crier-banner{top:calc(max(6px,env(safe-area-inset-top)) + 44px);padding:5px 12px}#crier-banner span{font-size:10px}.dailybone .db-head{font-size:15px}}

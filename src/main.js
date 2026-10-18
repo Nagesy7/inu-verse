@@ -67,6 +67,8 @@ import { buildDrawer, drawerOpen } from './hudmenu.js';
 import { makeDoorState, doorStep, doorExit, outsideOf } from './doors.js';
 import { isDoor, doorList, doorDir, COMMUNITY } from './world.js';
 import { createMultiplayer } from './multiplayer.js';
+import * as KM from './kibblemood.js';
+import * as MWd from './moodworld.js';
 import { ensurePacks, myPack, meIn, createPack, joinPack, leavePack, kickMember, recruitNpc, contribute, buyForPack, donateFurniture, upgradeClubhouse, placePackFurniture, movePackFurniture, storePackFurniture, postToBoard, recordActivity, memberScore, packScore, leaderboard, simulatePacks, packOfName, PACK_CREATE_COST, EMBLEMS, SEASON, SCORE, ME } from './packs.js';
 
 const $ = (s) => document.querySelector(s);
@@ -438,7 +440,7 @@ function updateWorld(dt) {
       if (e.kind === 'shopClosed' || e.kind === 'shopOpened' || e.kind === 'job' || e.kind === 'friends' || e.kind === 'rivals') toast(state.town.log[0]?.text || '', ''); } } }
   for (const n of npcs) { const tf = state.town?.folk[n.name]; if (state.spouse?.name === n.name && !scene) { const H = state.spouse.helps === 'biz' && state.biz?.mine ? LOTS_POS[state.biz.mine.lot] : [17.5, 92.6]; if (H && Math.hypot(n.x - H[0] * TILE, n.y - H[1] * TILE) > 64) { n.x = H[0] * TILE; n.y = H[1] * TILE; n.path = []; } n.wait = Math.max(n.wait || 0, 1); }
     if (n.held > 0) { n.held -= dt; n.moving = false; continue; } // tapped by the player: wait for them to walk up
-    if (amb.ball?.dog === n && amb.ball.state !== 'air') continue; if (n.wag > 0) { n.wag -= dt; n.moving = true; n.phase += dt * 20; continue; } if (n.emote) { n.emote.t -= dt; if (n.emote.t <= 0) n.emote = null; } const arr = updateNpc(n, dt, rng, scene || state.spouse?.name === n.name ? null : tf?.goal); if (tf) { if (arr && !tf.arrived && tf.act !== 'nap' && rng() < 0.3) n.emote = { kind: tf.mood === 'grumpy' ? 'angry' : tf.mood === 'happy' ? 'happy' : 'note', t: 1.6 }; tf.arrived = arr; } }
+    if (amb.ball?.dog === n && amb.ball.state !== 'air') continue; if (n.wag > 0) { n.wag -= dt; n.moving = true; n.phase += dt * 20; continue; } if (n.emote) { n.emote.t -= dt; if (n.emote.t <= 0) n.emote = null; } const arr = updateNpc(n, dt, rng, scene || state.spouse?.name === n.name ? null : (MWd.huddleGoal(MWd.MW.mood, npcs.indexOf(n)) || tf?.goal)); if (tf) { if (arr && !tf.arrived && tf.act !== 'nap' && rng() < 0.3) n.emote = { kind: tf.mood === 'grumpy' ? 'angry' : tf.mood === 'happy' ? 'happy' : 'note', t: 1.6 }; tf.arrived = arr; } }
   { const pet = activePet(state); if (pet && !drive) { if (!petF.id || petF.id !== pet.id) Object.assign(petF, { id: pet.id, x: p.x - 20, y: p.y + 4 }); followStep(petF, p.x - player.dir * 22, p.y + 2, dt); if (petF.love > 0) petF.love -= dt; } else if (drive) Object.assign(petF, { x: p.x, y: p.y }); }
   if (honkT > 0) honkT -= dt;
   if (player.emote) { player.emote.t -= dt; if (player.emote.kind === 'zoomies') { const a = player.emote.t * 5; moveBody(p, Math.cos(a) * 150 * dt, Math.sin(a) * 150 * dt); player.moving = true; player.phase += dt * 20; player.face = Math.cos(a + 1.57) > 0 ? 'right' : 'left'; } if (player.emote.t <= 0) player.emote = null; }
@@ -446,12 +448,12 @@ function updateWorld(dt) {
   for (const e of stepAmbient(amb, dt, p, npcs)) { if (e.kind === 'flush') chirp(); if (e.kind === 'fetched') toast(`${e.who} brought the ball back!`, 'good'); }
   if (rng() < dt * 0.08) chirp();
   if (player.moving) { stepAcc += dt; if (stepAcc > 0.26) { stepAcc = 0; const tt = MAP[Math.floor(p.y / TILE)]?.[Math.floor(p.x / TILE)]; if (tt === T.GRASS || tt === T.FLOWER) { feel.rustle(p.x, p.y + 10); rustle(); } else { feel.dust(p.x, p.y + 11); footstep(); } } }
-  feel.step(dt); document.body.classList.toggle('driving', !!drive);
+  feel.step(dt); document.body.classList.toggle('driving', !!drive); moodTick(dt);
   if (mode === 'world' && !panel && !drive && !entering && !arcadeOpen) { doorAcc -= dt; if (doorAcc <= 0) { doorAcc = 1; doorsNow = doorList(state).filter((d) => d.kind !== 'plot' || state.plots[d.id]); }
     const ds = player.pw.pts.length ? (player.target && isWalkDoor(player.target) ? doorsNow.filter((q) => q.id === player.target.id && q.kind === player.target.kind) : []) : doorsNow; // tap-walking only enters the door you tapped
     const d = doorStep(doorSt, { x: p.x, y: p.y, face: player.face, moving: player.moving }, ds, time, doorsNow); if (d) enterDoor(d);
     else if (!player.pw.pts.length) { const g = portalStep(gateSt, null, { x: p.x, y: p.y, face: player.face, moving: player.moving }, time, GATE_EXITS); if (g) enterGate(g.gate); } }
-  { const vw = innerWidth / ZOOM, vh = innerHeight / ZOOM; stepChat({ now: time, player: p, npcs, hour: dayPhase(time + dayOffset).hour, rain: amb.rain > 0.3, rng, inView: (x, y) => Math.abs(x - cam.x) < vw / 2 - 20 && Math.abs(y - cam.y) < vh / 2 - 30, placeOf: chatPlace }); }
+  { const vw = innerWidth / ZOOM, vh = innerHeight / ZOOM; stepChat({ now: time, player: p, npcs, hour: dayPhase(time + dayOffset).hour, rain: amb.rain > 0.3, rng, moodLine: (n) => rng() < 0.5 ? MWd.moodLine(n.name, rng) : null, inView: (x, y) => Math.abs(x - cam.x) < vw / 2 - 20 && Math.abs(y - cam.y) < vh / 2 - 30, placeOf: chatPlace }); }
   mailAcc += dt; if (mailAcc > 45) { mailAcc = 0; if (rng() < 0.6 && addMail(state, rng)) { toast('New note in your mailbox!', 'good'); persist(); } }
   // smooth camera
   const k = 1 - Math.pow(0.004, dt), lead = player.moving ? 10 : 0, fx = { left: -1, right: 1 }[player.face] || 0, fy = { up: -1, down: 1 }[player.face] || 0;
@@ -468,7 +470,7 @@ function updateWorld(dt) {
   else if (pk) { pr.hidden = false; pr.innerHTML = `<kbd${tch ? ' class="ta"' : ''}>${tch ? 'A' : 'E'}</kbd>Drive your ${esc(CAR_MODELS[carOf(state, pk.id)?.model]?.name || 'car')}`; setA('DRIVE'); }
   else if (pup?.workerRef) { pr.hidden = false; const v = pup.workerRef.chatted ? `Play ${JOB_DEFS[WORKER_JOB[pup.workerRef.job]].name} with` : 'Chat with'; pr.innerHTML = tch ? `<kbd class="ta">A</kbd>${v} ${esc(pup.name)}` : `<kbd>E</kbd>${v} ${esc(pup.name)}`; setA('TALK'); }
   else if (pup) { pr.hidden = false; const v = REL.PEOPLE[pup.name] && !pup.pet ? `Talk to ${esc(pup.name)} ${'♥'.repeat(REL.hearts(REL.ensureRel(state)[pup.name]))}` : `Pet ${esc(pup.name)}`; pr.innerHTML = tch ? `<kbd class="ta">A</kbd>${v}` : `<kbd>E</kbd>${v} · <kbd>T</kbd> throw ball`; setA(REL.PEOPLE[pup.name] && !pup.pet ? 'TALK' : 'PET'); }
-  else if (it) { pr.hidden = false; const verb = { community: 'Open', gamedoor: 'Play', bank: 'Enter', arcade: 'Play at', matchmaker: 'Browse', square: 'Open', building: 'Enter', plot: state.plots[it.id] ? 'Enter' : 'Inspect', visit: 'Visit', stall: 'View', clubhouse: myPack(state) ? 'Decorate' : 'Open', mall: 'Enter', field: 'Tend', farm: 'Use', lot: 'Visit', biz: 'Read', chapel: 'Enter' }[it.kind] || 'Use'; pr.innerHTML = isWalkDoor(it) ? `<kbd>${it.side === 'left' ? '▶' : it.side === 'right' ? '◀' : '▲'}</kbd>Walk in to ${verb === 'Enter' ? 'enter' : verb.toLowerCase()} ${esc(it.name)}` : `<kbd${tch ? ' class="ta"' : ''}>${tch ? 'A' : 'E'}</kbd>${verb} ${esc(it.name)}`; pr.dataset.target = it.id; setA(isWalkDoor(it) ? '' : verb.toUpperCase()); }
+  else if (it) { pr.hidden = false; const verb = { community: 'Open', gamedoor: 'Play', bank: 'Enter', arcade: 'Play at', matchmaker: 'Browse', square: 'Open', building: 'Enter', plot: state.plots[it.id] ? 'Enter' : 'Inspect', visit: 'Visit', stall: 'View', clubhouse: myPack(state) ? 'Decorate' : 'Open', mall: 'Enter', field: 'Tend', farm: 'Use', lot: 'Visit', biz: 'Read', chapel: 'Enter', kibble: it.id === 'crier' ? 'Talk to' : it.id === 'kstatue' ? 'Look at' : 'Read' }[it.kind] || 'Use'; pr.innerHTML = isWalkDoor(it) ? `<kbd>${it.side === 'left' ? '▶' : it.side === 'right' ? '◀' : '▲'}</kbd>Walk in to ${verb === 'Enter' ? 'enter' : verb.toLowerCase()} ${esc(it.name)}` : `<kbd${tch ? ' class="ta"' : ''}>${tch ? 'A' : 'E'}</kbd>${verb} ${esc(it.name)}`; pr.dataset.target = it.id; setA(isWalkDoor(it) ? '' : verb.toUpperCase()); }
   else { pr.hidden = true; setA(''); }
 }
 
@@ -491,12 +493,12 @@ function renderWorld() {
     const tx0 = Math.floor(-ox / TILE) - 1, ty0 = Math.floor(-oy / TILE) - 1; ctx.save(); ctx.scale(SCALE, SCALE); drawWater(ctx, time, tx0, ty0, tx0 + Math.ceil(vw / TILE) + 2, ty0 + Math.ceil(vh / TILE) + 2); ctx.restore(); }
   const phase = dayPhase(time + dayOffset);
   globalThis.__inuNight = phase.dark;
-  const dyn = [...HUB_GATES.map((g) => hubGateProp(g, time)), ...dynamicProps(state, time, myPack(state)), ...presidentProps(pres, time), ...doorProps(time), ...carWorldProps(), ...crewProps(), ...adProps(trend, adRot, adIdx, !!globalThis.__inuNight, time, featuredMap()), ...confettiProps(), ...squareProps(state, time, Math.floor(gameDay() / 7)), ...arcadeProps(time, arcadeTop)];
+  const dyn = [...HUB_GATES.map((g) => hubGateProp(g, time)), ...dynamicProps(state, time, myPack(state)), ...presidentProps(pres, time), ...doorProps(time), ...carWorldProps(), ...crewProps(), ...adProps(trend, adRot, adIdx, !!globalThis.__inuNight, time, featuredMap()), ...confettiProps(), ...squareProps(state, time, Math.floor(gameDay() / 7)), ...arcadeProps(time, arcadeTop), ...MWd.statueProps(time, { drawShiba, artLoaded: () => !!ART['shiba-golden'] }), ...MWd.newsProps(time), ...MWd.firepitProps(time), ...MWd.plazaSkyProps(time)];
   for (const d of dyn) if (d.flat) d.d(ctx);
   const view = { x0: -ox, y0: -oy, x1: -ox + vw, y1: -oy + vh };
   drawGroundLife(ctx, amb, phase); drawAliveGround(ctx, ALIVE, view, phase); feel.drawGround(ctx);
   if (player.clickMark && player.pw.pts.length) drawMark(ctx, player.clickMark, time);
-  const actors = [...npcs.map((n) => ({ ...n, npc: true, badge: badgeOf(packOfName(state, n.name)) })), ...(drive ? [] : [{ x: state.player.x, y: state.player.y, coat: state.player.coat, outfit: state.wardrobe.equipped, face: player.face, phase: player.phase, moving: player.moving, name: state.player.name, me: true, badge: badgeOf(myPack(state)), emote: player.emote, art: artKey(state.player.coat, state.wardrobe.equipped), profile: hasCustomLook(state) ? myProfile() : null }]), ...streetPups(), ...presActors(), ...petActors(), ...crewActors(), ...pupActors(), ...MPL.actors(view, state.player)];
+  const actors = [MWd.crierActor(time, artKey), ...npcs.map((n, i) => ({ ...n, npc: true, idx: i, badge: badgeOf(packOfName(state, n.name)) })), ...(drive ? [] : [{ x: state.player.x, y: state.player.y, coat: state.player.coat, outfit: state.wardrobe.equipped, face: player.face, phase: player.phase, moving: player.moving, name: state.player.name, me: true, badge: badgeOf(myPack(state)), emote: player.emote, art: artKey(state.player.coat, state.wardrobe.equipped), profile: hasCustomLook(state) ? myProfile() : null }]), ...streetPups(), ...presActors(), ...petActors(), ...crewActors(), ...pupActors(), ...MPL.actors(view, state.player)];
   // one depth-sorted list: static props (culled), dynamic props and actors, by ground y
   const L = -ox - 200, Rt = -ox + vw + 200, Tp = -oy - 60, Bt = -oy + vh + 400, list = [];
   for (const p of mapImg.props) if (p.y > Tp && p.y < Bt) list.push(p);
@@ -508,19 +510,21 @@ function renderWorld() {
     if (!it.a) { it.d(ctx); continue; }
     const a = it.a;
     if (a.statue) { ctx.fillStyle = '#6a6080'; ctx.fillRect(Math.round(a.x - 34), Math.round(a.y - 4), 68, 18); ctx.fillStyle = '#d4a640'; ctx.fillRect(Math.round(a.x - 38), Math.round(a.y - 8), 76, 5); ctx.fillStyle = '#121a36'; ctx.font = '8px Silkscreen, monospace'; ctx.textAlign = 'center'; ctx.fillText('PRESIDENT INU', Math.round(a.x), Math.round(a.y + 8)); ctx.save(); ctx.filter = 'sepia(1) saturate(2.6) brightness(1.05)'; drawShiba(ctx, a.x, a.y - 10, { art: a.art, scale: 1.5, shadow: false }); ctx.restore(); continue; }
-    ctx.save(); ctx.translate(snapPx(a.x), snapPx(a.y)); ctx.scale(0.5, 0.5);
+    const mm = a.npc && !a.crier ? MWd.npcMood(MWd.MW.mood, a, time, a.idx || 0) : null;
+    ctx.save(); ctx.translate(snapPx(a.x), snapPx(a.y - (mm?.hop || 0))); ctx.scale(0.5, 0.5);
     if (a.me) { ctx.fillStyle = 'rgba(242,204,104,0.45)'; ctx.fillRect(-20, 9, 40, 4); ctx.fillRect(-14, 7, 28, 8); }
     if (a.petSpecies) { drawPetActor(ctx, a); ctx.restore(); continue; }
     if (a.president) { drawPresident(ctx, a); if (a.emote) drawEmote(ctx, 0, -14, a.emote.kind, time); ctx.restore(); continue; }
     if (a.pupScale) { if (a.customPup) drawProfileShiba(ctx, 0, 0, a.profile, { face: a.face, phase: a.phase, moving: a.moving, name: a.name, scale: a.pupScale, fid: a.name }); else { drawShiba(ctx, 0, 0, { coat: a.coat, outfit: a.outfit, face: a.face, phase: a.phase, moving: a.moving, name: a.name, scale: a.pupScale, art: a.art, fid: a.name, wag: a.wag }); ctx.fillStyle = a.pupPatch; ctx.fillRect(-7 * a.pupScale, -30 * a.pupScale, 14 * a.pupScale, 4 * a.pupScale); ctx.fillStyle = a.pupHex; ctx.fillRect(-7 * a.pupScale, -26 * a.pupScale, 14 * a.pupScale, 3 * a.pupScale); } ctx.restore(); continue; }
     if (a.me) { const gl = statusGlow(state); if (gl) drawFlair(ctx, gl, time); }
     if (a.profile) { drawProfileShiba(ctx, 0, 0, a.profile, { face: a.face, phase: a.phase, moving: a.moving, name: a.name, scale: 1.5, badge: a.badge, fid: a.me ? 'me' : a.name, emote: a.emote?.kind }); if (a.emote) drawEmote(ctx, 0, -110, a.emote.kind, time); }
-    else drawShiba(ctx, 0, 0, { coat: a.coat, outfit: a.outfit, face: a.face, phase: a.phase, moving: a.moving, name: a.name, scale: 1.5, badge: a.badge, art: a.art, emote: a.emote?.kind, fid: a.me ? 'me' : a.name || a.id, wag: a.wag });
+    else drawShiba(ctx, 0, 0, { coat: a.coat, outfit: a.outfit, face: a.face, phase: a.phase, moving: a.moving, name: a.name, scale: 1.5, badge: a.badge, art: a.art, emote: a.emote?.kind, fid: a.me ? 'me' : a.name || a.id, wag: a.wag || (mm?.wag ? 1 : 0) });
     if (a.worker) { drawVest(ctx, a.face); drawTool(ctx, a.worker); }
+    if (mm?.umbrella) MWd.drawUmbrella(ctx, time, a.idx || 0); else if (mm?.zz && !a.emote) MWd.drawZz(ctx, time + (a.idx || 0)); if (a.crier) MWd.drawBell(ctx, time, crierRing > 0);
     if (a.emote) drawEmote(ctx, 0, a.name ? -14 : 0, a.emote.kind, time); ctx.restore();
   }
   feel.drawAir(ctx);
-  drawChat(ctx, (id) => { if (id === 'me') return drive ? null : { x: state.player.x, y: state.player.y - 60 }; const n = npcs.find((q) => q.name === id); return n ? { x: n.x, y: n.y - (n.pupScale ? 40 * n.pupScale + 10 : 60) - (n.badge || packOfName(state, n.name) ? 8 : 0) } : MPL.anchor(id); }, time);
+  drawChat(ctx, (id) => { if (id === MWd.CRIER_NAME) { const ca = MWd.crierActor(time, artKey); return { x: ca.x, y: ca.y - 62 }; } if (id === 'me') return drive ? null : { x: state.player.x, y: state.player.y - 60 }; const n = npcs.find((q) => q.name === id); return n ? { x: n.x, y: n.y - (n.pupScale ? 40 * n.pupScale + 10 : 60) - (n.badge || packOfName(state, n.name) ? 8 : 0) } : MPL.anchor(id); }, time);
   drawSkyLife(ctx, amb, phase); drawAliveSky(ctx, ALIVE, view, phase);
   const it = !panel && nearestInteractable(state, state.player.x, state.player.y); if (it) feel.bubble(ctx, (it.tx + 0.5) * TILE, (it.ty) * TILE - 6, time);
   guide.drawWorld(ctx, time, state.player);
@@ -528,7 +532,7 @@ function renderWorld() {
   drawAtmosphere(ctx, amb, phase, { x: vw / 2 - ox, y: vh / 2 - oy }, vw, vh, lightsFor(state, phase, homeId()));
   $('#clock').textContent = `${String(Math.floor(phase.hour)).padStart(2, '0')}:${String(Math.floor((phase.hour % 1) * 60)).padStart(2, '0')} ${amb.rain > 0.3 ? 'rain' : phase.label} · ${seasonOf(gameDay())}`;
   if (!vignette || vignette.width !== SW || vignette.height !== SH) { vignette = document.createElement('canvas'); vignette.width = SW; vignette.height = SH; const v = vignette.getContext('2d'), g = v.createRadialGradient(SW / 2, SH / 2, SH * 0.45, SW / 2, SH / 2, SH * 1.05); g.addColorStop(0, 'rgba(18,26,54,0)'); g.addColorStop(1, 'rgba(12,16,34,0.38)'); v.fillStyle = g; v.fillRect(0, 0, SW, SH); }
-  ctx.setTransform(dpr, 0, 0, dpr, 0, 0); ctx.drawImage(vignette, 0, 0);
+  ctx.setTransform(dpr, 0, 0, dpr, 0, 0); MWd.drawWeather(ctx, time, SW, SH, { reduced: matchMedia('(prefers-reduced-motion: reduce)').matches }); ctx.drawImage(vignette, 0, 0);
   minimap(-ox, -oy, vw, vh);
   guide.drawScreen(ctx, ox, oy, ZOOM, time);
 }
@@ -662,6 +666,7 @@ function interact(it, viaDoor = false) { if (!viaDoor && isWalkDoor(it)) { toast
   else if (it.kind === 'matchmaker') openPanel('matchmaker');
   else if (it.kind === 'square') openPanel('fly5', { tab: it.id === 'pools' ? 'vip' : it.id === 'burn' ? 'burn' : it.id === 'quests' ? 'quests' : 'vip' });
   else if (it.kind === 'clubhouse') { if (myPack(state)) enterBuild('clubhouse', false); else openPanel('packs'); }
+  else if (it.kind === 'kibble') kibbleSpot(it.id);
   else if (it.kind === 'community') { const w = window.open(COMMUNITY.url, '_blank', 'noopener'); toast(w ? 'Community board: Telegram opened in a new tab' : 'Allow pop-ups to open the Telegram link', w ? 'good' : 'bad'); }
 }
 
@@ -677,6 +682,8 @@ function openPanel(kind, opts = {}) {
   if (kind === 'salon') return renderSalon();
   if (kind === 'engage') return renderEngage({ ...farmCtx(), tab: opts.tab, day: gameDay(), open: (t) => openPanel('engage', { tab: t }) });
   if (kind === 'bank') return renderBank();
+  if (kind === 'kibblemood') { body.innerHTML = MWd.moodCardHtml(MOOD.current, esc); body.querySelectorAll('[data-copy]').forEach((b) => b.onclick = () => copyText(b.dataset.copy)); return; }
+  if (kind === 'dailybone') { body.innerHTML = MWd.dailyBoneHtml(MWd.MW.mood); return; }
   if (kind === 'fly5') return renderFly5({ ...farmCtx(), kp: DEMO ? null : K.kp, tab: opts.tab, day: gameDay(), week: Math.floor(gameDay() / 7), month: Math.floor(gameDay() / 28), nowH: state.clockSec / (DAY_LEN / 24), open: (t) => openPanel('fly5', { tab: t }) });
   if (kind === 'matchmaker') return renderMatchmaker({ ...farmCtx(), tab: opts.tab, weekFrac: ((state.clockSec / DAY_LEN) % WEEK_DAYS) / WEEK_DAYS, open: (t) => openPanel('matchmaker', { tab: t }), startDuo: (partner, jobId) => { if (!partner) return toast('No partner', 'bad'); closePanel(); playDuo(jobId, partner); } });
   if (kind === 'city') return renderCity({ ...farmCtx(), tab: opts.tab, nowH: state.clockSec / (DAY_LEN / 24), dayFrac: (state.clockSec % DAY_LEN) / DAY_LEN, trend, presOn: pres.on && pres.stage === 'visit', presKey: 'visit' + pres.n, open: (t) => openPanel('city', { tab: t }) });
@@ -1162,6 +1169,16 @@ function frame(now) {
 const MPL = createMultiplayer({ toast, now: () => time, getLocal: () => state && { room: mode === 'world' ? 'city' : null, x: state.player.x, y: state.player.y, f: player.face, m: player.moving, r: player.running, d: !!drive, emote: player.emote,
   name: state.player.name, token: K.kp?.session || null, look: { coat: state.player.coat, eq: state.wardrobe.equipped, pl: hasCustomLook(state) ? myProfile() : null } } });
 MPL.start().catch(() => {});
+// ---- $KIBBLE town mood (src/kibblemood.js + src/moodworld.js): one shared /api/kibble-mood fetch per minute, paused when hidden ----
+let crierRing = 0, crierPending = false;
+const MOOD = KM.startMood({ apiBase: '', onMood: (m) => { MWd.setMood(m, time); crierPending = true; } });
+function moodTick(dt) { if (crierRing > 0) crierRing -= dt; if (crierPending && mode === 'world' && !panel && state) { crierPending = false; announceMood(MWd.MW.mood); } if (panel?.kind === 'kibblemood' && MOOD.current !== panel.shown) { panel.shown = MOOD.current; } }
+function announceMood(mood) { if (!MWd.shouldAnnounce(mood, { override: !!MOOD.forced })) return; const line = MWd.crierLine(mood); crierRing = 3; blip(988); setTimeout(() => blip(1318), 140);
+  chatSay(MWd.CRIER_NAME, line, time, { force: true, life: 6 }); crierBanner(line); globalThis.__crierSaid = [...(globalThis.__crierSaid || []), mood]; }
+function crierBanner(line) { let b = document.getElementById('crier-banner'); if (!b) { b = document.createElement('div'); b.id = 'crier-banner'; b.setAttribute('role', 'status'); document.body.appendChild(b); }
+  b.innerHTML = `<b>${esc(MWd.CRIER_NAME)}</b><span>${esc(line)}</span>`; b.className = 'show mood-' + MWd.MW.mood; clearTimeout(b._t); b._t = setTimeout(() => { b.className = ''; }, 6000); }
+function kibbleSpot(id) { if (id === 'kstatue') openPanel('kibblemood'); else if (id === 'dailybone') openPanel('dailybone');
+  else if (id === 'crier') { crierRing = 1.5; feel.say(MWd.CRIER_NAME, MWd.crierLine(MWd.MW.mood) + ' ' + KM.lineFor(MWd.MW.mood, rng), textBlip); } }
 titleScreen(); requestAnimationFrame(frame);
 cv.addEventListener('wheel', (e) => { if (mode !== 'world') return; e.preventDefault(); const now = performance.now(); if (now - (cv._wz || 0) < 180) return; cv._wz = now; setZoom(stepZoom(ZOOM, e.deltaY < 0 ? 1 : -1)); }, { passive: false });
 { let pinch = null; const dist = (t) => Math.hypot(t[0].clientX - t[1].clientX, t[0].clientY - t[1].clientY);
@@ -1169,6 +1186,6 @@ cv.addEventListener('wheel', (e) => { if (mode !== 'world') return; e.preventDef
   cv.addEventListener('touchmove', (e) => { if (!pinch || e.touches.length !== 2) return; const d = dist(e.touches); if (d / pinch > 1.35) { setZoom(stepZoom(ZOOM, 1)); pinch = d; } else if (pinch / d > 1.35) { setZoom(stepZoom(ZOOM, -1)); pinch = d; } }, { passive: true });
   cv.addEventListener('touchend', (e) => { if (e.touches.length < 2) pinch = null; }, { passive: true }); }
 document.getElementById('zin')?.addEventListener('click', () => setZoom(stepZoom(ZOOM, 1))); document.getElementById('zout')?.addEventListener('click', () => setZoom(stepZoom(ZOOM, -1)));
-window.__inu = { guide, open: (k, o) => openPanel(k, o), get time() { return time; }, get player() { return player; }, get zoom() { return ZOOM; }, setZoom, president: pres, presVisit: (k) => startVisit(pres, k, { dayLen: DAY_LEN }), setHour: (h) => { dayOffset = timeForHour(h) - time; }, setRain: (r) => { amb.rain = amb.rainTarget = r; amb.weatherT = 999; }, get amb() { return amb; }, get npcs() { return npcs; }, emote: (k) => doEmote(k), cam, get state() { return state; }, get mode() { return mode; }, get panel() { return panel?.kind; }, get panelObj() { return panel; }, mp: MPL };
+window.__inu = { guide, open: (k, o) => openPanel(k, o), get time() { return time; }, get player() { return player; }, get zoom() { return ZOOM; }, setZoom, president: pres, presVisit: (k) => startVisit(pres, k, { dayLen: DAY_LEN }), setHour: (h) => { dayOffset = timeForHour(h) - time; }, setRain: (r) => { amb.rain = amb.rainTarget = r; amb.weatherT = 999; }, get amb() { return amb; }, get npcs() { return npcs; }, get mood() { return { ...MOOD.current, shown: MWd.MW.mood }; }, emote: (k) => doEmote(k), cam, get state() { return state; }, get mode() { return mode; }, get panel() { return panel?.kind; }, get panelObj() { return panel; }, mp: MPL };
 // Inu Arcade inside the desktop overlay: its 🏠 button asks us to close the overlay instead of reloading.
 addEventListener('message', (e) => { if (e.origin === new URL(ARCADE.url).origin && e.data?.type === 'inu:back-to-verse' && arcadeOpen) { closeArcade(); try { e.source?.postMessage({ type: 'inu:verse-closed' }, e.origin); } catch {} } });

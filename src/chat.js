@@ -40,7 +40,7 @@ export function stepChat(world) { const { now, player, npcs, rng = Math.random }
   if (rng() < 0.012) { for (let i = 0; i < npcs.length; i++) for (let j = i + 1; j < npcs.length; j++) { const a = npcs[i], b = npcs[j]; if (!a.name || !b.name || Math.hypot(a.x - b.x, a.y - b.y) > 70) continue;
       if (B.length > CHAT.MAX - 2 || now - (cool.get(a.name) ?? -99) < CHAT.PER_ID || now - (cool.get(b.name) ?? -99) < CHAT.PER_ID) continue;
       const [l1, l2] = pick(LINES.pairs, rng); if (say(a.name, l1, now)) { queue.push({ id: b.name, text: l2, at: now + 1.7 }); cool.set(b.name, now); return; } } }
-  if (rng() < 0.01) { const vis = npcs.filter((n) => n.name && world.inView?.(n.x, n.y) !== false); const n = vis.length && pick(vis, rng); if (n) say(n.name, ambientLine({ hour: world.hour, rain: world.rain, place: world.placeOf?.(n.x, n.y) }, rng), now); } }
+  if (rng() < 0.01) { const vis = npcs.filter((n) => n.name && world.inView?.(n.x, n.y) !== false); const n = vis.length && pick(vis, rng); if (n) say(n.name, world.moodLine?.(n) || ambientLine({ hour: world.hour, rain: world.rain, place: world.placeOf?.(n.x, n.y) }, rng), now); } } // moodLine: $KIBBLE town mood, max one per NPC per visit (moodworld.js)
 export function emoteBubble(id, kind, now, rng = Math.random) { const l = LINES.emote[kind]; if (l) say(id, pick(l, rng), now, { force: true, life: 2.2 }); }
 
 // ---- layout + drawing ----
