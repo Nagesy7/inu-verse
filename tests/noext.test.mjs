@@ -122,3 +122,43 @@ test('config: social login only when PHANTOM_APP_ID is set; min SOL maths', () =
   assert.equal(publicConfig({}).socialLogin, false); assert.equal(publicConfig({}).phantomAppId, null);
   const c = publicConfig({ PHANTOM_APP_ID: '0b1c2d3e-aaaa-bbbb-cccc-1234567890ab' }); assert.equal(c.socialLogin, true); assert.equal(c.redirectUrl, 'https://inu-verse-tawny.vercel.app/');
   assert.ok(minLamports().total > 5e6 && minLamports().total < 1e7); assert.ok(minLamports({ devBuySol: 0.1 }).total > 0.1e9 + 5e6); assert.equal(minLamports({ pair: 'KIBBLE', devBuySol: 1 }).parts.devBuy, 0); });
+
+// ---- Server-side RPC proxy: allowlist, rate limit, and the provider key never leaves the server ----
+import { rpcUrl, redact, RPC_ALLOW } from '../api/_lib/rpc.js';
+const FAKE_KEY = 'test-helius-key-0000-1111-2222';
+test('RPC proxy forwards only allowlisted methods to the server-side RPC and is rate limited', async () => {
+  const seen = []; const f = async (url, o) => { seen.push({ url, body: JSON.parse(o.body) }); return { ok: true, status: 200, json: async () => ({ result: { value: 42 } }) }; };
+  const env = { HELIUS_API_KEY: FAKE_KEY }, h = makeLaunchHandler({ env, store: memoryStore(), deps: mocks().rpc, f, limits: { metadata: 1, build: 1, send: 1, rpc: 3 } });
+  assert.deepEqual([...RPC_ALLOW].sort(), ['getAccountInfo', 'getBalance', 'getLatestBlockhash', 'getSignatureStatuses']);
+  const ok = await call(h, { method: 'POST', body: { action: 'rpc', method: 'getBalance', params: [player.publicKey.toBase58()] } });
+  assert.equal(ok.code, 200); assert.deepEqual(ok.body, { result: { value: 42 } });
+  assert.equal(seen[0].url, 'https://mainnet.helius-rpc.com/?api-key=' + FAKE_KEY, 'server builds the Helius URL from HELIUS_API_KEY'); assert.equal(seen[0].body.method, 'getBalance');
+  for (const m of ['getProgramAccounts', 'sendTransaction', 'requestAirdrop', 'getSignaturesForAddress', '__proto__', '']) {
+    const r = await call(h, { method: 'POST', body: { action: 'rpc', method: m, params: [] }, ip: '9.9.9.' + m.length }); assert.equal(r.code, 400, m); assert.match(r.body.error, /not allowed/); }
+  assert.equal(seen.length, 1, 'disallowed methods never reach the RPC');
+  for (let i = 0; i < 2; i++) assert.equal((await call(h, { method: 'POST', body: { action: 'rpc', method: 'getLatestBlockhash' } })).code, 200);
+  assert.equal((await call(h, { method: 'POST', body: { action: 'rpc', method: 'getLatestBlockhash' } })).code, 429, 'per-IP rate limit');
+});
+test('the RPC URL / API key never appears in any response: proxy errors, launch errors, coins errors, /api/config', async () => {
+  const URL_ = 'https://mainnet.helius-rpc.com/?api-key=' + FAKE_KEY;
+  for (const env of [{ SOLANA_RPC: URL_ }, { HELIUS_API_KEY: FAKE_KEY }]) {
+    assert.equal(rpcUrl(env), URL_);
+    const leak = (s) => { const t = JSON.stringify(s); assert.ok(!t.includes(FAKE_KEY) && !/helius|api-key=(?!\[redacted\])/i.test(t), 'leaked: ' + t); };
+    const boom = async () => { throw new Error('request to ' + URL_ + ' failed, reason: ECONNRESET'); };
+    const rpcErr = async () => ({ ok: true, status: 200, json: async () => ({ error: { message: 'bad request for ' + URL_ } }) });
+    for (const f of [boom, rpcErr]) { const h = makeLaunchHandler({ env, store: memoryStore(), deps: mocks().rpc, f });
+      const r = await call(h, { method: 'POST', body: { action: 'rpc', method: 'getBalance', params: ['x'] } }); assert.equal(r.code, 502); leak(r.body); }
+    const failing = { ...mocks().rpc, conn: { getBalance: boom, getSignatureStatuses: boom, sendRawTransaction: boom }, blockhash: boom };
+    const h = makeLaunchHandler({ env, store: memoryStore(), deps: failing });
+    for (const url of ['/api/launch?balance=' + player.publicKey.toBase58(), '/api/launch?sig=' + b58encode(new Uint8Array(64).fill(7))]) leak((await call(h, { url })).body);
+    leak((await call(h, { method: 'POST', body: { action: 'build', player: player.publicKey.toBase58(), mint: CK.Keypair.generate().publicKey.toBase58(), name: 'A', symbol: 'A', uri: 'https://ipfs.io/ipfs/x1234567' } })).body);
+    const coins = makeHandler({ env, store: memoryStore(), deps: { launchTx: boom } });
+    leak((await call(coins, { method: 'POST', url: '/api/coins', body: { action: 'register', signature: b58encode(new Uint8Array(64).fill(3)) } })).body);
+    leak(publicConfig({ ...env, PHANTOM_APP_ID: 'app' }));
+    assert.equal(redact('x ' + URL_ + ' y', env), 'x [rpc] y'); }
+  makeLaunchHandler({ env: {} }); makeHandler({ env: {}, store: memoryStore() }); // reset module-level env for later tests
+});
+test('no browser code contains an RPC key or provider URL', () => {
+  const files = ['index.html', ...fs.readdirSync('src', { recursive: true }).filter((f) => /\.(js|html|css)$/.test(f)).map((f) => 'src/' + f)];
+  for (const f of files) { const t = fs.readFileSync(f, 'utf8'); assert.doesNotMatch(t, /helius|api-key=/i, f); }
+});

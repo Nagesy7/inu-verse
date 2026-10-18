@@ -6,21 +6,23 @@
 //   POST /api/launch {action:"metadata", name, symbol, description, twitter, telegram, website, image:dataURL} -> {uri, image, storage}
 //   POST /api/launch {action:"build", player, mint(PUBLIC key), name, symbol, uri, pair:"SOL"|"KIBBLE", devBuySol} -> {tx(base64, unsigned), ...}
 //   POST /api/launch {action:"send", tx}   relays an already fully-signed launch tx to Solana (extension path); adds no signature
+//   POST /api/launch {action:"rpc", method, params}  allowlisted RPC proxy: getBalance, getLatestBlockhash, getSignatureStatuses, getAccountInfo
 //   GET  /api/launch?balance=<address>     live SOL balance      GET /api/launch?sig=<signature>  confirmation status
 //   GET  /api/launch?meta=<id> | ?img=<id> hosted metadata (when PINATA_JWT is not configured)
 import crypto from "node:crypto";
 import { upstashStore } from "./coins.js";
 import { validateBuild, buildCreateTx, rpcDeps, explainSim, inspectTx, kit } from "./_lib/launchtx.js";
 import { validateMeta, pinataUpload, hostedUpload } from "./_lib/launchmeta.js";
+import { rpcUrl, redact, proxyRpc } from "./_lib/rpc.js";
 const { VersionedTransaction, PublicKey } = kit;
 export const PUBLIC_BASE = "https://inu-verse-tawny.vercel.app";
 const PUMP = "6EF8rrecthR5Dkzon8Nwu78hRvfCKubJ14M5uBEwF6P";
 const B58 = /^[1-9A-HJ-NP-Za-km-z]{32,90}$/;
-const json = (res, code, o, cache = "no-store") => { res.statusCode = code; res.setHeader("content-type", "application/json"); res.setHeader("cache-control", cache); res.end(JSON.stringify(o)); };
+const json = (res, code, o, cache = "no-store") => { res.statusCode = code; res.setHeader("content-type", "application/json"); res.setHeader("cache-control", cache); res.end(redact(JSON.stringify(o), json.env || process.env)); }; // never leak the RPC URL/key
 const ipOf = (req) => String(req.headers["x-forwarded-for"] || req.socket?.remoteAddress || "?").split(",")[0].trim();
 
-export function makeLaunchHandler({ env = process.env, store = upstashStore(env), deps = null, f = fetch, limits = { metadata: 12, build: 40, send: 20 } } = {}) {
-  let D = deps; const rpc = () => (D ||= rpcDeps(env.SOLANA_RPC || "https://api.mainnet-beta.solana.com"));
+export function makeLaunchHandler({ env = process.env, store = upstashStore(env), deps = null, f = fetch, limits = { metadata: 12, build: 40, send: 20, rpc: 300 } } = {}) {
+  json.env = env; let D = deps; const rpc = () => (D ||= rpcDeps(rpcUrl(env)));
   const base = env.PUBLIC_BASE_URL || PUBLIC_BASE;
   async function limited(req, action) { if (!store?.incr) return false; const hour = Math.floor(Date.now() / 3.6e6);
     const k = `rl:${action}:${crypto.createHash("sha256").update(ipOf(req)).digest("hex").slice(0, 16)}:${hour}`;
@@ -57,6 +59,9 @@ export function makeLaunchHandler({ env = process.env, store = upstashStore(env)
         catch (e) { const msg = String(e?.message || e); return json(res, 502, { error: /quote|6063|6100|eligible/i.test(msg) && b.v.pair === "KIBBLE" ? "pump.fun is not accepting $KIBBLE as a pair right now. Launch with SOL, or use pump.fun's own page." : "could not build the transaction: " + msg.slice(0, 160) }); }
         return json(res, 200, { ...out, hint: explainSim(out.simulation) });
       }
+      if (body.action === "rpc") { // allowlisted read-only RPC proxy for the browser (the key stays server-side)
+        if (await limited(req, "rpc")) return json(res, 429, { error: "too many requests, try again later" });
+        const r = await proxyRpc(body, { env, f }); return json(res, r.code, r.body); }
       if (body.action === "send") {
         if (await limited(req, "send")) return json(res, 429, { error: "too many requests, try again later" });
         let tx; try { tx = VersionedTransaction.deserialize(Buffer.from(String(body.tx || ""), "base64")); } catch { return json(res, 400, { error: "not a transaction" }); }

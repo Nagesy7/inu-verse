@@ -29,3 +29,6 @@ Players can launch a real pump.fun coin from the Launch Hall's **Launch your coi
 Phantom Portal (https://phantom.com/portal): App → Set Up → copy the App ID; **Allowed Origins** add `https://inu-verse-tawny.vercel.app`; **Redirect URLs** add `https://inu-verse-tawny.vercel.app/` (exact, with trailing slash). Note: Phantom's docs say Portal is currently not accepting *new* apps; existing apps/App IDs work.
 
 Rebuild vendored bundles: `scripts/build-vendor.sh`. Proof: `node scripts/noext-proof.mjs [live]`.
+
+## Solana RPC (server-side only)
+The server reads `SOLANA_RPC` (full URL) or `HELIUS_API_KEY` (it builds `https://mainnet.helius-rpc.com/?api-key=…` itself), and falls back to the public mainnet RPC. The value is never sent to the browser: `/api/config` has no RPC field, and every JSON response from `/api/launch` and `/api/coins` is scrubbed of the URL, the key and any `api-key=` string. The browser talks to RPC only through `/api/launch`: `?balance=`, `?sig=`, `{action:"send"}` (signed pump.fun launches only), and `{action:"rpc", method, params}`. The `rpc` action allows only getBalance, getLatestBlockhash, getSignatureStatuses and getAccountInfo, with a limit of 300 calls per IP per hour. See `api/_lib/rpc.js`.

@@ -17,6 +17,7 @@
 // Storage: Upstash Redis REST (UPSTASH_REDIS_REST_URL/TOKEN or KV_REST_API_URL/TOKEN). Without it the API answers 503.
 import crypto from "node:crypto";
 import { evaluatePairs, PAIR_CANDIDATES } from "./_lib/pairs.js";
+import { rpcUrl, redact } from "./_lib/rpc.js";
 
 export const KIBBLE_MINT = "4VE9sy4fEMJdZ6i7MkYPbnqDJd2oqzJQmg44WJ3opump";
 export const OWNER_WALLET = "BzLYTFAfUsjzQ5x8bx5BbPK4DFtaHrLCuferkvkxTNGJ";
@@ -78,7 +79,7 @@ export async function dexInfo(mint, f = fetch) { try { const r = await f(`https:
   const p = a.find((x) => x.baseToken?.address === mint) || a[0]; const allow = [KIBBLE_MINT, ...PAIR_CANDIDATES.map((c) => c.mint)], qp = a.find((x) => x.baseToken?.address === mint && allow.includes(x.quoteToken?.address));
   return { quoteMint: qp?.quoteToken?.address || p.quoteToken?.address || "", name: p.baseToken?.name || "", symbol: p.baseToken?.symbol || "", pairedWithKibble: a.some((x) => x.quoteToken?.address === KIBBLE_MINT || (x.baseToken?.address === KIBBLE_MINT && x.quoteToken?.address === mint)), quote: p.quoteToken?.symbol || "" }; } catch { return null; } }
 
-const json = (res, code, o) => { res.statusCode = code; res.setHeader("content-type", "application/json"); res.setHeader("cache-control", code === 200 ? "public, max-age=15" : "no-store"); res.end(JSON.stringify(o)); };
+const json = (res, code, o) => { res.statusCode = code; res.setHeader("content-type", "application/json"); res.setHeader("cache-control", code === 200 ? "public, max-age=15" : "no-store"); res.end(redact(JSON.stringify(o), json.env || process.env)); }; // never leak the RPC URL/key
 const clean = (s, n) => String(s || "").replace(/[<>\u0000-\u001f]/g, "").slice(0, n);
 async function listCoins(store, all) { const ids = await store.smembers("coins"); const out = [];
   for (const id of ids || []) { const raw = await store.get("coin:" + id); if (!raw) continue; const c = JSON.parse(raw); if (all || !c.hidden) out.push(c); }
@@ -88,7 +89,8 @@ async function isAdmin(req, env, deps) { const t = req.headers["x-admin-token"];
 const bearer = (req) => (req.headers.authorization || "").replace(/^Bearer /, "");
 
 export function makeHandler({ env = process.env, store = upstashStore(env), deps = {} } = {}) {
-  const RPC = env.SOLANA_RPC || "https://api.mainnet-beta.solana.com";
+  json.env = env;
+  const RPC = rpcUrl(env);
   const D = { sessionWallet: (t) => sessionWallet(t), pumpCreator: (m) => pumpCreator(m, { rpc: RPC }), launchTx: (s) => launchTx(s, { rpc: RPC }), now: () => Date.now(), dexInfo: (m) => dexInfo(m), pairs: () => evaluatePairs(), ...deps };
   return async function handler(req, res) {
     if (req.method === "OPTIONS") { res.statusCode = 204; return res.end(); }

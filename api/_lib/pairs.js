@@ -1,3 +1,4 @@
+import { rpcUrl } from "./rpc.js";
 // Pair-asset allowlist for the Launch Hall. $KIBBLE is always first and exempt from thresholds.
 // Candidates are Inu/Doge-themed Solana coins that pump.fun Custom Pairs accepts as a quote
 // (listed on https://pump.fun/docs/custom-pairs, or SOL-launched pump.fun coins = "Secondary Pair Assets").
@@ -22,7 +23,7 @@ export function judge(c, m, rc, rules = PAIR_RULES) { const why = [];
   return { ...c, mcap: m?.mcap ?? null, liquidity: m?.liquidity ?? null, rugcheck: rc ? (rc.danger.length ? "danger" : "ok") : "unavailable", eligible: !why.length, why }; }
 // $KIBBLE's pump.fun bonding curve (PDA verified in tests). Byte 48 = complete (graduated).
 export const KIBBLE_CURVE = "CwcC2iMpRVGgxZKKnmLq9N3fMjVVPSkLGKdvU7piXLrc";
-export async function curveStatus(addr, { f = fetch, rpc = process.env.SOLANA_RPC || "https://api.mainnet-beta.solana.com" } = {}) {
+export async function curveStatus(addr, { f = fetch, rpc = rpcUrl(process.env) } = {}) {
   const r = await f(rpc, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ jsonrpc: "2.0", id: 1, method: "getAccountInfo", params: [addr, { encoding: "base64" }] }) });
   const v = (await r.json()).result?.value; if (!v) return null; const d = Buffer.from(v.data[0], "base64"); return { graduated: d[48] === 1 }; }
 // Honest note for the featured pair: pump.fun lets a SOL-launched pump.fun coin be a "Secondary Pair Asset" "where the platform permits".
