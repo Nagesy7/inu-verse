@@ -127,20 +127,7 @@ export function drawShiba(ctx, x, y, { coat = 'tan', face = 'down', phase = 0, m
   if (shadow) { ctx.fillStyle = 'rgba(10,14,30,0.28)'; ctx.fillRect(Math.round(x - 7 * px), Math.round(y + 12 - 2 * px), 14 * px, 2 * px); ctx.fillRect(Math.round(x - 5 * px), Math.round(y + 12 - 3 * px), 10 * px, 3 * px); }
   ctx.drawImage(spr, dx, dy, w, h);
   ctx.restore();
-  if (name) {
-    ctx.save(); ctx.font = '8px Silkscreen, monospace'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
-    const tw = Math.ceil(ctx.measureText(name).width) + 8, ty = dy - 8;
-    const gold = GOLD.name && name === GOLD.name; ctx.fillStyle = gold ? '#7a5a12' : '#121a36'; ctx.fillRect(Math.round(x - tw / 2), ty - 6, tw, 12); ctx.fillStyle = gold ? '#ffe27a' : '#d4a640'; ctx.fillRect(Math.round(x - tw / 2), ty + 5, tw, 1); if (gold) { ctx.fillRect(Math.round(x - tw / 2), ty - 7, tw, 1); }
-    ctx.fillStyle = (GOLD.name && name === GOLD.name) ? '#ffe27a' : '#f6e7b8'; ctx.fillText(name, Math.round(x), ty);
-    if (badge) { // Pack badge: banner-coloured tag with emblem, above the name
-      const bt = `[${badge.tag}]`, bw = Math.ceil(ctx.measureText(bt).width) + 18, bx = Math.round(x - bw / 2), byy = ty - 20;
-      ctx.fillStyle = '#121a36'; ctx.fillRect(bx - 1, byy - 1, bw + 2, 13); ctx.fillStyle = badge.color; ctx.fillRect(bx, byy, bw, 11);
-      ctx.fillStyle = 'rgba(0,0,0,.25)'; ctx.fillRect(bx, byy + 9, bw, 2);
-      drawEmblem(ctx, badge.emblem, bx + 2, byy + 1, 1.6, '#fff6e0');
-      ctx.fillStyle = '#121a36'; ctx.fillText(bt, Math.round(bx + 11 + (bw - 11) / 2) + 1, byy + 6); ctx.fillStyle = '#fff6e0'; ctx.fillText(bt, Math.round(bx + 11 + (bw - 11) / 2), byy + 5);
-    }
-    ctx.restore();
-  }
+  if (name) nameTag(ctx, x, dy, name, badge);
 }
 
 // Pixel emblems for Pack banners. (x,y) top-left, s = pixel unit (shape is ~5x5 units).
@@ -169,9 +156,13 @@ function drawArt(ctx, x, y, im, { face, phase, moving, scale, name, shadow, badg
 }
 function nameTag(ctx, x, dy, name, badge) {
   ctx.save(); ctx.font = '8px Silkscreen, monospace'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
-  const tw = Math.ceil(ctx.measureText(name).width) + 8, ty = Math.round(dy - 8);
-  const gold = GOLD.name && name === GOLD.name; ctx.fillStyle = gold ? '#7a5a12' : '#121a36'; ctx.fillRect(Math.round(x - tw / 2), ty - 6, tw, 12); ctx.fillStyle = gold ? '#ffe27a' : '#d4a640'; ctx.fillRect(Math.round(x - tw / 2), ty + 5, tw, 1); if (gold) { ctx.fillRect(Math.round(x - tw / 2), ty - 7, tw, 1); }
-  ctx.fillStyle = (GOLD.name && name === GOLD.name) ? '#ffe27a' : '#f6e7b8'; ctx.fillText(name, Math.round(x), ty);
+  const tw = Math.ceil(ctx.measureText(name).width) + 8, ty = Math.round(dy - 8), kt = KENNEL_TAG.cur;
+  const gold = (GOLD.name && name === GOLD.name) || !!kt?.gold; ctx.fillStyle = gold ? '#7a5a12' : '#121a36'; ctx.fillRect(Math.round(x - tw / 2), ty - 6, tw, 12); ctx.fillStyle = gold ? '#ffe27a' : '#d4a640'; ctx.fillRect(Math.round(x - tw / 2), ty + 5, tw, 1); if (gold) { ctx.fillRect(Math.round(x - tw / 2), ty - 7, tw, 1); }
+  ctx.fillStyle = gold ? '#ffe27a' : '#f6e7b8'; ctx.fillText(name, Math.round(x), ty);
+  if (kt) { ctx.font = '7px Silkscreen, monospace'; const kw = Math.ceil(ctx.measureText(kt.text).width) + 12, kx = Math.round(x - kw / 2), ky = ty - (badge ? 34 : 20);
+    ctx.fillStyle = '#121a36'; ctx.fillRect(kx - 1, ky - 1, kw + 2, 12); ctx.fillStyle = kt.color; ctx.fillRect(kx, ky, kw, 10); ctx.fillStyle = 'rgba(255,255,255,.35)'; ctx.fillRect(kx, ky, kw, 2);
+    ctx.fillStyle = kt.ink; ctx.fillRect(kx + 3, ky + 4, 3, 3); ctx.fillRect(kx + 2, ky + 2, 1, 1); ctx.fillRect(kx + 4, ky + 1, 1, 2); ctx.fillRect(kx + 6, ky + 2, 1, 1); // paw
+    ctx.fillText(kt.text, Math.round(x + 3), ky + 5); ctx.font = '8px Silkscreen, monospace'; }
   if (badge) {
     const bt = `[${badge.tag}]`, bw = Math.ceil(ctx.measureText(bt).width) + 18, bx = Math.round(x - bw / 2), byy = ty - 20;
     ctx.fillStyle = '#121a36'; ctx.fillRect(bx - 1, byy - 1, bw + 2, 13); ctx.fillStyle = badge.color; ctx.fillRect(bx, byy, bw, 11);
@@ -200,6 +191,8 @@ export function drawMenuIcon(ctx, id, x, y, s = 1) {
 
 // ---- furniture (top-down) ----
 export const GOLD = { name: null }; // VIP holder: gold name tag for this display name
+// Kibble Kennel tier tag for the actor being drawn right now (set by main.js around one draw call; cosmetic only)
+export const KENNEL_TAG = { cur: null };
 export function drawFurniture(ctx, id, x, y, cell, rot, alpha = 1) {
   const d = FURNITURE[id], f = footprint(id, rot), w = f.w * cell, h = f.h * cell, p = 4;
   ctx.save(); ctx.globalAlpha = alpha; ctx.translate(x + w / 2, y + h / 2); ctx.rotate((rot * Math.PI) / 2);

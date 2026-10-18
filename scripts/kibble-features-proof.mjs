@@ -41,5 +41,18 @@ if (what === 'clean' || what === 'all') for (const v of VIEWS) { const p = await
     await p.waitForTimeout(n ? 15000 : 0); L('board badges: ' + JSON.stringify(await p.evaluate(() => [...document.querySelectorAll('#regboard [data-cleanslot]')].map((e) => e.dataset.cleanslot.slice(0, 6) + ' ' + e.querySelector('summary').textContent))));
     await shot(p, 'clean-board'); }
   if (p.errs.length) L('page errors: ' + p.errs.join(' | ')); await p.context().close(); }
+if (what === 'kennel' || what === 'all') {
+  for (const tier of ['pup', 'guard', 'alpha', 'top']) { const p = await open('?kennel=' + tier); await at(p, 31, 49, [33, 48], 2);
+    if (tier === 'top') await p.evaluate(() => { const real = __inu.mp.actors.bind(__inu.mp); const S = __inu.state.player;
+      // how OTHER players see Kennel looks: actor shape from multiplayer.js actors(); 'w' = server-verified wallet. Unverified -> no tier shown.
+      __inu.mp.actors = () => [{ x: S.x + 48, y: S.y, coat: 'black', art: 'layer:black', outfit: {}, face: 'down', phase: 0, moving: false, name: 'Rin', mp: true, id: 'mp:a', w: 'Akk3…56fn', kennel: 'top' },
+        { x: S.x + 96, y: S.y, coat: 'cream', art: 'layer:cream', outfit: {}, face: 'down', phase: 0, moving: false, name: 'Sora', mp: true, id: 'mp:b', w: 'Fh2x…9QaB', kennel: 'alpha' },
+        { x: S.x + 144, y: S.y, coat: 'tan', art: 'layer:tan', outfit: {}, face: 'down', phase: 0, moving: false, name: 'NoWallet', mp: true, id: 'mp:c', w: null, kennel: null }, ...real()]; });
+    await p.waitForTimeout(2500); const k = await p.evaluate(() => __kennel()); L(`${tier}: mine=${JSON.stringify(k.mine)} api=${JSON.stringify(k.real)} wall=${JSON.stringify(k.wall)}`);
+    await shot(p, 'kennel-' + tier); if (tier === 'top') { await at(p, 33, 48, [33.5, 46.5], 1); await p.waitForTimeout(800); await shot(p, 'kennel-wall');
+      await p.evaluate(() => __inu.open('kennel')); await p.waitForTimeout(1500); await shot(p, 'kennel-wall-panel'); }
+    if (p.errs.length) L('page errors: ' + p.errs.join(' | ')); await p.context().close(); }
+  for (const v of VIEWS) { const q = await open('?kennel=top', v); await at(q, 33, 48, [33.5, 47.2], 2); await q.waitForTimeout(1500); await shot(q, `kennel-top-${v[0]}x${v[1]}`); await q.evaluate(() => __inu.open('kennel')); await q.waitForTimeout(1200); await shot(q, `kennel-wall-panel-${v[0]}x${v[1]}`); await q.context().close(); }
+  const r = await fetch('https://kibble-pay.vercel.app/api/kennel?wallet=Akk3DdxeRRLZABfpkFKYoDBk6Zim5wNLRYemNFjv56fn').catch((e) => ({ status: 'error ' + e.message })); L('kibble-pay /api/kennel status: ' + r.status); }
 fs.writeFileSync(`${OUT}-${what}-log.txt`, log.join('\n') + '\n');
 await browser.close();

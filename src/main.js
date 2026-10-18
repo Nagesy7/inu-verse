@@ -30,6 +30,9 @@ import * as MOB from './mobility.js';
 import * as RC from './realcoins.js';
 import * as CL from './cleanlaunch.js';
 import * as NV from './npcvoices.js';
+import * as KN from './kennel.js';
+import { KENNEL_TAG } from './art.js';
+import { KIBBLE_PLAZA } from './world.js';
 import { ensureFarm, tickFarm, seasonOf, marketHour, rollFarmWeek, catchUp, fishCatch, WEEK_DAYS } from './farm.js';
 import { ensureBiz, bizHour, bizDay, rollBizWeek } from './biz.js';
 import { renderField, renderFarm, renderLot, renderBizBoard } from './farmui.js';
@@ -495,7 +498,7 @@ function renderWorld() {
     const tx0 = Math.floor(-ox / TILE) - 1, ty0 = Math.floor(-oy / TILE) - 1; ctx.save(); ctx.scale(SCALE, SCALE); drawWater(ctx, time, tx0, ty0, tx0 + Math.ceil(vw / TILE) + 2, ty0 + Math.ceil(vh / TILE) + 2); ctx.restore(); }
   const phase = dayPhase(time + dayOffset);
   globalThis.__inuNight = phase.dark;
-  const dyn = [...HUB_GATES.map((g) => hubGateProp(g, time)), ...dynamicProps(state, time, myPack(state)), ...presidentProps(pres, time), ...doorProps(time), ...carWorldProps(), ...crewProps(), ...adProps(trend, adRot, adIdx, !!globalThis.__inuNight, time, featuredMap()), ...confettiProps(), ...squareProps(state, time, Math.floor(gameDay() / 7)), ...arcadeProps(time, arcadeTop), ...MWd.statueProps(time, { drawShiba, artLoaded: () => !!ART['shiba-golden'] }), ...MWd.newsProps(time), ...MWd.firepitProps(time), ...MWd.plazaSkyProps(time)];
+  const dyn = [...HUB_GATES.map((g) => hubGateProp(g, time)), ...dynamicProps(state, time, myPack(state)), ...presidentProps(pres, time), ...doorProps(time), ...carWorldProps(), ...crewProps(), ...adProps(trend, adRot, adIdx, !!globalThis.__inuNight, time, featuredMap()), ...confettiProps(), ...squareProps(state, time, Math.floor(gameDay() / 7)), ...arcadeProps(time, arcadeTop), ...MWd.statueProps(time, { drawShiba, artLoaded: () => !!ART['shiba-golden'] }), ...MWd.newsProps(time), ...KN.wallProps(KIBBLE_PLAZA.wall, KEN.wall, time, TILE), ...MWd.firepitProps(time), ...MWd.plazaSkyProps(time)];
   for (const d of dyn) if (d.flat) d.d(ctx);
   const view = { x0: -ox, y0: -oy, x1: -ox + vw, y1: -oy + vh };
   drawGroundLife(ctx, amb, phase); drawAliveGround(ctx, ALIVE, view, phase); feel.drawGround(ctx);
@@ -519,8 +522,10 @@ function renderWorld() {
     if (a.president) { drawPresident(ctx, a); if (a.emote) drawEmote(ctx, 0, -14, a.emote.kind, time); ctx.restore(); continue; }
     if (a.pupScale) { if (a.customPup) drawProfileShiba(ctx, 0, 0, a.profile, { face: a.face, phase: a.phase, moving: a.moving, name: a.name, scale: a.pupScale, fid: a.name }); else { drawShiba(ctx, 0, 0, { coat: a.coat, outfit: a.outfit, face: a.face, phase: a.phase, moving: a.moving, name: a.name, scale: a.pupScale, art: a.art, fid: a.name, wag: a.wag }); ctx.fillStyle = a.pupPatch; ctx.fillRect(-7 * a.pupScale, -30 * a.pupScale, 14 * a.pupScale, 4 * a.pupScale); ctx.fillStyle = a.pupHex; ctx.fillRect(-7 * a.pupScale, -26 * a.pupScale, 14 * a.pupScale, 3 * a.pupScale); } ctx.restore(); continue; }
     if (a.me) { const gl = statusGlow(state); if (gl) drawFlair(ctx, gl, time); }
+    const kt = a.me ? kennelMine() : a.mp ? (KN.remoteKennel(a) ? { tier: KN.remoteKennel(a) } : null) : null; if (kt) { KN.drawAura(ctx, kt.tier, time); KENNEL_TAG.cur = KN.tagFor(kt.tier, kt.preview); }
     if (a.profile) { drawProfileShiba(ctx, 0, 0, a.profile, { face: a.face, phase: a.phase, moving: a.moving, name: a.name, scale: 1.5, badge: a.badge, fid: a.me ? 'me' : a.name, emote: a.emote?.kind }); if (a.emote) drawEmote(ctx, 0, -110, a.emote.kind, time); }
     else drawShiba(ctx, 0, 0, { coat: a.coat, outfit: a.outfit, face: a.face, phase: a.phase, moving: a.moving, name: a.name, scale: 1.5, badge: a.badge, art: a.art, emote: a.emote?.kind, fid: a.me ? 'me' : a.name || a.id, wag: a.wag || (mm?.wag ? 1 : 0) });
+    KENNEL_TAG.cur = null;
     if (a.worker) { drawVest(ctx, a.face); drawTool(ctx, a.worker); }
     if (mm?.umbrella) MWd.drawUmbrella(ctx, time, a.idx || 0); else if (mm?.zz && !a.emote) MWd.drawZz(ctx, time + (a.idx || 0)); if (a.crier) MWd.drawBell(ctx, time, crierRing > 0);
     if (a.emote) drawEmote(ctx, 0, a.name ? -14 : 0, a.emote.kind, time); ctx.restore();
@@ -686,6 +691,9 @@ function openPanel(kind, opts = {}) {
   if (kind === 'bank') return renderBank();
   if (kind === 'kibblemood') { body.innerHTML = MWd.moodCardHtml(MOOD.current, esc); body.querySelectorAll('[data-copy]').forEach((b) => b.onclick = () => copyText(b.dataset.copy)); body.querySelector('[data-npcrules]').onclick = () => openPanel('npcrules'); return; }
   if (kind === 'dailybone') { body.innerHTML = MWd.dailyBoneHtml(MWd.MW.mood) + '<div class="row" style="justify-content:flex-start"><button class="btn ghost tiny" data-npcrules>How the town talks</button></div>'; body.querySelector('[data-npcrules]').onclick = () => openPanel('npcrules'); return; }
+  if (kind === 'kennel') { const draw = () => { if (panel?.kind !== 'kennel') return; body.innerHTML = KN.wallHtml({ wall: KEN.wall, me: KEN.real, wallet: KEN.wallet, override: KEN.override, show: KEN.show });
+      const cb = body.querySelector('#kn-show'); if (cb) cb.onchange = () => { KEN.show = cb.checked; KN.setShowMine(cb.checked); toast(cb.checked ? 'Kennel look on' : 'Kennel look hidden', 'good'); }; };
+    draw(); refreshKennel(true).then(draw); return; }
   if (kind === 'npcrules') { body.innerHTML = NV.rulesHtml(MWd.voices()); return; }
   if (kind === 'fly5') return renderFly5({ ...farmCtx(), kp: DEMO ? null : K.kp, tab: opts.tab, day: gameDay(), week: Math.floor(gameDay() / 7), month: Math.floor(gameDay() / 28), nowH: state.clockSec / (DAY_LEN / 24), open: (t) => openPanel('fly5', { tab: t }) });
   if (kind === 'matchmaker') return renderMatchmaker({ ...farmCtx(), tab: opts.tab, weekFrac: ((state.clockSec / DAY_LEN) % WEEK_DAYS) / WEEK_DAYS, open: (t) => openPanel('matchmaker', { tab: t }), startDuo: (partner, jobId) => { if (!partner) return toast('No partner', 'bad'); closePanel(); playDuo(jobId, partner); } });
@@ -1179,7 +1187,7 @@ function frame(now) {
 }
 // Live multiplayer: other players in the same room ('city' while walking the world). Off unless /api/config has a realtimeUrl.
 const MPL = createMultiplayer({ toast, now: () => time, getLocal: () => state && { room: mode === 'world' ? 'city' : null, x: state.player.x, y: state.player.y, f: player.face, m: player.moving, r: player.running, d: !!drive, emote: player.emote,
-  name: state.player.name, token: K.kp?.session || null, look: { coat: state.player.coat, eq: state.wardrobe.equipped, pl: hasCustomLook(state) ? myProfile() : null } } });
+  name: state.player.name, token: K.kp?.session || null, look: { coat: state.player.coat, eq: state.wardrobe.equipped, pl: mpProfile() } } });
 MPL.start().catch(() => {});
 // ---- $KIBBLE town mood (src/kibblemood.js + src/moodworld.js): one shared /api/kibble-mood fetch per minute, paused when hidden ----
 let crierRing = 0, crierPending = false;
@@ -1189,7 +1197,15 @@ function announceMood(mood) { if (!MWd.shouldAnnounce(mood, { override: !!MOOD.f
   chatSay(MWd.CRIER_NAME, line, time, { force: true, life: 6 }); crierBanner(line); globalThis.__crierSaid = [...(globalThis.__crierSaid || []), mood]; }
 function crierBanner(line) { let b = document.getElementById('crier-banner'); if (!b) { b = document.createElement('div'); b.id = 'crier-banner'; b.setAttribute('role', 'status'); document.body.appendChild(b); }
   b.innerHTML = `<b>${esc(MWd.CRIER_NAME)}</b><span>${esc(line)}</span>`; b.className = 'show mood-' + MWd.MW.mood; clearTimeout(b._t); b._t = setTimeout(() => { b.className = ''; }, 6000); }
-function kibbleSpot(id) { if (id === 'kstatue') openPanel('kibblemood'); else if (id === 'dailybone') openPanel('dailybone');
+// ---- Kibble Kennel mirror (cosmetics only; tier API owned by kibble-pay / Inu Empires keeper, see inu-shared/kennel-api.md) ----
+const KEN = { override: KN.overrideTier(), real: null, wall: null, wallet: null, show: KN.showMine(), at: 0 };
+function kennelMine() { return KN.myKennel({ override: KEN.override, real: KEN.real, show: KEN.show }); }
+function mpProfile() { const t = KN.lookKennel(kennelMine()), p = hasCustomLook(state) ? myProfile() : null; if (!t) return p; return p ? { ...p, look: { kennel: t, ...p.look } } : { look: { kennel: t }, outfit: {} }; }
+async function refreshKennel(force) { const w = K.kp?.signedIn ? K.kp.address : null; const due = force || w !== KEN.wallet || Date.now() - KEN.at > KN.CACHE_MS; if (!due) return;
+  KEN.wallet = w; KEN.at = Date.now(); const [me, wall] = await Promise.all([w ? KN.fetchKennel(w) : Promise.resolve(null), KN.fetchWall()]); KEN.real = me; KEN.wall = wall; }
+refreshKennel(); setInterval(() => refreshKennel(), 60_000); addEventListener('kibble:wallet', () => refreshKennel());
+globalThis.__kennel = () => ({ ...KEN, mine: kennelMine() });
+function kibbleSpot(id) { if (id === 'kwall') { openPanel('kennel'); return; } if (id === 'kstatue') openPanel('kibblemood'); else if (id === 'dailybone') openPanel('dailybone');
   else if (id === 'crier') { crierRing = 1.5; feel.say(MWd.CRIER_NAME, MWd.crierLine(MWd.MW.mood) + ' ' + KM.lineFor(MWd.MW.mood, rng), textBlip); } }
 titleScreen(); requestAnimationFrame(frame);
 cv.addEventListener('wheel', (e) => { if (mode !== 'world') return; e.preventDefault(); const now = performance.now(); if (now - (cv._wz || 0) < 180) return; cv._wz = now; setZoom(stepZoom(ZOOM, e.deltaY < 0 ? 1 : -1)); }, { passive: false });

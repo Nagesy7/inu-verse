@@ -28,7 +28,7 @@ export function doorTile(b) { const d = DOORS[b.id]; if (!d) return { tx: b.x + 
   return d.side === 'left' ? { tx: b.x - 1, ty: b.y + b.h - 1, side: 'left' } : d.side === 'right' ? { tx: b.x + b.w, ty: b.y + b.h - 1, side: 'right' } : { tx: b.x + d.dx, ty: b.y + b.h, side: 'front' }; }
 export const STATUE = { x: 31, y: 71 };
 // Kibble plaza (top of the Mall district, where the avenue comes in): Kibble statue, Daily Bone newsstand, town crier, fire pit, Kennel wall
-export const KIBBLE_PLAZA = { statue: { x: 20, y: 47, w: 2 }, news: { x: 24, y: 47 }, crier: { x: 22, y: 48 }, firepit: { x: 26, y: 48 }, wall: { x: 38, y: 46, w: 5 } };
+export const KIBBLE_PLAZA = { statue: { x: 20, y: 47, w: 2 }, news: { x: 24, y: 47 }, crier: { x: 22, y: 48 }, firepit: { x: 26, y: 48 }, wall: { x: 31, y: 46, w: 5 } };
 export const FOUNTAIN = { x: 30, y: 63, w: 4, h: 3 }; // tiered marble fountain on the Kibble Mall forecourt
 export const FORECOURT = { x: 24, y: 58, w: 16, h: 16 }; // marble plaza in front of the mall
 export const LEADERS = { x: 18, y: 55, w: 6, h: 3 }; // Leaderboards Hall (art is drawn at an integer 2x to fill this footprint)
@@ -96,7 +96,7 @@ export function buildMap() {
   for (const g of GAME_DOORS) fill(g.x, g.y, g.w, g.h, T.BUILDING);
   fill(BANK.x, BANK.y, BANK.w, BANK.h, T.BUILDING);
   fill(ARCADE.x, ARCADE.y, ARCADE.w, ARCADE.h, T.BUILDING); fill(ARCADE.x, ARCADE.y + ARCADE.h, ARCADE.w, 3, T.PLAZA);
-  { const K = KIBBLE_PLAZA; fill(K.statue.x, K.statue.y, K.statue.w, 1, T.BUILDING); fill(K.news.x, K.news.y, 1, 1, T.BUILDING); fill(K.firepit.x, K.firepit.y, 1, 1, T.BUILDING); }
+  { const K = KIBBLE_PLAZA; fill(K.statue.x, K.statue.y, K.statue.w, 1, T.BUILDING); fill(K.news.x, K.news.y, 1, 1, T.BUILDING); fill(K.firepit.x, K.firepit.y, 1, 1, T.BUILDING); fill(K.wall.x, K.wall.y, K.wall.w, 1, T.BUILDING); }
   fill(STATUE.x, STATUE.y, 2, 1, T.BUILDING); fill(LEADERS.x, LEADERS.y, LEADERS.w, LEADERS.h, T.BUILDING);
   // farmland: walk from the plaza, a farm lane, fields, barn, pond, market, crafting, animal pen, orchard, lots
   fill(30, 80, 4, 6, T.WALK); fill(2, 86, 60, 1, T.WALK); fill(2, 95, 60, 1, T.WALK); fill(34, 87, 2, 18, T.WALK); fill(2, 103, 60, 1, T.WALK);
@@ -138,7 +138,7 @@ export function interactables(state) {
   for (const b of BUILDINGS) list.push({ kind: 'building', id: b.id, name: b.name, ...doorTile(b) });
   for (const b of MALL_BUILDINGS) list.push({ kind: 'mall', id: b.id, name: b.name, cat: b.cat, ...doorTile(b) });
   list.push({ kind: 'mall', id: 'board', name: 'Mall prize-pool board', cat: 'board', tx: STATUE.x + 3, ty: STATUE.y });
-  { const K = KIBBLE_PLAZA; list.push({ kind: 'kibble', id: 'kstatue', name: 'Kibble Statue (town mood)', tx: K.statue.x, ty: K.statue.y + 1 }, { kind: 'kibble', id: 'crier', name: 'Crier Barkley', tx: K.crier.x, ty: K.crier.y + 1 }, { kind: 'kibble', id: 'dailybone', name: 'The Daily Bone', tx: K.news.x, ty: K.news.y + 1 }); }
+  { const K = KIBBLE_PLAZA; list.push({ kind: 'kibble', id: 'kstatue', name: 'Kibble Statue (town mood)', tx: K.statue.x, ty: K.statue.y + 1 }, { kind: 'kibble', id: 'crier', name: 'Crier Barkley', tx: K.crier.x, ty: K.crier.y + 1 }, { kind: 'kibble', id: 'dailybone', name: 'The Daily Bone', tx: K.news.x, ty: K.news.y + 1 }, { kind: 'kibble', id: 'kwall', name: 'Kibble Kennel wall', tx: K.wall.x + Math.floor(K.wall.w / 2), ty: K.wall.y + 1 }); }
   list.push({ kind: 'mall', id: 'leaders', name: 'Leaderboards Hall', cat: 'leaders', tx: LEADERS.x + 3, ty: LEADERS.y + LEADERS.h });
   for (const p of PLOTS) {
     const owned = !!state?.plots?.[p.id];

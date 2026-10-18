@@ -39,7 +39,9 @@ export function createMultiplayer({ getLocal, toast = () => {}, now = () => perf
   function addRemote(p) { if (!p?.id || p.id === S.id) return; const r = { id: p.id, name: String(p.name || 'Pup').slice(0, MP.NAME_MAX), w: p.w || null, buf: [], off: null, phase: Math.random() * 6, emote: null, x: 0, y: 0, cur: null };
     setLook(r, p.look); const s = p.s && cleanState(p.s); if (s) { pushSnap(r, s, clock()); r.x = s.x; r.y = s.y; } S.remotes.set(p.id, r); }
   function setLook(r, look) { const l = cleanLook(look); r.coat = l.coat; r.outfit = l.eq; r.art = artKey(l.coat);
-    r.profile = l.pl ? (() => { try { return normalizeProfile({ name: r.name, look: l.pl.look, outfit: l.pl.outfit }); } catch { return null; } })() : null; }
+    // Kibble Kennel tier rides as pl.look.kennel (cosmetic, self-reported); a pl carrying only that key is not a custom profile
+    const kn = l.pl?.look?.kennel; r.kennel = typeof kn === 'string' ? kn : null; const plOnlyKennel = l.pl && Object.keys(l.pl.look).every((k) => k === 'kennel') && !Object.values(l.pl.outfit || {}).some(Boolean);
+    r.profile = l.pl && !plOnlyKennel ? (() => { try { return normalizeProfile({ name: r.name, look: l.pl.look, outfit: l.pl.outfit }); } catch { return null; } })() : null; }
   function onMsg(m) { const t = now();
     if (m.t === 'w') { S.id = m.id; S.me = m.name; S.inst = m.inst; S.room = m.room; S.status = 'online'; S.backoff = 2000; S.remotes.clear(); for (const p of m.players || []) addRemote(p); ui.update(); return; }
     if (m.t === 'j') { addRemote(m.p); ui.update(); return; }
@@ -78,7 +80,7 @@ export function createMultiplayer({ getLocal, toast = () => {}, now = () => perf
       const tr = clock() - MP.INTERP_MS, list = [];
       for (const r of S.remotes.values()) { const c = interpolate(r.buf, tr); if (!c) continue; r.cur = c; r.x = c.x; r.y = c.y; if (c.d) { S.anchors.delete('mp:' + r.id); continue; } list.push(r); }
       const vis = view ? cullPlayers(list, view, me || { x: 0, y: 0 }, S.drawCap) : list.slice(0, S.drawCap); S.anchors.clear();
-      return vis.map((r) => { S.anchors.set('mp:' + r.id, { x: r.x, y: r.y - 60 }); return { x: r.x, y: r.y, coat: r.coat, outfit: r.outfit, art: r.art, profile: r.profile, face: r.cur.f, phase: r.phase, moving: !!r.cur.m, name: r.name, emote: r.emote, mp: true, id: 'mp:' + r.id }; }); },
+      return vis.map((r) => { S.anchors.set('mp:' + r.id, { x: r.x, y: r.y - 60 }); return { x: r.x, y: r.y, coat: r.coat, outfit: r.outfit, art: r.art, profile: r.profile, face: r.cur.f, phase: r.phase, moving: !!r.cur.m, name: r.name, emote: r.emote, mp: true, id: 'mp:' + r.id, w: r.w, kennel: r.w ? r.kennel : null }; }); },
     anchor(id) { return S.anchors.get(id) || null; },
     chat(text) { const c = cleanChat(text); if (!c.ok) { if (c.reason !== 'empty') toast(c.reason, 'bad'); return false; }
       const t = now(); if (t - S.lastChatAt < 1 / MP.CHAT_RATE) { toast('Slow down: one message every 2 seconds.', 'bad'); return false; }
