@@ -1,6 +1,7 @@
 // Phase 3 proof: police + rangers on patrol, precinct/ranger panels, warning -> fine -> detention with its ways out,
 // ranger shift, notice-card placement at phone sizes, report JSON. URL=http://localhost:8671/ OUT=proof node scripts/sim3-proof.mjs
 // Uses Playwright's fake clock only to skip the 60 s citation cooldown (fastForward); everything else is real gameplay.
+// The fake clock starts 30 minutes behind real time so the live sim server (which refuses entries from the future) accepts them.
 import { chromium } from 'playwright'; import { writeFileSync, mkdirSync } from 'node:fs';
 const URL = process.env.URL || 'http://localhost:8671/', OUT = (process.env.OUT || 'proof') + '/sim3-', TAG = process.env.TAG || '', ONLY = process.env.ONLY, b = await chromium.launch(), errs = [], notes = [];
 mkdirSync(process.env.OUT || 'proof', { recursive: true });
@@ -12,8 +13,10 @@ const boxes = (page) => page.evaluate(() => { const r = (s) => { const e = docum
 for (const [name, viewport, phone] of VIEWS) { try { await runView(name, viewport, phone); } catch (e) { errs.push(`${name} proof step failed: ${e.message.split('\n')[0]}`); } }
 async function runView(name, viewport, phone) {
   const ctx = await b.newContext({ viewport, isMobile: phone, hasTouch: phone, deviceScaleFactor: phone ? 2 : 1 }), page = await ctx.newPage();
+  if (process.env.DEBUG) { page.on("pageerror", (e) => console.log("PAGEERR", e.message)); page.on("console", (m) => m.type() === "error" && console.log("CONSOLE", m.text())); }
+  if (process.env.DEBUG) page.on("response", async (r) => { if (r.url().includes("/api/sim")) { let t = ""; try { t = (await r.text()).slice(0, 300); } catch {} console.log("API", r.request().method(), r.status(), (r.request().postData() || "").slice(0, 200), "=>", t); } });
   page.on('pageerror', (e) => errs.push(name + ': ' + e.message)); page.on('console', (m) => { if (m.type() === 'error' && !/Failed to load resource|ERR_|net::/.test(m.text())) errs.push(name + ' console: ' + m.text()); });
-  await page.clock.install(); await page.goto(URL); await page.evaluate(() => localStorage.clear()); await page.reload(); await page.waitForTimeout(1200); await page.click('#start').catch(() => {}); await page.waitForTimeout(1200); await page.getByText(/skip tour/i).first().click({ timeout: 3000 }).catch(() => {}); await page.waitForTimeout(400);
+  await page.clock.install({ time: Date.now() - 30 * 60e3 }); await page.goto(URL); await page.evaluate(() => localStorage.clear()); await page.reload(); await page.waitForTimeout(1200); await page.click('#start').catch(() => {}); await page.waitForTimeout(1200); await page.getByText(/skip tour/i).first().click({ timeout: 3000 }).catch(() => {}); await page.waitForTimeout(400);
   await page.evaluate(() => { __inu.setHour(11); __inu.setRain?.(0); });
   const F = '/src/sim/force.js', put = (x, y, cam = true) => page.evaluate(([x, y, cam]) => { const s = __inu.state; s.player.x = x * 32; s.player.y = y * 32; if (cam) globalThis.__camLock = { x: x * 32, y: y * 32 }; }, [x, y, cam]);
   // 1) patrols in the world
