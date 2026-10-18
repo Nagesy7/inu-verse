@@ -16,13 +16,16 @@ import { carProps } from './ambient.js';
 import { drawCar } from './cars.js';
 import { makeAlive, stepAlive, drawAliveGround, drawAliveSky, ALIVE } from './alive.js';
 import { makeAmbient, stepAmbient, throwBall, dayPhase, timeForHour, drawGroundLife, drawSkyLife, drawAtmosphere, drawEmote, lightsFor, addMail, unreadMail, EMOTES, DAY_LEN } from './ambient.js';
-import { initAudio, setMusicActive, setMuted, isMuted, footstep, chirp, bork, blip, uiClick, uiOpen, uiClose, textBlip, rustle, fanfare } from './audio.js';
+import { initAudio, setMusicActive, setMuted, isMuted, footstep, chirp, bork, blip, uiClick, uiOpen, uiClose, textBlip, rustle, fanfare, cafeChime, munch, sip, clink } from './audio.js';
+import { DISHES, order as dinerOrder, favourite as dinerFav, dishById } from './diner.js';
+import { makeCafePlay } from './cafeplay.js';
+import { drawDishIcon } from './dinerart.js';
 import { CAR_MODELS, CAR_COLORS, ensureGarage, buyCar, carOf } from './garage.js';
 import { PETS, ensurePets, buyPet, renamePet, activePet, followStep, petSprite } from './pets.js';
 import { wallet, TREASURY, DEMO, SOON, demoOnly, kibText, setWallet, kibblePayWallet, GAME as KGAME } from './wallet.js';
 import { ZOOMS, DEFAULT_ZOOM, stepZoom, clampCam } from './zoom.js';
 import { makePresident, startVisit, updatePresident, presidentProps, presidentPresent, talk as presTalk, OUTFIT as PRES_OUTFIT, KINDS as PRES_KINDS } from './president.js';
-import { MALL_ITEMS, quote, buyMallItem, ensureMall, rollPeriods, fmtK, FEE_LABEL, OWNER, OWNER_WALLET, POOL_RULES, FEE_BPS } from './mall.js';
+import { MALL_ITEMS, quote, buyMallItem, ensureMall, rollPeriods, fmtK, FEE_LABEL, OWNER, OWNER_WALLET, POOL_RULES, FEE_BPS, officeTreasuryNote, officeLedgerNote } from './mall.js';
 import { GAMES, boardRows, poolEntries } from './leaderboards.js';
 import { makeCrew, stepCrew, takeGig, drawVest, drawTool, drawCones } from './workers.js';
 import { trending, adProps, adAt } from './coinads.js';
@@ -56,7 +59,8 @@ import * as PAIR from './pairing.js';
 import { ensureFly, featuredOf, statusGlow, poolsOf, FEATURED_SLOTS, claimPresDrop } from './flywheels.js';
 import { makeTown, townHour, lineFor, playerDid, friendsOf, rivalsOf } from './townai.js';
 import { mountCreator, drawPreview, profileOfChoices } from './creatorui.js';
-import { applyCreation, defaultChoices, restyle, SALON_PRICE } from './creator.js';
+import { startTitleFx } from './titlefx.js';
+import { applyCreation, defaultChoices, restyle, SALON_PRICE, HOMES as HOMES_, PATHS as PATHS_, STARTER_OUTFITS as OUTFITS_ } from './creator.js';
 import { profileFromState, hasCustomLook, saveProfile, loadProfile, setProfileStore, kibblePayProfileStore, profileStore } from './profile.js';
 import { TRAITS } from './traits.js';
 import { drawProfileShiba, drawPoseFx } from './art.js';
@@ -157,15 +161,21 @@ function playerCanvas(w, h, scale) { if (!hasCustomLook(state)) return spriteCan
 
 function spriteCanvas(coat, outfit, w, h, scale, face = 'down', art) { const c = document.createElement('canvas'); c.width = w; c.height = h; const x = c.getContext('2d'); x.imageSmoothingEnabled = false; drawShiba(x, w / 2, h - 16, { coat, outfit, scale, face, art: art !== undefined ? art : artKey(coat, outfit) }); return c; }
 function titleScreen() {
-  creator = mountCreator($('#creator'), { choices: { ...defaultChoices(), name: $('#name').value } });
+  // caption under the preview: names what you just picked + the choices the preview can't draw (pronouns, personality, home, path)
+  const capOf = (c, last) => { const t = TRAITS[c.trait], H = HOMES_[c.home], P = PATHS_[c.path], F = OUTFITS_[c.outfit];
+    return `${last ? `<b class="cap-last">${esc(last.row)}: ${esc(last.label)}</b>` : '<b class="cap-last">Pick anything: the preview updates live</b>'}<span>${esc(c.pronouns)} · ${esc(t?.name || '')} · ${esc(F?.name || '')} · ${esc(H?.name || '')}${c.path !== 'none' ? ' · ' + esc(P?.name || '') : ''}</span>`; };
+  let capLast = null; const cap = () => { const el = $('#pv-cap'); if (el) { el.innerHTML = capOf(creator.choices, capLast); el.classList.remove('flash'); void el.offsetWidth; el.classList.add('flash'); } };
+  creator = mountCreator($('#creator'), { choices: { ...defaultChoices(), name: $('#name').value }, onPick: (o) => { initAudio(); uiClick(); if (o.k) { capLast = o; cap(); const pv = $('#preview'); pv.classList.remove('bump'); void pv.offsetWidth; pv.classList.add('bump'); } } });
+  cap(); startTitleFx($('#title-bg'), { alive: () => mode === 'title' && !$('#title').hidden });
+  const fadeIn = (go) => { if ($('#title').classList.contains('leaving')) return; initAudio(); uiClick(); $('#title').classList.add('leaving'); setTimeout(go, 380); }; // smooth fade into the world
   const saved = load(localStorage);
-  if (saved) { $('#continue').hidden = false; $('#continue').onclick = () => startGame(saved); }
-  $('#start').onclick = () => { const ch = { ...creator.choices, name: $('#name').value.trim() || 'Inu' }; const s = newGame({ name: ch.name, coat: 'tan' });
-    applyCreation(s, ch, { ensureFarm, ensureJobs, ensureRel: REL.ensureRel }); seedTokens(s, rng); startGame(s); saveProfile(s); toast(`Welcome to Inu Verse, ${s.player.name}! ${TRAITS[s.player.trait].name}: ${TRAITS[s.player.trait].desc}.`, 'good'); };
+  if (saved) { $('#continue').hidden = false; $('#continue').onclick = () => fadeIn(() => startGame(saved)); }
+  $('#start').onclick = () => fadeIn(() => { const ch = { ...creator.choices, name: $('#name').value.trim() || 'Inu' }; const s = newGame({ name: ch.name, coat: 'tan' });
+    applyCreation(s, ch, { ensureFarm, ensureJobs, ensureRel: REL.ensureRel }); seedTokens(s, rng); startGame(s); saveProfile(s); toast(`Welcome to Inu Verse, ${s.player.name}! ${TRAITS[s.player.trait].name}: ${TRAITS[s.player.trait].desc}.`, 'good'); });
   const pv = $('#preview'), pc = pv.getContext('2d');
   const faces = ['down', 'right', 'up', 'left'];
   const loop = (t) => {
-    if (mode !== 'title') return; pc.imageSmoothingEnabled = false; pc.clearRect(0, 0, pv.width, pv.height);
+    if (mode !== 'title') return; if (globalThis.__titleFreeze != null) t = globalThis.__titleFreeze; pc.imageSmoothingEnabled = false; pc.clearRect(0, 0, pv.width, pv.height);
     const prof = profileOfChoices({ ...creator.choices, name: $('#name').value });
     if (saved) { drawPreview(pc, prof, pv.width * 0.3, t, 'NEW'); const x = pv.width * 0.72, face = faces[Math.floor(t / 1600) % 4];
       pc.fillStyle = '#d4a640'; pc.fillRect(x - 54, 150, 108, 10); pc.fillStyle = '#8f6a22'; pc.fillRect(x - 54, 158, 108, 4); pc.fillStyle = '#24305c'; pc.fillRect(x - 50, 152, 100, 5);
@@ -642,7 +652,7 @@ let roomBuild = null; const gateSt = makePortalState(); const GATE_EXITS = HUB_G
 const roomDoorById = (id) => doorList(state).find((q) => q.id === id) || interactables(state).find((q) => q.id === id);
 function drawRoomActor(c, a, snap) {
   c.save(); c.translate(snap(a.x), snap(a.y)); c.scale(0.5, 0.5);
-  if (a.me) { const look = hasCustomLook(state) ? myProfile() : null, em = player.emote, pz = poseFor({ act: ACT.act, face: player.face });
+  if (a.me) { const look = hasCustomLook(state) ? myProfile() : null, em = player.emote, pz = poseFor({ act: ACT.act, face: player.face }), mm = pz && CP.on ? CP.meMunch(time) : 0; if (mm) { pz.dy += mm * 1.6; pz.rot += (player.face === 'left' ? -1 : 1) * mm * 0.05; } // eating at your café table
     if (look) { drawProfileShiba(c, 0, 0, look, { face: player.face, phase: player.phase, moving: player.moving, name: state.player.name, scale: 1.5, badge: badgeOf(myPack(state)), fid: 'me', emote: em?.kind, pose: pz }); if (em) drawEmote(c, 0, -110, em.kind, time); }
     else drawShiba(c, 0, 0, { coat: state.player.coat, outfit: state.wardrobe.equipped, face: player.face, phase: player.phase, moving: player.moving, name: state.player.name, scale: 1.5, badge: badgeOf(myPack(state)), art: artKey(state.player.coat, state.wardrobe.equipped), emote: em?.kind, fid: 'me', pose: pz });
     if (pz) drawPoseFx(c, pz, 0, 0, 1.5, time, pz.face); if (em && !look) drawEmote(c, 0, -14, em.kind, time); }
@@ -650,9 +660,35 @@ function drawRoomActor(c, a, snap) {
     if (a.profile) drawProfileShiba(c, 0, 0, a.profile, { face: a.face, phase: a.phase, moving: a.moving, name: a.name, scale: 1.5, fid: a.name, emote: a.emote?.kind, pose: pz });
     else drawShiba(c, 0, 0, { coat: a.coat, outfit: a.outfit, face: a.face, phase: a.phase, moving: a.moving, name: a.name, scale: 1.5, art: a.art, emote: a.emote?.kind, fid: a.id, pose: pz });
     if (pz) drawPoseFx(c, pz, 0, 0, 1.5, time, pz.face); if (a.emote) drawEmote(c, 0, a.profile ? -110 : -14, a.emote.kind, time); }
-  else drawShiba(c, 0, 0, { coat: a.coat, outfit: a.outfit || {}, face: a.face, phase: a.phase, moving: a.moving, name: a.name, scale: 1.5, art: artKey(a.coat, a.outfit || {}), fid: a.name, wag: !a.moving });
+  else { drawShiba(c, 0, 0, { coat: a.coat, outfit: a.outfit || {}, face: a.face, phase: a.phase, moving: a.moving, name: a.name, scale: 1.5, art: artKey(a.coat, a.outfit || {}), fid: a.name, wag: !a.moving, pose: a.pose || null }); if (a.emote) drawEmote(c, 0, -14, a.emote.kind, time); }
   c.restore(); }
-const RP = makeRoomPlay({ player, zoom: () => ZOOM, time: () => time, blocked: () => !!panel || feel.talking() || mode !== 'room',
+// ---- Shiba Sips Café, customer side (diner.js + cafeplay.js): menu, table service, seated diners. Fun only: Bones + memory. ----
+const CP = makeCafePlay({ sc: () => RP.sc, R: () => RP.R, solid: (x, y) => sceneSolid(RP.sc, x, y), time: () => time, town: () => state?.town, coatOf: (n) => npcByName(n)?.coat || 'tan',
+  near: (n, r) => Math.hypot(n.x - RP.R.p.x, n.y - RP.R.p.y) < r, chat: (id, t) => chatSay(id, t, time), atSeat: (s) => !!s && Math.hypot(RP.R.p.x - (s.tx + 0.5) * 32, RP.R.p.y - (s.ty + 0.5) * 32) < 18,
+  sfx: (k) => { if (mode !== 'room' || RP.id !== 'cafe') return; if (k === 'order' || k === 'serve') cafeChime(); else if (k === 'munch') munch(); else if (k === 'sip') sip(); else if (k === 'clear') clink(); },
+  onMe: (kind, dish) => { const here = CP.on && CP.K.me && CP.seatOf(CP.K.me.seat) && Math.hypot(RP.R.p.x - (CP.seatOf(CP.K.me.seat).tx + 0.5) * 32, RP.R.p.y - (CP.seatOf(CP.K.me.seat).ty + 0.5) * 32) < 18;
+    if (kind === 'served') { if (here) { if (!ACT.act) startAction(ACT, 'sit', time); player.emote = { kind: dish.emote, t: 2.2 }; chatSay('me', `*${dish.kind === 'drink' ? 'sip' : 'munch'}* ${dish.line}`, time, { force: true }); } toast(here ? `${dish.name} served. Enjoy!` : `Your ${dish.name} is waiting at your table`, 'good'); }
+    else if (kind === 'finished') { if (here) chatSay('me', 'All gone! Thanks, Sesame.', time, { force: true }); }
+    else if (kind === 'cleared') toast('Table cleared', ''); } });
+function openDiner(s) { if (s.act.diner === 'counter') return openPanel('diner', { seat: null });
+  const tx = Math.floor(RP.R.p.x / 32), ty = Math.floor(RP.R.p.y / 32); if (tx !== s.tx || ty !== s.ty) return RP.planTo([s.tx, s.ty], { spot: s }); // walk onto the chair first
+  RP.R.p.x = (s.tx + 0.5) * 32; RP.R.p.y = (s.ty + 0.5) * 32; player.face = s.face; player.v = { x: 0, y: 0 }; startAction(ACT, 'sit', time); openPanel('diner', { seat: s.act.diner }); }
+function renderDiner() { const body = $('#panel-body'), mt = CP.meTicket(), fav = dinerFav(state), have = Math.floor(state.bones);
+  const where = panel.seat ? 'Table service: Server Sesame brings it to your seat.' : 'Order at the counter, then take the free seat we find you.';
+  body.innerHTML = `<h2>Shiba Sips Café: Menu</h2><p class="sub">${where} Priced in Bones (you have <b id="dn-bones">${have}</b>). Just for fun: food never changes speed, stats, scores or prizes.</p>
+   ${mt ? `<p class="small" id="dn-status">Your ${esc(dishById(mt.dish).name)} is ${mt.phase === 'cook' || mt.phase === 'ready' ? 'being made' : mt.phase === 'carry' ? 'on its way' : mt.phase === 'eat' ? 'on your table' : 'finished'}.</p>` : ''}
+   ${fav ? `<p class="small">Your usual: <b>${esc(fav.dish.name)}</b> (ordered ${fav.times}×) <button class="btn ghost tiny" data-dish="${fav.dish.id}" id="dn-usual">Order the usual</button></p>` : ''}
+   <div class="grid" id="dn-grid"></div>`;
+  const grid = $('#dn-grid');
+  for (const d of DISHES) { const card = document.createElement('div'); card.className = 'card'; card.appendChild(iconCanvas((x) => drawDishIcon(x, d.id, 40, 32), 40, 32));
+    card.insertAdjacentHTML('beforeend', `<b>${esc(d.name)}</b><small>${d.kind}</small><button class="btn ${have >= d.price ? 'green' : 'ghost'}" data-dish="${d.id}">${d.price} Bones</button>`); grid.appendChild(card); }
+  body.onclick = (e) => { const b = e.target.closest('[data-dish]'); if (!b) return; uiClick();
+    if (CP.meTicket()) return toast('Your last order is still on its way or on your table', 'bad');
+    const seat = panel.seat ? CP.seatOf(panel.seat) : CP.freeSeat(); if (!seat) return toast('Every table is full right now', 'bad');
+    const r = dinerOrder(state, b.dataset.dish); if (!r.ok) return toast(r.reason, 'bad');
+    CP.placeOrder(r.dish.id, seat.id); hud(); persist(); const counter = !panel.seat; closePanel();
+    toast(`Ordered ${r.dish.name} (-${r.price} Bones)${counter ? `. Take a seat, it's coming to table ${seat.id.slice(1)}` : ''}`, 'good'); if (counter) RP.planTo([seat.tx, seat.ty]); }; }
+const RP = makeRoomPlay({ player, extra: CP, diner: (s) => openDiner(s), zoom: () => ZOOM, time: () => time, blocked: () => !!panel || feel.talking() || mode !== 'room',
   input: () => { let dx = 0, dy = 0; if (!panel) { if (keys.has('w') || keys.has('arrowup')) dy -= 1; if (keys.has('s') || keys.has('arrowdown')) dy += 1; if (keys.has('a') || keys.has('arrowleft')) dx -= 1; if (keys.has('d') || keys.has('arrowright')) dx += 1; }
     return { dx, dy, stick: { x: panel ? 0 : touch.x, y: panel ? 0 : touch.y }, mag: touch.mag || 0, shift: keys.has('shift'), holdRun: player.holdRun }; },
   openPanel: (k, o) => openPanel(k, o), build: (id) => { if (myPack(state)) { roomBuild = { id: RP.id, at: { x: RP.R.p.x, y: RP.R.p.y, face: player.face } }; enterBuild(id); } else openPanel('packs'); },
@@ -672,7 +708,7 @@ function roomPortal(ex) { if (RP.R.busy) return; const r = resolveExit(ex, { out
   RP.R.busy = true; RP.stop(); feel.fade(); blip(520);
   setTimeout(() => { RP.R.busy = false; mode = 'world'; Object.assign(state.player, { x: r.x, y: r.y }); player.face = r.face; player.v = { x: 0, y: 0 }; stopWalk(); doorExit(doorSt, time); gateSt.tile = Math.floor(r.y / TILE) * 1000 + Math.floor(r.x / TILE); gateSt.until = time + 0.8;
     cam.x = r.x; cam.y = r.y; $('#minimap-wrap').hidden = false; wayUi(true); persist(); }, 70); }
-function updateRoom(dt) { feel.step(dt); RP.update(dt); stepActor(ACT, dt, time, { moving: player.moving, busy: !!panel || feel.talking() });
+function updateRoom(dt) { feel.step(dt); RP.update(dt); if (CP.on && CP.K.me && !panel && !player.moving && !ACT.act) { const s = CP.seatOf(CP.K.me.seat); if (s && Math.hypot(RP.R.p.x - (s.tx + 0.5) * 32, RP.R.p.y - (s.ty + 0.5) * 32) < 18) { player.face = s.face; startAction(ACT, 'sit', time); } } stepActor(ACT, dt, time, { moving: player.moving, busy: !!panel || feel.talking() });
   const pr = $('#prompt'), tch = COARSE.matches, s = !panel && RP.nearSpot(); if (s) { pr.hidden = false; pr.innerHTML = `<kbd${tch ? ' class="ta"' : ''}>${tch ? 'A' : 'E'}</kbd>${esc(s.label || s.name)}`; setA((s.verb || 'USE').toUpperCase()); } else { pr.hidden = true; setA(''); } }
 // test hooks for the door/portal walk-in e2e (scripts/doors-e2e.mjs): put the player somewhere with every door disarmed,
 // exactly like a real exit/spawn does (doorExit / preset portal tile), minus the cooldown so trials run fast.
@@ -693,6 +729,7 @@ globalThis.__doorTest = {
   dbg: () => ({ armed: [...doorSt.armed].map((d) => d.id || d), lastTile: doorSt.lastTile, until: doorSt.until, resync: doorSt.resync, time, push: player.push, entering: !!entering, panel: !!panel, arcadeOpen: !!arcadeOpen, drive: !!drive }),
   get st() { return { mode, panel: panel?.kind || null, room: mode === 'room' ? RP.id : null, enters: globalThis.__doorEnters || 0, last: globalThis.__lastDoor || null, portals: globalThis.__portalFires || 0, x: state.player.x, y: state.player.y, rx: RP.R.p.x, ry: RP.R.p.y }; },
 };
+globalThis.__cafe = { CP, get st() { const K = CP.K; return { on: K.on, bones: state.bones, diner: state.diner || null, served: K.served, cleared: K.cleared, me: K.me, tickets: K.svc.tickets.map((t) => ({ who: t.who, seat: t.seat, dish: t.dish, phase: t.phase })), diners: K.diners.map((d) => ({ name: d.name, seat: d.seat, folk: !!d.folk, state: d.npc.state, x: d.npc.x, y: d.npc.y, waiting: d.npc.waitingShift || null })), waiter: K.waiter && { x: K.waiter.x, y: K.waiter.y, carry: K.waiter.carry, task: K.waiter.task } }; } };
 globalThis.__goScene = (id, at) => { mode = 'room'; RP.enter(id, at); roomUi(RP.sc); };
 globalThis.__room = () => mode === 'room' ? { id: RP.id, x: RP.R.p.x, y: RP.R.p.y, tx: Math.floor(RP.R.p.x / 32), ty: Math.floor(RP.R.p.y / 32), pts: player.pw.pts.length, face: player.face, npcs: RP.R.npcs.length, busy: RP.R.busy, cam: { ...RP.R.cam } } : null;
 globalThis.__roomWalk = (tx, ty, run) => RP.planTo([tx, ty], { run });
@@ -763,6 +800,7 @@ function openPanel(kind, opts = {}) {
     $('#claim').onclick = () => { const r = claimPlot(state, p.id); if (r.ok) { state.town && playerDid(state.town, 'You moved into a new home on Bone Street.');  toast('Plot claimed! Your new home is ready.', 'good'); hud(); persist(); closePanel(); enterBuild(p.id, false); } else toast(r.reason, 'bad'); };
   } else if (kind === 'shop') renderShop();
   else if (kind === 'cafe') renderCafe();
+  else if (kind === 'diner') renderDiner();
   else if (kind === 'launch') renderLaunch();
   else if (kind === 'fashion') renderFashion();
   else if (kind === 'wardrobe') renderWardrobe();
@@ -812,6 +850,7 @@ function renderGarage() { const body = $('#panel-body'), g = ensureGarage(state)
     else if (t.dataset.rename) { const n = prompt('New name?'); if (n) { renamePet(state, t.dataset.rename, n); persist(); renderGarage(); } } }; }
 function closePanel() { doorExit(doorSt, time); if (panel?.viaDoor) feel.fade(); const dg = $('#dialog'); if (dg) { dg.style.pointerEvents = ''; dg.style.visibility = ''; }
   if (panel?.kind === 'cafe' && panel.shift && !panel.shift.settled && panel.shift.earned > 0) { finishShift(state, panel.shift); packAct('shift'); toast(`Shift ended early: +${panel.shift.paid} bones`, 'good'); hud(); persist(); }
+  if (panel?.kind === 'cafe') CP.shiftEnded();
   if (panel) uiClose(); panel = null; $('#panel').hidden = true;
 }
 
@@ -877,7 +916,7 @@ function renderWardrobe() {
 // ---- Café ----
 function renderCafe() {
   const body = $('#panel-body');
-  body.innerHTML = `<h2>Shiba Sips Café — Barista shift</h2><p class="sub">Tap menu items to fill your tray, then tap the customer whose order matches. Fast service = bigger tips. ${SHIFT_LEN}s shift.</p>
+  body.innerHTML = `<h2>Shiba Sips Café — Barista shift</h2><p class="sub">Tap menu items to fill your tray, then tap the customer whose order matches. Fast service = bigger tips. ${SHIFT_LEN}s shift. In the café, orders come from the customers seated at the tables.</p>
    <div class="cafe"><div><div class="orders" id="orders"></div><div class="menu" id="menu"></div></div>
    <div><div class="tray"><b>Tray</b> <button class="btn ghost" id="cleartray" style="float:right;padding:2px 8px">clear</button><div id="tray" style="margin-top:8px;min-height:40px"></div></div>
    <p>Time <b id="ctime">${SHIFT_LEN}</b>s · Served <b id="cserved">0</b></p><div>Earned</div><div class="big-num" id="cearned">0</div>
@@ -889,7 +928,7 @@ function renderCafe() {
   for (const m of MENU) { const b = document.createElement('button'); b.dataset.item = m.id; b.appendChild(iconCanvas((x) => drawMenuIcon(x, m.id, 20, 16, 1.2), 40, 32)); b.append(m.name); menu.appendChild(b); }
   menu.onclick = (e) => { const b = e.target.closest('[data-item]'); if (b && panel.shift && !panel.shift.over) { addToTray(panel.shift, b.dataset.item); cafeUi(); } };
   $('#cleartray').onclick = () => { if (panel.shift) { clearTray(panel.shift); cafeUi(); } };
-  $('#orders').onclick = (e) => { const o = e.target.closest('[data-order]'); if (!o || !panel.shift) return; const r = serve(panel.shift, +o.dataset.order); toast(r.ok ? `+${r.pay} bones!` : r.reason, r.ok ? 'good' : 'bad'); cafeUi(); };
+  $('#orders').onclick = (e) => { const o = e.target.closest('[data-order]'); if (!o || !panel.shift) return; const ord = panel.shift.orders.find((x) => x.id === +o.dataset.order), r = serve(panel.shift, +o.dataset.order); if (r.ok && ord) CP.shiftServed(ord); toast(r.ok ? `+${r.pay} bones!` : r.reason, r.ok ? 'good' : 'bad'); cafeUi(); };
   $('#cstart').onclick = () => { panel.shift = newShift(rng); $('#cstart').hidden = true; cafeUi(); };
   $('#orders').innerHTML = '<p class="small">Press Start shift to open the café.</p>';
 }
@@ -909,7 +948,7 @@ function cafeUi() {
   if (s.over && !s.settled) {
     const total = finishShift(state, s); packAct('shift'); hud(); persist();
     $('#orders').innerHTML = `<div class="card" style="width:100%"><h3>Shift complete!</h3><p>Served ${s.served} · missed ${s.failed}${s.served >= 5 ? ' · +25 star bonus' : ''}</p><div class="big-num" id="shift-total">+${total} bones</div></div>`;
-    const b = $('#cstart'); b.hidden = false; b.textContent = 'Work another shift';
+    CP.shiftEnded(); const b = $('#cstart'); b.hidden = false; b.textContent = 'Work another shift';
     toast(`Shift paid: +${total} bones`, 'good');
   }
 }
@@ -1240,9 +1279,9 @@ function renderMall() {
     return;
   }
   if (cat === 'office') {
-    body.innerHTML = `${demo}<h2>President's Office</h2><div class="packhead"><span id="presimg"></span><div><h3 style="margin:0">${OWNER.name}</h3><div class="small">${OWNER.title}</div><div class="small">President's treasury (Solana): <code style="word-break:break-all">${OWNER_WALLET}</code> (simulated — demo KIBBLE only, no on-chain transfers)</div></div></div>${pools}
+    body.innerHTML = `${demo}<h2>President's Office</h2><div class="packhead"><span id="presimg"></span><div><h3 style="margin:0">${OWNER.name}</h3><div class="small">${OWNER.title}</div><div class="small">President's treasury (Solana): <code style="word-break:break-all">${OWNER_WALLET}</code> <span id="office-note">${esc(officeTreasuryNote(DEMO))}</span></div></div></div>${pools}
       <p class="sub">Fee routing per purchase: 1% → President's Treasury · 0.25% → daily pool · 0.5% → weekly pool · 0.25% → monthly pool. All of the price goes to the treasury wallet; the pools are an off-chain ledger, paid out by rank (see Prize Rules).</p>
-      <h3>Fee ledger</h3><div class="board">${m.ledger.map((l) => `<div class="post"><b>${esc(MALL_ITEMS[l.item]?.name || l.item)}</b> price ${fmtK(l.price)} · fee ${fmtK(l.fee)} = owner ${fmtK(l.owner)} + daily ${fmtK(l.daily)} + weekly ${fmtK(l.weekly)} + monthly ${fmtK(l.monthly)}</div>`).join('') || '<p class="small">No purchases yet.</p>'}</div>`;
+      <h3>Fee ledger</h3>${officeLedgerNote(DEMO) ? `<p class="small" id="office-ledger-note">${officeLedgerNote(DEMO)}</p>` : `<div class="board">${m.ledger.map((l) => `<div class="post"><b>${esc(MALL_ITEMS[l.item]?.name || l.item)}</b> price ${fmtK(l.price)} · fee ${fmtK(l.fee)} = owner ${fmtK(l.owner)} + daily ${fmtK(l.daily)} + weekly ${fmtK(l.weekly)} + monthly ${fmtK(l.monthly)}</div>`).join('') || '<p class="small">No purchases yet.</p>'}</div>`}`;
     $('#presimg').appendChild(spriteCanvas('golden', { top: 'gold_suit', hat: 'crown', neck: 'diamond_chain', bottom: 'slacks_black', feet: 'loafers' }, 72, 92, 1));
     return;
   }
@@ -1272,7 +1311,7 @@ function frame(now) {
     liveScores(); // every visible pack score reads packScore() (single source of truth), refreshed in place
     simAcc += dt; while (simAcc >= 1.2) { simAcc -= 1.2; simulateTick(state, rng); if (panel?.kind === 'launch') launchUi(); }
     saveAcc += dt; if (saveAcc > 5) { saveAcc = 0; persist(); }
-    if (panel?.kind === 'cafe' && panel.shift && !panel.shift.settled) { tickShift(panel.shift, dt, rng); cafeUi(); }
+    if (panel?.kind === 'cafe' && panel.shift && !panel.shift.settled) { tickShift(panel.shift, dt, rng); if (mode === 'room' && RP.id === 'cafe') CP.tagShift(panel.shift); cafeUi(); }
   }
   MPL.step(dt); // live multiplayer (no-op when not configured)
   if (JOYS && state && (joyT -= dt) <= 0) { joyT = 0.5; const want = joyPref(state); if (want !== JOYS.on) { JOYS.set(want); joyApi.onChange?.(); } } // saved / cloud-loaded Joystick setting

@@ -29,8 +29,10 @@ export const SCENES = {
     '#P.....,,.....L#',
     '#######EE#######'],
     spawns: { door: [7, 9, 'up'] }, exits: [{ tiles: [[7, 10], [8, 10]], face: 'down', to: 'hub', door: 'cafe' }],
-    spots: [{ id: 'counter', tx: 6, ty: 4, face: 'up', name: 'Café counter', act: { panel: 'cafe' }, label: 'Work a shift' }],
-    npcs: [{ name: 'Barista Biscuit', coat: 'cream', x: 7, y: 2, face: 'down', staff: true, lines: ['One puppy latte, coming up!', 'Grab an apron at the counter if you want a shift!'] },
+    spots: [{ id: 'counter', tx: 6, ty: 4, face: 'up', name: 'Café counter', act: { panel: 'cafe' }, label: 'Work a shift' },
+      { id: 'order', tx: 10, ty: 4, face: 'up', name: 'Order counter', act: { diner: 'counter' }, label: 'Order food & drinks', verb: 'order' }, // customer side (diner.js)
+      ...[[2, 5, 'right'], [4, 5, 'left'], [9, 5, 'right'], [11, 5, 'left'], [2, 7, 'right'], [4, 7, 'left'], [9, 7, 'right'], [11, 7, 'left']].map(([tx, ty, face], i) => ({ id: 's' + (i + 1), tx, ty, face, name: 'Table seat', act: { diner: 's' + (i + 1) }, label: 'Sit & order', verb: 'sit' }))],
+    npcs: [{ name: 'Barista Biscuit', coat: 'cream', x: 7, y: 2, face: 'down', staff: true, lines: ['One puppy latte, coming up!', 'Grab an apron at the counter if you want a shift!', 'Hungry? Order at the counter on the right, or sit at any table.'] },
       { name: 'Latte', coat: 'tan', x: 10, y: 6, wander: true, lines: ['This bone-shaped biscuit is perfect.', 'I come here every morning.'] },
       { name: 'Pebble', coat: 'gray', x: 3, y: 8, wander: true, lines: ['Have you tried the honey scone?', 'Shh, I am reading.'] }] }),
   shop: S({ name: 'Paws & Pillows', kind: 'interior', floor: 'tile', wall: '#8fb3c9', legend: IN, map: [

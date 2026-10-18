@@ -80,7 +80,7 @@ test('portal fires once per visit: not on spawn, not while standing, not facing 
 });
 test('spot actions only use existing panels / build / say / ferry', () => {
   const ok = new Set(['cafe', 'shop', 'fashion', 'wardrobe', 'cars', 'garage', 'bank', 'mall', 'packs']);
-  for (const id of ids) for (const s of scene(id).spots) { const a = s.act; assert.ok((a.panel && ok.has(a.panel)) || a.build === 'clubhouse' || a.say || a.travel, `${id}.${s.id}`); assert.ok(nearestSpot(scene(id), (s.tx + 0.5) * ST, (s.ty + 0.5) * ST) === s); }
+  for (const id of ids) for (const s of scene(id).spots) { const a = s.act; assert.ok((a.panel && ok.has(a.panel)) || a.build === 'clubhouse' || a.say || a.travel || (id === 'cafe' && a.diner), `${id}.${s.id}`); assert.ok(nearestSpot(scene(id), (s.tx + 0.5) * ST, (s.ty + 0.5) * ST) === s); }
 });
 test('original names only: no trademarked game names in scene data', () => {
   const txt = JSON.stringify(SCENES).toLowerCase(); for (const bad of ['club penguin', 'poptropica', 'penguin', 'puffle']) assert.ok(!txt.includes(bad), bad);

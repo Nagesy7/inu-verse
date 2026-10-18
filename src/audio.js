@@ -56,4 +56,9 @@ export function uiOpen() { if (!ac || muted || !gate('open', 0.1, 0.2)) return; 
 export function uiClose() { if (!ac || muted || !gate('close', 0.1, 0.15)) return; const t = ac.currentTime; [784, 587].forEach((f, i) => tone(f, t + i * 0.05, 0.1, 0.025, 'triangle', master)); }
 export function textBlip(f = 620) { if (!ac || muted || !gate('text', 0.035, 0.04)) return; tone(f + Math.random() * 60, ac.currentTime, 0.035, 0.022, 'square', master); }
 export function rustle() { if (!ac || muted || !gate('rustle', 0.12, 0.07)) return; noise(ac.currentTime, 0.07, 0.02, 3000); }
+// café one-shots (diner): each gated with its own cooldown, eat + sip share one gate so they never stack
+export function cafeChime() { if (!ac || muted || !gate('chime', 1.0, 0.5)) return; const t = ac.currentTime; tone(1568, t, 0.35, 0.03, 'sine', master); tone(2093, t + 0.09, 0.4, 0.025, 'sine', master); }
+export function munch() { if (!ac || muted || !gate('eat', 0.9, 0.2)) return; const t = ac.currentTime; noise(t, 0.05, 0.03, 900); noise(t + 0.11, 0.05, 0.025, 1100); }
+export function sip() { if (!ac || muted || !gate('eat', 0.9, 0.25)) return; const t = ac.currentTime; const o = tone(520, t, 0.18, 0.02, 'sine', master); o.frequency.exponentialRampToValueAtTime(780, t + 0.16); }
+export function clink() { if (!ac || muted || !gate('clink', 0.8, 0.2)) return; const t = ac.currentTime; tone(2637, t, 0.12, 0.02, 'triangle', master); tone(3136, t + 0.05, 0.1, 0.015, 'triangle', master); }
 export function fanfare() { if (!ac || muted || !gate('fanfare', 1.5, 1.8)) return; const t = ac.currentTime; [[523, 0, .18], [659, .18, .18], [784, .36, .18], [1047, .54, .5], [784, .9, .16], [1047, 1.06, .7]].forEach(([f, d, l]) => { tone(f, t + d, l, 0.05, 'square', master); tone(f / 2, t + d, l, 0.03, 'sawtooth', master); }); }

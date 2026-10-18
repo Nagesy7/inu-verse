@@ -15,6 +15,7 @@ export function makeRoomPlay(D) {
     R.portal = makePortalState(); R.portal.tile = Math.floor(s.y / ST) * 1000 + Math.floor(s.x / ST); R.portal.until = D.time() + 0.5;
     if (fromHub) R.fromHub = fromHub; R.hist.push(id); if (R.hist.length > 20) R.hist.shift();
     R.npcs = (sc.npcs || []).map((n) => ({ ...n, x: (n.x + 0.5) * ST, y: (n.y + 0.5) * ST, face: n.face || 'down', phase: Math.random() * 6, moving: false, path: [], wait: 1 + Math.random() * 3, home: [n.x, n.y] }));
+    D.extra?.enter?.(R, id); // room-specific runtime (the café's diners + waiter, cafeplay.js)
     R.cam = { x: R.p.x, y: R.p.y }; clampCam(true); return true; }
   function viewW() { return innerWidth / D.zoom(); } function viewH() { return innerHeight / D.zoom(); }
   function clampCam(snap) { const W = R.sc.w * ST, H = R.sc.h * ST, vw = viewW(), vh = viewH(); const tx = W <= vw ? W / 2 : Math.max(vw / 2, Math.min(W - vw / 2, R.p.x)), ty = H <= vh ? H / 2 : Math.max(vh / 2, Math.min(H - vh / 2, R.p.y - 8));
@@ -33,6 +34,7 @@ export function makeRoomPlay(D) {
     if (a.panel) D.openPanel(a.panel, a.opts || {});
     else if (a.build) D.build(a.build);
     else if (a.travel) travel(a.travel, a.at, 'ferry');
+    else if (a.diner) D.diner?.(s);
     else if (a.say) { D.say(s.name, a.say); if (a.emote) D.emote?.(a.emote); if (a.bell) D.bell?.(); } }
   function talk(n) { n.held = 3; n.face = n.x > R.p.x ? 'left' : 'right'; if (Math.abs(n.y - R.p.y) > Math.abs(n.x - R.p.x)) n.face = n.y > R.p.y ? 'up' : 'down'; D.say(n.name, n.lines[Math.floor(Math.random() * n.lines.length)]); D.faceTalk?.(n.name); }
   function nearNpc() { let b = null, bd = 40; for (const n of R.npcs) { const d = Math.hypot(n.x - R.p.x, n.y - R.p.y); if (d < bd) { bd = d; b = n; } } return b; }
@@ -60,13 +62,13 @@ export function makeRoomPlay(D) {
       const ex = portalStep(R.portal, sc, { x: R.p.x, y: R.p.y, face: P.face, moving: P.moving, push: P.push }, D.time(), [...sc.exits, ...walkInExits(sc)]); if (ex) { if (ex.spot) useSpot(ex.spot); else D.portal(ex); } }
     P.phase += P.moving ? dt * (P.running ? 21 : 12) : dt * 2;
     // NPCs: staff stay put (turn to face you when near), customers wander
-    for (const n of R.npcs) { if (n.held > 0) { n.held -= dt; n.moving = false; n.phase += dt * 2; continue; }
+    for (const n of R.npcs) { if (n.ctl) continue; /* driven by D.extra */ if (n.held > 0) { n.held -= dt; n.moving = false; n.phase += dt * 2; continue; }
       if (n.staff) { n.moving = false; n.phase += dt * 2; const d = Math.hypot(n.x - R.p.x, n.y - R.p.y); n.face = d < 90 ? (Math.abs(n.x - R.p.x) > Math.abs(n.y - R.p.y) ? (n.x > R.p.x ? 'left' : 'right') : (n.y > R.p.y ? 'up' : 'down')) : n.face0 || (n.face0 = n.face); continue; }
       if (!n.path.length) { n.moving = false; n.phase += dt * 2; n.wait -= dt; if (n.wait <= 0) { n.wait = 2 + Math.random() * 4; const g = wanderTarget(sc, n, Math.random); if (g) { const pth = MOB.astar(Math.floor(n.x / ST), Math.floor(n.y / ST), g[0], g[1], solid, { w: sc.w, h: sc.h }); if (pth && pth.length < 10) n.path = pth.slice(1); } } continue; }
       const [tx, ty] = n.path[0], gx = (tx + 0.5) * ST, gy = (ty + 0.5) * ST, dx = gx - n.x, dy = gy - n.y, d = Math.hypot(dx, dy), st = 46 * dt;
       if (d <= st) { n.x = gx; n.y = gy; n.path.shift(); } else { n.x += dx / d * st; n.y += dy / d * st; } n.moving = true; n.phase += dt * 10; n.face = MOB.faceOf(dx, dy, n.face); }
     R.chatT -= dt; if (R.chatT <= 0 && R.npcs.length) { R.chatT = 5 + Math.random() * 5; const n = R.npcs[Math.floor(Math.random() * R.npcs.length)]; if (Math.hypot(n.x - R.p.x, n.y - R.p.y) < 260) D.chat?.(n.name, n.lines[Math.floor(Math.random() * n.lines.length)]); }
-    clampCam(false); }
+    D.extra?.update?.(R, dt); clampCam(false); }
   function render(c, dpr) { const sc = R.sc, Z = D.zoom(), SW = innerWidth, SH = innerHeight, vw = SW / Z, vh = SH / Z, t = D.time(), night = D.night?.() && sc.kind === 'zone';
     c.setTransform(dpr, 0, 0, dpr, 0, 0); c.imageSmoothingEnabled = false; c.fillStyle = sc.kind === 'zone' ? '#2f6fb0' : '#141a2e'; c.fillRect(0, 0, SW, SH);
     const q = 1 / (Z * dpr), snap = (v) => Math.round(v / q) * q, ox = snap(vw / 2 - R.cam.x), oy = snap(vh / 2 - R.cam.y);
@@ -76,6 +78,7 @@ export function makeRoomPlay(D) {
     if (P.clickMark && P.pw.pts.length) D.drawMark(c, P.clickMark, t);
     const list = sceneProps(sc, t, night).filter((p) => p.y > -oy - 80 && p.y < -oy + vh + 120);
     for (const n of R.npcs) list.push({ y: n.y + 6, a: { ...n, npc: true } });
+    for (const q of D.extra?.props?.(t) || []) if (q.y > -oy - 80 && q.y < -oy + vh + 120) list.push(q);
     for (const a of D.remotes?.({ x0: -ox, y0: -oy, x1: -ox + vw, y1: -oy + vh }, R.p) || []) list.push({ y: a.y + 6, a }); // live players in this room/zone
     list.push({ y: R.p.y + 6, a: { me: true, x: R.p.x, y: R.p.y } }); list.sort((a, b) => a.y - b.y);
     for (const it of list) { if (!it.a) { it.d(c); continue; } D.drawActor(c, it.a, snap); }
