@@ -1,0 +1,18 @@
+name = "inu-verse-realtime"
+main = "src/worker.js"
+compatibility_date = "2026-10-01"
+
+[vars]
+ROOM_CAP = "40"
+MAX_INSTANCES = "8"
+ALLOWED_ORIGINS = "https://inu-verse-tawny.vercel.app,http://localhost:*,http://127.0.0.1:*"
+KP_URL = "https://kibble-pay.vercel.app"
+
+[[durable_objects.bindings]]
+name = "ROOM"
+class_name = "Room"
+
+# Workers Free plan: Durable Objects must use the SQLite storage backend (new_sqlite_classes).
+[[migrations]]
+tag = "v1"
+new_sqlite_classes = ["Room"]

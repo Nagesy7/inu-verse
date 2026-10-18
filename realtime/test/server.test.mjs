@@ -1,0 +1,50 @@
+// Integration tests against a running worker (wrangler dev). Start it with a small cap so overflow is cheap to test:
+//   npx wrangler dev --port 8787 --var ROOM_CAP:3 --var MAX_INSTANCES:3      then   MP_URL=ws://127.0.0.1:8787 npm test
+// Skipped when MP_URL is unset.
+import test from 'node:test';
+import assert from 'node:assert/strict';
+import WebSocket from 'ws';
+
+const URL0 = process.env.MP_URL, CAP = Number(process.env.MP_CAP || 3), ORIGIN = 'http://localhost:8642';
+const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+function client(room, { origin = ORIGIN, guest } = {}) { return new Promise((res, rej) => {
+  const ws = new WebSocket(`${URL0}/ws?room=${encodeURIComponent(room)}`, { origin }); const c = { ws, msgs: [], welcome: null };
+  ws.on('message', (d) => { const m = JSON.parse(String(d)); c.msgs.push(m); if (m.t === 'w') { c.welcome = m; res(c); } });
+  ws.on('open', () => ws.send(JSON.stringify({ t: 'hi', guest: guest || 'Pup' + (1000 + Math.floor(Math.random() * 9000)), name: 'ignored-for-guests', look: { coat: 'tan', eq: {} }, s: { x: 100, y: 100, f: 'down', ts: Date.now() } })));
+  ws.on('unexpected-response', (_, r) => rej(new Error('http ' + r.statusCode))); ws.on('error', rej); }); }
+const of = (c, t) => c.msgs.filter((m) => m.t === t);
+const room = (n) => `t${n}-${Date.now().toString(36)}`;
+
+test('server: health + origin check', { skip: !URL0 }, async () => {
+  const h = await (await fetch(URL0.replace(/^ws/, 'http') + '/')).json(); assert.equal(h.ok, true);
+  await assert.rejects(client(room('o'), { origin: 'https://evil.example' }), /http 403/); });
+
+test('server: players see each other join, move, chat, emote, quit', { skip: !URL0 }, async () => {
+  const r = room('a'), A = await client(r, { guest: 'Pup1111' }), B = await client(r, { guest: 'Pup2222' });
+  assert.equal(B.welcome.players.length, 1); assert.equal(B.welcome.players[0].name, 'Pup1111');
+  await sleep(150); assert.equal(of(A, 'j')[0].p.name, 'Pup2222');
+  A.ws.send(JSON.stringify({ t: 's', x: 321.3, y: 99, f: 'left', m: 1, ts: Date.now() })); await sleep(200);
+  const s = of(B, 's').at(-1); assert.equal(s.id, A.welcome.id); assert.equal(s.x, 321.5); assert.equal(s.f, 'left');
+  A.ws.send(JSON.stringify({ t: 'c', text: 'hi there fuck www.scam.io' })); A.ws.send(JSON.stringify({ t: 'e', k: 'wave' })); await sleep(200);
+  assert.equal(of(B, 'c')[0].text, 'hi there ****'); assert.equal(of(B, 'e')[0].k, 'wave');
+  A.ws.close(); await sleep(300); assert.equal(of(B, 'q')[0].id, A.welcome.id); B.ws.close(); });
+
+test('server: state rate limit drops updates faster than ~10 Hz', { skip: !URL0 }, async () => {
+  const r = room('r'), A = await client(r), B = await client(r); await sleep(100);
+  for (let i = 0; i < 40; i++) A.ws.send(JSON.stringify({ t: 's', x: 100 + i, y: 100, f: 'down', ts: Date.now() })); // 40 in a burst
+  await sleep(400); const got = of(B, 's').length; assert.ok(got <= 6 && got >= 1, `relayed ${got} of 40`); A.ws.close(); B.ws.close(); });
+
+test('server: chat rate limit (1 per 2 s), filter refusals, size cap', { skip: !URL0 }, async () => {
+  const r = room('c'), A = await client(r), B = await client(r); await sleep(100);
+  A.ws.send(JSON.stringify({ t: 'c', text: 'one' })); A.ws.send(JSON.stringify({ t: 'c', text: 'two' }));
+  A.ws.send(JSON.stringify({ t: 'c', text: 'x'.repeat(5000) })); await sleep(300);
+  assert.deepEqual(of(B, 'c').map((m) => m.text), ['one']); assert.match(of(A, 'no')[0].why, /Slow down/);
+  await sleep(2100); A.ws.send(JSON.stringify({ t: 'c', text: 'my wallet BzLYTFAfUsjzQ5x8bx5BbPK4DFtaHrLCuferkvkxTNGJ' })); await sleep(300);
+  assert.equal(of(B, 'c').length, 1); assert.match(of(A, 'no').at(-1).why, /wallet/); A.ws.close(); B.ws.close(); });
+
+test(`server: room cap ${CAP} -> overflow to instance 2`, { skip: !URL0 }, async () => {
+  const r = room('cap'), cs = []; for (let i = 0; i < CAP + 1; i++) cs.push(await client(r));
+  assert.deepEqual(cs.map((c) => c.welcome.inst), [...Array(CAP).fill(1), 2]);
+  assert.equal(cs[CAP].welcome.players.length, 0); // instance 2 is a separate room
+  cs[0].ws.close(); await sleep(300); const back = await client(r); assert.equal(back.welcome.inst, 1); // freed slot is reused
+  for (const c of [...cs, back]) c.ws.close(); });

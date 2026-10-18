@@ -63,6 +63,7 @@ import { stepChat, drawChat, emoteBubble } from './chat.js';
 import { buildDrawer, drawerOpen } from './hudmenu.js';
 import { makeDoorState, doorStep, doorExit, outsideOf } from './doors.js';
 import { isDoor, doorList, doorDir, COMMUNITY } from './world.js';
+import { createMultiplayer } from './multiplayer.js';
 import { ensurePacks, myPack, meIn, createPack, joinPack, leavePack, kickMember, recruitNpc, contribute, buyForPack, donateFurniture, upgradeClubhouse, placePackFurniture, movePackFurniture, storePackFurniture, postToBoard, recordActivity, memberScore, packScore, leaderboard, simulatePacks, packOfName, PACK_CREATE_COST, EMBLEMS, SEASON, SCORE, ME } from './packs.js';
 
 const $ = (s) => document.querySelector(s);
@@ -486,7 +487,7 @@ function renderWorld() {
   if (player.clickMark && player.pw.pts.length) { const m = player.clickMark, X = Math.round(m.x), Y = Math.round(m.y + 8), k = 7 + Math.round((Math.sin(time * 7) + 1) * 1.5), col = m.npc ? '#ff9ac0' : '#f2cc68'; // destination marker: pixel ring + bobbing arrow
     ctx.fillStyle = '#141a2e'; ctx.fillRect(X - k - 1, Y - 3, 2 * k + 2, 6); ctx.fillRect(X - k + 2, Y - 5, 2 * k - 4, 10); ctx.fillStyle = col; ctx.fillRect(X - k, Y - 2, 2 * k, 4); ctx.fillRect(X - k + 3, Y - 4, 2 * k - 6, 8); ctx.fillStyle = '#141a2e'; ctx.fillRect(X - k + 3, Y - 1, 2 * k - 6, 2); ctx.fillRect(X - k + 5, Y - 2, 2 * k - 10, 4);
     const ay = Y - 22 + Math.round(Math.sin(time * 6) * 2); ctx.fillStyle = '#141a2e'; ctx.fillRect(X - 5, ay - 1, 10, 5); ctx.fillRect(X - 3, ay + 4, 6, 2); ctx.fillRect(X - 1, ay + 6, 2, 2); ctx.fillStyle = col; ctx.fillRect(X - 4, ay, 8, 3); ctx.fillRect(X - 2, ay + 3, 4, 2); }
-  const actors = [...npcs.map((n) => ({ ...n, npc: true, badge: badgeOf(packOfName(state, n.name)) })), ...(drive ? [] : [{ x: state.player.x, y: state.player.y, coat: state.player.coat, outfit: state.wardrobe.equipped, face: player.face, phase: player.phase, moving: player.moving, name: state.player.name, me: true, badge: badgeOf(myPack(state)), emote: player.emote, art: artKey(state.player.coat, state.wardrobe.equipped), profile: hasCustomLook(state) ? myProfile() : null }]), ...streetPups(), ...presActors(), ...petActors(), ...crewActors(), ...pupActors()];
+  const actors = [...npcs.map((n) => ({ ...n, npc: true, badge: badgeOf(packOfName(state, n.name)) })), ...(drive ? [] : [{ x: state.player.x, y: state.player.y, coat: state.player.coat, outfit: state.wardrobe.equipped, face: player.face, phase: player.phase, moving: player.moving, name: state.player.name, me: true, badge: badgeOf(myPack(state)), emote: player.emote, art: artKey(state.player.coat, state.wardrobe.equipped), profile: hasCustomLook(state) ? myProfile() : null }]), ...streetPups(), ...presActors(), ...petActors(), ...crewActors(), ...pupActors(), ...MPL.actors(view, state.player)];
   // one depth-sorted list: static props (culled), dynamic props and actors, by ground y
   const L = -ox - 200, Rt = -ox + vw + 200, Tp = -oy - 60, Bt = -oy + vh + 400, list = [];
   for (const p of mapImg.props) if (p.y > Tp && p.y < Bt) list.push(p);
@@ -510,7 +511,7 @@ function renderWorld() {
     if (a.emote) drawEmote(ctx, 0, a.name ? -14 : 0, a.emote.kind, time); ctx.restore();
   }
   feel.drawAir(ctx);
-  drawChat(ctx, (id) => { if (id === 'me') return drive ? null : { x: state.player.x, y: state.player.y - 60 }; const n = npcs.find((q) => q.name === id); return n && { x: n.x, y: n.y - (n.pupScale ? 40 * n.pupScale + 10 : 60) - (n.badge || packOfName(state, n.name) ? 8 : 0) }; }, time);
+  drawChat(ctx, (id) => { if (id === 'me') return drive ? null : { x: state.player.x, y: state.player.y - 60 }; const n = npcs.find((q) => q.name === id); return n ? { x: n.x, y: n.y - (n.pupScale ? 40 * n.pupScale + 10 : 60) - (n.badge || packOfName(state, n.name) ? 8 : 0) } : MPL.anchor(id); }, time);
   drawSkyLife(ctx, amb, phase); drawAliveSky(ctx, ALIVE, view, phase);
   const it = !panel && nearestInteractable(state, state.player.x, state.player.y); if (it) feel.bubble(ctx, (it.tx + 0.5) * TILE, (it.ty) * TILE - 6, time);
   guide.drawWorld(ctx, time, state.player);
@@ -1106,10 +1107,15 @@ function frame(now) {
     saveAcc += dt; if (saveAcc > 5) { saveAcc = 0; persist(); }
     if (panel?.kind === 'cafe' && panel.shift && !panel.shift.settled) { tickShift(panel.shift, dt, rng); cafeUi(); }
   }
+  MPL.step(dt); // live multiplayer (no-op when not configured)
   if (mode === 'world') { updateWorld(dt); renderWorld(); drawSceneBars(); }
   else if (mode === 'build') { $('#prompt').hidden = true; renderBuild(); }
   requestAnimationFrame(frame);
 }
+// Live multiplayer: other players in the same room ('city' while walking the world). Off unless /api/config has a realtimeUrl.
+const MPL = createMultiplayer({ toast, now: () => time, getLocal: () => state && { room: mode === 'world' ? 'city' : null, x: state.player.x, y: state.player.y, f: player.face, m: player.moving, r: player.running, d: !!drive, emote: player.emote,
+  name: state.player.name, token: K.kp?.session || null, look: { coat: state.player.coat, eq: state.wardrobe.equipped, pl: hasCustomLook(state) ? myProfile() : null } } });
+MPL.start().catch(() => {});
 titleScreen(); requestAnimationFrame(frame);
 cv.addEventListener('wheel', (e) => { if (mode !== 'world') return; e.preventDefault(); const now = performance.now(); if (now - (cv._wz || 0) < 180) return; cv._wz = now; setZoom(stepZoom(ZOOM, e.deltaY < 0 ? 1 : -1)); }, { passive: false });
 { let pinch = null; const dist = (t) => Math.hypot(t[0].clientX - t[1].clientX, t[0].clientY - t[1].clientY);
@@ -1117,6 +1123,6 @@ cv.addEventListener('wheel', (e) => { if (mode !== 'world') return; e.preventDef
   cv.addEventListener('touchmove', (e) => { if (!pinch || e.touches.length !== 2) return; const d = dist(e.touches); if (d / pinch > 1.35) { setZoom(stepZoom(ZOOM, 1)); pinch = d; } else if (pinch / d > 1.35) { setZoom(stepZoom(ZOOM, -1)); pinch = d; } }, { passive: true });
   cv.addEventListener('touchend', (e) => { if (e.touches.length < 2) pinch = null; }, { passive: true }); }
 document.getElementById('zin')?.addEventListener('click', () => setZoom(stepZoom(ZOOM, 1))); document.getElementById('zout')?.addEventListener('click', () => setZoom(stepZoom(ZOOM, -1)));
-window.__inu = { guide, open: (k, o) => openPanel(k, o), get time() { return time; }, get player() { return player; }, get zoom() { return ZOOM; }, setZoom, president: pres, presVisit: (k) => startVisit(pres, k, { dayLen: DAY_LEN }), setHour: (h) => { dayOffset = timeForHour(h) - time; }, setRain: (r) => { amb.rain = amb.rainTarget = r; amb.weatherT = 999; }, get amb() { return amb; }, get npcs() { return npcs; }, emote: (k) => doEmote(k), cam, get state() { return state; }, get mode() { return mode; }, get panel() { return panel?.kind; }, get panelObj() { return panel; } };
+window.__inu = { guide, open: (k, o) => openPanel(k, o), get time() { return time; }, get player() { return player; }, get zoom() { return ZOOM; }, setZoom, president: pres, presVisit: (k) => startVisit(pres, k, { dayLen: DAY_LEN }), setHour: (h) => { dayOffset = timeForHour(h) - time; }, setRain: (r) => { amb.rain = amb.rainTarget = r; amb.weatherT = 999; }, get amb() { return amb; }, get npcs() { return npcs; }, emote: (k) => doEmote(k), cam, get state() { return state; }, get mode() { return mode; }, get panel() { return panel?.kind; }, get panelObj() { return panel; }, mp: MPL };
 // Inu Arcade inside the desktop overlay: its 🏠 button asks us to close the overlay instead of reloading.
 addEventListener('message', (e) => { if (e.origin === new URL(ARCADE.url).origin && e.data?.type === 'inu:back-to-verse' && arcadeOpen) { closeArcade(); try { e.source?.postMessage({ type: 'inu:verse-closed' }, e.origin); } catch {} } });
