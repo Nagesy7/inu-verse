@@ -11,6 +11,7 @@ import { OPT_IN_KEY } from './engine.js';
 import { POLICE, fineFor, heldNow, canPolice } from './police.js';
 import { COURT, hear } from './court.js';
 import { MED, AILMENTS, callAt, canInjure, canTreat, hurtNow, slowFactor, freshMed } from './medical.js';
+import { FIRE, eventAt, canAttend, freshFire } from './fire.js';
 export const STORE_KEY = 'inu.sim.pm.v1', MAX_UNSYNCED = 200;
 const hex = (bytes) => { const a = new Uint8Array(bytes); globalThis.crypto.getRandomValues(a); return Array.from(a, (b) => b.toString(16).padStart(2, '0')).join(''); };
 
@@ -30,7 +31,7 @@ export function createPawWallet({ store = globalThis.localStorage, now = () => D
   const w = {
     get pid() { return st.pid; }, account: acct,
     state: () => { const c = cur(), ps = c.police || {}; return { balance: c.balance, joined: c.joined, seq: c.seq, head: c.head, unsynced: st.entries.length, anchoredSeq: st.base.seq, server: status.server, note: status.note,
-      held: heldNow(ps, now()) ? { ...ps.held, leftMs: ps.held.ts + ps.held.sec * 1000 - now() } : null, heldRecord: ps.held || null, owed: { ...(ps.owed || {}) }, citesToday: ps.day === Math.floor(now() / 864e5) ? ps.cites : 0, verdictsToday: ps.court?.day === Math.floor(now() / 864e5) ? ps.court.verdicts : 0, med: medState(c.med, now()) }; },
+      held: heldNow(ps, now()) ? { ...ps.held, leftMs: ps.held.ts + ps.held.sec * 1000 - now() } : null, heldRecord: ps.held || null, owed: { ...(ps.owed || {}) }, citesToday: ps.day === Math.floor(now() / 864e5) ? ps.cites : 0, verdictsToday: ps.court?.day === Math.floor(now() / 864e5) ? ps.court.verdicts : 0, med: medState(c.med, now()), fire: fireState(c.fire, now()) }; },
     joined: () => cur().joined, balance: () => cur().balance, entries: () => st.entries.map((e) => ({ ...e })),
     join() { if (cur().joined) return null; try { store?.setItem(OPT_IN_KEY, 'yes'); } catch {} return append('wallet.join', acct(), acct()); },
     leave() { if (!cur().joined) return null; try { store?.removeItem(OPT_IN_KEY); } catch {} return append('wallet.leave', acct(), acct()); },
@@ -69,6 +70,14 @@ export function createPawWallet({ store = globalThis.localStorage, now = () => D
     treatCall(slot, slips = 0) { const c = callAt(slot); if (!cur().joined) throw new FirewallError('optin', 'join the side economy first'); if (!c) throw new FirewallError('evidence', 'no such call');
       const t = append('med.treat', c.pt, acct(), 0, { call: c.slot, ail: c.ail, slips }); const q = w.quote('wage'); let wage = null;
       if (q.ok) wage = append('pm.wage', acct(), ISSUER, q.amount, { why: 'medic shift', for: t.seq }); return { treat: t, wage, reason: q.ok ? '' : q.reason }; },
+    // Phase 6 town events + firefighter shifts. Events need the side economy AND town events switched on (fire.optin); a
+    // shift answers a SEEDED incident (there is no way to start one) and then takes the normal sim wage, once.
+    eventsOn() { const c = cur(); if (!c.joined) throw new FirewallError('optin', 'join the side economy first'); return c.fire?.opted ? null : append('fire.optin', acct(), acct()); },
+    eventsOff() { return cur().fire?.opted ? append('fire.optout', acct(), acct()) : null; },
+    canAttend: (slot) => canAttend(cur().fire, now(), slot, cur().joined),
+    attendCall(slot, slips = 0) { const c = eventAt(slot); if (!cur().joined) throw new FirewallError('optin', 'join the side economy first'); if (!c || c.quiet) throw new FirewallError('evidence', 'no incident on that slot');
+      const a = append('fire.attend', c.actor, acct(), 0, { call: c.slot, kind: c.kind, spot: c.spot, slips }); const q = w.quote('wage'); let wage = null;
+      if (q.ok) wage = append('pm.wage', acct(), ISSUER, q.amount, { why: 'fire shift', for: a.seq }); return { attend: a, wage, reason: q.ok ? '' : q.reason }; },
     // push unsynced entries to the anchor; on a fork the server checkpoint wins (it is the record)
     async sync() {
       try {
@@ -83,7 +92,8 @@ export function createPawWallet({ store = globalThis.localStorage, now = () => D
   };
   return w;
 }
-const cpOf = (a) => ({ seq: a.seq, head: a.head, ts: a.ts, balance: a.balance, joined: a.joined, flows: a.flows || {}, police: a.police || freshCheckpoint().police, med: a.med || freshMed() });
+const cpOf = (a) => ({ seq: a.seq, head: a.head, ts: a.ts, balance: a.balance, joined: a.joined, flows: a.flows || {}, police: a.police || freshCheckpoint().police, med: a.med || freshMed(), fire: a.fire || freshFire() });
 function medState(md0, t) { const md = { ...freshMed(), ...(md0 || {}) }, today = md.day === Math.floor(t / 864e5);
   return { bumps: !!md.opted, hurt: md.hurt ? { ...md.hurt, live: hurtNow(md, t), leftMs: Math.max(0, md.hurt.ts + md.hurt.sec * 1000 - t), label: AILMENTS[md.hurt.ail]?.label } : null, slow: slowFactor(md, t),
     injuriesToday: today ? md.injuries : 0, treatsToday: today ? md.treats : 0, calls: [...md.calls], cares: { ...md.cares } }; }
+function fireState(f0, t) { const f = { ...freshFire(), ...(f0 || {}) }, today = f.day === Math.floor(t / 864e5); return { events: !!f.opted, callsToday: today ? f.n : 0, calls: [...f.calls], cap: FIRE.callsPerDay }; }

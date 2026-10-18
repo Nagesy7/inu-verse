@@ -61,6 +61,10 @@ export function cafeChime() { if (!ac || muted || !gate('chime', 1.0, 0.5)) retu
 export function munch() { if (!ac || muted || !gate('eat', 0.9, 0.2)) return; const t = ac.currentTime; noise(t, 0.05, 0.03, 900); noise(t + 0.11, 0.05, 0.025, 1100); }
 export function sip() { if (!ac || muted || !gate('eat', 0.9, 0.25)) return; const t = ac.currentTime; const o = tone(520, t, 0.18, 0.02, 'sine', master); o.frequency.exponentialRampToValueAtTime(780, t + 0.16); }
 export function clink() { if (!ac || muted || !gate('clink', 0.8, 0.2)) return; const t = ac.currentTime; tone(2637, t, 0.12, 0.02, 'triangle', master); tone(3136, t + 0.05, 0.1, 0.015, 'triangle', master); }
+// Sim fire engine (Phase 6): ONE soft cartoon "wee-woo" per call-out. The sim asks via a DOM event (it never imports audio);
+// the 45 s gate here plus the sim's own cooldown mean two sirens never stack, and mute/limiter rules apply as for every SFX.
+export function siren() { if (!ac || muted || !gate('siren', 45, 1.8)) return false; const t = ac.currentTime; for (let i = 0; i < 4; i++) tone(i % 2 ? 660 : 880, t + i * 0.4, 0.36, 0.025, 'triangle', master); globalThis.__inuSirens = (globalThis.__inuSirens || 0) + 1; return true; }
+if (typeof addEventListener !== 'undefined') addEventListener('inu:sim-sfx', (e) => { if (e?.detail?.name === 'siren') siren(); });
 export function fanfare() { if (!ac || muted || !gate('fanfare', 1.5, 1.8)) return; const t = ac.currentTime; [[523, 0, .18], [659, .18, .18], [784, .36, .18], [1047, .54, .5], [784, .9, .16], [1047, 1.06, .7]].forEach(([f, d, l]) => { tone(f, t + d, l, 0.05, 'square', master); tone(f / 2, t + d, l, 0.03, 'sawtooth', master); }); }
 // Town crier "EXTRA!" bell for Verified Launch news: ONE sound, own gate with a long cooldown, so headlines never stack sounds.
 export const CRIER_SFX_CD = 20;

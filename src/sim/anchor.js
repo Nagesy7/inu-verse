@@ -13,20 +13,21 @@ import { policeStep, freshPolice } from './police.js';
 import { courtStep, COURT } from './court.js';
 import { DAY_MS } from './economy.js';
 import { medStep, freshMed, MED_ACTIONS } from './medical.js';
+import { fireStep, freshFire, FIRE_ACTIONS } from './fire.js';
 export const LIMITS = Object.freeze({ maxBody: 24000, maxEntries: 40, keepHeads: 50, maxLength: 50000, pidEverySec: 2, ipEverySec: 1, futureMs: 120000, maxData: 300, altsPerIpDay: 4 });
 export const K = Object.freeze({ anchor: (pid) => `sim:anchor:${pid}`, lock: (pid) => `sim:lock:${pid}`, pidRate: (pid) => `sim:rl:${pid}`, ipRate: (h) => `sim:rlip:${h}`, alt: (h, day, n) => `sim:alt:${h}:${day}:${n}` });
-export const PLAYER_ACTIONS = Object.freeze(['wallet.join', 'wallet.leave', 'pm.wage', 'pm.fine', 'pm.bail', 'police.cite', 'police.detain', 'police.release', 'court.verdict', 'pm.refund', ...MED_ACTIONS]);
-const MEDDED = new Set(MED_ACTIONS); // Phase 5: medStep checks the parties of every medical entry itself
+export const PLAYER_ACTIONS = Object.freeze(['wallet.join', 'wallet.leave', 'pm.wage', 'pm.fine', 'pm.bail', 'police.cite', 'police.detain', 'police.release', 'court.verdict', 'pm.refund', ...MED_ACTIONS, ...FIRE_ACTIONS]);
+const MEDDED = new Set([...MED_ACTIONS, ...FIRE_ACTIONS]); // Phase 5: medStep checks the parties of every medical entry itself
 const COURTED = new Set(['court.verdict', 'pm.refund']);
 const POLICED = new Set(['police.cite', 'police.detain']);
 export const PID = /^p[0-9a-f]{16}$/, TOKEN = /^[0-9a-f]{48}$/;
 export const tokenHash = (t) => sha256('pab-anchor|' + t);
-export const freshCheckpoint = () => ({ seq: 0, head: GENESIS, ts: 0, balance: 0, joined: false, flows: {}, police: freshPolice(), med: freshMed() });
-const pub = (a) => a && { pid: a.pid, seq: a.seq, head: a.head, ts: a.ts, balance: a.balance, joined: a.joined, flows: a.flows, police: a.police || freshPolice(), med: a.med || freshMed(), heads: a.heads, updatedAt: a.updatedAt };
+export const freshCheckpoint = () => ({ seq: 0, head: GENESIS, ts: 0, balance: 0, joined: false, flows: {}, police: freshPolice(), med: freshMed(), fire: freshFire() });
+const pub = (a) => a && { pid: a.pid, seq: a.seq, head: a.head, ts: a.ts, balance: a.balance, joined: a.joined, flows: a.flows, police: a.police || freshPolice(), med: a.med || freshMed(), fire: a.fire || freshFire(), heads: a.heads, updatedAt: a.updatedAt };
 
 // Replays entries on top of a checkpoint with every rule the server enforces. Throws on the first bad entry. Shared with the client.
 export function advance(cp, entries, acct, { now = Infinity } = {}) {
-  let { seq, head, ts, balance, joined, flows } = cp, police = cp.police || freshPolice(), med = cp.med || freshMed();
+  let { seq, head, ts, balance, joined, flows } = cp, police = cp.police || freshPolice(), med = cp.med || freshMed(), fire = cp.fire || freshFire();
   for (const e of entries) {
     if (!e || typeof e !== 'object') throw new FirewallError('chain', 'not an entry');
     if (e.seq !== seq) throw new FirewallError('chain', `expected seq ${seq}, got ${e.seq}`);
@@ -42,12 +43,13 @@ export function advance(cp, entries, acct, { now = Infinity } = {}) {
     police = COURTED.has(e.action) ? courtStep(police, e, acct, { joined }) // Phase 4: verdicts (re-decided here) + refunds of exactly what was paid
       : policeStep(police, e, acct, { joined, balance }); // citations, detentions (<= 60 s, opt-in only), fines, bail, releases
     med = medStep(med, e, acct, { joined }); // Phase 5: cartoon bumps (opt-in, <= 60 s), free care, optional co-pay, medic calls + their wages
+    fire = fireStep(fire, e, acct, { joined }); // Phase 6: town events opt-in, seeded fire call-outs + their wages (no action starts a fire)
     flows = applyFlow(flows, e);
     balance = balances([e], { [acct]: balance }).get(acct) || 0; if (balance < 0) throw new FirewallError('economy', `entry ${e.seq}: not enough ${CURRENCY.short}`);
     if (e.action === 'wallet.join') joined = true; if (e.action === 'wallet.leave') joined = false;
     seq++; head = e.hash; ts = e.ts;
   }
-  return { seq, head, ts, balance, joined, flows, police, med };
+  return { seq, head, ts, balance, joined, flows, police, med, fire };
 }
 
 const getA = async (kv, pid) => { const r = await kv.get(K.anchor(pid)); return r ? JSON.parse(r) : null; };

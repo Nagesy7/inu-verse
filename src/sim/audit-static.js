@@ -17,6 +17,10 @@ export const STATIC = {
   "src/sim/currency.js",
   "src/sim/economy.js",
   "src/sim/engine.js",
+  "src/sim/fire.js",
+  "src/sim/fireart.js",
+  "src/sim/firehouse.js",
+  "src/sim/fireui.js",
   "src/sim/firewall.js",
   "src/sim/force.js",
   "src/sim/ledger.js",
@@ -86,5 +90,5 @@ export const STATIC = {
   "bonesSwap": true,
   "randomPaid": []
  },
- "fingerprint": "cc7f600ef327ad08"
+ "fingerprint": "f0a719f009db1bb8"
 };

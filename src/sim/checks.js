@@ -19,6 +19,8 @@ import { createPatrol } from './patrol.js';
 import { COURT, GROUNDS, hear, facts, createTrial, BENCH_IDS } from './court.js';
 import { MED, AILMENTS, HAZARDS, PATIENT_IDS, MED_ACTIONS, callAt, slotAt, grade, stepOrder } from './medical.js';
 import { createClinic } from './clinic.js';
+import { FIRE, INCIDENTS, INCIDENT_ACTORS, SPOTS, FIRE_ACTIONS, CREW_IDS, CONSTABLE, eventAt, fireSlotAt, fireGrade, fireOrder } from './fire.js';
+import { sceneAt } from './firehouse.js';
 
 export const PAWMARK_EXPORTS = ['PAWMARK', 'ISSUER', 'SINK', 'validAccount', 'balances'];
 export const CHECK_NAMES = ['Action log', 'Prize firewall', 'Main economy firewall', 'Side currency is one-way', 'No cash-out', 'Corrupt-cop branch',
@@ -129,8 +131,8 @@ function c4(S) { const ev = [], keys = Object.keys(PM).sort(), exact = JSON.stri
     `non-sim files reaching into src/sim: ${S.outside.map((o) => o.file).join(', ') || 'none'} (allowed: ${S.allowedOutside.join(', ')})`);
   const LOG_VIA = ['../src/sim/anchor.js', '../src/sim/sha256.js', './_lib/kv.js'], r = Object.fromEntries(S.routes.map((x) => [x.file, x]));
   const routesOk = S.routes.length === 2 && r['api/sim-audit.js'] && !r['api/sim-audit.js'].writes && r['api/sim-log.js'] && r['api/sim-log.js'].via.every((v) => LOG_VIA.includes(v));
-  const actionsOk = PLAYER_ACTIONS.every((a) => ['wallet.join', 'wallet.leave', 'pm.wage', 'pm.fine', 'pm.bail', 'police.cite', 'police.detain', 'police.release', 'court.verdict', 'pm.refund', 'med.optin', 'med.optout', 'med.injury', 'med.heal', 'med.care', 'med.treat', 'pm.copay'].includes(a));
-  ev.push(`anchor accepts only ${PLAYER_ACTIONS.join(', ')} (wages in, fines/bail destroyed, police entries, verdicts, bumps, treatments and medic calls carry no amount, a refund only returns a dismissed record's own fine/bail, the optional clinic co-pay is destroyed; nothing out): ${actionsOk}`);
+  const actionsOk = PLAYER_ACTIONS.every((a) => ['wallet.join', 'wallet.leave', 'pm.wage', 'pm.fine', 'pm.bail', 'police.cite', 'police.detain', 'police.release', 'court.verdict', 'pm.refund', 'med.optin', 'med.optout', 'med.injury', 'med.heal', 'med.care', 'med.treat', 'pm.copay', 'fire.optin', 'fire.optout', 'fire.attend'].includes(a));
+  ev.push(`anchor accepts only ${PLAYER_ACTIONS.join(', ')} (wages in, fines/bail destroyed, police entries, verdicts, bumps, treatments and medic calls carry no amount, a refund only returns a dismissed record's own fine/bail, the optional clinic co-pay is destroyed, fire call-outs carry no amount and nothing can start a fire; nothing out): ${actionsOk}`);
   const outsideOk = S.outside.every((o) => S.allowedOutside.includes(o.file) && o.imports.every((i) => !/pawmarks|engine|ledger/.test(i)));
   return { pass: exact && flags && empty(S.conversion) && routesOk && actionsOk && outsideOk && empty(S.economy), ev }; }
 
@@ -241,7 +243,20 @@ async function c9() { const ev = [], stats = { grit: 5, wits: 5, heart: 5, pace:
   const bp = await bump({}), br = await bump({ outfit: rich.outfit, kibble: 1e6, bones: 1e9, items: ['alpha_kennel'], score: 99999, vip: true });
   const medSame = gSame === 200 && JSON.stringify(bp) === JSON.stringify(br) && bp.out.length > 0;
   ev.push(`clinic: 200 treatment mini-tasks graded identically for a plain pup and one in the priciest $KIBBLE cosmetics: ${gSame === 200} (${gDone} done); the same walk gives the same bumps (${bp.out.join(', ') || 'none'}) and the same medic wage quote (${bp.wage}): ${medSame}`);
-  return { pass: same === 200 && onlyStats && pSame === 200 && pHits > 20 && viewOnly && vSame === 200 && vDismissed > 10 && vUpheld > 10 && medSame && gDone > 20 && gDone < 200, ev }; }
+  // Phase 6: 200 fire mini-tasks graded for a plain pup and a dressed-up one; the seeded scene and the fire wage are the same for both
+  let fSame = 0, fDone = 0; for (let i = 0; i < 200; i++) { const kind = Object.keys(INCIDENTS)[i % 4], ord = fireOrder(i, kind), taps = i % 5 === 4 ? [2, 2, 1, 2, 0, 1, 2] : [ord[i % 3], ...[0, 1, 2]].slice(i % 2);
+    const a = JSON.stringify(fireGrade({ kind, taps })), b = JSON.stringify(fireGrade({ kind, taps, player: rich, look: rich.outfit, kibble: 1e6, cosmetics: ['crown'] })); if (a === b) fSame++; if (JSON.parse(a).done) fDone++; }
+  let sSame = 0; for (let i = 0; i < 120; i++) { const ms = 1.8e12 + i * 41e3; if (JSON.stringify(sceneAt(ms, { events: true })) === JSON.stringify(sceneAt(ms, { events: true, ...rich, look: rich.outfit, cosmetics: ['crown'] }))) sSame++; }
+  const fw = async (extra) => { const F = await fireRig(); const r = F.attend(); void extra; return { paid: r.wage?.value.amount ?? 0, quote: F.w.quote('wage').amount }; };
+  const fp = await fw(null), fr = await fw({ outfit: rich.outfit, kibble: 1e6 }); const fireSame = fSame === 200 && sSame === 120 && JSON.stringify(fp) === JSON.stringify(fr) && fp.paid > 0;
+  ev.push(`firehouse: 200 fire mini-tasks graded identically for a plain pup and one in the priciest $KIBBLE cosmetics: ${fSame === 200} (${fDone} done); 120 seeded scenes identical (${sSame === 120}); the same call-out pays the same fire wage (${fp.paid}): ${fireSame}`);
+  return { pass: same === 200 && onlyStats && pSame === 200 && pHits > 20 && viewOnly && vSame === 200 && vDismissed > 10 && vUpheld > 10 && medSame && gDone > 20 && gDone < 200 && fireSame && fDone > 20 && fDone < 200, ev }; }
+
+// Phase 6: a joined player with town events on, waited (rig time) until an ordinary seeded call-out is open
+export async function fireRig({ wages = 0, events = true } = {}) { const PR = await policeRig({ wages }), { R, w } = PR; if (events) w.eventsOn();
+  const open = (pred = (c) => !c.quiet) => { for (let i = 0; i < 400; i++) { const c = eventAt(fireSlotAt(R.now())); if (c && pred(c) && R.now() - c.start < 30e3) return c; R.tick(30e3); } throw new Error('no open call'); };
+  const attend = (slips = 0) => { const c = open(); return { c, ...w.attendCall(c.slot, slips) }; };
+  return { ...PR, open, attend }; }
 
 function c10(S) { const s = sandbox(), ev = [];
   const fields = RT.walletFields.filter((k) => throwsFw(() => s.register({ id: 'sim:w', group: 'fire', look: { [k]: 'x' } }), 'wallet'));
@@ -295,7 +310,9 @@ async function c11() { const ev = [], s = sandbox();
   ev.push(`courts: only players who opted in can contest, and only their own records (${courtOptIn}); trials are capped at ${COURT.trialSec} s with a walk-out that keeps the original outcome (check 7)`);
   // ---- Phase 5: the clinic. Opt-in twice, <= 60 s, always a way out, nobody blocked, no farming ----
   const med = await clinicChecks(); ev.push(...med.ev);
-  const arrests = med.pass && courtOptIn && notJoined && strangerCite === 422 && early && noPriors === 422 && over60 && eLong && longHold === 422 && isHeld && anchoredA && bail && expired && walk && optOut && leave && dSync.unsynced === 0 && walkedAway && self === 422 && eSelf && citeCap && altOk;
+  // ---- Phase 6: the firehouse. Opt-in, seeded incidents only (nobody starts a fire), one wage per call, a daily cap ----
+  const fire = await fireChecks(); ev.push(...fire.ev);
+  const arrests = med.pass && fire.pass && courtOptIn && notJoined && strangerCite === 422 && early && noPriors === 422 && over60 && eLong && longHold === 422 && isHeld && anchoredA && bail && expired && walk && optOut && leave && dSync.unsynced === 0 && walkedAway && self === 422 && eSelf && citeCap && altOk;
   return { pass: noOpt && heldNow && !!held && freed && capped && tooLong && defOff && before && paid && after && srv === 422 && !!w2 && arrests, ev, scope: 'enforced' }; }
 
 async function clinicChecks() { const ev = [], mk = (M, over) => M.forge((acct, cp) => ({ actor: AILMENTS.sunburn.cause, action: 'med.injury', target: acct, data: { ail: 'sunburn', tx: 10, ty: 31, sec: AILMENTS.sunburn.sec }, ...over(acct, cp) }));
@@ -337,6 +354,39 @@ async function clinicChecks() { const ev = [], mk = (M, over) => M.forge((acct, 
     `co-pay optional, exactly ${MED.copay}, once, into the sink (${copayOk}; to another player ${toFriend})`,
     `no farming: treating yourself ${treatSelf}, another player ${treatFriend}, a medic wage for your own bump ${wageForBump}, the wrong pup ${wrongPup}, a closed call ${oldCall}, a second wage for one treatment ${wageTwice}; one wage per call (${again}), ${MED.treatsPerDay} calls a day (${capped}), medic pay inside the shared wage cap (${shared})`);
   return { pass: noJoin && offByDefault && srvOff === 422 && long === 422 && selfHurt === 422 && badPlace === 422 && eng && capsOk && ways && copayOk && farm, ev }; }
+
+async function fireChecks() { const ev = [], att = (F, c, over = () => ({})) => F.forge((acct) => ({ actor: acct, action: 'fire.attend', target: c.actor, data: { call: c.slot, kind: c.kind, spot: c.spot, slips: 0 }, ...over(acct, c) }));
+  // opt-in: no town events before joining; the server refuses a call-out from a player with events off
+  const noJoin = throwsFw(() => walletRig().wallet().eventsOn(), 'optin');
+  const N = await fireRig({ events: false }), nc = N.open(); await N.sync(); const srvOff = await att(N, nc), wOff = !N.w.canAttend(nc.slot) && !N.w.state().fire.events;
+  // anti-farm: nobody starts a fire. Only the hashed timetable's incident, at its spot, in its window, pays
+  const F = await fireRig(); const c = F.open(); await F.sync();
+  const atHome = await att(F, c, (acct) => ({ target: acct })), atFriend = await att(F, c, () => ({ target: 'player:p0000000000000002' }));
+  const wrongSpot = await att(F, c, () => ({ data: { call: c.slot, kind: c.kind, spot: SPOTS.find((x) => x.kind === c.kind && x.id !== c.spot)?.id || 'my-house', slips: 0 } }));
+  const wrongKind = await att(F, c, () => ({ target: INCIDENT_ACTORS.find((a) => a !== c.actor), data: { call: c.slot, kind: Object.keys(INCIDENTS).find((k) => k !== c.kind), spot: c.spot, slips: 0 } }));
+  const startFire = await F.forge((acct) => ({ actor: acct, action: 'fire.start', target: acct, data: { tx: 30, ty: 26 } }));
+  const futureCall = await att(F, eventAt(c.slot + 3)?.quiet ? eventAt(c.slot + 4) : eventAt(c.slot + 3));
+  const wageNoCall = await F.forge((acct) => ({ actor: PM.ISSUER, action: 'pm.wage', target: acct, value: { amount: 10, unit: 'PAWMARK' }, data: { why: 'fire shift', for: 0 } }));
+  const priced = await att(F, c, () => ({ value: { amount: 5, unit: 'PAWMARK' } }));
+  const r1 = F.w.attendCall(c.slot, 0), paid = r1.wage?.value.amount || 0, again = throwsFw(() => F.w.attendCall(c.slot, 0), 'replay'); await F.sync();
+  const replay = await att(F, c), wageTwice = await F.forge((acct) => ({ actor: PM.ISSUER, action: 'pm.wage', target: acct, value: { amount: 8, unit: 'PAWMARK' }, data: { why: 'fire shift', for: r1.attend.seq } }));
+  const pays = [paid]; let calls = 1; for (let i = 0; i < 40 && calls < FIRE.callsPerDay + 2; i++) { F.R.tick(FIRE.callMs + 1); const k = eventAt(fireSlotAt(F.R.now())); if (!k || k.quiet) continue; try { pays.push(F.w.attendCall(k.slot, 0).wage?.value.amount || 0); calls++; } catch (e) { if (e.kind === 'cap') break; } }
+  const capped = calls === FIRE.callsPerDay, dim = pays.every((p, i) => i === 0 || p <= pays[i - 1]) && pays[0] > pays[pays.length - 1];
+  const fs = await F.sync(), shared = F.w.state().balance <= 60 && fs.unsynced === 0 && fs.server === 'ok';
+  // a quiet slot pays nothing
+  const Q = await fireRig(); const qc = Q.open((x) => x.quiet); await Q.sync(); const quiet = await att(Q, { ...qc, actor: INCIDENT_ACTORS[0], kind: 'bins', spot: 'bin-w' }), wQuiet = throwsFw(() => Q.w.attendCall(qc.slot, 0), 'evidence');
+  // leaving the side economy switches town events off
+  const L = await fireRig(); L.w.leave(); const leftOff = !L.w.state().fire.events;
+  // the engine: firefighters never answer themselves; the scene is empty for devices with events off; nothing is ever on a player
+  const eng = throwsFw(() => sandbox().act('sim:pup-kiki', 'fire.attend', 'sim:pup-kiki'), 'collusion');
+  let offEmpty = 0; for (let i = 0; i < 60; i++) { const sc = sceneAt(1.8e12 + i * 37e3, { events: false }); if (!sc.c && !sc.incident && !sc.constable && !sc.engine.moving && !sc.engine.beacon && Object.values(sc.crew).every((p) => !p.moving && !p.working && !p.hidden)) offEmpty++; }
+  const cast = INCIDENT_ACTORS.every((a) => a.startsWith('sim:fx-')) && CREW_IDS.every((a) => a.startsWith('sim:fd-')) && CONSTABLE.id.startsWith('sim:') && !FIRE_ACTIONS.some((a) => /start|ignite|light|burn|spawn/.test(a)) && !PLAYER_ACTIONS.includes('fire.start');
+  const codes = [srvOff, atHome, atFriend, wrongSpot, wrongKind, startFire, futureCall, wageNoCall, priced, replay, wageTwice, quiet];
+  ev.push(`fire opt-in: no town events before joining (${noJoin}); with events off the wallet offers no call (${wOff}) and the server refuses a call-out (${srvOff}); leaving the side economy switches events off (${leftOff})`,
+    `nobody starts a fire: a call-out at your own home ${atHome}, at another player ${atFriend}, at a spot the timetable didn't pick ${wrongSpot}, the wrong incident ${wrongKind}, a "fire.start" entry ${startFire}, a call not open yet ${futureCall}, a quiet slot ${quiet} (wallet ${wQuiet}), a priced call-out ${priced}; incidents are sim:fx-* props, the crew sim:fd-* pups (${cast})`,
+    `one wage per seeded call: a fire wage with no call-out ${wageNoCall}, a replayed call-out ${replay}, a second wage for one call ${wageTwice} (wallet ${again}); ${FIRE.callsPerDay} calls a day (${capped}); pay ${pays.join(' > ')} ${CURRENCY.short} (diminishing ${dim}) inside the shared wage cap (${shared})`,
+    `engine refuses a firefighter answering itself (${eng}); with events off the crew stay home at the station on ${offEmpty}/60 sampled moments (no incident, no engine run, no siren); never solid, never on player homes or shops (tests/sim-fire.test.mjs)`);
+  return { pass: noJoin && wOff && leftOff && codes.every((x) => x === 422) && wQuiet && again && paid > 0 && capped && dim && shared && eng && offEmpty === 60 && cast, ev }; }
 
 const RUN = [c1, c2, c3, c4, c5, c6, c7, c8, c9, c10, c11];
 // Runs checks 1..11. Check 12 (the report itself) is evaluated by report.js once the report exists.

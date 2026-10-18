@@ -56,7 +56,7 @@ function drawClinic(c, t) { const x = CLINIC.x * TILE, y = CLINIC.y * TILE, w = 
 // view = { mineSlot, mineDone, shiftGo, hurt: { ail } | null } from the clinic tick (what this device should show)
 export function clinicProps(t, deps, player = null, view = {}) { const ms = Date.now();
   const out = [{ y: (CLINIC.y + 1) * TILE - 2, d: (c) => drawClinic(c, t) }];
-  for (const s of STAFF) { const p = staffPose(s, ms, view.mineSlot), near = player && Math.hypot(player.x - p.x, player.y - p.y) < 4.5 * TILE;
+  for (const s of STAFF) { const p = staffPose(s, ms, view.mineSlot, !!view.events), near = player && Math.hypot(player.x - p.x, player.y - p.y) < 4.5 * TILE;
     out.push({ y: p.y, d: (c) => { drawStaff(c, s, p, deps, { name: near ? s.name.replace(/^(Dr\.|Medic) /, '').split(' ')[0] : null }); if (p.treating) for (let i = 0; i < 2; i++) { const a = t * 4 + i * 3; R(c, p.x - 18 + Math.cos(a) * 4, p.y - 40 - ((t * 14 + i * 9) % 14), 2, 6, C.cross); R(c, p.x - 20 + Math.cos(a) * 4, p.y - 38 - ((t * 14 + i * 9) % 14), 6, 2, C.cross); } } }); }
   for (const pt of patientsAt(ms, view)) { const pose = { x: pt.x, y: pt.y, face: 'down', moving: false, phase: t * 2 }, near = player && Math.hypot(player.x - pt.x, player.y - pt.y) < 4 * TILE;
     out.push({ y: pt.y, d: (c) => { c.save(); c.translate(Math.round(pt.x), Math.round(pt.y)); c.scale(0.5, 0.5); deps.drawShiba(c, 0, 0, { coat: pt.c.coat, art: 'layer:' + pt.c.coat, face: 'down', phase: pose.phase, moving: false, scale: 1.5, fid: pt.c.pt, name: near ? pt.c.name : null }); c.restore();

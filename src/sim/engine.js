@@ -103,6 +103,9 @@ export function createSim({ seed = 1, now = null, players = [], limits = LIMITS 
   // Phase 5: medical. Cartoon bumps are effects capped at 60 s (players: opt-in only, canTarget); only medics treat or give
   // care, never to themselves; the co-pay is destroyed like a fee.
   defineAction('med.injury', { effect: { maxSec: 60 } }); defineAction('med.treat', { groups: ['medical'], noSelf: true }); defineAction('med.care', { groups: ['medical'], noSelf: true }); defineAction('pm.copay', { moves: 'sink' });
+  // Phase 6: fire. Only the fire crew answer incidents, never on themselves; incidents come from the seeded timetable (there
+  // is no action that starts one).
+  defineAction('fire.attend', { groups: ['fire'], noSelf: true });
   return { log, register, defineAction, act, release, step, resolve, on, view: readOnly, fetch: guardedFetch, limits: L,
     get clock() { return clock; }, agents: () => [...agents.values()], holds: () => new Map(holds), isOptedIn: (id) => optIn.has(id),
     quote: (acct, kind) => quote(flows, acct, kind, tsNow()),

@@ -15,8 +15,13 @@ export const COURTHOUSE = Object.freeze({ id: 'court', name: 'Barkley Courthouse
 // tummy-ache rule measures from (world.js: Shiba Sips Café; tests/sim-medical.test.mjs checks it matches)
 export const CLINIC = Object.freeze({ id: 'clinic', name: 'Pawsley Pup Clinic', x: 58, y: 48, w: 3, h: 1, tx: 59, ty: 49 });
 export const CAFE_DOOR = Object.freeze({ tx: 4, ty: 18 });
-export const SIM_SOLIDS = Object.freeze([BUREAU, PRECINCT, RANGER_HUT, COURTHOUSE, CLINIC].map((r) => Object.freeze({ x: r.x, y: r.y, w: r.w, h: r.h })).concat([Object.freeze({ x: Math.floor(BUREAU.flag.x), y: Math.floor(BUREAU.flag.y), w: 1, h: 1 })]));
+// Phase 6: Emberpaw Firehouse (the north-east lawn at the end of Market Row; Engine 7 rolls out along the row to the avenue) and the Crumb and Co.
+// town bakery kiosk (a sim kiosk by the avenue, not a player shop: the toaster puff happens here)
+export const FIRE_STATION = Object.freeze({ id: 'firehouse', name: 'Emberpaw Firehouse', x: 57, y: 5, w: 4, h: 1, tx: 58, ty: 6, bay: Object.freeze([59.7, 6.55]) });
+export const BAKERY = Object.freeze({ id: 'bakery', name: 'Crumb and Co. town bakery kiosk', x: 35, y: 40, w: 2, h: 1, tx: 35, ty: 41 });
+export const SIM_SOLIDS = Object.freeze([BUREAU, PRECINCT, RANGER_HUT, COURTHOUSE, CLINIC, FIRE_STATION, BAKERY].map((r) => Object.freeze({ x: r.x, y: r.y, w: r.w, h: r.h })).concat([Object.freeze({ x: Math.floor(BUREAU.flag.x), y: Math.floor(BUREAU.flag.y), w: 1, h: 1 })]));
 export const SIM_SPOTS = Object.freeze([BUREAU_SPOT, Object.freeze({ kind: 'bureau', id: 'precinct', tab: 'precinct', name: PRECINCT.name, tx: PRECINCT.tx, ty: PRECINCT.ty }),
   Object.freeze({ kind: 'bureau', id: 'rangers', tab: 'rangers', name: RANGER_HUT.name, tx: RANGER_HUT.tx, ty: RANGER_HUT.ty }),
   Object.freeze({ kind: 'bureau', id: 'court', tab: 'court', name: COURTHOUSE.name, tx: COURTHOUSE.tx, ty: COURTHOUSE.ty }),
-  Object.freeze({ kind: 'bureau', id: 'clinic', tab: 'clinic', name: CLINIC.name, tx: CLINIC.tx, ty: CLINIC.ty })]);
+  Object.freeze({ kind: 'bureau', id: 'clinic', tab: 'clinic', name: CLINIC.name, tx: CLINIC.tx, ty: CLINIC.ty }),
+  Object.freeze({ kind: 'bureau', id: 'firehouse', tab: 'fire', name: FIRE_STATION.name, tx: FIRE_STATION.tx, ty: FIRE_STATION.ty })]);
