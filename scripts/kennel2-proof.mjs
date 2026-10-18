@@ -15,7 +15,7 @@ async function open(q, [w, h] = VIEWS[0]) {
   for (let i = 0; i < 3; i++) { const sk = await p.$('#t-skip'); if (sk && await sk.isVisible()) { await sk.click(); await p.waitForTimeout(300); } }
   return p; }
 const at = (p, tx, ty, cam, z = 1) => p.evaluate(([tx, ty, cam, z]) => { __inu.setZoom(z); const s = __inu.state.player; s.x = (tx + 0.5) * 32; s.y = (ty + 0.5) * 32; __inu.player.face = 'up'; globalThis.__camLock = cam ? { x: cam[0] * 32, y: cam[1] * 32 } : null; }, [tx, ty, cam, z]);
-const shot = async (p, n) => { await p.evaluate(() => document.querySelectorAll('.toast').forEach((t) => t.remove())); const f = `${OUT}-${n}.png`; await p.screenshot({ path: f, animations: 'disabled' }); L('saved ' + f); };
+const shot = async (p, n) => { for (let i = 0; i < 3; i++) { const sk = await p.$('#t-skip'); if (sk && await sk.isVisible()) { await sk.click(); await p.waitForTimeout(300); } } await p.evaluate(() => document.querySelectorAll('.toast').forEach((t) => t.remove())); const f = `${OUT}-${n}.png`; await p.screenshot({ path: f, animations: 'disabled' }); L('saved ' + f); };
 const remotes = (p) => p.evaluate(() => { const S = __inu.state.player, real = __inu.mp.actors.bind(__inu.mp);
   __inu.mp.actors = () => [{ x: S.x + 48, y: S.y, coat: 'black', art: 'layer:black', outfit: {}, face: 'down', phase: 0, moving: false, name: 'Rin', mp: true, id: 'mp:a', w: 'Akk3…56fn', kennel: 'pup', kflair: true },
     { x: S.x + 96, y: S.y, coat: 'cream', art: 'layer:cream', outfit: {}, face: 'down', phase: 0, moving: false, name: 'Sora', mp: true, id: 'mp:b', w: 'Fh2x…9QaB', kennel: null, kflair: true },
