@@ -1,5 +1,5 @@
 // Start screen: every selectable option shows a distinct selected state (class + aria-pressed + computed style) and changes the
-// preview or the caption under it; arrow-key focus moves between chips; nothing clipped at 667x375, 750x342, 844x390.
+// preview or the caption under it; arrow-key focus moves between chips; the selected ring/badge never covers a row label; nothing clipped at 667x375, 750x342, 844x390.
 import test from 'node:test'; import assert from 'node:assert/strict'; import http from 'node:http'; import fs from 'node:fs'; import path from 'node:path';
 import { chromium } from 'playwright';
 const ROOT = path.resolve(path.dirname(new URL(import.meta.url).pathname), '..');
@@ -21,7 +21,9 @@ test('start screen options + phone landscape', { timeout: 180000 }, async () => 
     for (const [w, h] of [[667, 375], [750, 342], [844, 390]]) { const q = await (await b.newContext({ viewport: { width: w, height: h }, hasTouch: true })).newPage(); await q.goto(url); await q.waitForTimeout(800);
       const c = await q.evaluate(() => { const card = document.querySelector('.title-card'), r = card.getBoundingClientRect(), bad = []; for (const e of card.querySelectorAll('button,input,canvas,h1')) { const x = e.getBoundingClientRect(); if (x.width && (x.left < r.left - 1 || x.right > r.right + 1)) bad.push(e.id || e.dataset.v || e.tagName); }
         const st = document.getElementById('start').getBoundingClientRect(), pv = document.getElementById('preview').getBoundingClientRect();
-        return { inView: r.left >= 0 && r.top >= 0 && r.right <= innerWidth + 0.5 && r.bottom <= innerHeight + 0.5, hScroll: card.scrollWidth > card.clientWidth + 1 || document.documentElement.scrollWidth > innerWidth + 1, bad, start: st.top >= 0 && st.bottom <= innerHeight, preview: pv.top >= 0 && pv.bottom <= innerHeight && pv.width > 50 }; });
-      assert.ok(c.inView && !c.hScroll && !c.bad.length && c.start && c.preview, `${w}x${h} ${JSON.stringify(c)}`); }
+        const lap = []; for (const row of card.querySelectorAll('.crow')) { const l = row.querySelector('.clbl')?.getBoundingClientRect(), e = row.querySelector('.chip-o.sel'); if (!l || !e) continue; const x = e.getBoundingClientRect(), ext = e.classList.contains('sw') ? 3 : 8;
+          if (x.left - 3 < l.right && x.right + ext > l.left && x.top - ext < l.bottom && x.bottom + 3 > l.top) lap.push(e.dataset.k); }
+        return { lap, inView: r.left >= 0 && r.top >= 0 && r.right <= innerWidth + 0.5 && r.bottom <= innerHeight + 0.5, hScroll: card.scrollWidth > card.clientWidth + 1 || document.documentElement.scrollWidth > innerWidth + 1, bad, start: st.top >= 0 && st.bottom <= innerHeight, preview: pv.top >= 0 && pv.bottom <= innerHeight && pv.width > 50 }; });
+      assert.ok(c.inView && !c.hScroll && !c.bad.length && c.start && c.preview && !c.lap.length, `${w}x${h} ${JSON.stringify(c)}`); }
     assert.deepEqual(errs, []);
   } finally { await b.close(); srv.close(); } });

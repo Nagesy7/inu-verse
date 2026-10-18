@@ -317,3 +317,6 @@ body.short.landscape .pv-cap{font-size:7px;min-height:0;margin:0 auto}
 body.short .pv-cap{font-size:7px}
 @media (prefers-reduced-motion:reduce){.logo,.logo span,.chip-o.pop,#preview.bump{animation:none}}
 body.short .title-card>.row{position:sticky;bottom:-4px;z-index:3;background:#1b2350;padding:4px 0;margin-top:4px;box-shadow:0 -6px 8px #1b2350}
+/* (C) room for the selected ring, scale and check badge so they never cover the row label */
+.crow .chips{padding-top:5px;padding-right:4px}
+@media(max-width:700px){.crow .chips{padding-top:9px}}
