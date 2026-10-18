@@ -1,0 +1,794 @@
+{
+ "label": "LOCAL dev server + local wrangler worker; profile = sample fixture; not the live site",
+ "at": "Mon Oct 19 2026 02:33:58 GMT+1100 (Australian Eastern Daylight Time)",
+ "sizes": {
+  "844x390": {
+   "picker": {
+    "cards": [
+     {
+      "id": "inu:0",
+      "locked": false,
+      "text": "Fernshiba Fernshiba · Lv 23 Sprigpup › Fernshiba › Arborinu"
+     },
+     {
+      "id": "inu:1",
+      "locked": false,
+      "text": "Pawpip Pawpip · Lv 6 Pawpip › Barkley › Howlbrave"
+     },
+     {
+      "id": "wren-wanderly",
+      "locked": true,
+      "text": "Wren Wanderly Trail ranger 🔒 Meet and beat Wren Wanderly on a trail in Inu Quest"
+     },
+     {
+      "id": "biscuit",
+      "locked": true,
+      "text": "Biscuit Corgi pup 🔒 Meet and beat Wren Wanderly on a trail in Inu Quest"
+     }
+    ],
+    "toggle": "Summon"
+   },
+   "followAfterWalk": {
+    "status": "ready",
+    "on": true,
+    "id": "inu:0",
+    "name": "Fernshiba",
+    "x": 904,
+    "y": 720,
+    "gap": 42,
+    "react": null,
+    "face": "right",
+    "moving": true,
+    "choice": {
+     "on": true,
+     "id": "inu:0",
+     "line": "sprigpup"
+    },
+    "remotes": []
+   },
+   "track": [
+    [
+     906,
+     720,
+     42
+    ],
+    [
+     907,
+     720,
+     41
+    ],
+    [
+     909,
+     720,
+     40
+    ],
+    [
+     910,
+     720,
+     39
+    ],
+    [
+     911,
+     720,
+     38
+    ],
+    [
+     912,
+     720,
+     37
+    ],
+    [
+     913,
+     720,
+     37
+    ],
+    [
+     913,
+     720,
+     36
+    ],
+    [
+     914,
+     720,
+     35
+    ],
+    [
+     914,
+     720,
+     35
+    ],
+    [
+     915,
+     720,
+     34
+    ],
+    [
+     915,
+     720,
+     34
+    ],
+    [
+     916,
+     720,
+     33
+    ],
+    [
+     916,
+     720,
+     33
+    ],
+    [
+     916,
+     720,
+     33
+    ],
+    [
+     917,
+     720,
+     32
+    ],
+    [
+     917,
+     720,
+     32
+    ],
+    [
+     917,
+     720,
+     32
+    ],
+    [
+     917,
+     720,
+     32
+    ],
+    [
+     918,
+     720,
+     31
+    ],
+    [
+     918,
+     720,
+     31
+    ],
+    [
+     918,
+     720,
+     31
+    ],
+    [
+     918,
+     720,
+     31
+    ],
+    [
+     918,
+     720,
+     31
+    ],
+    [
+     918,
+     720,
+     31
+    ],
+    [
+     918,
+     720,
+     31
+    ],
+    [
+     918,
+     720,
+     31
+    ],
+    [
+     918,
+     720,
+     31
+    ],
+    [
+     919,
+     720,
+     31
+    ],
+    [
+     919,
+     720,
+     30
+    ]
+   ],
+   "followSettled": {
+    "status": "ready",
+    "on": true,
+    "id": "inu:0",
+    "name": "Fernshiba",
+    "x": 973,
+    "y": 720,
+    "gap": 30,
+    "react": null,
+    "face": "right",
+    "moving": false,
+    "choice": {
+     "on": true,
+     "id": "inu:0",
+     "line": "sprigpup"
+    },
+    "remotes": []
+   },
+   "water": {
+    "status": "ready",
+    "on": true,
+    "id": "inu:0",
+    "name": "Fernshiba",
+    "x": 1264,
+    "y": 1104,
+    "gap": 30,
+    "react": "water",
+    "face": "right",
+    "moving": false,
+    "choice": {
+     "on": true,
+     "id": "inu:0",
+     "line": "sprigpup"
+    },
+    "remotes": []
+   },
+   "cafe": {
+    "status": "ready",
+    "on": true,
+    "id": "inu:0",
+    "name": "Fernshiba",
+    "x": 126,
+    "y": 628,
+    "gap": 18,
+    "react": "cafe",
+    "face": "right",
+    "moving": false,
+    "choice": {
+     "on": true,
+     "id": "inu:0",
+     "line": "sprigpup"
+    },
+    "remotes": []
+   },
+   "rain": {
+    "status": "ready",
+    "on": true,
+    "id": "inu:0",
+    "name": "Fernshiba",
+    "x": 830,
+    "y": 724,
+    "gap": 18,
+    "react": "rain",
+    "face": "right",
+    "moving": false,
+    "choice": {
+     "on": true,
+     "id": "inu:0",
+     "line": "sprigpup"
+    },
+    "remotes": []
+   },
+   "sync": {
+    "A": {
+     "status": "ready",
+     "on": true,
+     "id": "inu:0",
+     "name": "Fernshiba",
+     "x": 834,
+     "y": 720,
+     "gap": 30,
+     "react": null,
+     "face": "left",
+     "moving": false,
+     "choice": {
+      "on": true,
+      "id": "inu:0",
+      "line": "sprigpup"
+     },
+     "remotes": [
+      {
+       "k": "mp:4f402785",
+       "id": "biscuit",
+       "x": 926,
+       "y": 724,
+       "react": null
+      }
+     ]
+    },
+    "B": {
+     "status": "ready",
+     "on": true,
+     "id": "biscuit",
+     "name": "Biscuit",
+     "x": 926,
+     "y": 724,
+     "gap": 18,
+     "react": null,
+     "face": "left",
+     "moving": false,
+     "choice": {
+      "on": true,
+      "id": "biscuit",
+      "line": null
+     },
+     "remotes": [
+      {
+       "k": "mp:8e93a907",
+       "id": "inu:0",
+       "x": 835,
+       "y": 720,
+       "react": null
+      }
+     ]
+    },
+    "mpA": {
+     "status": "online",
+     "count": 2
+    },
+    "remoteOffsetOnB": [
+     {
+      "name": "Pup1001",
+      "cp": "inu:0",
+      "form": "fernshiba",
+      "cpOff": [
+       31,
+       0
+      ]
+     }
+    ],
+    "remoteOffsetOnA": [
+     {
+      "name": "Pup2002",
+      "cp": "biscuit",
+      "cpOff": [
+       -18,
+       4
+      ]
+     }
+    ]
+   },
+   "saved": {
+    "keys": [
+     "inuverse.minimap",
+     "inuverse.save.v1",
+     "inuverse.npc.lines",
+     "inuverse.tour.v1",
+     "inuverse.mp.guest",
+     "inuverse.crier.lastMood",
+     "inu.profile.v1:local-kabosu-3",
+     "inu.sim.pm.v1"
+    ],
+    "companion": {
+     "on": true,
+     "id": "inu:0",
+     "line": "sprigpup"
+    }
+   },
+   "noProfile": {
+    "text": "Play Inu Quest and sign in with the same wallet to bring your Inu here.",
+    "follower": false,
+    "status": "none"
+   },
+   "fallback": {
+    "status": "ready",
+    "on": true,
+    "id": "inu:1",
+    "name": "Pawpip",
+    "x": 843,
+    "y": 720,
+    "gap": 30,
+    "react": null,
+    "face": "left",
+    "moving": false,
+    "choice": {
+     "on": true,
+     "id": "inu:1",
+     "line": null
+    },
+    "remotes": []
+   },
+   "proxiedSprites": [
+    "https://inu-quest.vercel.app/companions/v1/pets/biscuit.png",
+    "https://inu-quest.vercel.app/companions/v1/inu/pawpip.png",
+    "https://inu-quest.vercel.app/companions/v1/trainers/wren-wanderly.png",
+    "https://inu-quest.vercel.app/companions/v1/inu/fernshiba.png"
+   ]
+  },
+  "667x375": {
+   "picker": {
+    "cards": [
+     {
+      "id": "inu:0",
+      "locked": false,
+      "text": "Fernshiba Fernshiba · Lv 23 Sprigpup › Fernshiba › Arborinu"
+     },
+     {
+      "id": "inu:1",
+      "locked": false,
+      "text": "Pawpip Pawpip · Lv 6 Pawpip › Barkley › Howlbrave"
+     },
+     {
+      "id": "wren-wanderly",
+      "locked": true,
+      "text": "Wren Wanderly Trail ranger 🔒 Meet and beat Wren Wanderly on a trail in Inu Quest"
+     },
+     {
+      "id": "biscuit",
+      "locked": true,
+      "text": "Biscuit Corgi pup 🔒 Meet and beat Wren Wanderly on a trail in Inu Quest"
+     }
+    ],
+    "toggle": "Summon"
+   },
+   "followAfterWalk": {
+    "status": "ready",
+    "on": true,
+    "id": "inu:0",
+    "name": "Fernshiba",
+    "x": 903,
+    "y": 720,
+    "gap": 42,
+    "react": null,
+    "face": "right",
+    "moving": true,
+    "choice": {
+     "on": true,
+     "id": "inu:0",
+     "line": "sprigpup"
+    },
+    "remotes": []
+   },
+   "track": [
+    [
+     906,
+     720,
+     41
+    ],
+    [
+     907,
+     720,
+     40
+    ],
+    [
+     908,
+     720,
+     39
+    ],
+    [
+     909,
+     720,
+     38
+    ],
+    [
+     910,
+     720,
+     37
+    ],
+    [
+     911,
+     720,
+     37
+    ],
+    [
+     912,
+     720,
+     36
+    ],
+    [
+     912,
+     720,
+     35
+    ],
+    [
+     913,
+     720,
+     35
+    ],
+    [
+     913,
+     720,
+     34
+    ],
+    [
+     914,
+     720,
+     34
+    ],
+    [
+     914,
+     720,
+     33
+    ],
+    [
+     915,
+     720,
+     33
+    ],
+    [
+     915,
+     720,
+     33
+    ],
+    [
+     915,
+     720,
+     32
+    ],
+    [
+     915,
+     720,
+     32
+    ],
+    [
+     916,
+     720,
+     32
+    ],
+    [
+     916,
+     720,
+     32
+    ],
+    [
+     916,
+     720,
+     31
+    ],
+    [
+     916,
+     720,
+     31
+    ],
+    [
+     916,
+     720,
+     31
+    ],
+    [
+     917,
+     720,
+     31
+    ],
+    [
+     917,
+     720,
+     31
+    ],
+    [
+     917,
+     720,
+     31
+    ],
+    [
+     917,
+     720,
+     31
+    ],
+    [
+     917,
+     720,
+     31
+    ],
+    [
+     917,
+     720,
+     31
+    ],
+    [
+     917,
+     720,
+     31
+    ],
+    [
+     917,
+     720,
+     30
+    ],
+    [
+     917,
+     720,
+     30
+    ]
+   ],
+   "followSettled": {
+    "status": "ready",
+    "on": true,
+    "id": "inu:0",
+    "name": "Fernshiba",
+    "x": 968,
+    "y": 720,
+    "gap": 30,
+    "react": null,
+    "face": "right",
+    "moving": false,
+    "choice": {
+     "on": true,
+     "id": "inu:0",
+     "line": "sprigpup"
+    },
+    "remotes": []
+   },
+   "water": {
+    "status": "ready",
+    "on": true,
+    "id": "inu:0",
+    "name": "Fernshiba",
+    "x": 1264,
+    "y": 1104,
+    "gap": 30,
+    "react": "water",
+    "face": "right",
+    "moving": false,
+    "choice": {
+     "on": true,
+     "id": "inu:0",
+     "line": "sprigpup"
+    },
+    "remotes": []
+   },
+   "cafe": {
+    "status": "ready",
+    "on": true,
+    "id": "inu:0",
+    "name": "Fernshiba",
+    "x": 126,
+    "y": 628,
+    "gap": 18,
+    "react": "cafe",
+    "face": "right",
+    "moving": false,
+    "choice": {
+     "on": true,
+     "id": "inu:0",
+     "line": "sprigpup"
+    },
+    "remotes": []
+   },
+   "rain": {
+    "status": "ready",
+    "on": true,
+    "id": "inu:0",
+    "name": "Fernshiba",
+    "x": 830,
+    "y": 724,
+    "gap": 18,
+    "react": "rain",
+    "face": "right",
+    "moving": false,
+    "choice": {
+     "on": true,
+     "id": "inu:0",
+     "line": "sprigpup"
+    },
+    "remotes": []
+   },
+   "sync": {
+    "A": {
+     "status": "ready",
+     "on": true,
+     "id": "inu:0",
+     "name": "Fernshiba",
+     "x": 834,
+     "y": 720,
+     "gap": 30,
+     "react": null,
+     "face": "left",
+     "moving": false,
+     "choice": {
+      "on": true,
+      "id": "inu:0",
+      "line": "sprigpup"
+     },
+     "remotes": [
+      {
+       "k": "mp:093b8ad8",
+       "id": "biscuit",
+       "x": 971,
+       "y": 733,
+       "react": null
+      }
+     ]
+    },
+    "B": {
+     "status": "ready",
+     "on": true,
+     "id": "biscuit",
+     "name": "Biscuit",
+     "x": 971,
+     "y": 733,
+     "gap": 30,
+     "react": null,
+     "face": "up",
+     "moving": false,
+     "choice": {
+      "on": true,
+      "id": "biscuit",
+      "line": null
+     },
+     "remotes": [
+      {
+       "k": "mp:f33868c0",
+       "id": "inu:0",
+       "x": 835,
+       "y": 720,
+       "react": null
+      }
+     ]
+    },
+    "mpA": {
+     "status": "online",
+     "count": 2
+    },
+    "remoteOffsetOnB": [
+     {
+      "name": "Pup1001",
+      "cp": "inu:0",
+      "form": "fernshiba",
+      "cpOff": [
+       31,
+       0
+      ]
+     }
+    ],
+    "remoteOffsetOnA": [
+     {
+      "name": "Pup2002",
+      "cp": "biscuit",
+      "cpOff": [
+       27,
+       13
+      ]
+     }
+    ]
+   },
+   "saved": {
+    "keys": [
+     "inuverse.minimap",
+     "inuverse.save.v1",
+     "inu.profile.v1:local-kabosu-3",
+     "inuverse.tour.v1",
+     "inuverse.mp.guest",
+     "inu.sim.pm.v1",
+     "inuverse.crier.lastMood"
+    ],
+    "companion": {
+     "on": true,
+     "id": "inu:0",
+     "line": "sprigpup"
+    }
+   },
+   "noProfile": {
+    "text": "Play Inu Quest and sign in with the same wallet to bring your Inu here.",
+    "follower": false,
+    "status": "none"
+   },
+   "fallback": {
+    "status": "ready",
+    "on": true,
+    "id": "inu:1",
+    "name": "Pawpip",
+    "x": 843,
+    "y": 720,
+    "gap": 30,
+    "react": null,
+    "face": "left",
+    "moving": false,
+    "choice": {
+     "on": true,
+     "id": "inu:1",
+     "line": null
+    },
+    "remotes": []
+   },
+   "proxiedSprites": [
+    "https://inu-quest.vercel.app/companions/v1/inu/fernshiba.png",
+    "https://inu-quest.vercel.app/companions/v1/pets/biscuit.png",
+    "https://inu-quest.vercel.app/companions/v1/trainers/wren-wanderly.png",
+    "https://inu-quest.vercel.app/companions/v1/inu/pawpip.png"
+   ]
+  }
+ },
+ "errors": []
+}
