@@ -104,7 +104,7 @@ export function buildMap() {
   for (const f of FIELDS) fill(f.x, f.y, f.w, f.h, T.GRASS);
   fill(POND.x, POND.y, POND.w, POND.h, T.WATER);
   fill(CHAPEL.x, CHAPEL.y, CHAPEL.w, CHAPEL.h, T.BUILDING);
-  fill(BUREAU.x, BUREAU.y, BUREAU.w, BUREAU.h, T.BUILDING); // Paw Audit Bureau desk
+  fill(BUREAU.x, BUREAU.y, BUREAU.w, BUREAU.h, T.BUILDING); fill(Math.floor(BUREAU.flag.x), Math.floor(BUREAU.flag.y), 1, 1, T.BUILDING); // Paw Audit Bureau desk + banner pole (solid)
   for (const b of [BARN, MARKET, CRAFT]) fill(b.x, b.y, b.w, b.h, T.BUILDING);
   for (const l of BIZ_LOTS) { fill(l.x, l.y, l.w, l.h, T.BUILDING); if (!l.prime) fill(l.x - 1, l.y + l.h, l.w + 2, 1, T.WALK); }
   // trees: border + some park trees

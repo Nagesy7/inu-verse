@@ -5,18 +5,21 @@
 //  - Never leaves the game, never tied to a wallet (account ids that look like addresses are refused).
 // tests/sim-checks.test.mjs (Check 4, Check 5) assert this module exports exactly PAWMARK, ISSUER, SINK, validAccount, balances.
 import { FirewallError, SIM_UNIT } from './firewall.js';
-export const PAWMARK = Object.freeze({ unit: SIM_UNIT, name: 'Pawmarks', short: 'PM', oneWay: true, cashOut: false, wallet: false, prizeEligible: false });
+import { CURRENCY } from './currency.js';
+export const PAWMARK = Object.freeze({ unit: SIM_UNIT, name: CURRENCY.name, short: CURRENCY.short, oneWay: true, cashOut: false, wallet: false, prizeEligible: false });
 export const ISSUER = 'sim:issuer', SINK = 'sim:sink'; // issuance comes from the sim itself; fines/fees go to the sink (destroyed)
 const ACCOUNT = /^(sim|player):[a-z0-9][a-z0-9_-]{0,31}$/;
 export function validAccount(id) {
   if (typeof id !== 'string' || !ACCOUNT.test(id)) throw new FirewallError('wallet', `not a sim account id: ${String(id).slice(0, 48)}`);
   return id;
 }
-// Replay: pm.issue (ISSUER -> target), pm.pay (actor -> target), pm.sink (actor -> SINK). Everything else moves nothing.
-export function balances(entries) {
-  const b = new Map(), add = (k, v) => b.set(k, (b.get(k) || 0) + v);
+// Replay. Created by the sim: pm.issue, pm.wage (ISSUER -> target). Moved: pm.pay, pm.bribe (actor -> target).
+// Destroyed: pm.sink, pm.fine, pm.bail (actor -> SINK). Everything else moves nothing. start = balances at a checkpoint.
+const CREATE = ['pm.issue', 'pm.wage'], MOVE = ['pm.pay', 'pm.bribe'], DESTROY = ['pm.sink', 'pm.fine', 'pm.bail'];
+export function balances(entries, start = null) {
+  const b = new Map(Object.entries(start || {})), add = (k, v) => b.set(k, (b.get(k) || 0) + v);
   for (const e of entries) { const a = e.value?.amount || 0; if (!a || e.value.unit !== SIM_UNIT) continue;
-    if (e.action === 'pm.issue') add(e.target, a);
-    else if (e.action === 'pm.pay' || e.action === 'pm.sink') { add(e.actor, -a); add(e.action === 'pm.sink' ? SINK : e.target, a); } }
+    if (CREATE.includes(e.action)) add(e.target, a);
+    else if (MOVE.includes(e.action) || DESTROY.includes(e.action)) { add(e.actor, -a); add(DESTROY.includes(e.action) ? SINK : e.target, a); } }
   return b;
 }

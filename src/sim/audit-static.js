@@ -2,13 +2,18 @@
 export const STATIC = {
  "files": [
   "api/sim-audit.js",
+  "api/sim-log.js",
+  "src/sim/anchor.js",
   "src/sim/bureau.js",
   "src/sim/bureauart.js",
   "src/sim/bureauui.js",
   "src/sim/checks.js",
+  "src/sim/currency.js",
+  "src/sim/economy.js",
   "src/sim/engine.js",
   "src/sim/firewall.js",
   "src/sim/ledger.js",
+  "src/sim/pawbook.js",
   "src/sim/pawmarks.js",
   "src/sim/place.js",
   "src/sim/report.js",
@@ -18,6 +23,8 @@ export const STATIC = {
  "imports": {
   "violations": []
  },
+ "kvKeys": [],
+ "storage": [],
  "prize": [],
  "economy": [],
  "network": [],
@@ -27,7 +34,20 @@ export const STATIC = {
  "routes": [
   {
    "file": "api/sim-audit.js",
-   "writes": false
+   "writes": false,
+   "via": [
+    "../src/sim/audit-static.js",
+    "../src/sim/report.js"
+   ]
+  },
+  {
+   "file": "api/sim-log.js",
+   "writes": true,
+   "via": [
+    "../src/sim/anchor.js",
+    "../src/sim/sha256.js",
+    "./_lib/kv.js"
+   ]
   }
  ],
  "outside": [
@@ -53,5 +73,5 @@ export const STATIC = {
   "bonesSwap": true,
   "randomPaid": []
  },
- "fingerprint": "518e7dd0b8fd519c"
+ "fingerprint": "2cbfcff9a6f2c606"
 };

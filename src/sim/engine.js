@@ -2,9 +2,11 @@
 // Every agent action goes through act(): it is checked by the firewalls, then appended to the hash-chained log, then
 // broadcast to listeners. There is no other way to move Pawmarks (balances are replayed from the log).
 // Real players are never targets unless they opted in; the sim gets only a read-only copy of game state.
+import { CURRENCY } from './currency.js';
 import { createLog, GROUPS } from './ledger.js';
 import { FirewallError, BANNED_ACTION, guardUnit, guardKey, guardNoWallet, guardedFetch, readOnly, SIM_UNIT } from './firewall.js';
 import { ISSUER, SINK, validAccount, balances as replay } from './pawmarks.js';
+import { applyFlow, quote, FLOW_OF } from './economy.js';
 
 export const LIMITS = Object.freeze({ holdMaxSec: 600, perActionPerMin: 6, pairFlowPerDay: 200, issuePerDay: 2000, day: 720 });
 export const OPT_IN_KEY = 'inu.sim.optin.v1'; // local flag, default OFF. Phase 1 ships no switch for it, so no real player is ever in the sim.
@@ -16,7 +18,8 @@ const strSeed = (s) => { let h = 2166136261; for (const ch of String(s)) h = Mat
 export function createSim({ seed = 1, now = null, players = [], limits = LIMITS } = {}) {
   let clock = 0; const L = { ...LIMITS, ...limits };
   const log = createLog({ now: now || (() => Math.round(clock * 1000)) });
-  const agents = new Map(), actions = new Map(), holds = new Map(), once = new Set(), listeners = new Map(), rate = new Map();
+  const agents = new Map(), actions = new Map(), holds = new Map(), once = new Set(), listeners = new Map(), rate = new Map(); let flows = {};
+  const tsNow = () => (now ? Number(now()) : Math.round(clock * 1000));
   const optIn = new Set(players.map((p) => validAccount('player:' + p)));
   const isWatchdog = (id) => agents.get(id)?.group === 'watchdogs';
   const day = () => Math.floor(clock / L.day);
@@ -39,10 +42,10 @@ export function createSim({ seed = 1, now = null, players = [], limits = LIMITS 
   const canTarget = (t) => agents.has(t) || t === SINK || (t.startsWith('player:') && optIn.has(t));
   function act(actorId, name, targetId, { amount = 0, unit = SIM_UNIT, data = null } = {}) {
     const d = actions.get(name); if (!d) throw new Error(`unknown action ${name}`);
-    guardUnit(unit); if (!Number.isInteger(amount) || amount < 0) throw new FirewallError('economy', 'amount must be a whole number of Pawmarks');
+    guardUnit(unit); if (!Number.isInteger(amount) || amount < 0) throw new FirewallError('economy', `amount must be a whole number of ${CURRENCY.name}`);
     const sys = actorId === ISSUER; if (!sys && !agents.has(actorId)) throw new Error(`unknown actor ${actorId}`);
     validAccount(targetId); if (!canTarget(targetId)) throw new FirewallError('optin', `${targetId} is not in the sim (real players need opt-in)`);
-    if (d.moves === 'issue' && !sys) throw new FirewallError('economy', 'only the sim issuer creates Pawmarks');
+    if (d.moves === 'issue' && !sys) throw new FirewallError('economy', `only the sim issuer creates ${CURRENCY.name}`);
     if (sys && d.moves !== 'issue') throw new Error('issuer can only issue');
     const actor = sys ? { group: 'sim' } : agents.get(actorId);
     if (d.groups && !d.groups.includes(actor.group)) throw new FirewallError('permission', `${actor.group} may not ${name}`);
@@ -57,14 +60,21 @@ export function createSim({ seed = 1, now = null, players = [], limits = LIMITS 
     let amt = amount; if (d.diminish && amt) amt = Math.floor(amt / (1 + recent.length));
     if (amt && d.moves) {
       const bal = replay(log.entries());
-      if (d.moves !== 'issue' && (bal.get(actorId) || 0) < amt) throw new FirewallError('economy', 'not enough Pawmarks');
+      if (d.moves !== 'issue' && (bal.get(actorId) || 0) < amt) throw new FirewallError('economy', `not enough ${CURRENCY.name}`);
       if (d.moves === 'issue') { const today = log.entries().filter((e) => e.action === name && Math.floor(e.ts / 1000 / L.day) === day()).reduce((s, e) => s + e.value.amount, 0);
-        if (today + amt > L.issuePerDay) throw new FirewallError('economy', 'daily Pawmark issuance cap'); }
+        if (today + amt > L.issuePerDay) throw new FirewallError('economy', `daily ${CURRENCY.one} issuance cap`); }
       if (d.moves === 'pay') { const pair = [actorId, targetId].sort().join('|'), flow = log.entries().filter((e) => e.action === name && [e.actor, e.target].sort().join('|') === pair && Math.floor(e.ts / 1000 / L.day) === day()).reduce((s, e) => s + e.value.amount, 0);
         if (flow + amt > L.pairFlowPerDay) throw new FirewallError('collusion', 'daily flow cap between two parties'); } }
     if (d.moves && !amt && amount) throw new FirewallError('rate', 'diminishing returns: nothing left to earn this minute');
+    // Phase 2 flows (wage / fine / bail / bribe): anti-farm rules from economy.js, identical to the client wallet and server anchor
+    let nextFlows = null; if (FLOW_OF[name]) {
+      if (name === 'pm.bribe' && (actorId.startsWith('player:') || targetId.startsWith('player:'))) throw new FirewallError('phase', 'bribes are a sim-agent ledger primitive only until the corrupt-cop branch (Phase 7)');
+      if (name !== 'pm.wage' && name !== 'pm.bribe' && targetId !== SINK) throw new FirewallError('economy', `${name} is paid into the sink`);
+      if (name === 'pm.bail' && !holds.has(String(data?.for))) throw new Error('bail needs data.for = someone currently held');
+      nextFlows = applyFlow(flows, { action: name, actor: actorId, target: targetId, ts: tsNow(), value: { amount: amt } }); }
     const e = log.append({ actor: actorId, group: actor.group, action: name, target: targetId, value: { amount: amt, unit: SIM_UNIT }, data });
-    recent.push(clock); rate.set(rk, recent);
+    recent.push(clock); rate.set(rk, recent); if (nextFlows) flows = nextFlows;
+    if (name === 'pm.bail') release(String(data.for), 'bail paid');
     if (d.once) once.add(name + ':' + String(data.key));
     if (d.hold) holds.set(targetId, { by: actorId, until: clock + Number(data.sec), seq: e.seq });
     for (const fn of [...(listeners.get(name) || []), ...(listeners.get('*') || [])]) { try { fn(e); } catch {} }
@@ -81,8 +91,10 @@ export function createSim({ seed = 1, now = null, players = [], limits = LIMITS 
 
   defineAction('pm.issue', { moves: 'issue' }); defineAction('pm.pay', { moves: 'pay' }); defineAction('pm.sink', { moves: 'sink' });
   defineAction('audit.read', { groups: ['watchdogs'] }); defineAction('audit.note', { groups: ['watchdogs'] });
+  defineAction('pm.wage', { moves: 'issue' }); defineAction('pm.fine', { moves: 'sink' }); defineAction('pm.bail', { moves: 'sink' }); defineAction('pm.bribe', { moves: 'pay' });
   defineAction('evidence.file', { once: true, investigative: true }); defineAction('hold', { hold: { maxSec: L.holdMaxSec }, investigative: true });
   return { log, register, defineAction, act, release, step, resolve, on, view: readOnly, fetch: guardedFetch, limits: L,
     get clock() { return clock; }, agents: () => [...agents.values()], holds: () => new Map(holds), isOptedIn: (id) => optIn.has(id),
+    quote: (acct, kind) => quote(flows, acct, kind, tsNow()),
     balance: (id) => replay(log.entries()).get(id) || 0, balances: () => replay(log.entries()) };
 }

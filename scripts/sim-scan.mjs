@@ -5,7 +5,9 @@ import { readFileSync, readdirSync, statSync, existsSync } from 'node:fs';
 import { join, relative, dirname, resolve, posix } from 'node:path';
 import { createHash } from 'node:crypto';
 export const SNAPSHOT = 'src/sim/audit-static.js';
-export const ALLOWED_OUTSIDE = ['src/main.js', 'src/world.js']; // the two hooks: world.js places the desk, main.js draws it and opens the panel
+export const ALLOWED_OUTSIDE = ['src/main.js', 'src/world.js'];
+export const API_LIBS = ['api/_lib/kv.js']; // api/sim* may also use the generic Upstash client (keys are still built only by src/sim/anchor.js K.*)
+export const STORE_KEYS = ['STORE_KEY', 'OPT_IN_KEY']; // the only localStorage keys sim code may write ('inu.sim.*') // the two hooks: world.js places the desk, main.js draws it and opens the panel
 export const PATTERNS = {
   prize: [/inu-?score/i, /kibble-?pay/i, /\/api\/(raid|pools?|boards?|leader\w*|payouts?|kennel|inventory|pay|scores?|prizes?|claim|burn|wall)\b/i, /\b(inuScore|claimPresDrop|poolEntries|boardRows|refreshPools|recordBurn|payout|rollPeriods|buyMallItem)\s*\(/],
   economy: [/\b(bones|kibble)\s*([+\-*/]?=(?!=)|\+\+|--)/i, /\.\s*(bones|kibble)\b\s*([+\-*/]?=(?!=)|\+\+|--)/i, /\[\s*['"`](bones|kibble)['"`]\s*\]\s*([+\-*/]?=(?!=)|\+\+|--)/i, /swapBonesToKibble|BONES_PER_KIBBLE|START_BONES|START_KIBBLE|feeSplit|settle\w*\(/],
@@ -23,17 +25,21 @@ export function simFiles(root) {
   return [...sim, ...api].map((f) => relative(root, f).split('\\').join('/')).filter((f) => f !== SNAPSHOT).sort();
 }
 export function scan(root = process.cwd()) {
-  const files = simFiles(root), out = { files: [], imports: { violations: [] }, prize: [], economy: [], network: [], wallet: [], gambling: [], conversion: [], routes: [], outside: [], allowedOutside: ALLOWED_OUTSIDE, context: {} };
+  const files = simFiles(root), out = { files: [], imports: { violations: [] }, kvKeys: [], storage: [], prize: [], economy: [], network: [], wallet: [], gambling: [], conversion: [], routes: [], outside: [], allowedOutside: ALLOWED_OUTSIDE, context: {} };
   const hash = createHash('sha256');
   for (const f of files) {
     const raw = readFileSync(join(root, f), 'utf8'), src = f === 'src/sim/firewall.js' ? strip(raw) : raw; hash.update(f + '\0' + raw + '\0');
     out.files.push(f);
     for (const spec of importsOf(src)) { const target = posix.normalize(posix.join(posix.dirname(f), spec));
-      if (!spec.startsWith('.') || !target.startsWith('src/sim/')) out.imports.violations.push({ file: f, spec }); }
+      if (!spec.startsWith('.') || !(target.startsWith('src/sim/') || (f.startsWith('api/') && API_LIBS.includes(target)))) out.imports.violations.push({ file: f, spec }); }
+    // storage writes: every kv write/read key must come from anchor.js K.*; every localStorage write must use a sim key constant
+    for (const m of src.matchAll(/\bkv\.(get|set|setNX|del)\(\s*([^,)]+)/g)) if (!/^K\.[a-zA-Z]+\(/.test(m[2].trim())) out.kvKeys.push({ file: f, call: m[0] });
+    for (const m of src.matchAll(/\.(setItem|removeItem)\(\s*([^,)]+)/g)) if (!STORE_KEYS.includes(m[2].trim())) out.storage.push({ file: f, call: m[0] });
+    for (const m of src.matchAll(/['"`](inu(?:verse)?[.-][\w.-]+)['"`]/g)) if (!m[1].startsWith('inu.sim.')) out.storage.push({ file: f, key: m[1] });
     src.split('\n').forEach((line, i) => { for (const [k, res] of Object.entries(PATTERNS)) for (const re of res) if (re.test(line)) out[k].push({ file: f, line: i + 1, rule: String(re) }); });
     for (const m of src.matchAll(/^\s*export\s+(?:const|let|var|function\*?|class|async\s+function)\s+([A-Za-z_$][\w$]*)/gm)) if (CONVERSION_NAME.test(m[1])) out.conversion.push({ file: f, name: m[1] });
     for (const m of src.matchAll(/^\s*export\s*\{([^}]*)\}/gm)) for (const n of m[1].split(',').map((x) => x.split(/\s+as\s+/).pop().trim()).filter(Boolean)) if (CONVERSION_NAME.test(n)) out.conversion.push({ file: f, name: n });
-    if (f.startsWith('api/')) out.routes.push({ file: f, writes: /req\.method\s*===?\s*['"](POST|PUT|PATCH|DELETE)|req\.body|\.set\(|setNX|upstashKv/.test(src) });
+    if (f.startsWith('api/')) out.routes.push({ file: f, writes: /req\.method\s*===?\s*['"](POST|PUT|PATCH|DELETE)|req\.body|\.set\(|setNX|upstashKv/.test(src), via: [...new Set(importsOf(src))].sort() });
   }
   // who outside the sim imports it (only the two hooks may, and never the currency, engine or ledger)
   for (const f of [...walk(join(root, 'src')), ...walk(join(root, 'api'))].map((p) => relative(root, p).split('\\').join('/')).filter((p) => /\.m?js$/.test(p) && !p.startsWith('src/sim/') && !/^api\/sim/.test(p) && !p.startsWith('src/vendor/'))) {

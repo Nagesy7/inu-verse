@@ -15,25 +15,31 @@ export const SECRETISH = /secret|private|seed|mnemonic|keypair|signer|wallet|pub
 export const BANNED_ACTION = /\bbet(s|ting)?\b|wager|gambl|lotter|raffle|loot|gacha|\bodds\b|\bstake|sweepstake|jackpot|casino/i;
 // Red-Team Pup probe fixtures (checks.js throws these at the guards; data only, no calls)
 export const RED_TEAM = Object.freeze({
-  prizeUrls: ['/api/inu-score?wallet=x', 'https://kibble-pay.vercel.app/api/raid', '/api/pools', '/api/boards', '/api/leaderboards', '/api/payout', '/api/kennel', '/api/inventory', '/api/pay', 'https://evil.example/api/sim-audit'],
+  prizeUrls: ['/api/inu-score?wallet=x', 'https://kibble-pay.vercel.app/api/raid', '/api/pools', '/api/boards', '/api/leaderboards', '/api/payout', '/api/kennel', '/api/inventory', '/api/pay', 'https://evil.example/api/sim-audit', '//evil.example/api/sim-log', 'https://inu-verse-tawny.vercel.app/api/sim-log'],
   walletIds: ['4VE9sy4fEMJdZ6i7MkYPbnqDJd2oqzJQmg44WJ3opump', 'wallet:abc', 'phantom:me', 'sim:xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx', 'https://x.y'],
   walletFields: ['wallet', 'secretKey', 'privateKey', 'seed', 'mnemonic', 'pubkey'],
   address: '4VE9sy4fEMJdZ6i7MkYPbnqDJd2oqzJQmg44WJ3opump', seedWords: 'abandon ability able about above absent absorb abstract absurd abuse access accident',
   stakeNames: ['trial.bet', 'verdict.wager', 'odds.board'], gamblingNames: ['raid.bet', 'outcome.wager', 'daily.lottery', 'loot.crate', 'jackpot'], paidChance: { name: 'mystery.crate', chance: 0.1, cost: 5 },
   econUnits: ['BONES', 'KIBBLE', '$KIBBLE', 'SOL'] });
 // FIREWALL-DENYLIST-END
-export const ALLOW_URLS = ['/api/sim-audit'];
+export const ALLOW = Object.freeze({ '/api/sim-audit': ['GET'], '/api/sim-log': ['GET', 'POST'] }); // the sim's only network doors
+export const ALLOW_URLS = Object.keys(ALLOW);
 export const SIM_UNIT = 'PAWMARK';
 
 export function guardUrl(url) {
   const u = String(url || ''); let path = u;
-  try { const p = new URL(u, 'https://inu-verse.local'); if (p.host !== 'inu-verse.local' && !/^\//.test(u)) throw new FirewallError('prize', `sim may not call other hosts: ${p.host}`); path = p.pathname; } catch (e) { if (e instanceof FirewallError) throw e; }
+  try { const p = new URL(u, 'https://sim.invalid'); if (p.host !== 'sim.invalid') throw new FirewallError('prize', `sim may not call other hosts: ${p.host}`); path = p.pathname; } catch (e) { if (e instanceof FirewallError) throw e; }
   for (const re of DENY_URL) if (re.test(u)) throw new FirewallError('prize', `sim may not call ${path}`);
   if (!ALLOW_URLS.includes(path)) throw new FirewallError('prize', `sim may only call ${ALLOW_URLS.join(', ')} (got ${path})`);
   return path;
 }
-// The sim's ONLY network door. GET only; never sends credentials or bodies.
-export function guardedFetch(url, f = globalThis.fetch) { const path = guardUrl(url); return f(path, { method: 'GET', credentials: 'omit', cache: 'no-store' }); }
+// The sim's ONLY network door. Allow-listed path + method; never sends cookies; bodies are JSON sim data checked for wallet/economy fields.
+export function guardedFetch(url, f = globalThis.fetch, { method = 'GET', body = null } = {}) {
+  const path = guardUrl(url), m = String(method).toUpperCase(); if (!ALLOW[path].includes(m)) throw new FirewallError('prize', `${m} ${path} is not allowed`);
+  if (m === 'GET') return f(String(url).startsWith(path) ? String(url) : path, { method: 'GET', credentials: 'omit', cache: 'no-store' });
+  guardNoWallet(body, 'body');
+  return f(path, { method: m, credentials: 'omit', cache: 'no-store', headers: { 'content-type': 'application/json' }, body: JSON.stringify(body) });
+}
 
 export function guardUnit(unit) { const u = String(unit || '').toUpperCase(); if (u !== SIM_UNIT) throw new FirewallError('economy', `sim can only move ${SIM_UNIT}, never ${unit || '(none)'}`); return u; }
 export function guardKey(key) { const k = String(key).toLowerCase().replace(/[^a-z$]/g, ''); if (ECON_KEYS.includes(k) || ECON_KEYS.includes(k.replace(/^\$/, ''))) throw new FirewallError('economy', `sim may not write "${key}"`); return key; }

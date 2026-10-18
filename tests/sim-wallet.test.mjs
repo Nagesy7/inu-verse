@@ -1,0 +1,20 @@
+// The player's Pawmarks wallet: opt-in, local + anchored, anti-farm, tamper fallback, never anything real.
+import test from 'node:test'; import assert from 'node:assert/strict';
+const { walletRig } = await import('../src/sim/checks.js'); const { STORE_KEY } = await import('../src/sim/pawbook.js'); const { OPT_IN_KEY } = await import('../src/sim/engine.js'); const { FLOWS } = await import('../src/sim/economy.js');
+test('join is explicit and reversible; wages only while joined', () => { const R = walletRig(), w = R.wallet(); assert.equal(w.joined(), false); assert.throws(() => w.payWage());
+  w.join(); assert.equal(R.store.getItem(OPT_IN_KEY), 'yes'); assert.equal(w.payWage().value.amount, FLOWS.wage.base); w.leave(); assert.equal(R.store.getItem(OPT_IN_KEY), null); R.tick(FLOWS.wage.cooldownMs); assert.throws(() => w.payWage()); });
+test('persists locally under inu.sim.* only, survives reload, and the id is a random device id', () => { const R = walletRig(), w = R.wallet(); w.join(); w.payWage(); const w2 = R.wallet();
+  assert.equal(w2.pid, w.pid); assert.equal(w2.balance(), 10); assert.deepEqual([...R.mem.keys()].sort(), [OPT_IN_KEY, STORE_KEY].sort()); assert.match(w.pid, /^p[0-9a-f]{16}$/); });
+test('anti-farm: cooldown, diminishing wages and daily cap hold locally and on the server', async () => { const R = walletRig(), w = R.wallet(); w.join(); const got = [w.payWage().value.amount]; assert.throws(() => w.payWage(), /cooldown/);
+  for (let i = 0; i < 30; i++) { R.tick(FLOWS.wage.cooldownMs); try { got.push(w.payWage().value.amount); } catch { break; } }
+  assert.equal(got.reduce((a, b) => a + b), FLOWS.wage.dailyCap); for (let i = 1; i < got.length; i++) assert.ok(got[i] <= got[i - 1]);
+  R.tick(3000); const s = await w.sync(); assert.equal(s.unsynced, 0); assert.equal(s.balance, FLOWS.wage.dailyCap); });
+test('sync anchors; local tampering is dropped back to the anchored checkpoint; a fork adopts the server', async () => { const R = walletRig(), w = R.wallet(); w.join(); w.payWage(); R.tick(3000); await w.sync(); R.tick(FLOWS.wage.cooldownMs); w.payWage();
+  const raw = JSON.parse(R.mem.get(STORE_KEY)); raw.entries[0].value.amount = 999; R.mem.set(STORE_KEY, JSON.stringify(raw)); const w2 = R.wallet(); assert.equal(w2.balance(), 10); assert.match(w2.state().note, /failed verification/);
+  R.tick(FLOWS.wage.cooldownMs); w2.payWage(); const forged = JSON.parse(R.mem.get(STORE_KEY)); forged.base = { ...forged.base, seq: 0, head: '0'.repeat(64), balance: 500 }; R.mem.set(STORE_KEY, JSON.stringify(forged));
+  const w3 = R.wallet(); R.tick(3000); let s = await w3.sync(); assert.equal(s.balance, 18, 'the forged 500 base is ignored: the server only accepts the genuine entry on top of its own checkpoint');
+  const f2 = JSON.parse(R.mem.get(STORE_KEY)); f2.base = { ...f2.base, balance: 999 }; R.mem.set(STORE_KEY, JSON.stringify(f2)); R.tick(3000); s = await R.wallet().sync(); assert.equal(s.balance, 18, 'server checkpoint wins'); assert.match(s.note, /restored/);
+  const R2 = walletRig(), a = R2.wallet(); a.join(); R2.tick(3000); await a.sync(); const stolen = JSON.parse(R2.mem.get(STORE_KEY)); // an old copy of the same device id with a different history = fork
+  R2.tick(FLOWS.wage.cooldownMs); a.payWage(); R2.tick(3000); await a.sync(); const g = { ...stolen, entries: [] }; R2.mem.set(STORE_KEY, JSON.stringify(g)); const c = R2.wallet(); c.leave(); R2.tick(3000); s = await c.sync(); assert.match(s.note, /server refused/); assert.equal(s.balance, 10); assert.equal(s.joined, true); });
+test('offline server: the wallet keeps working locally and syncs later', async () => { const R = walletRig(); let up = false; const net = async (u, o) => up ? R.net(u, o) : { status: 503, json: async () => ({}) };
+  const { createPawWallet } = await import('../src/sim/pawbook.js'); const w = createPawWallet({ store: R.store, now: R.now, net }); w.join(); w.payWage(); assert.equal((await w.sync()).server, 'offline'); up = true; R.tick(3000); const s = await w.sync(); assert.equal(s.server, 'ok'); assert.equal(s.unsynced, 0); });

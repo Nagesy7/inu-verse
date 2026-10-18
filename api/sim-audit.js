@@ -3,8 +3,8 @@
 // frozen scan in src/sim/audit-static.js (kept fresh by tests/sim-static.test.mjs).
 import { buildReport } from "../src/sim/report.js";
 import { STATIC } from "../src/sim/audit-static.js";
-export default function handler(req, res) {
+export default async function handler(req, res) {
   res.setHeader("content-type", "application/json; charset=utf-8"); res.setHeader("cache-control", "public, max-age=30"); res.setHeader("access-control-allow-origin", "*");
   if (req.method !== "GET" && req.method !== "HEAD") { res.statusCode = 405; res.setHeader("allow", "GET, HEAD"); return res.end(JSON.stringify({ error: "read-only: GET only" })); }
-  res.statusCode = 200; res.end(req.method === "HEAD" ? "" : JSON.stringify(buildReport(STATIC), null, 1));
+  res.statusCode = 200; res.end(req.method === "HEAD" ? "" : JSON.stringify(await buildReport(STATIC), null, 1));
 }

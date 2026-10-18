@@ -3,33 +3,48 @@
 import { runChecks, CHECK_NAMES } from './checks.js';
 import { WATCHDOGS, COLORS } from './roster.js';
 import { PAWMARK } from './pawmarks.js';
+import { CURRENCY } from './currency.js';
 export const SEVERITY = ['critical', 'high', 'medium', 'low', 'info'];
-export const PHASE = 'Phase 1: Paw Audit Bureau';
+export const PHASE = 'Phase 2: side economy (Paw Audit Bureau re-run)';
 
 // Standing findings: the Bureau's own reading of the code. `when` decides from the static scan whether it still applies.
 export const STANDING = [
-  { id: 'PAB-001', severity: 'medium', check: 1, title: 'Action log lives in the browser session only',
-    detail: 'The chain is tamper-evident (any edit, reorder or deletion fails verification) but not anchored anywhere: a modified client could throw the whole chain away and build a fresh one that also verifies.',
-    repro: ['Open the Bureau desk, note the chain head.', 'Reload the page.', 'The log restarts from genesis with a new head.'],
-    fix: 'Before any sim outcome matters across players (Phase 2), anchor chain heads server-side: an append-only Upstash list written only by a sim API that hashes on the server.', status: 'open: needs Zachary\'s OK (adds a new write API)' },
+  { id: 'PAB-001', severity: 'medium', check: 1, title: 'Action log lived in the browser session only',
+    detail: `Phase 1 chains were tamper-evident but not anchored: a modified client could throw a chain away and build a fresh one. Phase 2 anchors every player ${CURRENCY.name} wallet on the sim server: /api/sim-log keeps the checkpoint (seq, head, balance, anti-farm counters, last ${50} heads) in Upstash under sim:* keys and only moves it forward when posted entries continue from the stored head, re-hash correctly and pass the same rules.`,
+    repro: ['Join at the Bureau desk and work a desk shift.', 'Edit, reorder, replay or drop entries in the local log and sync.', 'The server answers 409 and the wallet falls back to the anchored checkpoint.'],
+    fix: 'Server chain-head anchor (src/sim/anchor.js + api/sim-log.js) with hash verification, rate limits and size caps; attacked live in check 1.', status: 'fixed (Phase 2)' },
   { id: 'PAB-002', severity: 'low', check: 3, title: "President Inu's tip writes Bones directly", when: (S) => S.context.presidentTip,
-    detail: 'talk() in the President module adds 25 Bones to the player. That is the main game, not the sim, and it is fine today. If a later phase lets sim agents drive President Inu, it would become a sim write to Bones.',
+    detail: 'talk() in the President module adds 25 Bones to the player. That is the main game, not the sim, and it is fine today. If a later phase let sim agents drive President Inu, it would become a sim write to Bones.',
     repro: ['Wait for a President visit.', 'Talk to President Inu.', '+25 Bones (once per visit).'],
-    fix: 'The President module is on the sim deny-list; Phase 2 agents must use their own NPCs. The static scan fails if sim code imports it.', status: 'guarded' },
+    fix: 'The President module is on the sim deny-list; sim agents use their own NPCs. The static scan fails if sim code imports it.', status: 'guarded' },
   { id: 'PAB-003', severity: 'low', check: 4, title: 'A Bones to practice-KIBBLE swap exists in the Launch Hall', when: (S) => S.context.bonesSwap,
     detail: 'The main game converts Bones into practice KIBBLE for the Launch Hall trainer. It is the obvious route a side currency would try to reach.',
     repro: ['Open the Launch Hall.', 'Use "Swap bones to practice KIBBLE".'],
-    fix: 'Pawmarks never become Bones, so they cannot reach the swap. The main-game module is deny-listed, Pawmarks have no conversion export, and the only sim route is a read-only GET.', status: 'guarded' },
+    fix: `${CURRENCY.name} never become Bones, so they cannot reach the swap. The main-game module is deny-listed, the currency has no conversion export, and the anchor accepts only join, leave, wage, fine and bail entries.`, status: 'guarded' },
   { id: 'PAB-004', severity: 'low', check: 2, title: 'A grep alone misses URLs built at runtime',
     detail: 'A static scan finds literal paths only. A URL assembled from pieces would slip past it.',
     repro: ['Build a URL from string pieces inside sim code.', 'The grep does not see the endpoint.'],
-    fix: 'Belt and braces: sim code may not open its own network calls (fetch, XHR, sockets, beacons or dynamic imports) (static test), and its only network door is an allow-list guard that throws for anything except /api/sim-audit.', status: 'fixed' },
+    fix: 'Sim code may not open its own network calls (fetch, XHR, sockets, beacons or dynamic imports); its only door is an allow-list guard (path + method) that throws for anything else.', status: 'fixed' },
+  { id: 'PAB-008', severity: 'low', check: 2, title: 'Protocol-relative URLs passed the Phase 1 host check',
+    detail: 'In Phase 1 a URL like //other-host/api/sim-audit skipped the host test. Nothing left the site, because only the bare path was ever fetched, but the guard was wrong.',
+    repro: ['guardUrl("//evil.example/api/sim-log") in Phase 1 code: no throw.'], fix: 'The guard now requires the same origin for every URL; the Red-Team probe list includes protocol-relative and absolute same-path URLs.', status: 'fixed (Phase 2)' },
+  { id: 'PAB-009', severity: 'low', check: 3, title: 'The desk-shift puzzle is solved in the browser',
+    detail: `The server cannot prove a shift was really worked, only that it obeys the rules. A scripted client could earn at most the daily wage cap (${60} ${CURRENCY.short}/day, diminishing from ${10} per shift, ${3}-minute cooldown). ${CURRENCY.name} have no value outside the sim, so the worst case is a full sim wallet.`,
+    repro: ['Post wage entries straight to /api/sim-log with correct hashes.', 'They are accepted only up to the cooldown, diminishing amount and daily cap.'],
+    fix: 'Server-side caps, cooldowns and diminishing returns (economy.js, shared by client and server). Later phases can move shifts to server-issued tasks if wages ever buy anything that matters.', status: 'mitigated' },
+  { id: 'PAB-010', severity: 'low', check: 5, title: `A ${CURRENCY.name} wallet lives on one device`,
+    detail: 'The wallet id and its owner token are random and stored only in this browser. Clearing site data or switching device starts a new, empty wallet; the old one stays anchored but nobody can write to it.',
+    repro: ['Join and earn at the desk.', 'Clear site data and reload.', 'A new wallet with 0 starts.'],
+    fix: 'By design for now: linking to a crypto wallet would break the "never tied to a wallet" rule. Cross-device restore needs a non-wallet account, which is Zachary\'s call.', status: 'open: needs Zachary\'s decision' },
   { id: 'PAB-005', severity: 'info', check: 6, title: 'Corrupt-cop, trial and arrest branches are not built yet',
-    detail: 'Checks 6, 7 and 11 run against the framework guards those branches will have to use (rate limits, diminishing returns, pair flow caps, once-only verdicts, opt-in, time caps, a way out). They pass now and must be re-run when Phase 2 lands.',
-    repro: ['Run the Bureau checks: checks 6, 7 and 11 show scope "guarded".'], fix: 'Re-audit at the start of Phase 2 before anything ships.', status: 'deferred to Phase 2' },
-  { id: 'PAB-006', severity: 'info', check: 11, title: 'No opt-in switch ships in Phase 1',
-    detail: 'Real players cannot be part of the sim at all yet, so no player can be targeted. The opt-in flag exists (default off) but nothing turns it on.',
-    repro: ['Search the UI for a sim opt-in: there is none.'], fix: 'Phase 2 adds an explicit, reversible opt-in with a time cap and a leave button.', status: 'by design' },
+    detail: 'Checks 6, 7 and 11 run against the framework guards those branches will use (rate limits, diminishing returns, pair flow caps, once-only verdicts, opt-in, time caps, a way out). Bribes exist only as a ledger primitive between sim agents.',
+    repro: ['Run the Bureau checks: checks 6, 7 and 11 show scope "guarded".'], fix: 'Re-audit when the corrupt-cop branch (Phase 7) and the trial/arrest systems land, before anything ships.', status: 'deferred' },
+  { id: 'PAB-006', severity: 'info', check: 11, title: 'Opt-in is per device and off by default',
+    detail: 'Joining the side economy is an explicit switch at the Bureau desk; leaving stops wages at once and the server refuses wages for anyone not joined. Nothing in Phase 2 fines, holds or bails a real player.',
+    repro: ['Open the desk: the wallet says "not joined" until you join.'], fix: 'Keep it explicit; later phases must ask again before any arrest-type action involves a player.', status: 'by design' },
+  { id: 'PAB-011', severity: 'info', check: 12, title: 'Hiding Connect Wallet behind open panels relies on CSS :has()',
+    detail: 'On phones the Connect Wallet button now hides while a panel is open and comes back when it closes. Browsers without :has() (Safari before 15.4) keep the old overlap.',
+    repro: ['Open any panel at 667x375.'], fix: 'Accepted: the button still works everywhere; only very old browsers see the overlap.', status: 'accepted' },
   { id: 'PAB-007', severity: 'info', check: 12, title: 'Report delivery to Zachary is manual',
     detail: 'The Bureau has no outbox. The report is published in-game and as JSON; President Inu\'s agent sends it to Zachary.',
     repro: ['Open /api/sim-audit.'], fix: 'Keep it manual: a human-approved send before any major ship.', status: 'open (process)' },
@@ -44,8 +59,8 @@ export function checkReport(r) { // check 12: the report has what the spec asks 
   return { pass: sorted && complete && r.to === 'Zachary Nagle' && r.signedBy?.title === 'Chief Auditor' && r.checks.length === 12, ev: [`${r.findings.length} findings ranked by severity: ${sorted}`, `every finding has repro, fix and status: ${complete}`, `addressed to ${r.to}, signed by ${r.signedBy?.name} (${r.signedBy?.title})`] };
 }
 
-export function buildReport(STATIC, { now = Date.now() } = {}) {
-  const checks = runChecks(STATIC);
+export async function buildReport(STATIC, { now = Date.now() } = {}) {
+  const checks = await runChecks(STATIC);
   const findings = rank([...STANDING.filter((f) => !f.when || f.when(STATIC)).map(({ when, ...f }) => f), ...checks.filter((c) => c.status === 'fail').map(failFinding)]);
   const chief = WATCHDOGS.find((w) => w.role === 'chief');
   const r = { bureau: 'Paw Audit Bureau', tag: 'the Watchdogs', colors: { violet: COLORS.violet, silver: COLORS.silver }, phase: PHASE, generatedAt: new Date(now).toISOString(),

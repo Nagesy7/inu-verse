@@ -357,6 +357,7 @@ async function renderBank() { const body = $('#panel-body'), kp = K.kp, w = wall
      <div class="row"><button class="btn alt" id="bk-pools">Prize pool board</button><button class="btn alt" id="bk-burn">Burn board</button><a class="btn ghost" href="https://kibble-pay.vercel.app/prize-rules.html" target="_blank" rel="noopener">Prize Rules ↗</a></div></div></div>
    <h3>Inventory</h3><div id="bk-inv" class="grid"><div class="card"><small>${DEMO ? 'Demo items live in your local save.' : signed ? 'Loading…' : 'Sign in to see items your wallet owns across every Inu game.'}</small></div></div>
    <h3>Purchase history</h3><div id="bk-hist"><p class="sub">${DEMO ? 'Demo purchases are not real and have no history.' : signed ? 'Loading…' : 'Sign in to see your purchases and burns.'}</p></div>`;
+  PAB.simReadout(body); // Paw Audit Bureau: small sim-only side-currency readout (not money)
   $('#bk-pools').onclick = () => openPanel('city', { tab: 'pools' }); $('#bk-burn').onclick = () => openPanel('fly5', { tab: 'burn' });
   const sb = $('#bk-sign'); if (sb) sb.onclick = () => $('#btn-phantom').onclick().then(() => panel?.kind === 'bank' && renderBank());
   if (!signed) return;
