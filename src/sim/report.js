@@ -4,8 +4,9 @@ import { runChecks, CHECK_NAMES } from './checks.js';
 import { WATCHDOGS, COLORS } from './roster.js';
 import { PAWMARK } from './pawmarks.js';
 import { CURRENCY } from './currency.js';
+import { POLICE } from './police.js';
 export const SEVERITY = ['critical', 'high', 'medium', 'low', 'info'];
-export const PHASE = 'Phase 3: police and rangers (Paw Audit Bureau re-run)';
+export const PHASE = 'Phase 4: courts (Paw Audit Bureau re-run)';
 
 // Standing findings: the Bureau's own reading of the code. `when` decides from the static scan whether it still applies.
 export const STANDING = [
@@ -20,7 +21,7 @@ export const STANDING = [
   { id: 'PAB-003', severity: 'low', check: 4, title: 'A Bones to practice-KIBBLE swap exists in the Launch Hall', when: (S) => S.context.bonesSwap,
     detail: 'The main game converts Bones into practice KIBBLE for the Launch Hall trainer. It is the obvious route a side currency would try to reach.',
     repro: ['Open the Launch Hall.', 'Use "Swap bones to practice KIBBLE".'],
-    fix: `${CURRENCY.name} never become Bones, so they cannot reach the swap. The main-game module is deny-listed, the currency has no conversion export, and the anchor accepts only join, leave, wage, fine and bail entries.`, status: 'guarded' },
+    fix: `${CURRENCY.name} never become Bones, so they cannot reach the swap. The main-game module is deny-listed, the currency has no conversion export, and the anchor accepts only join, leave, wage, fine, bail, police, verdict and refund entries (a refund only returns a dismissed record's own fine or bail).`, status: 'guarded' },
   { id: 'PAB-004', severity: 'low', check: 2, title: 'A grep alone misses URLs built at runtime',
     detail: 'A static scan finds literal paths only. A URL assembled from pieces would slip past it.',
     repro: ['Build a URL from string pieces inside sim code.', 'The grep does not see the endpoint.'],
@@ -39,19 +40,29 @@ export const STANDING = [
   { id: 'PAB-012', severity: 'low', check: 11, title: 'Police see what the browser reports',
     detail: 'Spotting an offence runs in the player\'s browser (the server never sees positions). A modified client could dodge citations, which only helps itself, or invent citations against itself, which only hurts itself. It cannot cite anyone else: every entry is scoped to its own wallet id and token.',
     repro: ['Post a forged police.cite for your own wallet to /api/sim-log.', 'Accepted only within the daily caps, cooldown and fine rules; another wallet id is refused (403/400).'],
-    fix: 'Server-side caps, cooldowns, 60 s detention cap and the opt-in rule (police.js, shared by client and server).', status: 'mitigated' },
+    fix: 'Server-side caps, cooldowns, 60 s detention cap and the opt-in rule (police.js, shared by client and server). Phase 4: the court checks every record against the wall-clock patrol schedule, so a self-made citation with no officer nearby cannot be tried.', status: 'mitigated (kept as is, optional: President Inu)' },
   { id: 'PAB-013', severity: 'low', check: 11, title: 'Shared networks share the alt limit',
     detail: `At most ${4} ${CURRENCY.name} wallets can earn wages from one network per day (per hashed IP; the same device is the same network, and there is no fingerprinting). A busy household, school or phone-carrier NAT could hit it. Only wages are limited: policing, bail and leaving still work.`,
     repro: ['Join and finish a shift in 5 fresh browsers on one network on one day.', 'The 5th wallet\'s wage is refused (422, kind "alts").'],
-    fix: 'Raise or lower anchor.js LIMITS.altsPerIpDay if real players hit it.', status: 'open: tune if needed' },
-  { id: 'PAB-005', severity: 'info', check: 6, title: 'Corrupt-cop and trial branches are not built yet',
-    detail: 'Phase 3 built police, rangers, citations and detentions, so check 11 is now enforced against the real thing. Checks 6 and 7 still run against the framework guards the corrupt-cop branch and trials will use (rate limits, diminishing returns, pair flow caps, once-only verdicts). Bribes exist only as a ledger primitive between sim agents.',
-    repro: ['Run the Bureau checks: checks 6 and 7 show scope "guarded", check 11 "enforced".'], fix: 'Re-audit when the corrupt-cop branch (Phase 7) and trials land, before anything ships.', status: 'deferred' },
+    fix: 'Raise or lower anchor.js LIMITS.altsPerIpDay if real players hit it.', status: 'kept as is (optional: President Inu)' },
+  { id: 'PAB-015', severity: 'low', check: 7, title: 'A modified client can win back a fine it made up for itself',
+    detail: `Citations are still spotted in the browser (PAB-012). A modified client could post a citation against itself where an officer really was 4 to 5 tiles away, pay the fine, then win it back in court with "too far to see". It ends exactly where it started: a refund is always exactly what that record paid, once, so no wallet, pair of wallets or loop of self-made records can gain a single ${CURRENCY.name}. Records with no officer within ${POLICE.seeTiles + 1} tiles on the patrol schedule are inadmissible.`,
+    repro: ['Post a forged police.cite + pm.fine for your own wallet (officer 4.5 tiles away on the patrol schedule).', 'Contest it: dismissed, the same 5 PM comes back. Net change 0.', 'Forge one with no officer nearby: the court refuses it (422, kind "collusion").'],
+    fix: 'Refunds capped at what was paid, once per record, inadmissibility check on the patrol schedule, 3 verdicts a day (court.js, shared by client and server). Moving detection server-side would close it fully (see PAB-012).', status: 'mitigated' },
+  { id: 'PAB-005', severity: 'info', check: 6, title: 'The corrupt-cop branch is not built yet',
+    detail: 'Phase 4 built the courthouse, so check 7 (trial and evidence) is now enforced against real trials on anchored evidence, like check 11 for arrests. Check 6 still runs against the framework guards the corrupt-cop branch will use (rate limits, diminishing returns, pair flow caps). Bribes exist only as a ledger primitive between sim agents.',
+    repro: ['Run the Bureau checks: check 6 shows scope "guarded", checks 7 and 11 "enforced".'], fix: 'Re-audit when the corrupt-cop branch (Phase 7) lands, before anything ships.', status: 'deferred' },
+  { id: 'PAB-016', severity: 'info', check: 7, title: 'A wrong defence is final; walking out is free',
+    detail: `Each record is tried once: picking a defence the evidence does not back means upheld, and it cannot be retried. Walking out (or the ${90} s cap) logs nothing and keeps the record open for another try within the day. Nothing is lost either way: there is no fee and an upheld record changes nothing.`,
+    repro: ['Contest a citation where the officer stood 2 tiles away with "too far to see": upheld.', 'The Contest button for it is gone.'], fix: 'By design: once-only verdicts stop retry farming; the evidence is shown in full before you choose.', status: 'by design' },
+  { id: 'PAB-017', severity: 'info', check: 7, title: 'Only anchored evidence can be tried',
+    detail: 'The court reads the server\'s checkpoint, never the copy on the device. A citation made while offline shows as "syncing" and can be contested once it reaches the sim server (records stay contestable for a day).',
+    repro: ['Get cited with the network off.', 'Open the courthouse: the record is listed as syncing, not contestable.'], fix: 'By design: the court only trusts what the server anchored.', status: 'by design' },
   { id: 'PAB-006', severity: 'info', check: 11, title: 'Opt-in is per device and off by default',
     detail: 'Joining the side economy is an explicit switch at the Bureau desk; leaving stops wages at once and the server refuses wages for anyone not joined. Phase 3 police and rangers act only on joined players; leaving ends any detention and clears unpaid citations at once.',
     repro: ['Open the desk: the wallet says "not joined" until you join.'], fix: 'Keep it explicit.', status: 'by design' },
   { id: 'PAB-011', severity: 'info', check: 12, title: 'Hiding Connect Wallet behind open panels relies on CSS :has()',
-    detail: 'On phones the Connect Wallet button now hides while a panel is open and comes back when it closes. Browsers without :has() (Safari before 15.4) keep the old overlap.',
+    detail: 'On phones the Connect Wallet button hides while a panel is open and comes back when it closes. Phase 4 does the same for the ☰ menu button over the panel close button (proof/sim4-panels-*). Browsers without :has() (Safari before 15.4) keep the old overlap.',
     repro: ['Open any panel at 667x375.'], fix: 'Accepted: the button still works everywhere; only very old browsers see the overlap.', status: 'accepted (President Inu)' },
   { id: 'PAB-014', severity: 'info', check: 11, title: 'Walking away ends a detention',
     detail: 'A detained player keeps full control: moving more than 8 tiles from the spot, entering any door or game, or a gap in play ends it with no charge (logged as "left the scene"). Detention is a sim status, never a cage.',

@@ -39,8 +39,9 @@ function place(c) { if (matchMedia('(max-height:500px)').matches) { if (c.style.
     if (!r.width || r.top < innerHeight / 2 || r.right <= me.left || r.left >= me.right) continue; bottom = Math.max(bottom, innerHeight - r.top + 6); }
   const v = bottom ? `${Math.round(bottom)}px` : ''; if (c.style.bottom !== v) c.style.bottom = v; }
 // the per-frame hook (main.js). view = a fresh { x, y, driving, busy (a panel is open: no offences) } copy; tileAt(tx, ty) -> tile id (-1 = solid); T = world tile ids.
-let acc = 0;
-export function simTick(dt, t, view, tileAt, T) { try { const P = patrol(); P.tick(dt, t, view, tileAt, T); acc += dt; if (acc > 0.25) { acc = 0; if (P.notice || P.shift) draw(); } } catch {} }
+let acc = 0, WORLD = null;
+export const worldLookup = () => WORLD; // the last tile lookup main.js handed in (the court draws its scene exhibit from it)
+export function simTick(dt, t, view, tileAt, T) { try { WORLD = { tileAt, T }; const P = patrol(); P.tick(dt, t, view, tileAt, T); acc += dt; if (acc > 0.25) { acc = 0; if (P.notice || P.shift) draw(); } } catch {} }
 export const patrolProps = (t, deps, player) => forceProps(t, deps, player, PATROL?.litter() || []);
 
 function badge(force, px = 40) { const cv = document.createElement('canvas'); cv.width = cv.height = px; const x = cv.getContext('2d'); x.imageSmoothingEnabled = false;

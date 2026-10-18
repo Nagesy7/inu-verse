@@ -10,10 +10,12 @@ import { ISSUER, SINK, balances } from './pawmarks.js';
 import { FirewallError, guardNoWallet, guardKey, SIM_UNIT } from './firewall.js';
 import { CURRENCY } from './currency.js';
 import { policeStep, freshPolice } from './police.js';
+import { courtStep, COURT } from './court.js';
 import { DAY_MS } from './economy.js';
 export const LIMITS = Object.freeze({ maxBody: 24000, maxEntries: 40, keepHeads: 50, maxLength: 50000, pidEverySec: 2, ipEverySec: 1, futureMs: 120000, maxData: 300, altsPerIpDay: 4 });
 export const K = Object.freeze({ anchor: (pid) => `sim:anchor:${pid}`, lock: (pid) => `sim:lock:${pid}`, pidRate: (pid) => `sim:rl:${pid}`, ipRate: (h) => `sim:rlip:${h}`, alt: (h, day, n) => `sim:alt:${h}:${day}:${n}` });
-export const PLAYER_ACTIONS = Object.freeze(['wallet.join', 'wallet.leave', 'pm.wage', 'pm.fine', 'pm.bail', 'police.cite', 'police.detain', 'police.release']);
+export const PLAYER_ACTIONS = Object.freeze(['wallet.join', 'wallet.leave', 'pm.wage', 'pm.fine', 'pm.bail', 'police.cite', 'police.detain', 'police.release', 'court.verdict', 'pm.refund']);
+const COURTED = new Set(['court.verdict', 'pm.refund']);
 const POLICED = new Set(['police.cite', 'police.detain']);
 export const PID = /^p[0-9a-f]{16}$/, TOKEN = /^[0-9a-f]{48}$/;
 export const tokenHash = (t) => sha256('pab-anchor|' + t);
@@ -31,11 +33,12 @@ export function advance(cp, entries, acct, { now = Infinity } = {}) {
     if (!(e.ts >= ts) || e.ts > now) throw new FirewallError('chain', `entry ${e.seq} timestamp out of order or in the future`);
     if (e.group !== 'sim' || e.value?.unit !== SIM_UNIT || !Number.isInteger(e.value?.amount) || e.value.amount < 0) throw new FirewallError('economy', `entry ${e.seq}: ${CURRENCY.one} units only`);
     if (!PLAYER_ACTIONS.includes(e.action)) throw new FirewallError('economy', `entry ${e.seq}: ${e.action} is not a player wallet action`);
-    const join = e.action.startsWith('wallet.') || e.action === 'police.release', wage = e.action === 'pm.wage', policed = POLICED.has(e.action);
-    if (join ? (e.actor !== acct || e.target !== acct || e.value.amount !== 0) : wage ? (e.actor !== ISSUER || e.target !== acct) : policed ? (e.target !== acct || e.actor === acct) : (e.actor !== acct || e.target !== SINK)) throw new FirewallError('economy', `entry ${e.seq}: wrong parties for ${e.action}`);
+    const join = e.action.startsWith('wallet.') || e.action === 'police.release', wage = e.action === 'pm.wage' || e.action === 'pm.refund', policed = POLICED.has(e.action), verdict = e.action === 'court.verdict';
+    if (join ? (e.actor !== acct || e.target !== acct || e.value.amount !== 0) : wage ? (e.actor !== ISSUER || e.target !== acct) : policed ? (e.target !== acct || e.actor === acct) : verdict ? (e.actor !== COURT.judge || e.target !== acct) : (e.actor !== acct || e.target !== SINK)) throw new FirewallError('economy', `entry ${e.seq}: wrong parties for ${e.action}`);
     if (e.data != null) { guardNoWallet(e.data, 'data'); if (typeof e.data === 'object') for (const k of Object.keys(e.data)) guardKey(k); if (JSON.stringify(e.data).length > LIMITS.maxData) throw new FirewallError('size', 'data too big'); }
     if (wage && !joined) throw new FirewallError('optin', 'wages only after joining the side economy');
-    police = policeStep(police, e, acct, { joined, balance }); // citations, detentions (<= 60 s, opt-in only), fines, bail, releases
+    police = COURTED.has(e.action) ? courtStep(police, e, acct, { joined }) // Phase 4: verdicts (re-decided here) + refunds of exactly what was paid
+      : policeStep(police, e, acct, { joined, balance }); // citations, detentions (<= 60 s, opt-in only), fines, bail, releases
     flows = applyFlow(flows, e);
     balance = balances([e], { [acct]: balance }).get(acct) || 0; if (balance < 0) throw new FirewallError('economy', `entry ${e.seq}: not enough ${CURRENCY.short}`);
     if (e.action === 'wallet.join') joined = true; if (e.action === 'wallet.leave') joined = false;

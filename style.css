@@ -240,6 +240,8 @@ body.touring #prompt{display:none!important}
 #hud{right:auto!important;overflow:visible!important;flex-wrap:nowrap!important}
 #menu-btn{position:fixed;z-index:20;top:max(8px,env(safe-area-inset-top));right:max(8px,env(safe-area-inset-right));min-width:48px;min-height:48px;font-size:22px;padding:0;line-height:1}
 body:not(.inworld) #menu-btn,body.photo #menu-btn{display:none}
+/* The ☰ button (z 20) sat on top of the full-panel close button (#panel-close, panel z 10) on phones. A full panel has its own close, so the menu steps aside while one is open and is back the moment it closes. */
+body:has(#panel:not([hidden])) #menu-btn{display:none}
 #minimap-wrap{display:none!important}body.mm-on.inworld #minimap-wrap:not([hidden]){display:block!important}
 body.mm-on #minimap-wrap{top:calc(max(8px,env(safe-area-inset-top)) + 58px)!important;bottom:auto!important}
 #drawer{position:fixed;inset:0;z-index:40;background:#0008;display:flex;justify-content:flex-end}

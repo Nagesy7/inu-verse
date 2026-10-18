@@ -16,6 +16,7 @@ import { CURRENCY } from './currency.js';
 import { POLICE, decide, observe, offenseAt, isCrossing } from './police.js';
 import { OFFICERS, OFFICER_IDS, officersAt } from './force.js';
 import { createPatrol } from './patrol.js';
+import { COURT, GROUNDS, hear, facts, createTrial, BENCH_IDS } from './court.js';
 
 export const PAWMARK_EXPORTS = ['PAWMARK', 'ISSUER', 'SINK', 'validAccount', 'balances'];
 export const CHECK_NAMES = ['Action log', 'Prize firewall', 'Main economy firewall', 'Side currency is one-way', 'No cash-out', 'Corrupt-cop branch',
@@ -83,6 +84,16 @@ export async function policeRig({ wages = 3 } = {}) { const R = walletRig(), w =
     return (await R.post({ pid: sv.pid, token: token || sv.token, entries: [e] })).status; };
   return { R, w, sync, cite3, forge, saved }; }
 const FLOWS_WAGE_MS = 3 * 60e3 + 1;
+// Phase 4: honest citations made where the wall-clock patrol really had Officer Pip (so the court can back them up).
+// want: 'close' (<= 3 tiles: a sightline defence fails), 'far' (4.3..5.4 tiles: it holds), 'fake' (> 7: no officer was there),
+// 'crossing' (tile 28,44, next to the zebra stripes at 29). Waits (rig time) until Pip is where the case needs him.
+export async function courtRig({ wages = 3 } = {}) { const PR = await policeRig({ wages }), { R, w } = PR, pip = OFFICER_IDS[1];
+  const pipAt = () => officersAt(R.now() / 1000).find((o) => o.id === pip), ok = { close: (d) => d <= 3, far: (d) => d > 4.3 && d <= 5.4, fake: (d) => d > 7 && d < 30 };
+  const spot = (want) => { const o = pipAt(); if (want === 'crossing') { const tx = 28, ty = 44, d = Math.hypot(o.x - tx - 0.5, o.y - ty - 0.5); return d <= 3 ? { tx, ty } : null; }
+    for (let tx = 2; tx < 27; tx++) { const d = Math.hypot(o.x - tx - 0.5, o.y - 44.5); if (ok[want](d)) return { tx, ty: 44 }; } return null; };
+  const cite = (want, { detain = false, bail = false } = {}) => { let p = null; for (let i = 0; i < 400 && !(p = spot(want)); i++) R.tick(250); if (!p) throw new Error('no spot for ' + want); const r = w.cite(pip, 'jaywalk', p.tx, p.ty);
+    const detained = detain ? w.detain(pip, 'jaywalk', p.tx, p.ty) : null; if (detained && bail) w.payBail(); R.tick(POLICE.cooldownMs + 1); return { ...r, detained }; };
+  return { ...PR, cite, pip }; }
 
 function c2(S) { const ev = [], bad = RT.prizeUrls;
   const blocked = bad.filter((u) => throwsFw(() => guardUrl(u), 'prize')); const allowed = (() => { try { return guardUrl('/api/sim-audit') === '/api/sim-audit'; } catch { return false; } })();
@@ -108,8 +119,8 @@ function c4(S) { const ev = [], keys = Object.keys(PM).sort(), exact = JSON.stri
     `non-sim files reaching into src/sim: ${S.outside.map((o) => o.file).join(', ') || 'none'} (allowed: ${S.allowedOutside.join(', ')})`);
   const LOG_VIA = ['../src/sim/anchor.js', '../src/sim/sha256.js', './_lib/kv.js'], r = Object.fromEntries(S.routes.map((x) => [x.file, x]));
   const routesOk = S.routes.length === 2 && r['api/sim-audit.js'] && !r['api/sim-audit.js'].writes && r['api/sim-log.js'] && r['api/sim-log.js'].via.every((v) => LOG_VIA.includes(v));
-  const actionsOk = PLAYER_ACTIONS.every((a) => ['wallet.join', 'wallet.leave', 'pm.wage', 'pm.fine', 'pm.bail', 'police.cite', 'police.detain', 'police.release'].includes(a));
-  ev.push(`anchor accepts only ${PLAYER_ACTIONS.join(', ')} (wages in, fines/bail destroyed, police entries carry no amount; nothing out): ${actionsOk}`);
+  const actionsOk = PLAYER_ACTIONS.every((a) => ['wallet.join', 'wallet.leave', 'pm.wage', 'pm.fine', 'pm.bail', 'police.cite', 'police.detain', 'police.release', 'court.verdict', 'pm.refund'].includes(a));
+  ev.push(`anchor accepts only ${PLAYER_ACTIONS.join(', ')} (wages in, fines/bail destroyed, police entries and verdicts carry no amount, a refund only returns a dismissed record's own fine/bail; nothing out): ${actionsOk}`);
   const outsideOk = S.outside.every((o) => S.allowedOutside.includes(o.file) && o.imports.every((i) => !/pawmarks|engine|ledger/.test(i)));
   return { pass: exact && flags && empty(S.conversion) && routesOk && actionsOk && outsideOk && empty(S.economy), ev }; }
 
@@ -144,19 +155,48 @@ async function c6() { const s = sandbox(), ev = []; s.act(PM.ISSUER, 'pm.issue',
 async function c7() { const s = sandbox(), ev = [];
   s.act('sim:judge-oaks', 'evidence.file', 'sim:pup-kiki', { data: { key: 'case-7', item: 'chewed slipper' } });
   const twice = throwsFw(() => s.act('sim:judge-oaks', 'evidence.file', 'sim:pup-kiki', { data: { key: 'case-7', item: 'again' } }), 'replay');
-  s.defineAction('verdict', { once: true, groups: ['courts'] }); s.act('sim:judge-oaks', 'verdict', 'sim:pup-kiki', { data: { key: 'case-7', result: 'not guilty' } });
-  const replay = throwsFw(() => s.act('sim:judge-oaks', 'verdict', 'sim:pup-kiki', { data: { key: 'case-7', result: 'guilty' } }), 'replay');
+  s.act('sim:judge-oaks', 'court.verdict', 'sim:pup-kiki', { data: { key: 'case-7', result: 'dismissed' } });
+  const replay = throwsFw(() => s.act('sim:judge-oaks', 'court.verdict', 'sim:pup-kiki', { data: { key: 'case-7', result: 'upheld' } }), 'replay'), notJudge = throwsFw(() => s.act('sim:cop-rex', 'court.verdict', 'sim:pup-miso', { data: { key: 'case-9' } }), 'permission');
   const rows = s.log.entries(), filed = rows.findIndex((e) => e.action === 'evidence.file'); const ed = rows.map((e) => ({ ...e })); ed[filed] = { ...ed[filed], data: { key: 'case-7', item: 'planted bone' } };
   const immutable = !verifyChain(ed).ok, fab = throwsFw(() => s.act('sim:judge-oaks', 'evidence.file', 'player:zachary', { data: { key: 'case-8' } }), 'optin');
   const noStakes = RT.stakeNames.every((n) => throwsFw(() => s.defineAction(n), 'gambling'));
+  // Phase 3 evidence, anchored and uneditable
   const PR = await policeRig({ wages: 1 }); const c = PR.w.cite(OFFICER_IDS[1], 'jaywalk', 10, 21).cite; await PR.sync(); const anchored = PR.w.state().anchoredSeq > c.seq;
   const editCite = await PR.forge((acct, cp) => ({ seq: c.seq, prev: c.prev, data: { ...c.data, offense: 'flowers' } })), fake = await PR.forge(() => ({ actor: 'sim:pd-nobody' })), wrongForce = await PR.forge(() => ({ actor: OFFICER_IDS[5] }));
-  const fields = ['offense', 'tx', 'ty', 'fine'].every((k) => k in c.data) && OFFICER_IDS.includes(c.actor);
-  const engine = sandbox(); engine.register({ id: 'sim:pd-a', group: 'police' }); const ec = engine.act('sim:pd-a', 'police.cite', 'sim:pup-kiki', { data: { offense: 'jaywalk' } }); const ed2 = engine.log.entries().map((e) => e.seq === ec.seq ? { ...e, data: { offense: 'none' } } : e);
-  const citeOk = anchored && editCite === 409 && fake === 422 && wrongForce === 422 && fields && !verifyChain(ed2).ok;
+  const citeOk = anchored && editCite === 409 && fake === 422 && wrongForce === 422 && ['offense', 'tx', 'ty', 'fine'].every((k) => k in c.data) && OFFICER_IDS.includes(c.actor);
+  // ---- Phase 4: the courthouse, enforced ----
+  const A = await courtRig(); const warn = A.cite('close'), far = A.cite('far'), near = A.cite('crossing'); await A.sync();
+  const fileBefore = JSON.stringify(A.w.docket().map((r) => r.e)), bal0 = A.w.balance(), paid = far.fine;
+  const tr = createTrial({ wallet: A.w, seq: far.cite.seq, now: A.R.now }); A.R.tick(20e3); const won = tr.present('sightline');
+  const lost = createTrial({ wallet: A.w, seq: warn.cite.seq, now: A.R.now }).present('sightline'); const sy = await A.sync();
+  const refundOk = won.outcome === 'dismissed' && won.refunded === paid && paid > 0 && A.w.balance() === bal0 + paid && lost.outcome === 'upheld' && sy.unsynced === 0 && sy.server === 'ok';
+  const fileAfter = A.w.docket(), untouched = JSON.stringify(fileAfter.map((r) => r.e)) === fileBefore && fileAfter.every((r) => hashOf(r.e) === r.e.hash);
+  const appended = fileAfter.filter((r) => r.verdict).every((r) => r.vseq > r.e.seq) && fileAfter.find((r) => r.e.seq === far.cite.seq).refunded === true;
+  const again = throwsFw(() => A.w.contest(far.cite.seq, 'sightline', A.R.now()), 'replay');
+  // the server re-decides: forged verdicts, refunds and edits through the court are refused
+  const fv = (over) => A.forge((acct, cp) => ({ actor: COURT.judge, action: 'court.verdict', target: acct, data: { for: near.cite.seq, ground: 'sightline', outcome: 'dismissed', opened: A.R.now() - 1000 }, ...over(acct, cp) }));
+  const claimWin = await fv(() => ({})), editVia = await fv(() => ({ data: { for: near.cite.seq, ground: 'crossing', outcome: 'dismissed', opened: A.R.now() - 1000, tx: 3 } })), selfJudge = await fv((acct) => ({ actor: acct }));
+  const longTrial = await fv(() => ({ data: { for: near.cite.seq, ground: 'crossing', outcome: 'dismissed', opened: A.R.now() - (COURT.trialSec + 5) * 1000 } }));
+  const extraRefund = await A.forge((acct) => ({ actor: PM.ISSUER, action: 'pm.refund', target: acct, value: { amount: 5, unit: 'PAWMARK' }, data: { for: warn.cite.seq } }));
+  const crossing = createTrial({ wallet: A.w, seq: near.cite.seq, now: A.R.now }).present('crossing'); const sy2 = await A.sync();
+  // fabricated: a modified client cites itself where no officer was; the court won't hear it, so it can't farm a refund
+  const B = await courtRig(); B.cite('close'); const fk = B.cite('fake'); await B.sync(); const inadmissible = throwsFw(() => B.w.contest(fk.cite.seq, 'sightline', B.R.now()), 'collusion') && hear({ record: B.w.docket().find((r) => r.e.seq === fk.cite.seq), ground: 'sightline' }).outcome === 'inadmissible';
+  const fkServer = await B.forge((acct) => ({ actor: COURT.judge, action: 'court.verdict', target: acct, data: { for: fk.cite.seq, ground: 'sightline', outcome: 'dismissed', opened: B.R.now() - 1000 } }));
+  // walking out / the time cap: nothing logged, the record stands; unanchored evidence can't be tried
+  const C = await courtRig(); C.cite('close'); const cc = C.cite('far'); const early = throwsFw(() => C.w.contest(cc.cite.seq, 'sightline', C.R.now()), 'evidence'); await C.sync(); const n0 = C.w.entries().length + C.w.state().anchoredSeq;
+  const t1 = createTrial({ wallet: C.w, seq: cc.cite.seq, now: C.R.now }); t1.walkOut(); const walked = t1.state === 'walked out' && throwsFw(() => t1.present('sightline'), 'harm');
+  const t2 = createTrial({ wallet: C.w, seq: cc.cite.seq, now: C.R.now }); C.R.tick(COURT.trialSec * 1000 + 1); const timedOut = t2.state === 'timed out' && throwsFw(() => t2.present('sightline'), 'harm');
+  const stands = C.w.entries().length + C.w.state().anchoredSeq === n0 && !C.w.docket().find((r) => r.e.seq === cc.cite.seq).verdict;
+  const pass7 = twice && replay && notJudge && immutable && fab && noStakes && citeOk && refundOk && untouched && appended && again && claimWin === 422 && editVia === 422 && selfJudge === 422 && longTrial === 422 && extraRefund === 422
+    && crossing.outcome === 'dismissed' && crossing.refunded === POLICE.fine && sy2.unsynced === 0 && inadmissible && fkServer === 422 && early && walked && timedOut && stands;
   ev.push(`citations are evidence: offence, tile and officer in a hash-chained entry anchored on the server (${anchored}); editing an anchored citation ${editCite}, an unknown officer ${fake}, the wrong force ${wrongForce}`);
-  ev.push(`evidence re-filing refused: ${twice}`, `verdict replay / double trial refused: ${replay}`, `editing filed evidence breaks the chain: ${immutable}`, `fabricated evidence vs a real account refused: ${fab}`, `outcome-staking actions refused: ${noStakes}`, 'trial system itself not built yet (later phases)');
-  return { pass: twice && replay && immutable && fab && noStakes && citeOk, ev, scope: 'guarded' }; }
+  ev.push(`courthouse trial on anchored evidence: "too far to see" at ${A.w.docket().find((r) => r.e.seq === far.cite.seq).facts.dist} tiles dismissed and refunded ${paid} PM (${refundOk}); the same defence at ${A.w.docket().find((r) => r.e.seq === warn.cite.seq).facts.dist} tiles upheld; "one step from the crossing" dismissed (${crossing.outcome})`,
+    `the court never edits evidence: filed entries identical and re-hash after verdicts (${untouched}); verdicts are new entries after the record (${appended}); a second trial of the same record refused (${again})`,
+    `the server re-decides every verdict: claiming a win the evidence doesn't back ${claimWin}, a verdict that adds to the evidence ${editVia}, a player as judge ${selfJudge}, a trial over ${COURT.trialSec} s ${longTrial}, a refund for a record not dismissed ${extraRefund}`,
+    `self-made citations (no officer within ${POLICE.seeTiles} tiles at that time) are inadmissible: wallet ${inadmissible}, server ${fkServer}; unanchored evidence can't be tried: ${early}`,
+    `walk out any time or hit the ${COURT.trialSec} s cap: nothing logged and the original outcome stands (${walked && timedOut && stands})`,
+    `engine: evidence re-filing refused ${twice}, a second verdict refused ${replay}, only the courts give verdicts ${notJudge}, editing filed evidence breaks the chain ${immutable}, outcome-staking actions refused ${noStakes}`);
+  return { pass: pass7, ev, scope: 'enforced' }; }
 
 function c8(S) { const s = sandbox(), ev = [];
   const paidChance = throwsFw(() => s.defineAction(RT.paidChance.name, RT.paidChance), 'gambling'), names = RT.gamblingNames.filter((n) => throwsFw(() => s.defineAction(n), 'gambling'));
@@ -175,8 +215,15 @@ function c9() { const ev = [], stats = { grit: 5, wits: 5, heart: 5, pace: 5 };
     const go = (p) => { const v = observe({ ...p, x: (tx + 0.5) * 32, y: (ty + 0.5) * 32 }), off = i % 2 ? 'jaywalk' : 'flowers'; return JSON.stringify(decide({ offense: off, dwellMs: 3000, at: { x: v.x / 32, y: v.y / 32 }, officers: officersAt(t) })); };
     const a = go(plain), b = go(rich); if (a === b) pSame++; if (a !== 'null') pHits++; }
   const viewOnly = JSON.stringify(Object.keys(observe(rich))) === '["x","y"]';
-  ev.push(`200 police/ranger decisions identical for a plain pup and one with the priciest $KIBBLE cosmetics, Bones and score: ${pSame === 200} (${pHits} were citations)`, `the police only ever see x/y: ${viewOnly}`);
-  return { pass: same === 200 && onlyStats && pSame === 200 && pHits > 20 && viewOnly, ev }; }
+  // Phase 4: 200 trials, each heard for a plain pup and for one dressed in the priciest $KIBBLE cosmetics
+  let vSame = 0, vDismissed = 0, vUpheld = 0; for (let i = 0; i < 200; i++) { const ts = 1.8e12 + i * 7919, by = OFFICER_IDS[i % 2 ? 1 : 5], off = i % 2 ? 'jaywalk' : 'flowers', o = officersAt(ts / 1000).find((x) => x.id === by);
+    const e = { seq: i, ts, actor: by, group: 'sim', action: 'police.cite', target: 'player:p0000000000000001', value: { amount: 0, unit: 'PAWMARK' }, data: { offense: off, tx: Math.floor(o.x) + (i % 13) - 6, ty: off === 'jaywalk' ? 44 : Math.floor(o.y) + (i % 3) - 1, fine: 5 }, prev: '0'.repeat(64) }; e.hash = hashOf(e);
+    const record = { k: 'cite', e, paid: 5, verdict: null }, g = ['sightline', 'crossing', 'priors'][i % 3];
+    const a = JSON.stringify(hear({ record, ground: g, file: {}, player: plain })), b = JSON.stringify(hear({ record, ground: g, file: {}, player: rich, look: rich.outfit, kibble: 1e6, cosmetics: ['crown'] }));
+    if (a === b) vSame++; const out = JSON.parse(a).outcome; if (out === 'dismissed') vDismissed++; if (out === 'upheld') vUpheld++; }
+  ev.push(`200 police/ranger decisions identical for a plain pup and one with the priciest $KIBBLE cosmetics, Bones and score: ${pSame === 200} (${pHits} were citations)`, `the police only ever see x/y: ${viewOnly}`,
+    `200 court verdicts identical for a plain pup and one in the priciest $KIBBLE cosmetics: ${vSame === 200} (${vDismissed} dismissed, ${vUpheld} upheld); the court reads only the filed entry and the patrol schedule`);
+  return { pass: same === 200 && onlyStats && pSame === 200 && pHits > 20 && viewOnly && vSame === 200 && vDismissed > 10 && vUpheld > 10, ev }; }
 
 function c10(S) { const s = sandbox(), ev = [];
   const fields = RT.walletFields.filter((k) => throwsFw(() => s.register({ id: 'sim:w', group: 'fire', look: { [k]: 'x' } }), 'wallet'));
@@ -225,7 +272,10 @@ async function c11() { const ev = [], s = sandbox();
     `the patrol tick gets a frozen copy of the position, moves nothing, and walking away ends the detention: ${walkedAway}`,
     `no self-citation or self-arrest: server ${self}, engine ${eSelf}; daily citation cap: ${citeCap}; at most ${AL.altsPerIpDay} wallets per network earn wages a day: ${altOk} (${alts.join(', ')})`,
     `opted-in sim hold walks out any time: ${freed}; time cap auto-releases: ${capped}; holds over ${o.limits.holdMaxSec}s refused: ${tooLong}; opt-in defaults to OFF: ${defOff}`);
-  const arrests = notJoined && strangerCite === 422 && early && noPriors === 422 && over60 && eLong && longHold === 422 && isHeld && anchoredA && bail && expired && walk && optOut && leave && dSync.unsynced === 0 && walkedAway && self === 422 && eSelf && citeCap && altOk;
+  // Phase 4: the court is opt-in too, and leaving the side economy ends it
+  const Q = await courtRig(); Q.cite('close'); const qc = Q.cite('far'); await Q.sync(); Q.w.leave(); const courtOptIn = throwsFw(() => Q.w.contest(qc.cite.seq, 'sightline', Q.R.now()), 'optin') && throwsFw(() => walletRig().wallet().contest(1, 'sightline', 0), 'optin');
+  ev.push(`courts: only players who opted in can contest, and only their own records (${courtOptIn}); trials are capped at ${COURT.trialSec} s with a walk-out that keeps the original outcome (check 7)`);
+  const arrests = courtOptIn && notJoined && strangerCite === 422 && early && noPriors === 422 && over60 && eLong && longHold === 422 && isHeld && anchoredA && bail && expired && walk && optOut && leave && dSync.unsynced === 0 && walkedAway && self === 422 && eSelf && citeCap && altOk;
   return { pass: noOpt && heldNow && !!held && freed && capped && tooLong && defOff && before && paid && after && srv === 422 && !!w2 && arrests, ev, scope: 'enforced' }; }
 
 const RUN = [c1, c2, c3, c4, c5, c6, c7, c8, c9, c10, c11];

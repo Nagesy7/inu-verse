@@ -2,7 +2,7 @@
 // wide-brim hat), the precinct kiosk, the ranger station and ranger-shift litter. Officers use the game's normal Shiba
 // renderer (deps.drawShiba, layered outfit atlas) with a layered uniform on top. Pure drawing, time-only motion.
 import { TILE, PRECINCT, RANGER_HUT } from './place.js';
-import { OFFICERS, FORCE_COLORS as C, officerPose } from './force.js';
+import { OFFICERS, FORCE_COLORS as C, officerPose, patrolClock } from './force.js';
 const R = (c, x, y, w, h, col) => { c.fillStyle = col; c.fillRect(Math.round(x), Math.round(y), Math.ceil(w), Math.ceil(h)); };
 // gold six-point-ish star badge (police) / olive leaf badge (rangers). (x, y) = centre, s = pixel unit
 export function drawStar(c, x, y, s = 1) { const P = (px, py, w, h, col) => R(c, x + px * s, y + py * s, w * s, h * s, col);
@@ -53,7 +53,7 @@ export function drawLitter(c, l, t) { const x = l.x * TILE, y = l.y * TILE, [a, 
   R(c, x - 1, y - 14 + bob, 2, 5, C.gold); R(c, x - 1, y - 7 + bob, 2, 2, C.gold); } // floating "!" marker so it reads at phone size
 export function forceProps(t, deps, player = null, litter = []) {
   const out = [{ y: (PRECINCT.y + 1) * TILE - 2, d: (c) => drawKiosk(c, t) }, { y: (RANGER_HUT.y + 1) * TILE - 2, d: (c) => drawHut(c, t) }];
-  for (const o of OFFICERS) { const p = officerPose(o, t), near = player && Math.hypot(player.x - p.x, player.y - p.y) < 4.5 * TILE;
+  const wt = patrolClock(); for (const o of OFFICERS) { const p = officerPose(o, wt), near = player && Math.hypot(player.x - p.x, player.y - p.y) < 4.5 * TILE;
     out.push({ y: p.y, d: (c) => drawOfficer(c, o, p, deps, { name: near ? o.name.split(' ').slice(-2, -1)[0] || o.name : null }) }); }
   for (const l of litter) if (!l.got) out.push({ y: l.y * TILE, d: (c) => drawLitter(c, l, t) });
   return out;

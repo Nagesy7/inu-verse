@@ -22,7 +22,7 @@ async function runView(name, viewport, phone) {
   // 1) patrols in the world
   await put(14, 46.2); await page.waitForTimeout(1600); await page.screenshot({ path: `${OUT}precinct-kiosk-${name}${TAG}.png` });
   await put(39, 83); await page.waitForTimeout(1600); await page.screenshot({ path: `${OUT}ranger-station-${name}${TAG}.png` });
-  const pipAt = async () => page.evaluate(async (F) => { const m = await import(F); const o = m.officersAt(__inu.time).find((x) => x.id === 'sim:pd-pip'); return [o.x, o.y]; }, F);
+  const pipAt = async () => page.evaluate(async (F) => { const m = await import(F); const o = m.officersAt(Date.now() / 1000).find((x) => x.id === 'sim:pd-pip'); return [o.x, o.y]; }, F);
   { const [px] = await pipAt(); await put(Math.max(7, px - 1.5), 45.4); await page.waitForTimeout(1400); await page.screenshot({ path: `${OUT}police-patrol-${name}${TAG}.png` }); }
   // 2) not joined: standing in the road does nothing
   { for (let i = 0; i < 30; i++) { const [px] = await pipAt(); await put(Math.floor(px) + 0.5, 43.5); await page.waitForTimeout(100); } notes.push(`${name} not joined, 3 s in the road by Officer Pip: notice ${await page.evaluate(() => document.querySelector('#pab-notice:not([hidden])')?.innerText || 'none')}`); }

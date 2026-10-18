@@ -28,5 +28,8 @@ export function officerPose(o, t) { const i = OFFICERS.indexOf(o), [px, py] = o.
   const k = Math.min(1, Math.max(0, (tri - 0.12) / 0.76)), e = k * k * (3 - 2 * k), going = u < 0.5, walking = tri > 0.12 && tri < 0.88;
   const horiz = Math.abs(o.patrol[0]) >= Math.abs(o.patrol[1]), sgn = Math.sign(horiz ? o.patrol[0] : o.patrol[1]) * (going ? 1 : -1);
   return { x: (px + o.patrol[0] * e) * 32, y: (py + o.patrol[1] * e) * 32, face: !walking ? 'down' : horiz ? (sgn > 0 ? 'right' : 'left') : (sgn > 0 ? 'down' : 'up'), moving: walking && 6 * k * (1 - k) > 0.25, phase: t * 9 }; }
+// Phase 4: patrols run on the wall clock (seconds), so every player sees the same beat and the court can re-check where an
+// officer stood at a citation's timestamp (court.js). The world draw and the patrol tick both use it.
+export const patrolClock = (ms = Date.now()) => ms / 1000;
 // officer positions in tiles (what the rules see)
 export const officersAt = (t) => OFFICERS.map((o) => { const p = officerPose(o, t); return { id: o.id, force: o.force, x: p.x / 32, y: p.y / 32 }; });

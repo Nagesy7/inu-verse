@@ -9,6 +9,7 @@ import { ISSUER, SINK } from './pawmarks.js';
 import { guardedFetch, SIM_UNIT, FirewallError } from './firewall.js';
 import { OPT_IN_KEY } from './engine.js';
 import { POLICE, fineFor, heldNow, canPolice } from './police.js';
+import { COURT, hear } from './court.js';
 export const STORE_KEY = 'inu.sim.pm.v1', MAX_UNSYNCED = 200;
 const hex = (bytes) => { const a = new Uint8Array(bytes); globalThis.crypto.getRandomValues(a); return Array.from(a, (b) => b.toString(16).padStart(2, '0')).join(''); };
 
@@ -28,7 +29,7 @@ export function createPawWallet({ store = globalThis.localStorage, now = () => D
   const w = {
     get pid() { return st.pid; }, account: acct,
     state: () => { const c = cur(), ps = c.police || {}; return { balance: c.balance, joined: c.joined, seq: c.seq, head: c.head, unsynced: st.entries.length, anchoredSeq: st.base.seq, server: status.server, note: status.note,
-      held: heldNow(ps, now()) ? { ...ps.held, leftMs: ps.held.ts + ps.held.sec * 1000 - now() } : null, heldRecord: ps.held || null, owed: { ...(ps.owed || {}) }, citesToday: ps.day === Math.floor(now() / 864e5) ? ps.cites : 0 }; },
+      held: heldNow(ps, now()) ? { ...ps.held, leftMs: ps.held.ts + ps.held.sec * 1000 - now() } : null, heldRecord: ps.held || null, owed: { ...(ps.owed || {}) }, citesToday: ps.day === Math.floor(now() / 864e5) ? ps.cites : 0, verdictsToday: ps.court?.day === Math.floor(now() / 864e5) ? ps.court.verdicts : 0 }; },
     joined: () => cur().joined, balance: () => cur().balance, entries: () => st.entries.map((e) => ({ ...e })),
     join() { if (cur().joined) return null; try { store?.setItem(OPT_IN_KEY, 'yes'); } catch {} return append('wallet.join', acct(), acct()); },
     leave() { if (!cur().joined) return null; try { store?.removeItem(OPT_IN_KEY); } catch {} return append('wallet.leave', acct(), acct()); },
@@ -42,6 +43,17 @@ export function createPawWallet({ store = globalThis.localStorage, now = () => D
     release(reason) { return cur().police?.held ? append('police.release', acct(), acct(), 0, { reason }) : null; },
     payFine(forSeq) { const owed = cur().police?.owed?.[forSeq]; if (!owed) throw new FirewallError('economy', 'no such unpaid citation'); return append('pm.fine', SINK, acct(), owed, { for: Number(forSeq) }); },
     payBail() { const h = cur().police?.held; if (!h || !heldNow(cur().police, now())) throw new FirewallError('economy', 'not detained'); return append('pm.bail', SINK, acct(), POLICE.bail, { for: h.seq }); },
+    // Phase 4 courts. The docket is the ANCHORED evidence file (the server's checkpoint), never the local copy; a verdict is
+    // re-decided by the server from that same file (court.js), and a dismissal refunds exactly what was paid.
+    docket() { const f = st.base.police?.file || {}, live = cur().police?.file || {};
+      return Object.values(f).sort((a, b) => b.e.seq - a.e.seq).map((r) => { const l = live[r.e.seq] || r; return { ...l, e: { ...r.e }, anchored: true, facts: hear({ record: r, ground: null, file: f }).facts, open: !l.verdict && now() - r.e.ts < COURT.windowMs }; }); },
+    contest(seq, ground, opened) { const c = cur(); if (!c.joined) throw new FirewallError('optin', 'join the side economy first');
+      if (!st.base.police?.file?.[seq]) throw new FirewallError('evidence', 'only anchored evidence can be tried: sync first');
+      const rec = c.police.file[seq], { outcome } = hear({ record: rec, ground, file: c.police.file });
+      if (outcome === 'inadmissible') throw new FirewallError('collusion', "inadmissible: the patrol log can't back this record up");
+      const v = append('court.verdict', acct(), COURT.judge, 0, { for: Number(seq), ground, outcome, opened: Math.round(opened) });
+      const paid = cur().police.file[seq]?.paid || 0, refund = outcome === 'dismissed' && paid ? append('pm.refund', acct(), ISSUER, paid, { for: Number(seq) }) : null;
+      return { verdict: v, outcome, refund, refunded: refund ? paid : 0 }; },
     // push unsynced entries to the anchor; on a fork the server checkpoint wins (it is the record)
     async sync() {
       try {

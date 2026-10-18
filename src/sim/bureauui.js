@@ -6,6 +6,7 @@ import { sandbox } from './checks.js';
 import { verifyChain, hashOf } from './ledger.js';
 import { pawWallet, syncSoon, syncNow } from './simstate.js';
 import { renderForce } from './patrolui.js';
+import { renderCourt } from './courtui.js';
 export { pawWallet };
 import { CURRENCY, pm } from './currency.js';
 import { FLOWS } from './economy.js';
@@ -42,6 +43,7 @@ export function simReadout(body) { try { const el = document.createElement('div'
 export function renderBureau(body, deps, { tab = 'report' } = {}) {
   if (!document.getElementById('pab-style')) { const st = document.createElement('style'); st.id = 'pab-style'; st.textContent = CSS; document.head.appendChild(st); }
   if (tab === 'precinct' || tab === 'rangers') return renderForce(body, deps, tab); // Phase 3: Barkley Precinct kiosk / Greenpaw Rangers station
+  if (tab === 'court') return renderCourt(body, deps); // Phase 4: Barkley Courthouse
   const chief = WATCHDOGS.find((w) => w.role === 'chief'); let report = null, S = null;
   body.innerHTML = `<div class="pab"><div class="pab-head"><span id="pab-badge"></span><div style="flex:1"><h2>Paw Audit Bureau</h2><div class="pab-sub">"The Watchdogs" · independent auditors · no wallet, no balance, no income · reports go to Zachary Nagle, signed by ${esc(chief.title)} ${esc(chief.name)}</div></div><span class="pab-chip" id="pab-mine" title="Your ${esc(CURRENCY.name)}">${esc(CURRENCY.name)}: ${readout()}</span></div>
     <div class="pab-tabs">${[['report', 'Audit report'], ['wallet', CURRENCY.name], ['team', 'The Watchdogs'], ['log', 'Action log']].map(([k, l]) => `<button class="btn ghost ${k === tab ? 'on' : ''}" data-pab="${k}">${esc(l)}</button>`).join('')}</div><div id="pab-body"></div></div>`;

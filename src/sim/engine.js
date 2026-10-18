@@ -96,6 +96,8 @@ export function createSim({ seed = 1, now = null, players = [], limits = LIMITS 
   defineAction('evidence.file', { once: true, investigative: true });
   // Phase 3: police + rangers. Citations are evidence; detentions are holds capped at 60 s (players: opt-in only, canTarget).
   defineAction('police.cite', { investigative: true, groups: ['police', 'rangers'] }); defineAction('police.detain', { hold: { maxSec: 60 }, investigative: true, groups: ['police', 'rangers'] }); defineAction('hold', { hold: { maxSec: L.holdMaxSec }, investigative: true });
+  // Phase 4: courts. One verdict per case (once), only by the courts group, never on oneself; refunds are issued by the sim.
+  defineAction('court.verdict', { once: true, investigative: true, groups: ['courts'] }); defineAction('pm.refund', { moves: 'issue' });
   return { log, register, defineAction, act, release, step, resolve, on, view: readOnly, fetch: guardedFetch, limits: L,
     get clock() { return clock; }, agents: () => [...agents.values()], holds: () => new Map(holds), isOptedIn: (id) => optIn.has(id),
     quote: (acct, kind) => quote(flows, acct, kind, tsNow()),

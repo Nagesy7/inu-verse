@@ -3,7 +3,7 @@
 // other games: a detention is a timer + a notice card with its ways out. Only players who joined the side economy are
 // policed; everyone else just sees pups on patrol.
 import { observe, offenseAt, decide, POLICE, OFFENSES } from './police.js';
-import { officersAt, officerById } from './force.js';
+import { officersAt, officerById, patrolClock } from './force.js';
 import { PARK, RANGER_HUT, TILE } from './place.js';
 import { pm } from './currency.js';
 export const SHIFT = Object.freeze({ litter: 5, minMs: 40e3, maxMs: 3 * 60e3, reach: 0.8, spread: 3.5, radius: 22 });
@@ -46,7 +46,7 @@ export function createPatrol({ wallet, now = () => Date.now(), onChange = () => 
       // offences: dwell on an offence tile while an officer of the right force can see you
       const off = view.driving || view.busy ? null : offenseAt(tileAt(tx, ty), tx, ty, T);
       dwell = off && off === dwell.offense ? { offense: off, ms: dwell.ms + Math.min(dt, 0.25) * 1000 } : { offense: off, ms: 0 };
-      const hit = decide({ offense: dwell.offense, dwellMs: dwell.ms, at: { x, y }, officers: officersAt(t) });
+      const hit = decide({ offense: dwell.offense, dwellMs: dwell.ms, at: { x, y }, officers: officersAt(patrolClock(nowMs)) }); // wall-clock beat (the court re-checks it)
       if (!hit || !wallet.canPolice('cite')) return null;
       dwell = { offense: null, ms: 0 }; const o = officerById(hit.by), r = wallet.cite(hit.by, hit.offense, tx, ty); let detained = null;
       if (wallet.canPolice('detain')) { detained = wallet.detain(hit.by, hit.offense, tx, ty, POLICE.detainSec); scene = { x, y }; }

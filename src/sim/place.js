@@ -9,6 +9,9 @@ export const RANGER_HUT = Object.freeze({ id: 'rangers', name: 'Greenpaw Rangers
 // copies of world.js street layout (tests/sim-police.test.mjs checks they match): zebra crossings are the only legal road tiles
 export const STREETS = Object.freeze({ roads: Object.freeze([20, 31, 42]), avenue: 31, lastAvenueRow: 44 });
 export const PARK = Object.freeze({ x: 2, y: 80, w: 60, h: 15 }); // the park + farmland lanes the rangers look after
-export const SIM_SOLIDS = Object.freeze([BUREAU, PRECINCT, RANGER_HUT].map((r) => Object.freeze({ x: r.x, y: r.y, w: r.w, h: r.h })).concat([Object.freeze({ x: Math.floor(BUREAU.flag.x), y: Math.floor(BUREAU.flag.y), w: 1, h: 1 })]));
+// Phase 4: the Barkley Courthouse (open plaza east of the mall forecourt, north-east of the Bureau desk)
+export const COURTHOUSE = Object.freeze({ id: 'court', name: 'Barkley Courthouse', x: 42, y: 70, w: 3, h: 1, tx: 43, ty: 71 });
+export const SIM_SOLIDS = Object.freeze([BUREAU, PRECINCT, RANGER_HUT, COURTHOUSE].map((r) => Object.freeze({ x: r.x, y: r.y, w: r.w, h: r.h })).concat([Object.freeze({ x: Math.floor(BUREAU.flag.x), y: Math.floor(BUREAU.flag.y), w: 1, h: 1 })]));
 export const SIM_SPOTS = Object.freeze([BUREAU_SPOT, Object.freeze({ kind: 'bureau', id: 'precinct', tab: 'precinct', name: PRECINCT.name, tx: PRECINCT.tx, ty: PRECINCT.ty }),
-  Object.freeze({ kind: 'bureau', id: 'rangers', tab: 'rangers', name: RANGER_HUT.name, tx: RANGER_HUT.tx, ty: RANGER_HUT.ty })]);
+  Object.freeze({ kind: 'bureau', id: 'rangers', tab: 'rangers', name: RANGER_HUT.name, tx: RANGER_HUT.tx, ty: RANGER_HUT.ty }),
+  Object.freeze({ kind: 'bureau', id: 'court', tab: 'court', name: COURTHOUSE.name, tx: COURTHOUSE.tx, ty: COURTHOUSE.ty })]);
