@@ -43,13 +43,26 @@ test('wallet-only pins: device-earned pins stay device-only on the device and ne
   const r = await LS.walletCheckIn(s, kp, at('2026-10-20T04:00:00Z')); assert.deepEqual(r.newPins, []); assert.deepEqual(s.loginStreak.unlocked, []);
   v = LS.view(s, at('2026-10-20T04:00:00Z')); assert.equal(v.wallet, true); assert.equal(v.pins.filter((p) => p.got).length, 0); assert.equal(LS.wornPin(s), null); assert.equal(LS.equipPin(s, 7).ok, false);
   assert.equal(calls[0], 32, 'the existing one-time capped migration seed is unchanged (server caps + applies it once)');
-  // a server reply without an unlocked list falls back to the SERVER best only
-  LS.applyServer(s, { count: 8, best: 8, last: '2026-10-21' }, 'Wal1etABC'); assert.deepEqual(s.loginStreak.unlocked, [7]);
+  // a server reply without an unlocked list falls back to the server's VERIFIED best only (never the displayed best)
+  LS.applyServer(s, { count: 8, best: 8, last: '2026-10-21' }, 'Wal1etABC'); assert.deepEqual(s.loginStreak.unlocked, []);
+  LS.applyServer(s, { count: 8, best: 8, verifiedCount: 8, verifiedBest: 8, last: '2026-10-21' }, 'Wal1etABC'); assert.deepEqual(s.loginStreak.unlocked, [7]);
   // sign out: back to device-only with the device's own pins; the wallet's pin does not follow
   LS.toDevice(s); assert.deepEqual(LS.pinsHere(s), [7, 30]); assert.equal(LS.view(s).label, 'device-only');
   // a pre-rule wallet save (merged list may hold device pins): dropped until kibble-pay answers
   const w = { loginStreak: { v: 1, count: 2, best: 2, last: '2026-10-19', source: 'wallet', wallet: 'W2', unlocked: [7, 30], pin: 7, migrated: null } };
   assert.deepEqual(LS.pinsHere(w), []); assert.equal(LS.wornPin(w), null);
+});
+test('migration counts toward the DISPLAYED streak, not toward pins (pins from wallet-verified days only)', async () => {
+  const s = { fly5: { streak: { count: 40 } } }, now = at('2026-11-30T02:00:00Z'); LS.ensureStreak(s, now); assert.equal(s.loginStreak.count, 40, 'device migration shows in full (cap 47)');
+  assert.equal(LS.view(s, now).count, 40); assert.equal(LS.view(s, now).pins.filter((p) => p.got).length, 0, 'no pins from migrated days on the device');
+  // kibble-pay reply after the first wallet check-in: 40 migrated -> displayed 40, verified 1, no pins (server shape from api/_lib/loginstreak.js)
+  const kp = { address: 'Wal1etMIG', async checkIn() { return { ok: true, counted: true, count: 40, best: 40, verifiedCount: 1, verifiedBest: 1, last: '2026-11-30', unlocked: [], migrated: { device: 40, granted: 40 } }; } };
+  const r = await LS.walletCheckIn(s, kp, now); assert.deepEqual(r.newPins, []);
+  const v = LS.view(s, now); assert.equal(v.count, 40); assert.equal(v.verified, 1); assert.equal(v.next, 7); assert.equal(v.pins.filter((p) => p.got).length, 0);
+  const html = LSUI.streakHtml(s); assert.match(html, /Login streak: 40 days/); assert.match(html, /Next pin at 7 wallet-verified days \(6 to go\)/); assert.match(html, /1 of these 40 days are wallet-verified/);
+  // 6 more real days: the server unlocks the 7-day pin from verified days
+  LS.applyServer(s, { counted: true, count: 46, best: 46, verifiedCount: 7, verifiedBest: 7, last: '2026-12-06', unlocked: [7] }, 'Wal1etMIG', at('2026-12-06T02:00:00Z'));
+  assert.deepEqual(s.loginStreak.unlocked, [7]); assert.equal(LS.view(s, at('2026-12-06T02:00:00Z')).next, 30);
 });
 test('daily Bones claim is untouched by the streak pin rule', () => {
   const src = fs.readFileSync('src/loginstreak.js', 'utf8'); assert.doesNotMatch(src, /fly5\.streak\.(claimed|count\s*=)/);

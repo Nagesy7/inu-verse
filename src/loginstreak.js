@@ -8,7 +8,8 @@
 // Pin rule (President Inu): ONLY wallet-verified days count toward the 7/30/90/180 pins. The wallet's pins are exactly what
 //   kibble-pay returns for that wallet (L.unlocked, never merged with anything from the device). A device-only streak still
 //   counts and shows on this device, labelled "device-only", but unlocks no new pins; pins this device earned before the rule
-//   stay here as device-only (L.devicePins) and never carry over onto a wallet. (The one-time capped migration is unchanged.)
+//   stay here as device-only (L.devicePins) and never carry over onto a wallet. The one-time capped migration counts toward the
+//   DISPLAYED streak (count/best) but not toward pins: kibble-pay counts pins from verifiedCount/verifiedBest (real check-ins only).
 export const TZ = 'Australia/Sydney', GAME = 'inu-verse', LAUNCH = '2026-10-15';
 export const MILESTONES = [7, 30, 90, 180];
 export const PINS = Object.freeze({
@@ -49,9 +50,10 @@ export function deviceCheckIn(s, now = Date.now()) {
 /** Apply the server record (authoritative for this wallet). */
 export function applyServer(s, r, wallet, now = Date.now()) {
   const L = ensureStreak(s, now), before = L.wallet === wallet ? L.unlocked.slice() : [];
-  Object.assign(L, { source: 'wallet', wallet, count: Math.max(0, r.count | 0), best: Math.max(0, r.best | 0), last: r.last || null, syncedAt: now });
+  const vc = r.verifiedCount ?? r.count, vb = r.verifiedBest ?? 0; // older servers: no verified fields -> no pins from the fallback
+  Object.assign(L, { source: 'wallet', wallet, count: Math.max(0, r.count | 0), best: Math.max(0, r.best | 0), verifiedCount: Math.max(0, vc | 0), verifiedBest: Math.max(0, vb | 0), last: r.last || null, syncedAt: now });
   if (r.migrated) L.migrated = { ...(L.migrated || {}), server: r.migrated };
-  L.unlocked = merge(Array.isArray(r.unlocked) ? r.unlocked : unlockedFor(L.best), []); // the server's list only: device pins never join it
+  L.unlocked = merge(Array.isArray(r.unlocked) ? r.unlocked : unlockedFor(L.verifiedBest), []); // the server's list only: device pins (and migrated days) never join it
   if (L.pin != null && !L.unlocked.includes(L.pin)) L.pin = null;
   return { counted: !!r.counted, newPins: L.unlocked.filter((m) => !before.includes(m)) };
 }
@@ -69,7 +71,7 @@ export const wornPin = (s) => { const L = s?.loginStreak; return L && L.pin != n
 export function equipPin(s, tier) { if (tier != null && !pinsHere(s).includes(+tier)) return { ok: false, reason: 'Not unlocked yet' }; s.loginStreak.pin = tier == null ? null : +tier; return { ok: true }; }
 export function view(s, now = Date.now()) {
   const L = ensureStreak(s, now), today = sydneyDay(now), alive = L.last && dayNum(today) - dayNum(L.last) <= 1, count = alive ? L.count : 0;
-  const wallet = L.source === 'wallet', have = pinsHere(s), worn = wornPin(s);
-  return { count, best: L.best, today, doneToday: L.last === today, wallet, label: wallet ? 'saved to wallet' : 'device-only', next: wallet ? nextMilestone(count) : null, pinsNeedWallet: !wallet,
+  const wallet = L.source === 'wallet', have = pinsHere(s), worn = wornPin(s), verified = wallet ? (alive ? Math.min(count, L.verifiedCount ?? count) : 0) : 0;
+  return { count, best: L.best, verified, today, doneToday: L.last === today, wallet, label: wallet ? 'saved to wallet' : 'device-only', next: wallet ? nextMilestone(verified) : null, pinsNeedWallet: !wallet,
     pins: MILESTONES.map((m) => ({ tier: m, ...PINS[m], got: have.includes(m), deviceOnly: !wallet && have.includes(m), worn: worn === m })), pin: worn, migrated: L.migrated };
 }
