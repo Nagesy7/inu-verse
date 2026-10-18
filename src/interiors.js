@@ -161,6 +161,8 @@ export function cleanShopPayload(p, { lots = null } = {}) { const bad = (reason)
     if (typeof id !== 'string' || !allowed(p.type, id)) return bad('unknown prop: ' + String(id).slice(0, 24)); const c = canPlace(items, id, x, y, rot); if (!c.ok) return bad(`${id} at ${x},${y}: ${c.reason}`); items.push({ id, x, y, rot }); }
   const name = String(p.name ?? '').replace(/[\u0000-\u001f<>]/g, '').trim().slice(0, 22);
   return { ok: true, layout: { v: 1, lot: p.lot, type: p.type, name, shelves, items } }; }
+// wire format (what the server stores and visitors fetch): items as [id, x, y, rot] rows
+export const toWire = (l) => ({ ...l, items: l.items.map((o) => (Array.isArray(o) ? o : [o.id, o.x, o.y, o.rot])) });
 export const layoutKey = (l) => JSON.stringify(l ? [l.lot, l.type, l.name, l.shelves, l.items.map((o) => [o.id, o.x, o.y, o.rot])] : null);
 export function shopApi(base = '', f = (...a) => globalThis.fetch(...a)) {
   const call = async (method, body, q = '') => { const r = await f(`${base}/api/home${q}`, method === 'GET' ? { headers: { accept: 'application/json' } } : { method, headers: { 'content-type': 'application/json' }, body: JSON.stringify(body) });

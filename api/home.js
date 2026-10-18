@@ -17,7 +17,7 @@
 import { createHash, randomBytes } from "node:crypto";
 import { upstashKv, memoryKv } from "./_lib/kv.js";
 import { validHomeId, cleanLayout, cleanEntry, homeOwnerName, GB } from "../src/homeshare.js";
-import { SHOP_RE, homeIdOf, cleanShopPayload } from "../src/interiors.js";
+import { SHOP_RE, homeIdOf, cleanShopPayload, toWire } from "../src/interiors.js";
 
 export const TTL_S = 90 * 86400, SIGN_GAP_S = 15, SIGN_HOME_GAP_S = 60, PUBLISH_GAP_S = 2, SHOP_GAP_S = 3, SHOP_IP_GAP_S = 1, SHOP_BODY_MAX = 4096;
 const sha = (s) => createHash("sha256").update(String(s)).digest("hex");
@@ -53,7 +53,7 @@ export function makeHandler({ env = process.env, kv, now = () => Date.now(), sle
         if (!(await store.setNX("shop:rl:p:" + sid, "1", SHOP_GAP_S))) return send(429, { error: "Saving too fast", retryAfter: SHOP_GAP_S });
         return await locked(sid, async () => { const cur = await getJ("shop:v1:" + sid, null), home = cur ? null : await getJ("home:v1:" + hid, null), kh = sha(b.key);
           if ((cur && cur.kh !== kh) || (!cur && home && home.kh !== kh)) return send(403, { error: "not your shop" });
-          const rec = { kh, owner: homeOwnerName(b.owner), layout: c.layout, updatedAt: new Date(now()).toISOString() };
+          const rec = { kh, owner: homeOwnerName(b.owner), layout: toWire(c.layout), updatedAt: new Date(now()).toISOString() };
           await store.set("shop:v1:" + sid, JSON.stringify(rec), TTL_S); return send(200, { ok: true, id: sid, items: c.layout.items.length, updatedAt: rec.updatedAt }); }); }
       const id = String(b.id || ""); if (!validHomeId(id)) return send(400, { error: "bad home id" });
       if (b.op === "publish") { if (typeof b.key !== "string" || !/^[0-9a-f]{32}$/.test(b.key)) return send(400, { error: "bad key" });

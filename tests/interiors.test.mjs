@@ -79,7 +79,7 @@ test('api/home op "shop": owner-only (shop key, or the home key once the home is
   const { h, tick } = mk(), me = HS.newShare(), them = HS.newShare(), sid = IN.shopIdOf(me.id), lay = IN.payloadOf({ lot: 'P1', type: 'cafe', name: 'Bean & Bark', up: { shelves: 0 }, interior: { items: IN.STARTER.cafe } });
   assert.equal((await call(h, { method: 'GET', shop: sid })).code, 404); assert.equal((await call(h, { method: 'GET', shop: 'bad' })).code, 400);
   let r = await call(h, { body: { op: 'shop', id: sid, key: me.key, owner: 'Kabosu', layout: lay } }); assert.equal(r.code, 200); assert.equal(r.body.items, IN.STARTER.cafe.length);
-  r = await call(h, { method: 'GET', shop: sid }); assert.equal(r.code, 200); assert.equal(r.body.owner, 'Kabosu'); assert.deepEqual(r.body.layout.items.length, lay.items.length); assert.equal(r.body.kh, undefined, 'key hash never returned');
+  r = await call(h, { method: 'GET', shop: sid }); assert.equal(r.code, 200); assert.equal(r.body.owner, 'Kabosu'); assert.deepEqual(r.body.layout.items.length, lay.items.length); assert.equal(r.body.kh, undefined, 'key hash never returned'); assert.ok(IN.cleanShopPayload(r.body.layout).ok, 'stored in wire format: what visitors fetch validates again');
   tick(5000); assert.equal((await call(h, { body: { op: 'shop', id: sid, key: them.key, owner: 'Thief', layout: lay }, ip: '9.9.9.9' })).code, 403, 'not the owner');
   tick(5000); assert.equal((await call(h, { body: { op: 'shop', id: sid, key: me.key, owner: 'Kabosu', layout: { ...lay, items: [['nuke', 0, 0, 0]] } } })).body.error, 'unknown prop: nuke');
   tick(5000); assert.equal((await call(h, { raw: JSON.stringify({ op: 'shop', id: sid, key: me.key, layout: lay, pad: 'x'.repeat(5000) }) })).code, 413);

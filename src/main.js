@@ -1236,7 +1236,7 @@ function enterShop(lotId) { const m = state.biz?.mine, rival = bizRivalAt(lotId)
   toast('Lease this lot to open your own shop here.', 'bad'); }
 async function visitShop(homeId, name) { const sid = IN.shopIdOf(homeId); if (!sid || !(mode === 'world' || mode === 'room') || panel) return; let j;
   try { j = await SHOPAPI.get(sid); } catch (e) { return toast(e.status === 404 ? `${name || 'That player'} hasn't opened a shop to visitors yet.` : 'Could not reach that shop right now.', 'bad'); }
-  const c = IN.cleanShopPayload(j.layout); if (!c.ok || !(mode === 'world' || mode === 'room')) return toast('That shop layout could not be read.', 'bad');
+  const c = IN.cleanShopPayload(j.layout && Array.isArray(j.layout.items) ? IN.toWire(j.layout) : j.layout); if (!c.ok || !(mode === 'world' || mode === 'room')) return toast('That shop layout could not be read.', 'bad');
   if (mode === 'room') roomBuild = { id: RP.id, at: { x: RP.R.p.x, y: RP.R.p.y, face: player.face } };
   openShopView({ own: false, visit: true, lot: c.layout.lot, type: c.layout.type, name: c.layout.name || 'Shop', owner: j.owner || name || 'A pup', items: c.layout.items, rev: 'v' + sid + (j.updatedAt || '') }); }
 function scheduleShopPublish() { clearTimeout(shopPubT); shopPubT = setTimeout(() => publishShop(), 2500); }
