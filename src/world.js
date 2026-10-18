@@ -161,6 +161,7 @@ export function interactables(state) {
   list.push({ kind: 'biz', id: 'bizboard', name: 'Top Business board', tx: FARM_SIGNS.bizboard.x, ty: FARM_SIGNS.bizboard.y + 1 });
   list.push({ kind: 'arcade', id: 'arcade', name: 'Inu Arcade', tx: ARCADE.door.tx, ty: ARCADE.door.ty });
   list.push({ kind: 'bank', id: 'bank', name: 'Kibble Bank', tx: BANK.door.tx, ty: BANK.door.ty });
+  list.push({ kind: 'shuttle', id: 'shuttle', name: 'Arcade Districts: fast travel', tx: 61, ty: 58 }); // signpost by the districts gate (districts.js)
   for (const g of GAME_DOORS) list.push({ kind: 'gamedoor', id: g.id, name: g.name, tx: g.door.tx, ty: g.door.ty });
   list.push({ kind: 'community', id: COMMUNITY.id, name: COMMUNITY.name, tx: COMMUNITY.x, ty: COMMUNITY.y + 1 });
   list.push({ kind: 'matchmaker', id: 'matchmaker', name: 'Park Matchmaker', tx: MATCHMAKER.x, ty: MATCHMAKER.y + 1 });

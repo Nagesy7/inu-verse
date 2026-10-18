@@ -64,6 +64,8 @@ import { isRealWallet } from './guide.js';
 import * as PAIR from './pairing.js';
 import { ensureFly, featuredOf, statusGlow, poolsOf, FEATURED_SLOTS, claimPresDrop } from './flywheels.js';
 import * as IQC from './companions.js';
+import * as DIS from './districts.js';
+import { hubSignProp } from './districtart.js';
 import { renderCompanions } from './companionui.js';
 import { makeTown, townHour, lineFor, playerDid, friendsOf, rivalsOf, breadRound, sydneyMinutes } from './townai.js';
 import { mountCreator, drawPreview, profileOfChoices } from './creatorui.js';
@@ -234,6 +236,9 @@ function startGame(s) { loadProfile(s).catch(() => {}); IQC.ensureChoice(s); loa
   // ?spawn=<building> (from a game's 🏠 Back to Inu Verse): stand just outside that building's door.
   { const sp = new URLSearchParams(location.search).get('spawn'), d = sp && [ARCADE, ...GAME_DOORS].find((x) => x.id === sp);
     if (d && d.door) { const o = outsideOf({ ...d.door, id: d.id }); Object.assign(state.player, { x: o.x, y: o.y }); player.face = o.face; } }
+  // back from an Arcade cabinet (contract §3.4): ?spawn=door-<cabinet>&district=<id> -> stand at that door in the districts zone
+  { const r = DIS.parseReturn(location.search); if (r) { const g = DIS.HUB_GATE; Object.assign(state.player, { x: (g.out[0] + 0.5) * TILE, y: (g.out[1] + 0.5) * TILE }); globalThis.__districtReturn = r;
+      setTimeout(() => { if (mode === 'world') enterRoom('districts', r.spawn || 'd-' + r.district); if (r.cabinet) setTimeout(() => toast(`Welcome back from ${DIS.cabTitle(r.cabinet)}!`, 'good'), 400); }, 60); } }
   cam.x = state.player.x; cam.y = state.player.y; hud(); persist(); wayUi(true);
   if (/[?&]kibblesign=1/.test(location.search)) setTimeout(() => openPanel('launch', { tab: 'kibble', sign: true }), 900); else setTimeout(tourCheck, 1400); // ?kibblesign=1: creator signing card for $KIBBLE
 }
@@ -362,6 +367,26 @@ globalThis.__playDuo = playDuo;
 let arcadeTop = [];
 async function fetchArcadeTop() { try { const r = await fetch(ARCADE.url + 'api/scores?game=arcade&period=weekly'); const j = await r.json(); arcadeTop = (j.entries || []).filter((e) => !e.house).slice(0, 3); } catch {} }
 fetchArcadeTop(); setInterval(fetchArcadeTop, 120000);
+function arcadeHints() { const p = profileFromState(state); let lite = null; try { lite = btoa(unescape(encodeURIComponent(JSON.stringify({ ...p, pets: [] })))).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, ''); } catch {} return { wallet: p.wallet || null, p: lite }; }
+// District / cabinet doors: TOP-LEVEL same-tab navigation on every device (contract §4). Saved spot = outside the districts gate.
+function enterCabinet(id) { const cab = DIS.cabinet(id), url = DIS.doorUrl(cab, arcadeHints()); if (!url) return; closePanel(); persist(); keys.clear();
+  let ov = document.getElementById('enter-ov'); if (!ov) { ov = document.createElement('div'); ov.id = 'enter-ov'; document.body.appendChild(ov); }
+  ov.innerHTML = `<div class="enter-card"><b>Entering ${esc(DIS.label(cab))}…</b><small>opening ${esc(new URL(url).host)} · tap 🏠 there to come back</small><button class="btn ghost" id="enter-cancel">Stay in Inu Verse</button></div>`; ov.hidden = false; feel.fade(); blip(660);
+  entering = setTimeout(() => { entering = null; globalThis.__lastNav = url; if (!globalThis.__noNav) location.assign(url); else ov.hidden = true; }, 700);
+  ov.querySelector('#enter-cancel').onclick = () => { clearTimeout(entering); entering = null; ov.hidden = true; }; }
+function renderCabinet(id) { const body = $('#panel-body'), cab = DIS.cabinet(id); if (!cab) return closePanel(); const d = DIS.district(cab.district);
+  body.innerHTML = `<h2>${esc(DIS.label(cab))}</h2><p class="sub">${esc(d.name)} · Inu Arcade cabinet</p>
+    ${cab.live ? `<p>This door opens the cabinet on <b>inu-arcade.vercel.app</b> in this tab. Tap <b>🏠 Back to Inu Verse</b> there and you'll be back at this door.</p><div class="row"><button class="btn green" id="cab-go">Play</button><button class="btn ghost" id="cab-stay">Not now</button></div>`
+      : `<div class="cp-empty"><p><b>Coming soon.</b> This cabinet is still being built. The gate opens as soon as it's ready.</p></div><div class="row"><button class="btn ghost" id="cab-stay">OK</button></div>`}
+    <p class="small">Just for fun here: playing never changes your Bones, $KIBBLE or prizes in Inu Verse.</p>`;
+  const go = $('#cab-go'); if (go) go.onclick = () => { uiClick(); enterCabinet(cab.id); }; $('#cab-stay').onclick = () => closePanel(); }
+function renderFastTravel(from) { const body = $('#panel-body'), here = mode === 'room' && RP.id === 'districts' ? DIS.districtAt(Math.floor(RP.R.p.x / 32)).id : 'town';
+  body.innerHTML = `<h2>Fast travel</h2><p class="sub">Hop between the Arcade Districts. Free, any time.</p><div class="grid ft-grid">${DIS.fastTravel().map((f) => `<button class="card ft-card${f.id === here ? ' on' : ''}" data-ft="${f.id}"><b>${esc(f.name)}</b><small>${f.total == null ? 'Back beside the Arcade hall' : f.open ? `${f.open}/${f.total} open` : 'Coming soon'}</small></button>`).join('')}</div>`;
+  body.onclick = (e) => { const b = e.target.closest('[data-ft]'); if (!b) return; uiClick(); fastTravel(b.dataset.ft); }; }
+function fastTravel(id) { closePanel(); globalThis.__fastTravels = (globalThis.__fastTravels || 0) + 1;
+  if (id === 'town') { if (mode === 'room' && RP.id === 'districts') roomPortal(RP.sc.exits[0]); return; }
+  if (mode === 'room' && RP.id === 'districts') return RP.travel('districts', 'd-' + id, 'fast');
+  if (mode === 'world') { const g = DIS.HUB_GATE; stopWalk(); Object.assign(state.player, { x: (g.out[0] + 0.5) * TILE, y: (g.out[1] + 0.5) * TILE }); enterRoom('districts', 'd-' + id); } }
 function arcadeUrl() { const p = profileFromState(state), q = new URLSearchParams(); if (/^[1-9A-HJ-NP-Za-km-z]{32,44}$/.test(p.wallet || '')) q.set('wallet', p.wallet);
   try { const lite = { ...p, pets: [] }; q.set('p', btoa(unescape(encodeURIComponent(JSON.stringify(lite)))).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '')); } catch {}
   q.set('from', 'inu-verse'); q.set('spawn', 'arcade'); return ARCADE.url + '?' + q.toString(); }
@@ -581,7 +606,7 @@ function renderWorld() {
     const tx0 = Math.floor(-ox / TILE) - 1, ty0 = Math.floor(-oy / TILE) - 1; ctx.save(); ctx.scale(SCALE, SCALE); drawWater(ctx, time, tx0, ty0, tx0 + Math.ceil(vw / TILE) + 2, ty0 + Math.ceil(vh / TILE) + 2); ctx.restore(); }
   const phase = dayPhase(time + dayOffset);
   globalThis.__inuNight = phase.dark;
-  const dyn = [...HUB_GATES.map((g) => hubGateProp(g, time)), ...dynamicProps(state, time, myPack(state)), ...presidentProps(pres, time), ...doorProps(time), ...carWorldProps(), ...crewProps(), ...adProps(trend, adRot, adIdx, !!globalThis.__inuNight, time, featuredMap()), ...confettiProps(), ...squareProps(state, time, Math.floor(gameDay() / 7)), ...arcadeProps(time, arcadeTop), ...MWd.statueProps(time, { drawShiba, artLoaded: () => !!ART['shiba-golden'] }), ...MWd.newsProps(time), ...KN.wallProps(KIBBLE_PLAZA.wall, KEN.wall, time, TILE), ...RD.gateProps(KIBBLE_PLAZA.raid, time, TILE), ...MWd.firepitProps(time), ...MWd.plazaSkyProps(time), ...PAB.bureauProps(time, { drawShiba }, state.player)];
+  const dyn = [...HUB_GATES.map((g) => hubGateProp(g, time)), hubSignProp(62, 58, time), ...dynamicProps(state, time, myPack(state)), ...presidentProps(pres, time), ...doorProps(time), ...carWorldProps(), ...crewProps(), ...adProps(trend, adRot, adIdx, !!globalThis.__inuNight, time, featuredMap()), ...confettiProps(), ...squareProps(state, time, Math.floor(gameDay() / 7)), ...arcadeProps(time, arcadeTop), ...MWd.statueProps(time, { drawShiba, artLoaded: () => !!ART['shiba-golden'] }), ...MWd.newsProps(time), ...KN.wallProps(KIBBLE_PLAZA.wall, KEN.wall, time, TILE), ...RD.gateProps(KIBBLE_PLAZA.raid, time, TILE), ...MWd.firepitProps(time), ...MWd.plazaSkyProps(time), ...PAB.bureauProps(time, { drawShiba }, state.player)];
   for (const d of dyn) if (d.flat) d.d(ctx);
   const view = { x0: -ox, y0: -oy, x1: -ox + vw, y1: -oy + vh };
   drawGroundLife(ctx, amb, phase, view); drawAliveGround(ctx, ALIVE, view, phase); feel.drawGround(ctx);
@@ -746,7 +771,7 @@ const RP = makeRoomPlay({ player, extra: CP, diner: (s) => openDiner(s), zoom: (
   say: (n, t) => feel.say(n, t, blip), emote: (k) => { player.emote = { kind: k, t: 1.4 }; emoteBubble('me', k, time); }, bell: () => blip(1320), blip: (f) => blip(f),
   chat: (id, t) => chatSay(id, t, time), fade: () => feel.fade(), dust: (x, y) => feel.dust(x, y), portal: (ex) => roomPortal(ex),
   drawGround: (c) => feel.drawGround(c), drawAir: (c) => feel.drawAir(c), drawMark: (c, m, t) => drawMark(c, m, t), bubble: (c, x, y, t) => feel.bubble(c, x, y, t),
-  drawChat: (c, res) => drawChat(c, res, time), drawActor: drawRoomActor, remotes: (view, me) => MPL.actors(view, me), anchor: (id) => MPL.anchor(id), night: () => !!globalThis.__inuNight, arrived: (sc) => roomUi(sc) });
+  drawChat: (c, res) => drawChat(c, res, time), drawActor: drawRoomActor, rm: () => reducedMotion(), remotes: (view, me) => MPL.actors(view, me), anchor: (id) => MPL.anchor(id), night: () => !!globalThis.__inuNight, arrived: (sc) => roomUi(sc) });
 function roomUi(sc) { $('#minimap-wrap').hidden = true; wayUi(false); toast(sc.name, ''); globalThis.__roomVisits = (globalThis.__roomVisits || 0) + 1; }
 function enterRoom(id, at, door = null) { if (mode === 'room' && RP.id === id) return; stopWalk(); keys.clear(); player.v = { x: 0, y: 0 }; feel.fade(); blip(660);
   if (door) { const o = outsideOf(door); Object.assign(state.player, { x: o.x, y: o.y }); } // saves/reloads/Back-to-Verse always land you outside, never inside a room
@@ -813,6 +838,7 @@ function interact(it, viaDoor = false) { if (!viaDoor && isWalkDoor(it)) { toast
   else if (it.kind === 'lot') openPanel('lot', { id: it.id });
   else if (it.kind === 'biz') openPanel('bizboard');
   else if (it.kind === 'arcade') openArcade();
+  else if (it.kind === 'shuttle') openPanel('fasttravel', { from: 'town' });
   else if (it.kind === 'gamedoor') openGameDoor(it.id);
   else if (it.kind === 'bank') openPanel('bank');
   else if (it.kind === 'matchmaker') openPanel('matchmaker');
@@ -835,6 +861,8 @@ function openPanel(kind, opts = {}) {
   if (kind === 'salon') return renderSalon();
   if (kind === 'engage') return renderEngage({ ...farmCtx(), tab: opts.tab, day: gameDay(), open: (t) => openPanel('engage', { tab: t }) });
   if (kind === 'bank') return renderBank();
+  if (kind === 'cabinet') return renderCabinet(opts.id);
+  if (kind === 'fasttravel') return renderFastTravel(opts.from);
   if (kind === 'companions') return renderCompanions(body, { state, getProfile: () => CMP.prof, status: CMP.status, signedIn: !DEMO && !!K.kp?.session, persist, toast, onChange: () => { const c = myCompanion(); if (c) IQC.resetFollower(CMP.F, state.player, c); else CMP.F.c = null; } });
   if (kind === 'bureau') return PAB.renderBureau(body, { drawShiba }, opts);
   if (kind === 'kibblemood') { body.innerHTML = MWd.moodCardHtml(MOOD.current, esc); body.querySelectorAll('[data-copy]').forEach((b) => b.onclick = () => copyText(b.dataset.copy)); body.querySelector('[data-npcrules]').onclick = () => openPanel('npcrules'); return; }
@@ -1503,5 +1531,9 @@ cv.addEventListener('wheel', (e) => { if (mode !== 'world') return; e.preventDef
 document.getElementById('zin')?.addEventListener('click', () => setZoom(stepZoom(ZOOM, 1))); document.getElementById('zout')?.addEventListener('click', () => setZoom(stepZoom(ZOOM, -1)));
 window.__inu = { guide, open: (k, o) => openPanel(k, o), get time() { return time; }, get player() { return player; }, get zoom() { return ZOOM; }, setZoom, president: pres, presVisit: (k) => startVisit(pres, k, { dayLen: DAY_LEN }), setHour: (h) => { dayOffset = timeForHour(h) - time; }, setRain: (r) => { amb.rain = amb.rainTarget = r; amb.weatherT = 999; }, get amb() { return amb; }, get npcs() { return npcs; }, get mood() { return { ...MOOD.current, shown: MWd.MW.mood }; }, emote: (k) => doEmote(k), cam, get state() { return state; }, get mode() { return mode; }, get panel() { return panel?.kind; }, get panelObj() { return panel; }, mp: MPL };
 // Inu Arcade inside the desktop overlay: its 🏠 button asks us to close the overlay instead of reloading.
-addEventListener('message', (e) => { if (e.origin === new URL(ARCADE.url).origin && e.data?.type === 'inu:back-to-verse' && arcadeOpen) { closeArcade(); try { e.source?.postMessage({ type: 'inu:verse-closed' }, e.origin); } catch {} } });
+// framed Arcade (hall peek) -> Verse: ready / exit (close + inu:back-to-verse alias) / score. Origin pinned (districts.js). Score = toast only.
+addEventListener('message', (e) => { const m = DIS.arcadeMessage(e, new URL(ARCADE.url).origin); if (!m) return; globalThis.__arcadeMsgs = [...(globalThis.__arcadeMsgs || []).slice(-9), m];
+  if (m.kind === 'exit') { if (!arcadeOpen) return; closeArcade(); try { e.source?.postMessage({ type: 'inu:verse-closed' }, e.origin); } catch {} }
+  else if (m.kind === 'ready') { const b = document.querySelector('#arcade-ov .arc-bar b'); if (b && arcadeOpen) b.textContent = m.cabinetId && m.cabinetId !== 'arcade' ? 'PLAYING ' + DIS.cabTitle(m.cabinetId).toUpperCase() : 'INU ARCADE'; }
+  else if (m.kind === 'score' && arcadeOpen) toast(DIS.scoreToast(m), 'good'); });
 Object.assign(window.__inu, { act: ACT, doAction: (k) => doAction(k), wheel, hud: () => state && hud() }); // Round 3 test hooks (actions + wheel)

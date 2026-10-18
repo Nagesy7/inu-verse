@@ -1,6 +1,7 @@
 // Original pixel art for Round 2 rooms & zones: floors, walls and furniture for interiors; grass, sand, water, docks,
 // sakura, lanterns, a shrine and a little ferry outdoors. Drawn in world px (1 tile = 32), cached per scene.
 import { ST } from './scenes.js';
+import { FLOORS as DFLOORS, PROPS as DPROPS, structProp } from './districtart.js';
 const R = (c, x, y, w, h, col) => { c.fillStyle = col; c.fillRect(x, y, w, h); };
 const hz = (x, y, s = 0) => { let h = (x * 374761393 + y * 668265263 + s * 1442695041) | 0; h = Math.imul(h ^ (h >>> 13), 1274126177); return ((h ^ (h >>> 16)) >>> 0) / 4294967296; };
 const shade = (hex, k) => { const n = parseInt(hex.slice(1), 16), f = (v) => Math.max(0, Math.min(255, Math.round(v * k))); return `rgb(${f(n >> 16)},${f((n >> 8) & 255)},${f(n & 255)})`; };
@@ -26,6 +27,7 @@ function ground(c, sc, tx, ty, cell) { const x = tx * ST, y = ty * ST, f = cell.
   else if (f === 'sand') { R(c, x, y, ST, ST, '#f0d898'); for (let i = 0; i < 5; i++) R(c, x + Math.floor(hz(tx, ty, i) * 30), y + Math.floor(hz(tx, ty, i + 3) * 30), 2, 2, i % 2 ? '#e2c47e' : '#fff0c0'); }
   else if (f === 'water') { R(c, x, y, ST, ST, '#3f8fd0'); const up = sc.at(tx, ty - 1); if (up && up.floor !== 'water' && up.floor !== 'dock') { R(c, x, y, ST, 4, '#e8f4ff'); R(c, x, y + 4, ST, 2, '#8cc6ee'); } }
   else if (f === 'dock') { R(c, x, y, ST, ST, '#3f8fd0'); R(c, x, y, ST, ST - 2, '#a87a4a'); for (let i = 0; i < 4; i++) R(c, x, y + i * 8 + 7, ST, 1, '#7c5530'); R(c, x + 3, y + ST - 4, 4, 4, '#5c3d22'); R(c, x + ST - 7, y + ST - 4, 4, 4, '#5c3d22'); }
+  else if (DFLOORS[f]) DFLOORS[f](c, x, y, tx, ty, sc);
   if (f === 'path' && cell.prop === 'gate') { R(c, x + 2, y + 2, ST - 4, ST - 4, '#c7a35a'); R(c, x + 6, y + 6, ST - 12, ST - 12, '#e8cf8a'); }
 }
 // ---- props (depth-sorted with actors; y = ground line) ----
@@ -75,6 +77,7 @@ function bodyProp(c, sc, cell, tx, ty, t, night) { const x = tx * ST, y = ty * S
       R(c, x, y, ST, ST, '#c9935e'); R(c, x, y + ST - 4, ST, 4, '#7a4a2a'); if ((tx + ty) % 2) R(c, x + 8, y + 6, 16, 18, '#7a4a2a');
       if (top) { R(c, x - (lft ? 8 : 0), y - 14, ST + (lft ? 8 : 0) + (rgt ? 8 : 0), 14, '#3a4a6a'); R(c, x - (lft ? 10 : 0), y - 4, ST + (lft ? 10 : 0) + (rgt ? 10 : 0), 4, '#2a3550'); if (!lft && !rgt) R(c, x + 12, y - 22, 8, 8, '#d4a640'); } break; }
     case 'bell': R(c, x + 4, y - 18, 24, 4, '#7a4a2a'); R(c, x + 6, y - 18, 3, 44, '#7a4a2a'); R(c, x + 23, y - 18, 3, 44, '#7a4a2a'); { const sw = Math.round(Math.sin(t * 2) * 1); R(c, x + 11 + sw, y - 12, 10, 12, '#d4a640'); R(c, x + 10 + sw, y - 1, 12, 3, '#b0862a'); R(c, x + 15 + sw, y + 2, 2, 12, '#e8e0c0'); } break;
+    default: if (DPROPS[p]) DPROPS[p](c, x, y, tx, ty, t, night, sc); break;
     case 'stall': R(c, x - 2, y - 12, 36, 8, '#e05a6a'); for (let i = 0; i < 5; i++) R(c, x - 2 + i * 8, y - 4, 4, 4, '#fff'); R(c, x + 2, y - 4, 2, 32, '#7a4a2a'); R(c, x + 28, y - 4, 2, 32, '#7a4a2a'); R(c, x, y + 12, 32, 14, '#c9935e'); for (let i = 0; i < 4; i++) R(c, x + 3 + i * 7, y + 8, 5, 6, ['#ff9ac0', '#9fd6f0', '#f2cc68', '#7cbf5a'][i]); break;
   } }
 // one offscreen canvas per scene with every static ground tile (+ wall decorations)
@@ -83,6 +86,31 @@ export function sceneGround(sc, night = false) { const k = sc.id + (night ? ':n'
   const cv = (typeof OffscreenCanvas !== 'undefined') ? new OffscreenCanvas(sc.w * ST, sc.h * ST) : Object.assign(document.createElement('canvas'), { width: sc.w * ST, height: sc.h * ST }); const c = cv.getContext('2d');
   for (let ty = 0; ty < sc.h; ty++) for (let tx = 0; tx < sc.w; tx++) { const cell = sc.at(tx, ty); ground(c, sc, tx, ty, cell); if (P[cell.prop]) P[cell.prop](c, tx * ST, ty * ST, 0, night); }
   groundCache.set(k, cv); return cv; }
+// chunked ground: 16x16-tile canvases baked on demand (only the chunks in view), kept in a small LRU, so big zones never
+// allocate one huge canvas and a frame blits at most a handful of 512px tiles. Same pixels as sceneGround().
+export const CHUNK = 16; const chunkCache = new Map(), CHUNK_MAX = 24;
+export function sceneChunk(sc, cx, cy, night = false) { const k = sc.id + ':' + cx + ':' + cy + (night ? ':n' : ''); let cv = chunkCache.get(k);
+  if (cv) { chunkCache.delete(k); chunkCache.set(k, cv); return cv; }
+  const w = Math.min(CHUNK, sc.w - cx * CHUNK) * ST, h = Math.min(CHUNK, sc.h - cy * CHUNK) * ST; if (w <= 0 || h <= 0) return null;
+  cv = (typeof OffscreenCanvas !== 'undefined') ? new OffscreenCanvas(w, h) : Object.assign(document.createElement('canvas'), { width: w, height: h }); const c = cv.getContext('2d'); c.translate(-cx * CHUNK * ST, -cy * CHUNK * ST);
+  for (let ty = cy * CHUNK; ty < Math.min(sc.h, (cy + 1) * CHUNK); ty++) for (let tx = cx * CHUNK; tx < Math.min(sc.w, (cx + 1) * CHUNK); tx++) { const cell = sc.at(tx, ty); ground(c, sc, tx, ty, cell); if (P[cell.prop]) P[cell.prop](c, tx * ST, ty * ST, 0, night); }
+  chunkCache.set(k, cv); while (chunkCache.size > CHUNK_MAX) chunkCache.delete(chunkCache.keys().next().value); globalThis.__chunkBakes = (globalThis.__chunkBakes || 0) + 1; return cv; }
+export function drawSceneGround(c, sc, night, x0, y0, x1, y1) { let n = 0; // x0..y1 in world px
+  for (let cy = Math.max(0, Math.floor(y0 / (CHUNK * ST))); cy <= Math.min(Math.ceil(sc.h / CHUNK) - 1, Math.floor(y1 / (CHUNK * ST))); cy++)
+    for (let cx = Math.max(0, Math.floor(x0 / (CHUNK * ST))); cx <= Math.min(Math.ceil(sc.w / CHUNK) - 1, Math.floor(x1 / (CHUNK * ST))); cx++) { const cv = sceneChunk(sc, cx, cy, night); if (cv) { c.drawImage(cv, cx * CHUNK * ST, cy * CHUNK * ST); n++; } }
+  return n; }
+export const chunkStats = () => ({ cached: chunkCache.size, bakes: globalThis.__chunkBakes || 0 });
+// prop index: depth props bucketed per chunk once per scene; a frame only visits the buckets in view
+const propIdx = new Map();
+function propIndex(sc) { let ix = propIdx.get(sc.id); if (ix) return ix; ix = new Map();
+  for (let ty = 0; ty < sc.h; ty++) for (let tx = 0; tx < sc.w; tx++) { const cell = sc.at(tx, ty); if (!cell.prop || P[cell.prop] || cell.prop === 'gate') continue; const k = Math.floor(tx / CHUNK) + ':' + Math.floor(ty / CHUNK); (ix.get(k) || ix.set(k, []).get(k)).push([tx, ty, cell]); }
+  propIdx.set(sc.id, ix); return ix; }
+export function scenePropsIn(sc, t, night, x0, y0, x1, y1, { rm = false } = {}) { const out = [], ix = propIndex(sc), pad = 2;
+  for (let cy = Math.max(0, Math.floor(y0 / (CHUNK * ST))); cy <= Math.floor(y1 / (CHUNK * ST)); cy++) for (let cx = Math.max(0, Math.floor(x0 / (CHUNK * ST))); cx <= Math.floor(x1 / (CHUNK * ST)); cx++)
+    for (const [tx, ty, cell] of ix.get(cx + ':' + cy) || []) { if ((tx + pad) * ST < x0 || (tx - pad) * ST > x1 || (ty + 3) * ST < y0 || (ty - 1) * ST > y1) continue; const flat = cell.prop === 'flowers' || cell.prop === 'pillow' || cell.prop === 'chair';
+      out.push({ y: flat ? ty * ST + 4 : (ty + 1) * ST - 2, d: (c) => bodyProp(c, sc, cell, tx, ty, t, night) }); }
+  for (const s of sc.structs || []) if ((s.x + s.w) * ST >= x0 && s.x * ST <= x1 && (s.y + s.h) * ST >= y0 && (s.y - 2) * ST <= y1) out.push(structProp(s, t, night, rm));
+  return out; }
 // dynamic/depth props for the current scene: [{ y, d(c) }]
 export function sceneProps(sc, t, night) { const out = [];
   for (let ty = 0; ty < sc.h; ty++) for (let tx = 0; tx < sc.w; tx++) { const cell = sc.at(tx, ty); if (!cell.prop || P[cell.prop] || cell.prop === 'gate') continue; const flat = cell.prop === 'flowers' || cell.prop === 'pillow' || cell.prop === 'chair';
@@ -97,7 +125,7 @@ export function hubGateProp(g, t) { const x = g.tx * ST, y = g.ty * ST, wide = g
     R(c, L - 1, top + 6, 10, foot - top - 6, '#5a1a12'); R(c, Rr - 1, top + 6, 10, foot - top - 6, '#5a1a12'); R(c, L, top + 6, 8, foot - top - 7, '#c0392b'); R(c, Rr, top + 6, 8, foot - top - 7, '#c0392b');
     R(c, L - 10, top - 1, Rr - L + 28, 9, '#5a1a12'); R(c, L - 9, top, Rr - L + 26, 7, '#a02a1e'); R(c, L - 4, top + 12, Rr - L + 16, 5, '#c0392b');
     const sw = 34, sx = Math.round((L + Rr + 8) / 2 - sw / 2); R(c, sx - 1, top + 19, sw + 2, 13, '#5a1a12'); R(c, sx, top + 20, sw, 11, '#f2e2c0');
-    c.fillStyle = '#7a2a1e'; c.font = '6px Silkscreen, monospace'; c.textAlign = 'center'; c.fillText(g.face === 'down' ? 'BEACH' : 'PARK', sx + sw / 2, top + 28);
+    c.fillStyle = '#7a2a1e'; c.font = '6px Silkscreen, monospace'; c.textAlign = 'center'; c.fillText(g.label || (g.face === 'down' ? 'BEACH' : 'PARK'), sx + sw / 2, top + 28);
     const b = Math.round(Math.sin(t * 5) * 2), ax = Math.round((L + Rr + 8) / 2), ay = foot - 14;
     if (g.face === 'down') { R(c, ax - 4, ay + b, 8, 3, '#f2cc68'); R(c, ax - 2, ay + 3 + b, 4, 3, '#f2cc68'); }
     else { R(c, ax - 3 + b, ay - 4, 3, 8, '#f2cc68'); R(c, ax + b, ay - 2, 3, 4, '#f2cc68'); } } }; }

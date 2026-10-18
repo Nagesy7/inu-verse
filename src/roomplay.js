@@ -2,7 +2,7 @@
 // (accel/decel, run, dust), portals (exit mats, gates, ferry), interactable spots, wandering/staff NPCs with chat.
 import * as MOB from './mobility.js';
 import { ST, scene, solidAt, spawnOf, nearestSpot, makePortalState, portalStep, wanderTarget, exitAt, walkInExits } from './scenes.js';
-import { sceneGround, sceneProps, drawSceneWater } from './sceneart.js';
+import { drawSceneGround, scenePropsIn, drawSceneWater } from './sceneart.js';
 export function makeRoomPlay(D) {
   const R = { sc: null, p: { x: 0, y: 0 }, cam: { x: 0, y: 0 }, npcs: [], portal: makePortalState(), busy: false, chatT: 2, hist: [] };
   const P = D.player; // shared player runtime (face, phase, v, pw, running, clickMark)
@@ -18,7 +18,7 @@ export function makeRoomPlay(D) {
     D.extra?.enter?.(R, id); // room-specific runtime (the café's diners + waiter, cafeplay.js)
     R.cam = { x: R.p.x, y: R.p.y }; clampCam(true); return true; }
   function viewW() { return innerWidth / D.zoom(); } function viewH() { return innerHeight / D.zoom(); }
-  function clampCam(snap) { const W = R.sc.w * ST, H = R.sc.h * ST, vw = viewW(), vh = viewH(); const tx = W <= vw ? W / 2 : Math.max(vw / 2, Math.min(W - vw / 2, R.p.x)), ty = H <= vh ? H / 2 : Math.max(vh / 2, Math.min(H - vh / 2, R.p.y - 8));
+  function clampCam(snap) { const W = R.sc.w * ST, H = R.sc.h * ST, vw = viewW(), vh = viewH(); const tx = W <= vw ? W / 2 : Math.max(vw / 2, Math.min(W - vw / 2, R.p.x)), ty = H <= vh ? H / 2 : Math.max(vh / 2, Math.min(H - vh / 2, R.p.y - 8 + (R.sc.camDy ? R.sc.camDy * Math.min(1, Math.max(0, (R.sc.camBand[1] - R.p.y) / (R.sc.camBand[1] - R.sc.camBand[0]))) : 0)));
     if (snap) { R.cam.x = tx; R.cam.y = ty; } else { R.cam.x += (tx - R.cam.x) * Math.min(1, D.dt * 10); R.cam.y += (ty - R.cam.y) * Math.min(1, D.dt * 10); } }
   function planTo(goal, opt = {}) { const sx = Math.floor(R.p.x / ST), sy = Math.floor(R.p.y / ST); const raw = MOB.astar(sx, sy, goal[0], goal[1], solid, { w: R.sc.w, h: R.sc.h }); if (!raw) return false;
     const pts = MOB.smoothPath(raw, solid, ST).slice(1), end = raw[raw.length - 1]; Object.assign(P.pw, { pts: pts.length ? pts : [end], goal: end, run: !!opt.run, stuckT: 0, lastD: Infinity, replans: 0 });
@@ -72,12 +72,12 @@ export function makeRoomPlay(D) {
   function render(c, dpr) { const sc = R.sc, Z = D.zoom(), SW = innerWidth, SH = innerHeight, vw = SW / Z, vh = SH / Z, t = D.time(), night = D.night?.() && sc.kind === 'zone';
     c.setTransform(dpr, 0, 0, dpr, 0, 0); c.imageSmoothingEnabled = false; c.fillStyle = sc.kind === 'zone' ? '#2f6fb0' : '#141a2e'; c.fillRect(0, 0, SW, SH);
     const q = 1 / (Z * dpr), snap = (v) => Math.round(v / q) * q, ox = snap(vw / 2 - R.cam.x), oy = snap(vh / 2 - R.cam.y);
-    c.setTransform(dpr * Z, 0, 0, dpr * Z, 0, 0); c.save(); c.translate(ox, oy); c.drawImage(sceneGround(sc, night), 0, 0);
+    c.setTransform(dpr * Z, 0, 0, dpr * Z, 0, 0); c.save(); c.translate(ox, oy); drawSceneGround(c, sc, night, -ox, -oy, -ox + vw, -oy + vh); // chunked + culled (sceneart.js)
     if (sc.kind === 'zone') drawSceneWater(c, sc, t, Math.floor(-ox / ST) - 1, Math.floor(-oy / ST) - 1, Math.ceil((-ox + vw) / ST) + 1, Math.ceil((-oy + vh) / ST) + 1);
     D.drawGround(c);
     if (P.clickMark && P.pw.pts.length) D.drawMark(c, P.clickMark, t);
-    const list = sceneProps(sc, t, night).filter((p) => p.y > -oy - 80 && p.y < -oy + vh + 120);
-    for (const n of R.npcs) list.push({ y: n.y + 6, a: { ...n, npc: true } });
+    const list = scenePropsIn(sc, t, night, -ox - 64, -oy - 80, -ox + vw + 64, -oy + vh + 120, { rm: !!D.rm?.() }); // indexed per chunk: only props in view
+    for (const n of R.npcs) if (n.x > -ox - 60 && n.x < -ox + vw + 60) list.push({ y: n.y + 6, a: { ...n, npc: true } });
     for (const q of D.extra?.props?.(t) || []) if (q.y > -oy - 80 && q.y < -oy + vh + 120) list.push(q);
     for (const a of D.remotes?.({ x0: -ox, y0: -oy, x1: -ox + vw, y1: -oy + vh }, R.p) || []) list.push({ y: a.y + 6, a }); // live players in this room/zone
     list.push({ y: R.p.y + 6, a: { me: true, x: R.p.x, y: R.p.y } }); list.sort((a, b) => a.y - b.y);

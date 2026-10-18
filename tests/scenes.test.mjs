@@ -79,7 +79,7 @@ test('portal fires once per visit: not on spawn, not while standing, not facing 
   assert.equal(portalStep(st, sc, at(ex, ey - 1, 'up'), 3.2), null); assert.ok(portalStep(st, sc, at(ex, ey, 'down'), 3.3), 're-armed');
 });
 test('spot actions only use existing panels / build / say / ferry', () => {
-  const ok = new Set(['cafe', 'shop', 'fashion', 'wardrobe', 'cars', 'garage', 'bank', 'mall', 'packs']);
+  const ok = new Set(['cafe', 'shop', 'fashion', 'wardrobe', 'cars', 'garage', 'bank', 'mall', 'packs', 'cabinet', 'fasttravel']); // + district cabinet doors / fast travel (main.js)
   for (const id of ids) for (const s of scene(id).spots) { const a = s.act; assert.ok((a.panel && ok.has(a.panel)) || a.build === 'clubhouse' || a.say || a.travel || (id === 'cafe' && a.diner), `${id}.${s.id}`); assert.ok(nearestSpot(scene(id), (s.tx + 0.5) * ST, (s.ty + 0.5) * ST) === s); }
 });
 test('original names only: no trademarked game names in scene data', () => {

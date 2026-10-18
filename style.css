@@ -348,3 +348,11 @@ body.short .title-card>.row{position:sticky;bottom:-4px;z-index:3;background:#1b
 .cp-empty p{margin:8px 0 0;font-size:12px}
 .cp-paw{width:24px;height:24px;margin:0 auto;background:radial-gradient(circle at 50% 70%,var(--goldd) 38%,transparent 40%),radial-gradient(circle at 20% 30%,var(--goldd) 14%,transparent 16%),radial-gradient(circle at 50% 15%,var(--goldd) 14%,transparent 16%),radial-gradient(circle at 80% 30%,var(--goldd) 14%,transparent 16%)}
 @media (max-height:420px){.cp-grid{grid-template-columns:repeat(auto-fill,minmax(104px,1fr));gap:6px}.cp-card{padding:6px}}
+/* Arcade Districts: fast travel */
+.ft-grid{grid-template-columns:repeat(auto-fill,minmax(120px,1fr))}
+.ft-card{color:var(--cream);font:inherit;cursor:pointer;display:flex;flex-direction:column;align-items:center;gap:4px}
+.ft-card small{color:#b9b08e;font-size:10px}
+@media (max-height:420px){.ft-grid{gap:6px}.ft-card{padding:6px}}
+
+/* districts: arcade score toasts must sit above the open arcade overlay */
+body:has(#arcade-ov:not([hidden])) #toast { z-index: 9100; top: 52px; }

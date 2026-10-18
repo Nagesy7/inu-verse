@@ -1,6 +1,7 @@
 // Round 2: rooms & zones. Walkable interiors (café, shops, bank, mall atrium, clubhouse) and outdoor zones (Hanami Park,
 // Biscuit Beach, Pawprint Shrine Isle) as small tile maps with their own camera, props, NPCs, portals and spawns.
 // Headless data + logic (tested); drawing lives in sceneart.js, wiring in main.js. Original Inu names/art only.
+import { SCENE as DISTRICTS_SCENE, HUB_GATE as DISTRICTS_GATE, districtAt } from './districts.js';
 export const ST = 32; // tile size (world px), same as the hub
 // ---- tile legend: [floor, prop, solid] ----
 const IN = { // interiors
@@ -197,14 +198,16 @@ export const SCENES = {
       { id: 'stall', tx: 10, ty: 9, face: 'up', name: 'Charm stall', act: { say: 'Keeper Hoshi: "Charms for good naps and tasty treats. Come back when the island festival opens!"' }, label: 'Look' }],
     npcs: [{ name: 'Keeper Hoshi', coat: 'cream', x: 9, y: 6, wander: true, lines: ['Welcome, traveller. Ring the bell for luck.', 'The island festival will open here one day.'] },
       { name: 'Pilgrim Nori', coat: 'tan', x: 16, y: 8, wander: true, lines: ['I sailed all the way from Biscuit Beach!', 'The view from the shrine is amazing.'] }] }),
+  districts: S({ ...DISTRICTS_SCENE, legend: { ...OUT, ...DISTRICTS_SCENE.legend } }), // Arcade Districts (districts.js): Arcade Row + five districts
 };
 // door ids on the hub that now lead into a walkable interior (Launch Hall + mall stores + game doors keep their old entry)
 export const DOOR_SCENES = { 'building:cafe': 'cafe', 'building:shop': 'shop', 'building:fashion': 'fashion', 'building:cars': 'cars', 'bank:bank': 'bank', 'mall:mall': 'mall', 'clubhouse:clubhouse': 'clubhouse' };
 export const sceneForDoor = (d) => DOOR_SCENES[d.kind + ':' + d.id] || null;
 // hub gates (walk into them to change zone). tx,ty = hub stand tile; face = walking direction.
 export const HUB_GATES = [
-  { id: 'east', name: 'Hanami Park gate', tx: 62, ty: 21, face: 'right', to: 'park', at: 'hub', out: [61, 21, 'left'] },
-  { id: 'south', name: 'Biscuit Beach gate', tx: 34, ty: 104, face: 'down', to: 'beach', at: 'hub', out: [34, 103, 'up'] },
+  { id: 'east', name: 'Hanami Park gate', tx: 62, ty: 21, face: 'right', to: 'park', at: 'hub', out: [61, 21, 'left'], label: 'PARK' },
+  { id: 'south', name: 'Biscuit Beach gate', tx: 34, ty: 104, face: 'down', to: 'beach', at: 'hub', out: [34, 103, 'up'], label: 'BEACH' },
+  { ...DISTRICTS_GATE },
 ];
 
 // ---- parsing / queries ----
@@ -212,7 +215,8 @@ const cache = {};
 export function scene(id) { if (cache[id]) return cache[id]; const s = SCENES[id]; if (!s) return null;
   const h = s.map.length, w = Math.max(...s.map.map((r) => r.length)), cells = [];
   for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) { const ch = s.map[y][x] ?? (s.kind === 'zone' ? 'w' : '#'), L = s.legend[ch] || s.legend[s.kind === 'zone' ? 'g' : '.']; cells.push({ ch, floor: L[0], prop: L[1], solid: !!L[2] }); }
-  return (cache[id] = { id, ...s, w, h, cells, at: (x, y) => (x < 0 || y < 0 || x >= w || y >= h ? null : cells[y * w + x]) }); }
+  for (const st of s.structs || []) for (let y = st.y; y < st.y + st.h; y++) for (let x = st.x; x < st.x + st.w; x++) if (cells[y * w + x] && !(st.door && st.door[0] === x && st.door[1] === y)) cells[y * w + x].solid = true; // multi-tile buildings (doorway alcove stays open)
+  return (cache[id] = { id, ...s, w, h, cells, at: (x, y) => (x < 0 || y < 0 || x >= w || y >= h ? null : cells[y * w + x]), ...(id === 'districts' ? { districtAt } : {}) }); }
 export const solidAt = (sc, x, y) => { const c = sc.at(x, y); return !c || c.solid; };
 export const exitAt = (sc, tx, ty) => sc.exits.find((e) => e.tiles.some(([x, y]) => x === tx && y === ty)) || null;
 export function spawnOf(id, key) { const sc = scene(id); const s = sc.spawns[key] || Object.values(sc.spawns)[0]; return { x: (s[0] + 0.5) * ST, y: (s[1] + 0.5) * ST, face: s[2] }; }
@@ -241,7 +245,8 @@ export function portalStep(st, sc, p, now, exitsOverride) { const tx = Math.floo
   return null; }
 // travel spots (the ferries) are walk-in too: the tile you stand on to use the spot acts as an exit facing the spot
 export function walkInExits(sc) { if (sc._walkIn) return sc._walkIn; const out = [];
-  for (const sp of sc.spots || []) { if (!sp.act?.travel) continue; const [fx, fy] = PFACE[sp.face] || [0, 1], x = sp.tx - fx, y = sp.ty - fy; if (!solidAt(sc, x, y)) out.push({ tiles: [[x, y]], face: sp.face, spot: sp }); }
+  for (const sp of sc.spots || []) { if (sp.walk) { out.push({ tiles: [[sp.tx, sp.ty]], face: sp.face, spot: sp, strict: true }); continue; } // district cabinet doors: on the mat, pushing in
+    if (!sp.act?.travel) continue; const [fx, fy] = PFACE[sp.face] || [0, 1], x = sp.tx - fx, y = sp.ty - fy; if (!solidAt(sc, x, y)) out.push({ tiles: [[x, y]], face: sp.face, spot: sp }); }
   return (sc._walkIn = out); }
 export function hubGateAt(tx, ty) { return HUB_GATES.find((g) => g.tx === tx && g.ty === ty) || null; }
 // where a portal sends you: { scene: 'hub'|id, x, y, face }
