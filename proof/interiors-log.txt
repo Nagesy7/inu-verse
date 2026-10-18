@@ -1,0 +1,20 @@
+theme bakery: props 16
+theme cafe: props 16
+theme flower: props 16
+theme boutique: props 16
+theme groomer: props 16
+theme stand: props 16
+after place bench: {"id":"bench","x":1,"y":5,"rot":0}
+after rotate: {"id":"bench","x":1,"y":5,"rot":1}
+after move: {"id":"bench","x":3,"y":5,"rot":1}
+after remove: items 16 storeroom bench 1
+fps inside shop 844x390 cpu x1: {"avg":60,"low1":60,"frames":180,"redraws":0}
+fps inside shop 844x390 cpu x4: {"avg":60,"low1":60,"frames":179,"redraws":0}
+publish: {"ok":4,"id":"hj4i1ed6rf7se"}
+GET shop: {"owner":"Kabosu","items":17,"type":"bakery"}
+visitor view items: 17 readOnly true
+fps street by the shop 844x390 cpu x1: {"avg":60,"low1":60,"frames":179,"redraws":0}
+fps street by the shop 844x390 cpu x4: {"avg":28,"low1":15,"frames":83,"redraws":0}
+fps inside shop 667x375 cpu x1: {"avg":60,"low1":60,"frames":179,"redraws":0}
+fps inside shop 667x375 cpu x4: {"avg":60,"low1":60,"frames":179,"redraws":0}
+page errors: []
