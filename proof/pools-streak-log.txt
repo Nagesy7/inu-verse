@@ -1,0 +1,39 @@
+saved proof/pools-monument-844x390.png
+saved proof/pools-board-844x390.png
+844x390 board rows: ["Top Farmer in-game Bones pool (this town) 300 Bones Pochi Fields · 72 6","Top Business in-game Bones pool (this town) 400 Bones Taro Bakes (Taro) · 45 5","Meme Brawl weekly scores 2026-W43 not available – 0","Street Sniffer weekly scores 2026-W43 not available – 0","Kibble Chomp weekly scores 2026-W43 not available – 0","Inu Score Inu Score board not available – 0"]
+844x390 board footer: Shared weekly $KIBBLE pool (all Inu games): 0 KIBBLE | Prize wallet: Kennel Chest Akk3…56fn Solscan ↗ | Last updated 19 Oct, 1:44 am Sydney time
+saved proof/pools-board-wallet-844x390.png
+844x390 migrated: {"v":1,"count":5,"best":5,"last":"2026-10-19","source":"device","wallet":null,"unlocked":[],"pin":null,"migrated":{"from":"device streak (in-game days)","device":12,"granted":5},"syncedAt":null}
+saved proof/streak-hud-device-844x390.png
+saved proof/streak-tab-device-844x390.png
+844x390 device pins after 30 simulated days: {"got":[7,30],"count":35,"unlocked":[7,30]}
+saved proof/streak-pins-844x390.png
+saved proof/streak-profile-844x390.png
+saved proof/streak-worn-pin-844x390.png
+saved proof/streak-tab-wallet-844x390.png
+saved proof/kp-purchase-0-prop-844x390.png
+844x390 buy tap (signed out) toast: Sign in with Phantom first (wallet button, top bar).
+saved proof/kp-purchase-1-signin-required-844x390.png
+844x390 wallet button: inu-wallet-btn "🔗 Connect Wallet"
+844x390 wallet sign requests (fixture, never signed): ["kibble-pay.vercel.app wants you to sign in with your Solana account:\nFixtureWa11et1111111111111111111111111111111\n\nSign in to Inu games to buy items with KIBBLE.\n\nURI: https://kibble-pay.vercel.app\nVersion: 1\nChain ID: mainnet\nNonce: f0968da69f2f4504c6a38566\nIssued At: 2026-10-18T14:44:17.117Z","kibble-pay.vercel.app wants you to sign in with your Solana account:\nFixtureWa11et1111111111111111111111111111111\n\nSign in to Inu games to buy items with KIBBLE.\n\nURI: https://kibble-pay.vercel.app\nVersion: 1\nChain ID: mainnet\nNonce: dc11ad015fc7ebb86adadef9\nIssued At: 2026-10-18T14:44:17.118Z","kibble-pay.vercel.app wants you to sign in with your Solana account:\nFixtureWa11et1111111111111111111111111111111\n\nSign in to Inu games to buy items with KIBBLE.\n\nURI: https://kibble-pay.vercel.app\nVersion: 1\nChain ID: mainnet\nNonce: 0de2280108adddd8e13710be\nIssued At: 2026-10-18T14:44:22.293Z"]
+saved proof/kp-purchase-2-wallet-sign-844x390.png
+saved proof/pools-monument-667x375.png
+saved proof/pools-board-667x375.png
+667x375 board rows: ["Top Farmer in-game Bones pool (this town) 300 Bones Pochi Fields · 72 6","Top Business in-game Bones pool (this town) 400 Bones Taro Bakes (Taro) · 45 5","Meme Brawl weekly scores 2026-W43 not available – 0","Street Sniffer weekly scores 2026-W43 not available – 0","Kibble Chomp weekly scores 2026-W43 not available – 0","Inu Score Inu Score board not available – 0"]
+667x375 board footer: Shared weekly $KIBBLE pool (all Inu games): 0 KIBBLE | Prize wallet: Kennel Chest Akk3…56fn Solscan ↗ | Last updated 19 Oct, 1:44 am Sydney time
+saved proof/pools-board-wallet-667x375.png
+667x375 migrated: {"v":1,"count":5,"best":5,"last":"2026-10-19","source":"device","wallet":null,"unlocked":[],"pin":null,"migrated":{"from":"device streak (in-game days)","device":12,"granted":5},"syncedAt":null}
+saved proof/streak-hud-device-667x375.png
+saved proof/streak-tab-device-667x375.png
+667x375 device pins after 30 simulated days: {"got":[7,30],"count":35,"unlocked":[7,30]}
+saved proof/streak-pins-667x375.png
+saved proof/streak-profile-667x375.png
+saved proof/streak-worn-pin-667x375.png
+saved proof/streak-tab-wallet-667x375.png
+saved proof/kp-purchase-0-prop-667x375.png
+667x375 buy tap (signed out) toast: Sign in with Phantom first (wallet button, top bar).
+saved proof/kp-purchase-1-signin-required-667x375.png
+667x375 wallet button: inu-wallet-btn "🔗 Connect Wallet"
+667x375 wallet sign requests (fixture, never signed): ["kibble-pay.vercel.app wants you to sign in with your Solana account:\nFixtureWa11et1111111111111111111111111111111\n\nSign in to Inu games to buy items with KIBBLE.\n\nURI: https://kibble-pay.vercel.app\nVersion: 1\nChain ID: mainnet\nNonce: 0f390a95d3da7e0671b518a9\nIssued At: 2026-10-18T14:44:41.933Z","kibble-pay.vercel.app wants you to sign in with your Solana account:\nFixtureWa11et1111111111111111111111111111111\n\nSign in to Inu games to buy items with KIBBLE.\n\nURI: https://kibble-pay.vercel.app\nVersion: 1\nChain ID: mainnet\nNonce: 9fa9cbdcf6e9fd195c76c488\nIssued At: 2026-10-18T14:44:41.933Z","kibble-pay.vercel.app wants you to sign in with your Solana account:\nFixtureWa11et1111111111111111111111111111111\n\nSign in to Inu games to buy items with KIBBLE.\n\nURI: https://kibble-pay.vercel.app\nVersion: 1\nChain ID: mainnet\nNonce: d29e16777bc3a3629511727e\nIssued At: 2026-10-18T14:44:47.284Z"]
+saved proof/kp-purchase-2-wallet-sign-667x375.png
+page errors: []
