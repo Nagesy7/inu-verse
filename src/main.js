@@ -59,7 +59,10 @@ import { prerenderMap, dynamicProps, buildingsReady } from './render.js';
 import { N, SCALE, drawWater } from './tiles.js';
 import { feel } from './feel.js';
 import { faceTalk, faceReact } from './face.js';
-import { stepChat, drawChat, emoteBubble } from './chat.js';
+import { stepChat, drawChat, emoteBubble, say as chatSay } from './chat.js';
+import { makeRoomPlay } from './roomplay.js';
+import { sceneForDoor, HUB_GATES, resolveExit, makePortalState, portalStep, SCENES } from './scenes.js';
+import { hubGateProp } from './sceneart.js';
 import { buildDrawer, drawerOpen } from './hudmenu.js';
 import { makeDoorState, doorStep, doorExit, outsideOf } from './doors.js';
 import { isDoor, doorList, doorDir, COMMUNITY } from './world.js';
@@ -192,6 +195,7 @@ addEventListener('keydown', (e) => {
   }
   if (feel.talking() && (k === 'e' || k === 'enter' || k === ' ')) { feel.advance(); return; }
   if (k === 'escape') { if (panel) closePanel(); else if (build) exitBuild(); }
+  if (mode === 'room' && !panel && (k === 'e' || k === 'enter')) { RP.act(); return; }
   if (mode === 'world' && !panel && (k === 'e' || k === 'enter') && carAction()) return;
   if (mode === 'world' && !panel && (k === 'e' || k === 'enter')) { const it = nearestInteractable(state, state.player.x, state.player.y); const pup = nearPup(); if (pup && !it) petPup(pup); else if (it) interact(it); }
   if (mode === 'build' && k === 'r') rotateSel();
@@ -205,7 +209,8 @@ cv.addEventListener('mousemove', (e) => { if (mode === 'build') build.hover = ro
 cv.addEventListener('click', (e) => {
   if (mode === 'world' && !panel) {
     const w = screenToWorld(e.clientX, e.clientY); const ad = adAt(trend, adRot, adIdx, w.x, w.y); if (ad) { blip(990); openPanel('launch', ad.coin.real ? { tab: ad.coin.mint === RC.KIBBLE.mint ? 'kibble' : 'board' } : { sel: ad.coin.id }); return; } clickWorldTile(Math.floor(w.x / TILE), Math.floor(w.y / TILE), w.x, w.y);
-  } else if (mode === 'build') buildClick(roomCell(e.clientX, e.clientY));
+  } else if (mode === 'room' && !panel && !feel.talking()) RP.click(e.clientX, e.clientY, groundTap(performance.now()));
+  else if (mode === 'build') buildClick(roomCell(e.clientX, e.clientY));
 });
 $('#minimap').addEventListener('click', (e) => { if (mode === 'world' && !panel) { if (guide) return guide.openMap(); const r = e.target.getBoundingClientRect(); clickWorldTile(Math.floor((e.clientX - r.left) / 2), Math.floor((e.clientY - r.top) / 2)); } });
 // Tap/click-to-walk: A* (8-way, no corner cutting) + string-pulled legs. Tapping a building/door walks there and enters,
@@ -229,13 +234,15 @@ function clickWorldTile(tx, ty, wx, wy) {
     for (const b of BUILDINGS) if (tx >= b.x && tx < b.x + b.w && ty >= b.y && ty < b.y + b.h) target = interactables(state).find((i) => i.id === b.id);
     for (const p of [...PLOTS, ...NPC_HOMES, CLUBHOUSE, ...MALL_BUILDINGS]) if (tx >= p.x && tx < p.x + p.w && ty >= p.y && ty < p.y + p.h) target = interactables(state).find((i) => i.id === p.id);
     if (!target) target = interactables(state).find((i) => i.tx === tx && i.ty === ty) || null;
+    if (!target) { const g = HUB_GATES.find((q) => Math.abs(q.tx - tx) <= 1 && Math.abs(q.ty - ty) <= 1); if (g) return planTo([g.tx, g.ty], { target: { kind: 'hubgate', g, tx: g.tx, ty: g.ty }, run }); }
     planTo(target ? [target.tx, target.ty] : [tx, ty], { target, run });
 }
 globalThis.__walkTo = (tx, ty, run = false) => planTo([tx, ty], { run }); globalThis.__mob = () => ({ v: { ...player.v }, running: player.running, pts: player.pw.pts.length, moving: player.moving, face: player.face, x: state.player.x, y: state.player.y, mark: !!player.clickMark });
 function arrive() { const t = player.target, nt = player.npcT; player.target = null; player.npcT = null; player.clickMark = null;
+  if (t?.kind === 'hubgate') { player.face = t.g.face; return enterGate(t.g); }
   if (t) { if (isWalkDoor(t)) { player.face = doorDir(t).face; if (doorReady()) enterDoor(t); } else interact(t); }
   else if (nt) { const pup = nearPup(); if (pup) nt.n.held = 0; if (pup) petPup(pup); else if (player.pw.replans++ < 3) planTo([Math.floor(nt.x / TILE), Math.floor(nt.y / TILE)], { npcT: nt, run: player.pw.run, mark: false }); } }
-$('#prompt').onclick = () => { const it = nearestInteractable(state, state.player.x, state.player.y); const pup = nearPup(); if (pup && !it) petPup(pup); else if (it) interact(it); };
+$('#prompt').onclick = () => { if (mode === 'room') return RP.act(); const it = nearestInteractable(state, state.player.x, state.player.y); const pup = nearPup(); if (pup && !it) petPup(pup); else if (it) interact(it); };
 addEventListener('pointerdown', () => initAudio(), { once: true });
 document.addEventListener('pointerdown', (e) => { if (e.target.closest('button,.btn,.coat,[data-buy],[data-inv]')) { initAudio(); uiClick(); } });
 let hourIdx = 0; const fish = { state: 'idle', t: 0, biteAt: 0 };
@@ -384,7 +391,7 @@ $('#panel-close').onclick = () => closePanel();
   pad.addEventListener('pointermove', (e) => { if (e.pointerId === touch.id) upd(e); });
   const end = (e) => { if (e.pointerId !== touch.id) return; touch.id = null; touch.x = touch.y = 0; touch.mag = 0; player.holdRun = false; knob.style.transform = ''; pad.classList.remove('on'); };
   pad.addEventListener('pointerup', end); pad.addEventListener('pointercancel', end);
-  const act = () => { if (feel.talking()) return feel.advance(); if (mode !== 'world' || panel || !state) return; if (carAction()) return; const it = nearestInteractable(state, state.player.x, state.player.y); const pup = nearPup(); if (pup && !it) petPup(pup); else if (it) interact(it); };
+  const act = () => { if (feel.talking()) return feel.advance(); if (mode === 'room' && !panel) return RP.act(); if (mode !== 'world' || panel || !state) return; if (carAction()) return; const it = nearestInteractable(state, state.player.x, state.player.y); const pup = nearPup(); if (pup && !it) petPup(pup); else if (it) interact(it); };
   $('#btn-a').addEventListener('pointerdown', (e) => { e.preventDefault(); initAudio(); act(); });
   $('#btn-b').addEventListener('pointerdown', (e) => { e.preventDefault(); initAudio(); if (mode === 'world' && !panel && state) { if (drive) return honk(); bork(); player.emote = { kind: 'bork', t: 1.2 }; emoteBubble('me', 'bork', time); } });
   $('#btn-menu')?.addEventListener('pointerdown', (e) => { e.preventDefault(); });
@@ -442,7 +449,8 @@ function updateWorld(dt) {
   feel.step(dt); document.body.classList.toggle('driving', !!drive);
   if (mode === 'world' && !panel && !drive && !entering && !arcadeOpen) { doorAcc -= dt; if (doorAcc <= 0) { doorAcc = 1; doorsNow = doorList(state).filter((d) => d.kind !== 'plot' || state.plots[d.id]); }
     const ds = player.pw.pts.length ? (player.target && isWalkDoor(player.target) ? doorsNow.filter((q) => q.id === player.target.id && q.kind === player.target.kind) : []) : doorsNow; // tap-walking only enters the door you tapped
-    const d = doorStep(doorSt, { x: p.x, y: p.y, face: player.face, moving: player.moving }, ds, time); if (d) enterDoor(d); }
+    const d = doorStep(doorSt, { x: p.x, y: p.y, face: player.face, moving: player.moving }, ds, time, doorsNow); if (d) enterDoor(d);
+    else if (!player.pw.pts.length) { const g = portalStep(gateSt, null, { x: p.x, y: p.y, face: player.face, moving: player.moving }, time, GATE_EXITS); if (g) enterGate(g.gate); } }
   { const vw = innerWidth / ZOOM, vh = innerHeight / ZOOM; stepChat({ now: time, player: p, npcs, hour: dayPhase(time + dayOffset).hour, rain: amb.rain > 0.3, rng, inView: (x, y) => Math.abs(x - cam.x) < vw / 2 - 20 && Math.abs(y - cam.y) < vh / 2 - 30, placeOf: chatPlace }); }
   mailAcc += dt; if (mailAcc > 45) { mailAcc = 0; if (rng() < 0.6 && addMail(state, rng)) { toast('New note in your mailbox!', 'good'); persist(); } }
   // smooth camera
@@ -465,6 +473,9 @@ function updateWorld(dt) {
 }
 
 let snapPx = (v) => Math.round(v * 2) / 2;
+function drawMark(ctx, m, time) { const  X = Math.round(m.x), Y = Math.round(m.y + 8), k = 7 + Math.round((Math.sin(time * 7) + 1) * 1.5), col = m.npc ? '#ff9ac0' : '#f2cc68'; // destination marker: pixel ring + bobbing arrow
+    ctx.fillStyle = '#141a2e'; ctx.fillRect(X - k - 1, Y - 3, 2 * k + 2, 6); ctx.fillRect(X - k + 2, Y - 5, 2 * k - 4, 10); ctx.fillStyle = col; ctx.fillRect(X - k, Y - 2, 2 * k, 4); ctx.fillRect(X - k + 3, Y - 4, 2 * k - 6, 8); ctx.fillStyle = '#141a2e'; ctx.fillRect(X - k + 3, Y - 1, 2 * k - 6, 2); ctx.fillRect(X - k + 5, Y - 2, 2 * k - 10, 4);
+    const ay = Y - 22 + Math.round(Math.sin(time * 6) * 2); ctx.fillStyle = '#141a2e'; ctx.fillRect(X - 5, ay - 1, 10, 5); ctx.fillRect(X - 3, ay + 4, 6, 2); ctx.fillRect(X - 1, ay + 6, 2, 2); ctx.fillStyle = col; ctx.fillRect(X - 4, ay, 8, 3); ctx.fillRect(X - 2, ay + 3, 4, 2); }
 function renderWorld() {
   const dpr = devicePixelRatio, SW = innerWidth, SH = innerHeight, vw = SW / ZOOM, vh = SH / ZOOM; ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
   ctx.imageSmoothingEnabled = false; ctx.fillStyle = '#141a2e'; ctx.fillRect(0, 0, SW, SH); ctx.setTransform(dpr * ZOOM, 0, 0, dpr * ZOOM, 0, 0); // world drawn at ZOOM; Shibas drawn back at 1/ZOOM so they keep their on-screen size
@@ -480,13 +491,11 @@ function renderWorld() {
     const tx0 = Math.floor(-ox / TILE) - 1, ty0 = Math.floor(-oy / TILE) - 1; ctx.save(); ctx.scale(SCALE, SCALE); drawWater(ctx, time, tx0, ty0, tx0 + Math.ceil(vw / TILE) + 2, ty0 + Math.ceil(vh / TILE) + 2); ctx.restore(); }
   const phase = dayPhase(time + dayOffset);
   globalThis.__inuNight = phase.dark;
-  const dyn = [...dynamicProps(state, time, myPack(state)), ...presidentProps(pres, time), ...doorProps(time), ...carWorldProps(), ...crewProps(), ...adProps(trend, adRot, adIdx, !!globalThis.__inuNight, time, featuredMap()), ...confettiProps(), ...squareProps(state, time, Math.floor(gameDay() / 7)), ...arcadeProps(time, arcadeTop)];
+  const dyn = [...HUB_GATES.map((g) => hubGateProp(g, time)), ...dynamicProps(state, time, myPack(state)), ...presidentProps(pres, time), ...doorProps(time), ...carWorldProps(), ...crewProps(), ...adProps(trend, adRot, adIdx, !!globalThis.__inuNight, time, featuredMap()), ...confettiProps(), ...squareProps(state, time, Math.floor(gameDay() / 7)), ...arcadeProps(time, arcadeTop)];
   for (const d of dyn) if (d.flat) d.d(ctx);
   const view = { x0: -ox, y0: -oy, x1: -ox + vw, y1: -oy + vh };
   drawGroundLife(ctx, amb, phase); drawAliveGround(ctx, ALIVE, view, phase); feel.drawGround(ctx);
-  if (player.clickMark && player.pw.pts.length) { const m = player.clickMark, X = Math.round(m.x), Y = Math.round(m.y + 8), k = 7 + Math.round((Math.sin(time * 7) + 1) * 1.5), col = m.npc ? '#ff9ac0' : '#f2cc68'; // destination marker: pixel ring + bobbing arrow
-    ctx.fillStyle = '#141a2e'; ctx.fillRect(X - k - 1, Y - 3, 2 * k + 2, 6); ctx.fillRect(X - k + 2, Y - 5, 2 * k - 4, 10); ctx.fillStyle = col; ctx.fillRect(X - k, Y - 2, 2 * k, 4); ctx.fillRect(X - k + 3, Y - 4, 2 * k - 6, 8); ctx.fillStyle = '#141a2e'; ctx.fillRect(X - k + 3, Y - 1, 2 * k - 6, 2); ctx.fillRect(X - k + 5, Y - 2, 2 * k - 10, 4);
-    const ay = Y - 22 + Math.round(Math.sin(time * 6) * 2); ctx.fillStyle = '#141a2e'; ctx.fillRect(X - 5, ay - 1, 10, 5); ctx.fillRect(X - 3, ay + 4, 6, 2); ctx.fillRect(X - 1, ay + 6, 2, 2); ctx.fillStyle = col; ctx.fillRect(X - 4, ay, 8, 3); ctx.fillRect(X - 2, ay + 3, 4, 2); }
+  if (player.clickMark && player.pw.pts.length) drawMark(ctx, player.clickMark, time);
   const actors = [...npcs.map((n) => ({ ...n, npc: true, badge: badgeOf(packOfName(state, n.name)) })), ...(drive ? [] : [{ x: state.player.x, y: state.player.y, coat: state.player.coat, outfit: state.wardrobe.equipped, face: player.face, phase: player.phase, moving: player.moving, name: state.player.name, me: true, badge: badgeOf(myPack(state)), emote: player.emote, art: artKey(state.player.coat, state.wardrobe.equipped), profile: hasCustomLook(state) ? myProfile() : null }]), ...streetPups(), ...presActors(), ...petActors(), ...crewActors(), ...pupActors(), ...MPL.actors(view, state.player)];
   // one depth-sorted list: static props (culled), dynamic props and actors, by ground y
   const L = -ox - 200, Rt = -ox + vw + 200, Tp = -oy - 60, Bt = -oy + vh + 400, list = [];
@@ -586,7 +595,43 @@ const isWalkDoor = (it) => isDoor(it) && (it.kind !== 'plot' || !!state.plots[it
 function stopWalk() { player.pw.pts = []; player.path = player.pw.pts; player.target = null; player.npcT = null; player.clickMark = null; }
 const doorReady = () => time >= doorSt.until;
 // Entering marks the door used (cooldown + must step off the tile), so arriving by tap AND by walking can never double-fire.
+// ---- Round 2: rooms & zones (walkable interiors + outdoor zones; see scenes.js / roomplay.js) ----
+let roomBuild = null; const gateSt = makePortalState(); const GATE_EXITS = HUB_GATES.map((g) => ({ tiles: [[g.tx, g.ty]], face: g.face, gate: g }));
+const roomDoorById = (id) => doorList(state).find((q) => q.id === id) || interactables(state).find((q) => q.id === id);
+function drawRoomActor(c, a, snap) {
+  c.save(); c.translate(snap(a.x), snap(a.y)); c.scale(0.5, 0.5);
+  if (a.me) { const look = hasCustomLook(state) ? myProfile() : null, em = player.emote;
+    if (look) { drawProfileShiba(c, 0, 0, look, { face: player.face, phase: player.phase, moving: player.moving, name: state.player.name, scale: 1.5, badge: badgeOf(myPack(state)), fid: 'me', emote: em?.kind }); if (em) drawEmote(c, 0, -110, em.kind, time); }
+    else drawShiba(c, 0, 0, { coat: state.player.coat, outfit: state.wardrobe.equipped, face: player.face, phase: player.phase, moving: player.moving, name: state.player.name, scale: 1.5, badge: badgeOf(myPack(state)), art: artKey(state.player.coat, state.wardrobe.equipped), emote: em?.kind, fid: 'me' }); }
+  else drawShiba(c, 0, 0, { coat: a.coat, outfit: a.outfit || {}, face: a.face, phase: a.phase, moving: a.moving, name: a.name, scale: 1.5, art: artKey(a.coat, a.outfit || {}), fid: a.name, wag: !a.moving });
+  c.restore(); }
+const RP = makeRoomPlay({ player, zoom: () => ZOOM, time: () => time, blocked: () => !!panel || feel.talking() || mode !== 'room',
+  input: () => { let dx = 0, dy = 0; if (!panel) { if (keys.has('w') || keys.has('arrowup')) dy -= 1; if (keys.has('s') || keys.has('arrowdown')) dy += 1; if (keys.has('a') || keys.has('arrowleft')) dx -= 1; if (keys.has('d') || keys.has('arrowright')) dx += 1; }
+    return { dx, dy, stick: { x: panel ? 0 : touch.x, y: panel ? 0 : touch.y }, mag: touch.mag || 0, shift: keys.has('shift'), holdRun: player.holdRun }; },
+  openPanel: (k, o) => openPanel(k, o), build: (id) => { if (myPack(state)) { roomBuild = { id: RP.id, at: { x: RP.R.p.x, y: RP.R.p.y, face: player.face } }; enterBuild(id); } else openPanel('packs'); },
+  say: (n, t) => feel.say(n, t, blip), emote: (k) => { player.emote = { kind: k, t: 1.4 }; emoteBubble('me', k, time); }, bell: () => blip(1320), blip: (f) => blip(f),
+  chat: (id, t) => chatSay(id, t, time), fade: () => feel.fade(), dust: (x, y) => feel.dust(x, y), portal: (ex) => roomPortal(ex),
+  drawGround: (c) => feel.drawGround(c), drawAir: (c) => feel.drawAir(c), drawMark: (c, m, t) => drawMark(c, m, t), bubble: (c, x, y, t) => feel.bubble(c, x, y, t),
+  drawChat: (c, res) => drawChat(c, res, time), drawActor: drawRoomActor, night: () => !!globalThis.__inuNight, arrived: (sc) => roomUi(sc) });
+function roomUi(sc) { $('#minimap-wrap').hidden = true; wayUi(false); toast(sc.name, ''); globalThis.__roomVisits = (globalThis.__roomVisits || 0) + 1; }
+function enterRoom(id, at, door = null) { if (mode === 'room' && RP.id === id) return; stopWalk(); keys.clear(); player.v = { x: 0, y: 0 }; feel.fade(); blip(660);
+  if (door) { const o = outsideOf(door); Object.assign(state.player, { x: o.x, y: o.y }); } // saves/reloads/Back-to-Verse always land you outside, never inside a room
+  setTimeout(() => { mode = 'room'; RP.enter(id, at); roomUi(RP.sc); persist(); }, 70); }
+function enterGate(g) { if (mode !== 'world' || panel) return; stopWalk(); Object.assign(state.player, { x: (g.out[0] + 0.5) * TILE, y: (g.out[1] + 0.5) * TILE }); enterRoom(g.to, g.at); }
+function roomPortal(ex) { if (RP.R.busy) return; const r = resolveExit(ex, { outsideOf, doorById: roomDoorById }); if (!r) return;
+  if (r.scene !== 'hub') return RP.travel(r.scene, ex.at, 'gate');
+  if (!Number.isFinite(r.x)) { r.x = state.player.x; r.y = state.player.y; r.face = 'down'; }
+  RP.R.busy = true; RP.stop(); feel.fade(); blip(520);
+  setTimeout(() => { RP.R.busy = false; mode = 'world'; Object.assign(state.player, { x: r.x, y: r.y }); player.face = r.face; player.v = { x: 0, y: 0 }; stopWalk(); doorExit(doorSt, time); gateSt.tile = Math.floor(r.y / TILE) * 1000 + Math.floor(r.x / TILE); gateSt.until = time + 0.8;
+    cam.x = r.x; cam.y = r.y; $('#minimap-wrap').hidden = false; wayUi(true); persist(); }, 70); }
+function updateRoom(dt) { feel.step(dt); RP.update(dt);
+  const pr = $('#prompt'), tch = COARSE.matches, s = !panel && RP.nearSpot(); if (s) { pr.hidden = false; pr.innerHTML = `<kbd${tch ? ' class="ta"' : ''}>${tch ? 'A' : 'E'}</kbd>${esc(s.label || s.name)}`; setA((s.verb || 'USE').toUpperCase()); } else { pr.hidden = true; setA(''); } }
+globalThis.__goScene = (id, at) => { mode = 'room'; RP.enter(id, at); roomUi(RP.sc); };
+globalThis.__room = () => mode === 'room' ? { id: RP.id, x: RP.R.p.x, y: RP.R.p.y, tx: Math.floor(RP.R.p.x / 32), ty: Math.floor(RP.R.p.y / 32), pts: player.pw.pts.length, face: player.face, npcs: RP.R.npcs.length, busy: RP.R.busy, cam: { ...RP.R.cam } } : null;
+globalThis.__roomWalk = (tx, ty, run) => RP.planTo([tx, ty], { run });
+globalThis.__roomTap = (tx, ty) => { const k = globalThis.__roomCam; if (!k) return; RP.click((tx * 32 + 16 + k.ox) * k.Z, (ty * 32 + 16 + k.oy) * k.Z, false); };
 function enterDoor(d) { lastDoor = d; keys.clear(); stopWalk(); player.v = { x: 0, y: 0 }; doorExit(doorSt, time); globalThis.__doorEnters = (globalThis.__doorEnters || 0) + 1;
+  { const sid = sceneForDoor(d); if (sid) return enterRoom(sid, 'door', d); }
   if (d.kind === 'gamedoor' || (d.kind === 'arcade' && COARSE.matches)) return enterExternal(d);
   feel.fade(); interact(d, true); if (panel) panel.viaDoor = true; }
 // External games: same-tab navigation (a movement event is not a user gesture, so window.open would be popup-blocked).
@@ -918,7 +963,7 @@ function enterBuild(id, readOnly) {
   build = { plotId: id, readOnly, pack, home, sel: null, hover: null, picked: null };
   $('#prompt').hidden = true; $('#minimap-wrap').hidden = true; wayUi(false); buildBar();
 }
-function exitBuild() { doorExit(doorSt, time); if (lastDoor && (lastDoor.kind === 'plot' || lastDoor.kind === 'visit' || lastDoor.kind === 'clubhouse')) { const o = outsideOf(lastDoor); Object.assign(state.player, { x: o.x, y: o.y }); player.face = o.face; } feel.fade(); uiClose(); mode = 'world'; build = null; $('#buildbar').hidden = true; $('#minimap-wrap').hidden = false; wayUi(true); persist(); }
+function exitBuild() { doorExit(doorSt, time); if (roomBuild) { const rb = roomBuild; roomBuild = null; feel.fade(); uiClose(); build = null; $('#buildbar').hidden = true; mode = 'room'; RP.enter(rb.id, rb.at); return; } if (lastDoor && (lastDoor.kind === 'plot' || lastDoor.kind === 'visit' || lastDoor.kind === 'clubhouse')) { const o = outsideOf(lastDoor); Object.assign(state.player, { x: o.x, y: o.y }); player.face = o.face; } feel.fade(); uiClose(); mode = 'world'; build = null; $('#buildbar').hidden = true; $('#minimap-wrap').hidden = false; wayUi(true); persist(); }
 function rotateSel() { if (build?.sel) { build.sel.rot = (build.sel.rot + 1) % 4; } else if (build?.picked) { const it = build.picked; const r = build.pack ? movePackFurniture(state, it.uid, it.x, it.y, (it.rot + 1) % 4) : moveFurniture(state, build.plotId, it.uid, it.x, it.y, (it.rot + 1) % 4); if (!r.ok) toast('No room to rotate here', 'bad'); persist(); } }
 function buildClick(c) {
   if (!build || build.readOnly) return;
@@ -1109,6 +1154,7 @@ function frame(now) {
   }
   MPL.step(dt); // live multiplayer (no-op when not configured)
   if (mode === 'world') { updateWorld(dt); renderWorld(); drawSceneBars(); }
+  else if (mode === 'room') { updateRoom(dt); RP.render(ctx, devicePixelRatio || 1); }
   else if (mode === 'build') { $('#prompt').hidden = true; renderBuild(); }
   requestAnimationFrame(frame);
 }
