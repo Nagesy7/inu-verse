@@ -1,0 +1,256 @@
+{
+ "url": "http://localhost:8642/",
+ "rooms": {
+  "cafe": {
+   "entered": "cafe",
+   "correct": true,
+   "spotPanel": "cafe",
+   "spotExpected": "cafe",
+   "out": [
+    4,
+    19
+   ],
+   "expectedOut": [
+    4,
+    19
+   ],
+   "exitOk": true,
+   "noReenter": true
+  },
+  "shop": {
+   "entered": "shop",
+   "correct": true,
+   "spotPanel": "shop",
+   "spotExpected": "shop",
+   "out": [
+    20,
+    19
+   ],
+   "expectedOut": [
+    20,
+    19
+   ],
+   "exitOk": true,
+   "noReenter": true
+  },
+  "fashion": {
+   "entered": "fashion",
+   "correct": true,
+   "spotPanel": "fashion",
+   "spotExpected": "fashion",
+   "out": [
+    31,
+    17
+   ],
+   "expectedOut": [
+    31,
+    17
+   ],
+   "exitOk": true,
+   "noReenter": true
+  },
+  "cars": {
+   "entered": "cars",
+   "correct": true,
+   "spotPanel": "dealer",
+   "spotExpected": "cars",
+   "out": [
+    52,
+    19
+   ],
+   "expectedOut": [
+    52,
+    19
+   ],
+   "exitOk": true,
+   "noReenter": true
+  },
+  "bank": {
+   "entered": "bank",
+   "correct": true,
+   "spotPanel": "bank",
+   "spotExpected": "bank",
+   "out": [
+    41,
+    58
+   ],
+   "expectedOut": [
+    41,
+    58
+   ],
+   "exitOk": true,
+   "noReenter": true
+  },
+  "mall": {
+   "entered": "mall",
+   "correct": true,
+   "spotPanel": "mall",
+   "spotExpected": "mall",
+   "out": [
+    32,
+    59
+   ],
+   "expectedOut": [
+    32,
+    59
+   ],
+   "exitOk": true,
+   "noReenter": true
+  },
+  "clubhouse": {
+   "entered": "clubhouse",
+   "correct": true,
+   "spotPanel": "packs",
+   "spotExpected": "packs",
+   "out": [
+    51,
+    7
+   ],
+   "expectedOut": [
+    51,
+    7
+   ],
+   "exitOk": true,
+   "noReenter": true
+  }
+ },
+ "zones": {
+  "gateToPark": {
+   "id": "park",
+   "x": 48,
+   "y": 240,
+   "tx": 1,
+   "ty": 7,
+   "pts": 0,
+   "face": "right",
+   "npcs": 3,
+   "busy": false,
+   "cam": {
+    "x": 211,
+    "y": 232
+   }
+  },
+  "parkToBeach": {
+   "id": "beach",
+   "x": 912,
+   "y": 144,
+   "tx": 28,
+   "ty": 4,
+   "pts": 0,
+   "face": "left",
+   "npcs": 3,
+   "busy": false,
+   "cam": {
+    "x": 749,
+    "y": 136
+   }
+  },
+  "ferryToShrine": {
+   "id": "shrine",
+   "x": 400,
+   "y": 368,
+   "tx": 12,
+   "ty": 11,
+   "pts": 0,
+   "face": "up",
+   "npcs": 2,
+   "busy": false,
+   "cam": {
+    "x": 400,
+    "y": 360
+   }
+  },
+  "bell": "SHRINE BELL\nDO",
+  "ferryBack": {
+   "id": "beach",
+   "x": 496,
+   "y": 272,
+   "tx": 15,
+   "ty": 8,
+   "pts": 0,
+   "face": "up",
+   "npcs": 3,
+   "busy": false,
+   "cam": {
+    "x": 496,
+    "y": 264
+   }
+  },
+  "beachToHub": {
+   "tile": [
+    34,
+    103
+   ],
+   "expected": [
+    34,
+    103
+   ]
+  },
+  "parkToHub": {
+   "tile": [
+    61,
+    21
+   ],
+   "expected": [
+    61,
+    21
+   ]
+  }
+ },
+ "cafeTapDoor": {
+  "entered": true,
+  "room": {
+   "id": "cafe",
+   "x": 240,
+   "y": 304,
+   "tx": 7,
+   "ty": 9,
+   "pts": 0,
+   "face": "up",
+   "npcs": 3,
+   "busy": false,
+   "cam": {
+    "x": 240,
+    "y": 254.5
+   }
+  },
+  "enters": 1,
+  "fadeCss": "0.2s"
+ },
+ "cafeCounter": {
+  "panel": "cafe"
+ },
+ "cafeExit": {
+  "hubTile": [
+   4,
+   19
+  ],
+  "expected": [
+   4,
+   19
+  ],
+  "ok": true
+ },
+ "cafeNoReenter": true,
+ "reloadInRoom": {
+  "room": null,
+  "tile": [
+   41,
+   58
+  ],
+  "bankOutside": [
+   41,
+   58
+  ]
+ },
+ "fps_cafe_844x390@1x": 60,
+ "fps_cafe_844x390@4x": 60,
+ "fps_park_844x390@1x": 60,
+ "fps_park_844x390@4x": 60,
+ "fps_cafe_667x375@1x": 60,
+ "fps_cafe_667x375@4x": 60,
+ "fps_park_667x375@1x": 60,
+ "fps_park_667x375@4x": 60,
+ "gifFrames": 273,
+ "consoleErrors": []
+}
