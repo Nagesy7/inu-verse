@@ -7,10 +7,10 @@ import WebSocket from 'ws';
 
 const URL0 = process.env.MP_URL, CAP = Number(process.env.MP_CAP || 3), ORIGIN = 'http://localhost:8642';
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
-function client(room, { origin = ORIGIN, guest, tok, look } = {}) { return new Promise((res, rej) => {
+function client(room, { origin = ORIGIN, guest, tok, look, h } = {}) { return new Promise((res, rej) => {
   const ws = new WebSocket(`${URL0}/ws?room=${encodeURIComponent(room)}`, { origin }); const c = { ws, msgs: [], welcome: null };
   ws.on('message', (d) => { const m = JSON.parse(String(d)); c.msgs.push(m); if (m.t === 'w') { c.welcome = m; res(c); } });
-  ws.on('open', () => ws.send(JSON.stringify({ t: 'hi', tok, guest: guest || 'Pup' + (1000 + Math.floor(Math.random() * 9000)), name: 'ignored-for-guests', look: look || { coat: 'tan', eq: {} }, s: { x: 100, y: 100, f: 'down', ts: Date.now() } })));
+  ws.on('open', () => ws.send(JSON.stringify({ t: 'hi', tok, guest: guest || 'Pup' + (1000 + Math.floor(Math.random() * 9000)), name: 'ignored-for-guests', look: look || { coat: 'tan', eq: {} }, h, s: { x: 100, y: 100, f: 'down', ts: Date.now() } })));
   ws.on('unexpected-response', (_, r) => rej(new Error('http ' + r.statusCode))); ws.on('error', rej); }); }
 const of = (c, t) => c.msgs.filter((m) => m.t === t);
 const room = (n) => `t${n}-${Date.now().toString(36)}`;
@@ -76,3 +76,10 @@ test('server: Kennel tier looked up server-side for verified wallets only, clien
     assert.equal(C.welcome.players.find((p) => p.id === A2.welcome.id).k, 'alpha', 'late joiner gets k in the welcome'); assert.equal(kennelCalls, 1, 'one lookup per wallet per TTL');
     O.ws.close(); await sleep(200); const B = await client(r, { tok: 'bad' }); await sleep(300); assert.equal(C.msgs.filter((m) => m.t === 'k' && m.id === B.welcome.id).length, 0, 'unverified: no tier');
     for (const c of [A2, C, B]) c.ws.close(); } finally { srv.closeAllConnections?.(); srv.close(); } });
+
+test('server: Round 4 shared home id rides the player entry (hello + {t:h} updates), junk ids dropped', { skip: !URL0 }, async () => {
+  const r = room('h'), A = await client(r, { guest: 'Pup3131', h: 'habcdefghijk1' }), B = await client(r, { guest: 'Pup3232', h: 'not a home' });
+  assert.equal(B.welcome.players[0].h, 'habcdefghijk1'); await sleep(150); assert.equal(of(A, 'j')[0].p.h, null, 'invalid id -> null');
+  B.ws.send(JSON.stringify({ t: 'h', h: 'h000000000002' })); await sleep(200); assert.deepEqual(of(A, 'h').at(-1), { t: 'h', id: B.welcome.id, h: 'h000000000002' });
+  B.ws.send(JSON.stringify({ t: 'h', h: '<script>' })); await sleep(200); assert.equal(of(A, 'h').at(-1).h, null);
+  A.ws.close(); B.ws.close(); await sleep(200); });

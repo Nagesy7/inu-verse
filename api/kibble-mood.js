@@ -1,8 +1,8 @@
 // GET /api/kibble-mood -> { price, change1h, change24h, mood, updatedAt, ... } for $KIBBLE. Public, read-only, CORS *.
 // Sources in order: DexScreener token API -> pump.fun coins-v2 -> on-chain pump.fun bonding-curve read through the server RPC
 // (HELIUS_API_KEY stays server-side; errors are redacted). Cached 60 s in Upstash under kibble:mood so all players share one
-// fetch. When a source gives no 1h/24h change (pump.fun, on-chain) the change is computed from our own price samples
-// (kibble:mood:hist), and stays null until enough history exists (null change -> "chill"). Mood hysteresis: a new mood
+// fetch. When the price source gives no 1h/24h change (pump.fun, on-chain), each change is filled from GeckoTerminal's pool
+// price_change_percentage, then pump.fun 1h candles, then our own price samples (kibble:mood:hist); none -> stays null ("chill"). Mood hysteresis: a new mood
 // must hold for 2 consecutive refreshes before it shows. Everything failing -> last good answer marked stale, else "chill".
 import { MINT, classify, stepMood, FALLBACK } from "../src/kibblemood.js";
 import { rpcUrl, redact } from "./_lib/rpc.js";

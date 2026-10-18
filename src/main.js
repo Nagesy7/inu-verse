@@ -76,6 +76,7 @@ import { buildDrawer, drawerOpen } from './hudmenu.js';
 import { makeDoorState, doorStep, doorExit, outsideOf } from './doors.js';
 import { isDoor, doorList, doorDir, COMMUNITY } from './world.js';
 import { createMultiplayer } from './multiplayer.js';
+import { ensureShare, myHomePlot, layoutOf, layoutKey, homeApi, cleanLayout, cleanEntry, validHomeId, GB } from './homeshare.js';
 import * as KM from './kibblemood.js';
 import * as MWd from './moodworld.js';
 import { ensurePacks, myPack, meIn, createPack, joinPack, leavePack, kickMember, recruitNpc, contribute, buyForPack, donateFurniture, upgradeClubhouse, placePackFurniture, movePackFurniture, storePackFurniture, postToBoard, recordActivity, memberScore, packScore, leaderboard, simulatePacks, packOfName, PACK_CREATE_COST, EMBLEMS, SEASON, SCORE, ME } from './packs.js';
@@ -111,7 +112,7 @@ function toast(msg, cls = '') { if (cls === 'good') faceReact('me', 'joy'); else
   if ($('#toast').children.length >= 4) $('#toast').firstElementChild.remove();
   const d = document.createElement('div'); d.dataset.msg = msg; d.className = 'toast ' + cls; d.textContent = msg; $('#toast').appendChild(d); d._t = setTimeout(() => d.remove(), 2200); }
 let profSaveT = 0;
-function persist() { if (state) { for (const u of ENG.checkCollections(state)) toast(`Collection complete: ${u.badge} ${u.name}! Trophy added to your inventory.`, 'good'); save(state, localStorage); if (hasCustomLook(state) && Date.now() - profSaveT > 15000) { profSaveT = Date.now(); saveProfile(state); } } }
+function persist() { if (state) { for (const u of ENG.checkCollections(state)) toast(`Collection complete: ${u.badge} ${u.name}! Trophy added to your inventory.`, 'good'); save(state, localStorage); if (mode === 'build' && build && !build.readOnly && !build.pack) schedulePublish(); if (hasCustomLook(state) && Date.now() - profSaveT > 15000) { profSaveT = Date.now(); saveProfile(state); } } }
 // burn-for-status flair: pulsing pixel halo + sparkles at the feet (world, home and photos)
 function drawFlair(c, col, t) { const r = 40 + Math.sin(t * 3) * 3; c.save(); c.globalAlpha = 0.5; c.fillStyle = col; c.fillRect(-r, 6, r * 2, 12); c.fillRect(-r + 10, 0, r * 2 - 20, 24); c.globalAlpha = 0.22 + Math.sin(t * 4) * 0.08; c.fillRect(-r + 8, -100, r * 2 - 16, 106); c.globalAlpha = 1; for (let i = 0; i < 6; i++) { const a = t * 1.6 + i * 1.047; c.fillStyle = i % 2 ? '#ffffff' : col; c.fillRect(Math.round(Math.cos(a) * 52) - 4, Math.round(-50 + Math.sin(a) * 56) - 4, 8, 8); } c.restore(); }
 function featuredMap() { const nowH = state.clockSec / (DAY_LEN / 24), out = {}; for (const id of Object.keys(FEATURED_SLOTS)) { const r = featuredOf(state, id, nowH); if (r) out[id] = { ...r, label: 'FEATURED' }; const sp = F5.sponsorOf(state, id, nowH); if (sp) out[id] = { ticker: sp.brand, by: sp.by, untilH: sp.untilH, featured: true, sponsored: true, label: 'SPONSORED' }; } return out; }
@@ -297,7 +298,7 @@ function relCtx() { const c = farmCtx(); return Object.assign(c, { townLine: (n)
     x.clearRect(0, 0, cv.width, cv.height); drawRoom(x, home, 10, 70, 50, ROOM_W, ROOM_H - 3 > 0 ? 4 : ROOM_H); } }); }
 const ROOM_WALL_PREVIEW = 2;
 globalThis.__open = (k, o) => openPanel(k, o || {});
-globalThis.__rel = { build: (id) => enterBuild(id, false), claim: (id) => claimPlot(state, id), place: (...a) => placeFurniture(state, ...a), start: startScene, wedding: startWedding, get scene() { return scene; } };
+globalThis.__rel = { build: (id) => enterBuild(id, false), geom: () => roomGeom(), visit: (id, n) => visitShared(id, n), publish: (f) => publishHome(f), exitBuild: () => exitBuild(), get build_() { return build; }, claim: (id) => claimPlot(state, id), place: (...a) => placeFurniture(state, ...a), start: startScene, wedding: startWedding, get scene() { return scene; } };
 globalThis.__farm = { tick: (s) => farmTick(s), get fish() { return fish; } };
 function playDuo(id, partner) { if (panel) closePanel(); keys.clear(); startJob(id, { state, rng, day: gameDay, blip, rustle, fanfare, done: (r) => { const d = PAIR.finishDuo(state, id, partner, r, gameDay()); ENG.addSeasonXp(state, 'duo', gameDay()); hud(); persist(); toast(`Duo with ${partner.name}! x${d.mult} · team ${d.team} (+${d.bonus} Bones)`, 'good'); }, closed: () => keys.clear() }); }
 globalThis.__playDuo = playDuo;
@@ -1005,15 +1006,46 @@ function launchUi() {
 }
 
 // ---------------- Build mode ----------------
-function roomGeom() { const cell = Math.floor(Math.min((innerWidth - 60) / ROOM_W, (innerHeight - 270) / (ROOM_H + 1.6), 64)); const ox = Math.floor(innerWidth / 2 - (ROOM_W * cell) / 2), oy = Math.floor(80 + cell * 1.6); return { cell, ox, oy }; }
+// phone landscape (short screens): the build bar becomes a side panel on the right and the room fills the rest
+const buildSide = () => innerHeight < 520 && innerWidth > innerHeight;
+function roomGeom() { if (buildSide()) { const W = Math.min(300, Math.floor(innerWidth * 0.38)), cell = Math.floor(Math.min((innerWidth - W - 40) / ROOM_W, (innerHeight - 62) / (ROOM_H + 1.6), 64)); return { cell, ox: Math.floor((innerWidth - W - 10) / 2 - (ROOM_W * cell) / 2), oy: Math.floor(52 + cell * 1.6), side: true }; }
+  const bb = document.getElementById('buildbar'), bh = bb && !bb.hidden ? Math.max(190, bb.offsetHeight + 24) : 190; // keep the floor clear of the (taller) build bar
+  const cell = Math.floor(Math.min((innerWidth - 60) / ROOM_W, (innerHeight - 80 - bh) / (ROOM_H + 1.6), 64)); const ox = Math.floor(innerWidth / 2 - (ROOM_W * cell) / 2), oy = Math.floor(80 + cell * 1.6); return { cell, ox, oy }; }
+// ---- Round 4: share your home + guestbook (src/homeshare.js, api/home.js) ----
+const HOME = homeApi('');
+let pubT = 0, pubBusy = false;
+function sharedHomeId() { const sh = state?.homeShare; return sh && sh.open !== false && sh.pubKey && myHomePlot(state) ? sh.id : null; }
+function schedulePublish() { clearTimeout(pubT); pubT = setTimeout(() => publishHome(), 2500); }
+async function publishHome(force) { clearTimeout(pubT); const pid = myHomePlot(state); if (!pid || pubBusy) return; const sh = ensureShare(state); if (sh.open === false) return;
+  const layout = layoutOf(state.plots[pid]), key = layoutKey(layout) + '|' + state.player.name; if (!force && key === sh.pubKey) return;
+  pubBusy = true; try { await HOME.publish(sh, state.player.name, layout); sh.pubKey = key; sh.pubAt = Date.now(); save(state, localStorage); globalThis.__homePublished = (globalThis.__homePublished || 0) + 1; }
+  catch (e) { if (e.status === 403) { delete state.homeShare; ensureShare(state); save(state, localStorage); } else if (e.status === 429) schedulePublish(); } finally { pubBusy = false; } }
+const gbWhen = (iso) => { const d = new Date(iso); return isNaN(d) ? '' : d.toLocaleDateString(undefined, { month: 'short', day: 'numeric' }); };
+function gbList(book, own) { if (!book) return '<div class="small">Loading guestbook…</div>'; if (!book.length) return `<div class="small">${own ? 'No guestbook entries yet. Visitors can sign it from your home.' : 'No entries yet. Be the first to sign!'}</div>`;
+  return `<div class="gblist">${book.map((e) => `<div class="gbe"><b>${esc(e.name)}</b> <span class="small">${gbWhen(e.at)}</span>${own ? ` <button class="btn ghost gbdel" data-gbdel="${esc(e.i)}" title="Delete this entry">Delete</button>` : ''}<div>${esc(e.text)}</div></div>`).join('')}</div>`; }
+async function loadOwnBook() { if (!state.homeShare?.pubKey) { build.book = []; return buildBar(); } try { const j = await HOME.book(state.homeShare); if (build && !build.readOnly) { build.book = j.book; buildBar(); $('#gbown')?.scrollIntoView({ block: 'nearest' }); } } catch { if (build) { build.book = []; buildBar(); } } }
+async function visitShared(id, name) { if (!validHomeId(id) || !(mode === 'world' || mode === 'room') || panel) return; let j;
+  try { j = await HOME.get(id); } catch (e) { return toast(e.status === 404 ? `${name || 'That player'} hasn't opened their home to visitors yet.` : 'Could not reach that home right now.', 'bad'); }
+  const home = cleanLayout(j.layout); if (!home || !(mode === 'world' || mode === 'room')) return;
+  if (mode === 'room') roomBuild = { id: RP.id, at: { x: RP.R.p.x, y: RP.R.p.y, face: player.face } };
+  enterBuild('share', true, { home, shared: { id, name: j.name || name || 'A pup', book: j.book || [] } }); }
+function sharedBuildBar(bb) { const sh = build.shared, h = build.home;
+  bb.innerHTML = `<div class="bb-col" style="flex:1"><h3>Visiting ${esc(sh.name)}'s home</h3><div class="small">${h.items.length} pieces of furniture. Sign the guestbook! Be kind: it's filtered like chat (no links, addresses or seed phrases).</div>
+   <div class="row gbsign"><input id="gbtext" maxlength="${GB.TEXT_MAX}" placeholder="Write in ${esc(sh.name)}'s guestbook…" autocomplete="off" enterkeyhint="send"><button class="btn alt" id="gbsign">Sign</button></div>
+   <div class="gb">${gbList(sh.book, false)}</div></div><div class="bb-col"><button class="btn" id="bexit">Leave</button></div>`;
+  $('#bexit').onclick = exitBuild; const inp = $('#gbtext'); inp.onkeydown = (e) => { e.stopPropagation(); if (e.key === 'Enter') $('#gbsign').click(); };
+  $('#gbsign').onclick = async () => { const c = cleanEntry(state.player.name, inp.value); if (!c.ok) return toast(c.reason, 'bad'); const btn = $('#gbsign'); btn.disabled = true;
+    try { const r = await HOME.sign(sh.id, state.player.name, inp.value); if (build?.shared === sh) { sh.book = [r.entry, ...sh.book].slice(0, GB.MAX); toast(`Signed ${sh.name}'s guestbook`, 'good'); buildBar(); globalThis.__gbSigned = r.entry; } }
+    catch (e) { toast(e.message || 'Could not sign right now', 'bad'); if (build?.shared === sh) btn.disabled = false; } }; }
 function roomCell(sx, sy) { const { cell, ox, oy } = roomGeom(); return { x: Math.floor((sx - ox) / cell), y: Math.floor((sy - oy) / cell) }; }
-function enterBuild(id, readOnly) {
+function enterBuild(id, readOnly, opt = {}) {
   const pack = id === 'clubhouse';
-  feel.fade(); uiOpen(); mode = 'build'; const home = pack ? myPack(state).clubhouse : readOnly ? npcHome(id) : state.plots[id];
-  build = { plotId: id, readOnly, pack, home, sel: null, hover: null, picked: null };
+  feel.fade(); uiOpen(); mode = 'build'; const home = opt.home || (pack ? myPack(state).clubhouse : readOnly ? npcHome(id) : state.plots[id]);
+  build = { plotId: id, readOnly, pack, home, sel: null, hover: null, picked: null, shared: opt.shared || null, gb: false };
+  if (!readOnly && !pack && state.plots[id]) { const sh = ensureShare(state); if (sh.plot !== id) { sh.plot = id; sh.pubKey = null; } } document.body.classList.add('building');
   $('#prompt').hidden = true; $('#minimap-wrap').hidden = true; wayUi(false); buildBar();
 }
-function exitBuild() { doorExit(doorSt, time); if (roomBuild) { const rb = roomBuild; roomBuild = null; feel.fade(); uiClose(); build = null; $('#buildbar').hidden = true; mode = 'room'; RP.enter(rb.id, rb.at); return; } if (lastDoor && (lastDoor.kind === 'plot' || lastDoor.kind === 'visit' || lastDoor.kind === 'clubhouse')) { const o = outsideOf(lastDoor); Object.assign(state.player, { x: o.x, y: o.y }); player.face = o.face; } feel.fade(); uiClose(); mode = 'world'; build = null; $('#buildbar').hidden = true; $('#minimap-wrap').hidden = false; wayUi(true); persist(); }
+function exitBuild() { doorExit(doorSt, time); document.body.classList.remove('building'); const wasShared = !!build?.shared, wasOwn = build && !build.readOnly && !build.pack; if (wasOwn) publishHome(); if (roomBuild) { const rb = roomBuild; roomBuild = null; feel.fade(); uiClose(); build = null; $('#buildbar').hidden = true; mode = 'room'; RP.enter(rb.id, rb.at); return; } if (!wasShared && lastDoor && (lastDoor.kind === 'plot' || lastDoor.kind === 'visit' || lastDoor.kind === 'clubhouse')) { const o = outsideOf(lastDoor); Object.assign(state.player, { x: o.x, y: o.y }); player.face = o.face; } feel.fade(); uiClose(); mode = 'world'; build = null; $('#buildbar').hidden = true; $('#minimap-wrap').hidden = false; wayUi(true); persist(); }
 function rotateSel() { if (build?.sel) { build.sel.rot = (build.sel.rot + 1) % 4; } else if (build?.picked) { const it = build.picked; const r = build.pack ? movePackFurniture(state, it.uid, it.x, it.y, (it.rot + 1) % 4) : moveFurniture(state, build.plotId, it.uid, it.x, it.y, (it.rot + 1) % 4); if (!r.ok) toast('No room to rotate here', 'bad'); persist(); } }
 function buildClick(c) {
   if (!build || build.readOnly) return;
@@ -1028,17 +1060,24 @@ function buildClick(c) {
 function buildBar() {
   const bb = $('#buildbar'); bb.hidden = false; const h = build.home;
   if (build.pack) return packBuildBar(bb, h);
+  if (build.shared) return sharedBuildBar(bb);
   if (build.readOnly) { const n = NPC_HOMES.find((x) => x.id === build.plotId); bb.innerHTML = `<div style="flex:1"><h3>Visiting ${n.owner}'s home</h3><div class="small">Get inspired! ${n.owner} decorated with ${h.items.length} pieces.</div></div><button class="btn" id="bexit">Leave</button>`; $('#bexit').onclick = exitBuild; return; }
   const inv = Object.entries(state.inventory);
   bb.innerHTML = `<div class="bb-col" style="flex:1"><h3>Build mode — your inventory</h3><div class="inv" id="inv">${inv.length ? inv.map(([id, n]) => `<button data-inv="${id}" class="${build.sel?.id === id && build.sel.kind === 'new' ? 'sel' : ''}">${FURNITURE[id].name} ×${n}</button>`).join('') : '<span class="small">Empty — buy furniture at Paws & Pillows.</span>'}</div>
    <div class="small">Click an item, then click the floor to place · <b>R</b> rotate · click placed furniture to move/rotate/store/sell</div>
+   ${build.plotId === myHomePlot(state) ? `<div class="up" style="margin-top:4px"><button class="btn ${state.homeShare?.open === false ? 'ghost' : 'alt'}" id="bopen" title="Players see 'Visit home' next to your name in the multiplayer list">Visitors: ${state.homeShare?.open === false ? 'closed' : 'welcome'}</button><button class="btn ghost" id="bgb">Guestbook${build.book ? ' (' + build.book.length + ')' : ''}</button></div>` : ''}
    <div id="pickbar">${build.picked ? `<b>${FURNITURE[build.picked.id].name}</b> <button class="btn ghost" id="pmove">Move</button> <button class="btn ghost" id="prot">Rotate</button> <button class="btn ghost" id="pstore">Store</button> <button class="btn red" id="psell">Sell (+${Math.floor(FURNITURE[build.picked.id].price / 2)})</button>` : ''}</div></div>
    <div class="bb-col"><b>Walls</b><div class="up">${WALLS.map((w, i) => `<button class="btn ${h.wall === i ? 'alt' : 'ghost'}" data-wall="${i}">${w.name}${w.price ? ' ' + w.price : ''}</button>`).join('')}</div>
    <b>Floor</b><div class="up">${FLOORS.map((w, i) => `<button class="btn ${h.floor === i ? 'alt' : 'ghost'}" data-floor="${i}">${w.name}${w.price ? ' ' + w.price : ''}</button>`).join('')}</div></div>
-   <div class="bb-col"><button class="btn alt" id="bmail">Mailbox (${unreadMail(state)} new)</button><button class="btn" id="bexit">Exit home</button></div>`;
+   <div class="bb-col"><button class="btn alt" id="bmail">Mailbox (${unreadMail(state)} new)</button><button class="btn" id="bexit">Exit home</button></div>
+   ${build.gb ? `<div class="bb-col gb" id="gbown" style="flex-basis:100%">${gbList(build.book, true)}</div>` : ''}`;
   bb.querySelector('#inv').onclick = (e) => { const b = e.target.closest('[data-inv]'); if (b) { build.sel = { kind: 'new', id: b.dataset.inv, rot: 0 }; build.picked = null; buildBar(); } };
   bb.querySelectorAll('[data-wall],[data-floor]').forEach((b) => b.onclick = () => { const kind = b.dataset.wall != null ? 'wall' : 'floor'; const r = upgrade(state, build.plotId, kind, +(b.dataset.wall ?? b.dataset.floor)); if (r.ok) { toast('Upgraded!', 'good'); hud(); persist(); buildBar(); } else toast(r.reason, 'bad'); });
   $('#bexit').onclick = exitBuild; $('#bmail').onclick = () => openPanel('mail');
+  if ($('#bopen')) { $('#bopen').onclick = () => { const sh = ensureShare(state); sh.open = sh.open === false; toast(sh.open ? 'Visitors welcome: others can visit and sign your guestbook.' : 'Home closed to visitors.', 'good'); if (sh.open) publishHome(true); persist(); buildBar(); };
+    $('#bgb').onclick = () => { build.gb = !build.gb; buildBar(); if (build.gb) loadOwnBook(); }; }
+  $('#gbown')?.addEventListener('click', async (e) => { const b = e.target.closest('[data-gbdel]'); if (!b) return; b.disabled = true;
+    try { await HOME.del(state.homeShare, b.dataset.gbdel); build.book = (build.book || []).filter((x) => x.i !== b.dataset.gbdel); toast('Entry deleted', 'good'); } catch (er) { toast(er.message || 'Could not delete', 'bad'); } if (build) buildBar(); });
   if (build.picked) {
     const it = build.picked;
     $('#pmove').onclick = () => { build.sel = { kind: 'move', id: it.id, uid: it.uid, rot: it.rot }; build.picked = null; buildBar(); };
@@ -1065,9 +1104,9 @@ function renderBuild() {
     const bx = ox + ROOM_W * cell - cell * 1.6, by0 = oy - cell * 1.5; ctx.fillStyle = pk.color; ctx.fillRect(bx, by0, cell * 1.4, cell * 1.2); ctx.fillStyle = '#d4a640'; ctx.fillRect(bx, by0 + cell * 1.2, cell * 1.4, 4); drawEmblem(ctx, pk.emblem, bx + cell * 0.35, by0 + cell * 0.2, cell * 0.14, '#fff6e0'); }
   if (!build.pack && !build.readOnly && state.spouse) { const sp = npcByName(state.spouse.name); drawShiba(ctx, ox + cell * 1.2, oy - cell * 0.2, { coat: sp?.coat || 'cream', outfit: sp?.outfit || {}, scale: 1.5, name: state.spouse.name }); (state.pups || []).forEach((p, i) => drawShiba(ctx, ox + cell * (2.4 + i), oy - cell * 0.1, { coat: p.coat.base, outfit: {}, scale: REL.PUP_SCALE[REL.stageOfPup(p, gameDay())] })); }
   if (!build.pack && !build.readOnly) { const pet = activePet(state); if (pet) { ctx.save(); ctx.imageSmoothingEnabled = false; ctx.drawImage(petSprite(pet.species, Math.floor(time * 2) % 2), ox + ROOM_W * cell - cell * 1.6, oy - cell * 0.55, cell * 0.8, cell * 0.8); ctx.restore(); } }
-  else { const ni = +build.plotId.slice(1) - 1; if (!build.readOnly && statusGlow(state)) { ctx.save(); ctx.translate(ox + ROOM_W * cell - cell * 0.6, oy - cell * 0.2); drawFlair(ctx, statusGlow(state), performance.now() / 1000); ctx.restore(); } if (!build.readOnly && hasCustomLook(state)) drawProfileShiba(ctx, ox + ROOM_W * cell - cell * 0.6, oy - cell * 0.2, myProfile(), { scale: 1.5 }); else drawShiba(ctx, ox + ROOM_W * cell - cell * 0.6, oy - cell * 0.2, { coat: build.readOnly ? ['tan', 'dark', 'cream', 'red'][ni] : state.player.coat, outfit: build.readOnly ? NPC_OUTFITS[ni] : state.wardrobe.equipped, scale: 1.5 }); }
-  ctx.fillStyle = '#f2cc68'; ctx.font = '18px Silkscreen, monospace'; ctx.textAlign = 'center';
-  ctx.fillText(build.pack ? `${myPack(state).name} [${myPack(state).tag}] Clubhouse — decorate together` : build.readOnly ? `${NPC_HOMES.find((x) => x.id === build.plotId).owner}'s Home` : `${state.player.name}'s Home — Build & Decorate`, innerWidth / 2, 70);
+  else if (!build.shared) { const ni = +build.plotId.slice(1) - 1; if (!build.readOnly && statusGlow(state)) { ctx.save(); ctx.translate(ox + ROOM_W * cell - cell * 0.6, oy - cell * 0.2); drawFlair(ctx, statusGlow(state), performance.now() / 1000); ctx.restore(); } if (!build.readOnly && hasCustomLook(state)) drawProfileShiba(ctx, ox + ROOM_W * cell - cell * 0.6, oy - cell * 0.2, myProfile(), { scale: 1.5 }); else drawShiba(ctx, ox + ROOM_W * cell - cell * 0.6, oy - cell * 0.2, { coat: build.readOnly ? ['tan', 'dark', 'cream', 'red'][ni] : state.player.coat, outfit: build.readOnly ? NPC_OUTFITS[ni] : state.wardrobe.equipped, scale: 1.5 }); }
+  ctx.fillStyle = '#f2cc68'; ctx.font = (buildSide() ? '12px' : '18px') + ' Silkscreen, monospace'; ctx.textAlign = 'center'; const tx = buildSide() ? Math.floor((innerWidth - Math.min(300, Math.floor(innerWidth * 0.38)) - 10) / 2) : innerWidth / 2, ty = buildSide() ? 18 : 70;
+  if (!buildSide()) ctx.fillText(build.pack ? `${myPack(state).name} [${myPack(state).tag}] Clubhouse — decorate together` : build.shared ? `${build.shared.name}'s Home${build.shared.book ? ' · Guestbook ' + build.shared.book.length : ''}` : build.readOnly ? `${NPC_HOMES.find((x) => x.id === build.plotId).owner}'s Home` : `${state.player.name}'s Home — Build & Decorate`, tx, ty);
 }
 
 // ---------------- Packs ----------------
@@ -1209,7 +1248,7 @@ function frame(now) {
   requestAnimationFrame(frame);
 }
 // Live multiplayer: other players in the same room ('city' while walking the world). Off unless /api/config has a realtimeUrl.
-const MPL = createMultiplayer({ toast, onActions: () => wheel.open(), now: () => time, getLocal: () => state && { room: mode === 'world' ? 'city' : mode === 'room' && RP.id ? 'r-' + RP.id : null, roomName: mode === 'room' ? RP.sc?.name : null,
+const MPL = createMultiplayer({ toast, onActions: () => wheel.open(), onVisit: (id, name) => visitShared(id, name), now: () => time, getLocal: () => state && { h: sharedHomeId(), room: mode === 'world' ? 'city' : mode === 'room' && RP.id ? 'r-' + RP.id : null, roomName: mode === 'room' ? RP.sc?.name : null,
   x: mode === 'room' ? RP.R.p.x : state.player.x, y: mode === 'room' ? RP.R.p.y : state.player.y, f: player.face, m: player.moving, r: player.running, d: !!drive, emote: player.emote, act: ACT.act, p: poseCodeOf(ACT),
   name: state.player.name, token: K.kp?.session || null, look: { coat: state.player.coat, eq: state.wardrobe.equipped, pl: mpProfile() } } });
 MPL.start().catch(() => {});
@@ -1221,7 +1260,7 @@ function announceMood(mood) { if (!MWd.shouldAnnounce(mood, { override: !!MOOD.f
   chatSay(MWd.CRIER_NAME, line, time, { force: true, life: 6 }); crierBanner(line); globalThis.__crierSaid = [...(globalThis.__crierSaid || []), mood]; }
 function crierBanner(line) { let b = document.getElementById('crier-banner'); if (!b) { b = document.createElement('div'); b.id = 'crier-banner'; b.setAttribute('role', 'status'); document.body.appendChild(b); }
   b.innerHTML = `<b>${esc(MWd.CRIER_NAME)}</b><span>${esc(line)}</span>`; b.className = 'show mood-' + MWd.MW.mood; clearTimeout(b._t); b._t = setTimeout(() => { b.className = ''; }, 6000); }
-// ---- Kibble Kennel mirror (cosmetics only; tier API owned by kibble-pay / Inu Empires keeper, see inu-shared/kennel-api.md) ----
+// ---- Kibble Kennel mirror (cosmetics only; tier API owned by kibble-pay / Inu Empires keeper; contract: kibble-pay docs/KENNEL_API.md) ----
 const KEN = { override: KN.overrideTier(), real: null, wall: null, wallet: null, show: KN.showMine(), at: 0 };
 function kennelMine() { return KN.myKennel({ override: KEN.override, real: KEN.real, show: KEN.show }); }
 function mpProfile() { const t = KN.lookKennel(kennelMine()), p = hasCustomLook(state) ? myProfile() : null; if (!t) return p; return p ? { ...p, look: { kennel: t, ...p.look } } : { look: { kennel: t }, outfit: {} }; }

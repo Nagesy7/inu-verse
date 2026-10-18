@@ -1,4 +1,4 @@
-// Kibble Kennel mirror (cosmetics only): reads the shared tier API (contract: /workspace/inu-shared/kennel-api.md) and
+// Kibble Kennel mirror (cosmetics only): reads the shared tier API (contract: kibble-pay docs/KENNEL_API.md, the source of truth) and
 // draws a tier name tag, aura and golden name on the pup. Inu Verse never holds or moves tokens and never asks for a lock:
 // the lock flow + tier reader belong to the Inu Empires keeper (kibble-pay /api/kennel). 404 / errors -> unknown -> nothing shown.
 import { cleanName } from './mpshared.js';

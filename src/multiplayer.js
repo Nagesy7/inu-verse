@@ -7,6 +7,7 @@ import { say, emoteBubble } from './chat.js';
 import { remoteEmote, remoteState, remoteStep } from './actions.js';
 import { artKey } from './art.js';
 import { normalizeProfile } from './vendor/profile-schema.js';
+import { validHomeId } from './homeshare.js';
 
 const LS = (() => { try { return globalThis.localStorage || null; } catch { return null; } })();
 const lsGet = (k) => { try { return LS?.getItem(k) ?? null; } catch { return null; } }, lsSet = (k, v) => { try { LS?.setItem(k, v); } catch {} };
@@ -20,25 +21,25 @@ export async function resolveRealtimeUrl({ search = globalThis.location?.search 
   try { const r = await f('/api/config', { cache: 'no-store' }); if (r.ok) { const j = await r.json(); if (ok(j?.realtimeUrl)) return ok(j.realtimeUrl); } } catch {}
   return ok(fallback) || null; }
 
-export function createMultiplayer({ getLocal, toast = () => {}, now = () => performance.now() / 1000, WS = globalThis.WebSocket, doc = globalThis.document, clock = () => Date.now(), coarse = !!globalThis.matchMedia?.('(pointer: coarse)').matches, onActions = null } = {}) {
+export function createMultiplayer({ getLocal, toast = () => {}, now = () => performance.now() / 1000, WS = globalThis.WebSocket, doc = globalThis.document, clock = () => Date.now(), coarse = !!globalThis.matchMedia?.('(pointer: coarse)').matches, onActions = null, onVisit = null } = {}) {
   const S = { url: null, ws: null, status: 'off', room: null, inst: 0, id: null, me: null, remotes: new Map(), backoff: 2000, retryAt: 0, lastSend: 0, lastSent: null, lastEmote: null, lastAct: null, lastLookKey: '', lastLookAt: 0, leaveAt: 0, hiddenAt: 0, lastChatAt: -9, pingAt: 0, drawCap: coarse ? 12 : 24, anchors: new Map() };
   S.muted = new Set((() => { try { return JSON.parse(lsGet(K_MUTE) || '[]'); } catch { return []; } })());
   S.optOut = lsGet(K_OFF) === '1';
   let guest = lsGet(K_GUEST); if (!/^Pup\d{4}$/.test(guest || '')) { guest = guestName(); lsSet(K_GUEST, guest); }
-  const ui = makeUi(doc, S, { say: (t) => api.chat(t), mute: (n) => api.toggleMute(n), toggle: () => api.setOptOut(!S.optOut), actions: onActions });
+  const ui = makeUi(doc, S, { say: (t) => api.chat(t), mute: (n) => api.toggleMute(n), toggle: () => api.setOptOut(!S.optOut), actions: onActions, visit: onVisit });
   const send = (o) => { if (S.ws?.readyState !== 1) return false; try { S.ws.send(JSON.stringify(o)); return true; } catch { return false; } };
   const lookOf = (L) => cleanLook(L?.look);
   function drop(reason) { const ws = S.ws; S.ws = null; S.id = null; S.remotes.clear(); S.anchors.clear(); if (ws) { ws.onopen = ws.onmessage = ws.onclose = ws.onerror = null; try { ws.close(); } catch {} } if (reason) S.status = reason; ui.update(); }
   function connect(L) { if (!S.url || !WS || !validRoom(L.room)) return; drop(); S.status = 'connecting'; S.room = L.room; ui.update();
     let ws; try { ws = new WS(`${S.url}/ws?room=${encodeURIComponent(L.room)}`); } catch { return fail(); }
     S.ws = ws;
-    ws.onopen = () => { const st = local(L); S.lastSent = st; S.lastLookKey = JSON.stringify(lookOf(L)); send({ t: 'hi', name: L.name, guest, tok: L.token || undefined, look: lookOf(L), s: st }); };
+    ws.onopen = () => { const st = local(L); S.lastSent = st; S.lastLookKey = JSON.stringify(lookOf(L)); S.lastHome = validHomeId(L.h) ? L.h : null; send({ t: 'hi', name: L.name, guest, tok: L.token || undefined, look: lookOf(L), s: st, h: S.lastHome || undefined }); };
     ws.onmessage = (e) => { let m; try { m = JSON.parse(e.data); } catch { return; } try { onMsg(m); } catch {} };
     ws.onclose = () => { if (S.ws === ws) fail(); }; ws.onerror = () => {}; }
   function fail() { drop('offline'); S.retryAt = clock() + S.backoff * (0.8 + Math.random() * 0.4); S.backoff = Math.min(60000, S.backoff * 2); }
   const local = (L) => ({ x: L.x, y: L.y, f: L.f, m: L.m ? 1 : 0, r: L.r ? 1 : 0, d: L.d ? 1 : 0, p: L.p | 0 });
   function addRemote(p) { if (!p?.id || p.id === S.id) return; const r = { id: p.id, name: String(p.name || 'Pup').slice(0, MP.NAME_MAX), w: p.w || null, buf: [], off: null, phase: Math.random() * 6, emote: null, x: 0, y: 0, cur: null };
-    setLook(r, p.look); r.kennel = typeof p.k === 'string' ? p.k : null; const s = p.s && cleanState(p.s); if (s) { pushSnap(r, s, clock()); r.x = s.x; r.y = s.y; remoteState(r, s, now()); } S.remotes.set(p.id, r); }
+    setLook(r, p.look); r.kennel = typeof p.k === 'string' ? p.k : null; r.h = validHomeId(p.h) ? p.h : null; const s = p.s && cleanState(p.s); if (s) { pushSnap(r, s, clock()); r.x = s.x; r.y = s.y; remoteState(r, s, now()); } S.remotes.set(p.id, r); }
   function setLook(r, look) { const l = cleanLook(look); r.coat = l.coat; r.outfit = l.eq; r.art = artKey(l.coat);
     // Kibble Kennel tier: ONLY the server-looked-up value (p.k / {t:'k'}) is used; a tier inside the look is ignored.
     // (A pl carrying only that key is not a custom profile.)
@@ -52,6 +53,7 @@ export function createMultiplayer({ getLocal, toast = () => {}, now = () => perf
     const r = S.remotes.get(m.id); if (!r) return;
     if (m.t === 's') { const s = cleanState(m); if (s) { pushSnap(r, s, clock()); remoteState(r, s, t); } }
     else if (m.t === 'l') setLook(r, m.look);
+    else if (m.t === 'h') { r.h = validHomeId(m.h) ? m.h : null; ui.update(); } // the player's shared home ("Visit home")
     else if (m.t === 'k') r.kennel = typeof m.k === 'string' ? m.k : null; // server-verified Kennel tier
     else if (m.t === 'c') { if (S.muted.has(r.name)) return; const c = cleanChat(m.text); if (c.ok) say('mp:' + r.id, c.text, t, { force: true, life: 4.5 }); } // filtered again client-side
     else if (m.t === 'e' && emoteOk(m.k)) { if (remoteEmote(r, m.k, t) && m.k !== 'wave') return; r.emote = { kind: m.k, t: m.k === 'zoomies' ? 2.4 : 2.5 }; if (!S.muted.has(r.name)) emoteBubble('mp:' + r.id, m.k, t); } }
@@ -78,6 +80,7 @@ export function createMultiplayer({ getLocal, toast = () => {}, now = () => perf
       if (L.emote && L.emote !== S.lastEmote && emoteOk(L.emote.kind)) send({ t: 'e', k: L.emote.kind }); S.lastEmote = L.emote;
       if (L.act && L.act !== S.lastAct && emoteOk(L.act.kind)) send({ t: 'e', k: L.act.kind }); S.lastAct = L.act; // Round 3 actions ride the emote path
       if (ms - S.lastLookAt > 5000) { S.lastLookAt = ms; const lk = lookOf(L), key = JSON.stringify(lk); if (key !== S.lastLookKey) { S.lastLookKey = key; send({ t: 'l', look: lk }); } }
+      const hh = validHomeId(L.h) ? L.h : null; if (hh !== S.lastHome) { S.lastHome = hh; send({ t: 'h', h: hh }); }
       if (ms - S.pingAt > 25000) { S.pingAt = ms; try { S.ws.send('ping'); } catch {} } },
     // renderer-ready actors (same shape main.js draws for NPCs), interpolated, culled to the view, nearest first, capped
     actors(view, me) { if (S.status !== 'online' || !S.remotes.size) return [];
@@ -92,7 +95,7 @@ export function createMultiplayer({ getLocal, toast = () => {}, now = () => perf
       S.lastChatAt = t; say('me', c.text, t, { force: true, life: 4.5 }); return true; },
     toggleMute(name) { if (S.muted.has(name)) S.muted.delete(name); else S.muted.add(name); lsSet(K_MUTE, JSON.stringify([...S.muted].slice(-200))); ui.update(); return S.muted.has(name); },
     setOptOut(v) { S.optOut = !!v; lsSet(K_OFF, v ? '1' : '0'); if (v) drop('off'); else { S.status = 'offline'; S.retryAt = 0; } ui.update(); },
-    players() { return [...S.remotes.values()].map((r) => ({ id: r.id, name: r.name, w: r.w, muted: S.muted.has(r.name) })); },
+    players() { return [...S.remotes.values()].map((r) => ({ id: r.id, name: r.name, w: r.w, h: r.h || null, muted: S.muted.has(r.name) })); },
     stop() { drop('off'); },
   };
   return api; }
@@ -121,7 +124,7 @@ function makeUi(doc, S, h) {
     pop.querySelector('#mp-send').onclick = go; input.onkeydown = (e) => { e.stopPropagation(); if (e.key === 'Enter') go(); if (e.key === 'Escape') { input.blur(); pop.hidden = true; } };
     pop.querySelector('#mp-opt').onclick = () => h.toggle();
     pop.querySelector('#mp-act').onclick = () => { pop.hidden = true; h.actions?.(); }; pop.querySelector('#mp-act').hidden = !h.actions;
-    pop.querySelector('#mp-list').onclick = (e) => { const b = e.target.closest('[data-mute]'); if (b) h.mute(b.dataset.mute); };
+    pop.querySelector('#mp-list').onclick = (e) => { const v = e.target.closest('[data-visit]'); if (v) { pop.hidden = true; h.visit?.(v.dataset.visit, v.dataset.vname); return; } const b = e.target.closest('[data-mute]'); if (b) h.mute(b.dataset.mute); };
     doc.addEventListener('keydown', (e) => { if (e.key !== '/' || /INPUT|TEXTAREA/.test(e.target?.tagName || '') || chip.hidden || S.status !== 'online') return; e.preventDefault(); pop.hidden = false; update(); input.focus(); }, true); }
   const esc = (s) => String(s).replace(/[&<>"']/g, (c) => `&#${c.charCodeAt(0)};`);
   function update() { if (!built) return; const n = S.remotes.size + (S.status === 'online' ? 1 : 0), on = S.status === 'online';
@@ -130,5 +133,5 @@ function makeUi(doc, S, h) {
     pop.querySelector('#mp-status').textContent = S.optOut ? 'Multiplayer off (solo)' : on ? `${S.room === 'city' ? 'City' : S.roomName || S.room}${S.inst > 1 ? ' · instance ' + S.inst : ''} · ${n} here` : S.status === 'connecting' ? 'Connecting…' : 'Offline: playing solo';
     pop.querySelector('#mp-opt').textContent = S.optOut ? 'Turn multiplayer on' : 'Play solo (hide others)';
     pop.querySelector('#mp-say').disabled = !on; pop.querySelector('#mp-send').disabled = !on;
-    const ps = [...S.remotes.values()]; pop.querySelector('#mp-list').innerHTML = (on ? `<li><span>${esc(S.me || 'You')} <small>(you)</small></span></li>` : '') + ps.slice(0, 60).map((r) => `<li><span>${esc(r.name)}${r.w ? ` <small>${esc(r.w)}</small>` : ''}</span><button data-mute="${esc(r.name)}">${S.muted.has(r.name) ? 'Unmute' : 'Mute'}</button></li>`).join(''); }
+    const ps = [...S.remotes.values()]; pop.querySelector('#mp-list').innerHTML = (on ? `<li><span>${esc(S.me || 'You')} <small>(you)</small></span></li>` : '') + ps.slice(0, 60).map((r) => `<li><span>${esc(r.name)}${r.w ? ` <small>${esc(r.w)}</small>` : ''}</span><span>${r.h && h.visit ? `<button data-visit="${esc(r.h)}" data-vname="${esc(r.name)}" title="Visit ${esc(r.name)}'s home and sign the guestbook">Visit home</button> ` : ''}<button data-mute="${esc(r.name)}">${S.muted.has(r.name) ? 'Unmute' : 'Mute'}</button></span></li>`).join(''); }
   return { show(v) { if (v) build(); if (chip) chip.hidden = !v; }, update }; }

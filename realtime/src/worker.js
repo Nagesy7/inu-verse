@@ -5,6 +5,7 @@
 // costs no duration; per-player state (name, look, last position, rate-limit buckets) lives in the socket attachment and
 // survives hibernation. The server is a relay: every accepted update is fanned out immediately (outgoing messages are free).
 import { MP, validRoom, instanceKey, take, newBuckets, cleanChat, cleanName, cleanState, cleanLook, emoteOk, byteLen, shortAddr } from '../../src/mpshared.js';
+import { validHomeId } from '../../src/homeshare.js';
 import { makeKennelLookup, stripKennel, KENNEL_TTL_MS } from './kennel.js';
 
 const json = (o, status = 200, h = {}) => new Response(JSON.stringify(o), { status, headers: { 'content-type': 'application/json', 'access-control-allow-origin': '*', ...h } });
@@ -46,7 +47,7 @@ export class Room {
   peers(except) { const out = []; for (const w of this.ctx.getWebSockets()) { if (w === except || w.readyState !== 1) continue; const a = w.deserializeAttachment(); if (a?.joined) out.push([w, a]); } return out; }
   cast(msg, except) { const s = JSON.stringify(msg); for (const [w] of this.peers(except)) try { w.send(s); } catch {} }
   save(ws, a) { let s = JSON.stringify(a); if (s.length > 2000 && a.look?.pl) { delete a.look.pl; } ws.serializeAttachment(a); }
-  pub(a) { return { id: a.id, name: a.name, w: a.w || null, k: (a.w && a.k) || null, look: a.look, s: a.s || null }; }
+  pub(a) { return { id: a.id, name: a.name, w: a.w || null, k: (a.w && a.k) || null, h: a.h || null, look: a.look, s: a.s || null }; }
   // (re)check the verified wallet's tier at most once per TTL; broadcast only what the server looked up
   async refreshKennel(ws) { let a = ws.deserializeAttachment(); if (!a?.wf || (a.kAt && Date.now() - a.kAt < KENNEL_TTL_MS)) return;
     a.kAt = Date.now(); ws.serializeAttachment(a); const tier = await this.kennel.lookup(a.wf);
@@ -64,7 +65,7 @@ export class Room {
     if (m.t === 'hi') { if (a.joined) return;
       const wallet = await this.verifyWallet(m.tok); a.w = wallet ? shortAddr(wallet) : null; a.wf = wallet || null; a.k = null; a.kAt = 0;
       const guest = typeof m.guest === 'string' && /^Pup\d{4}$/.test(m.guest) ? m.guest : 'Pup' + (1000 + Math.floor(Math.random() * 9000));
-      a.name = wallet ? cleanName(m.name, a.w) : guest; a.look = stripKennel(cleanLook(m.look)); a.s = cleanState(m.s) || null; a.joined = true; this.save(ws, a);
+      a.name = wallet ? cleanName(m.name, a.w) : guest; a.look = stripKennel(cleanLook(m.look)); a.s = cleanState(m.s) || null; a.h = validHomeId(m.h) ? m.h : null; a.joined = true; this.save(ws, a);
       const players = this.peers(ws).map(([, p]) => this.pub(p));
       ws.send(JSON.stringify({ t: 'w', id: a.id, name: a.name, room: a.room, inst: a.inst, cap: this.cap, players }));
       this.cast({ t: 'j', p: this.pub(a) }, ws); return this.refreshKennel(ws); }
@@ -75,6 +76,7 @@ export class Room {
       const r = cleanChat(m.text); this.save(ws, a); if (!r.ok) return ws.send(JSON.stringify({ t: 'no', why: r.reason }));
       return this.cast({ t: 'c', id: a.id, text: r.text }, ws); }
     if (m.t === 'e') { if (!emoteOk(m.k) || !take(a.b.e, now, MP.EMOTE_RATE, MP.EMOTE_BURST)) { this.save(ws, a); return; } this.save(ws, a); return this.cast({ t: 'e', id: a.id, k: m.k }, ws); }
+    if (m.t === 'h') { if (!take(a.b.l, now, MP.LOOK_RATE, MP.LOOK_BURST)) { this.save(ws, a); return; } const h = validHomeId(m.h) ? m.h : null; if (h === a.h) return; a.h = h; this.save(ws, a); this.cast({ t: 'h', id: a.id, h }, ws); return; } // shared home id ("Visit home")
     if (m.t === 'l') { if (!take(a.b.l, now, MP.LOOK_RATE, MP.LOOK_BURST)) { this.save(ws, a); return; } a.look = stripKennel(cleanLook(m.look)); this.save(ws, a); this.cast({ t: 'l', id: a.id, look: a.look }, ws); return this.refreshKennel(ws); }
     return strike();
   }

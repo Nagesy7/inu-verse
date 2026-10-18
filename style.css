@@ -288,3 +288,9 @@ body.short.landscape .launch.rboard{grid-template-columns:1fr 1.2fr}body.short .
 body:has(#panel:not([hidden])) #crier-banner{display:none}
 .cl-t{font:9px Silkscreen,monospace;color:#f2cc68;margin-right:2px}
 .npc-rules,.npc-pups{text-align:left;margin:0 0 6px;padding-left:18px;font-size:11px;line-height:1.45}.npc-pups{list-style:none;padding-left:0}.npc-pups li{padding:3px 0;border-bottom:1px dashed #2a3358}
+/* Round 4: guestbook + phone-landscape build side panel */
+#buildbar .gb{max-height:150px;overflow:auto;margin-top:6px}#buildbar .gbe{padding:4px 0;border-top:1px solid #ffffff22;word-break:break-word}#buildbar .gbe div{color:#fff6e0}
+#buildbar .gbdel{padding:1px 6px;font-size:9px;margin-left:4px}#buildbar .gbsign{display:flex;gap:6px;margin:6px 0}#buildbar .gbsign input{flex:1;min-width:0;font:inherit;font-size:13px;padding:6px;background:#0c1022;color:#fff6e0;border:2px solid #8a6a2a}
+body.building #touch,body.building #mp-chip,body.building #mp-pop{display:none!important}
+body.short.landscape #buildbar,body.short.landscape #buildbar:not([hidden]){left:auto!important;right:max(6px,env(safe-area-inset-right))!important;top:calc(max(6px,env(safe-area-inset-top)) + 52px);bottom:max(6px,env(safe-area-inset-bottom))!important;width:min(300px,38vw);max-height:none;flex-direction:column;flex-wrap:nowrap;overflow:auto;animation:none}
+body.short.landscape #buildbar .bb-col{flex:none!important;width:100%}body.short.landscape #buildbar .gb{max-height:none}body.short.landscape #buildbar .btn{padding:4px 6px;font-size:10px}
