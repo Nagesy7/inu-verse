@@ -43,3 +43,9 @@ The whole street is one continuous road. Each district has its own kiosk (fast t
 ## Proof / FPS
 - `node scripts/districts-proof.mjs` writes `proof/districts-local-*`.
 - `node scripts/districts-fps.mjs` writes `proof/districts-local-fps.json`.
+
+## Polish pass
+- The town minimap and the full map show a purple gate block at the hub gate (62,57). The live minimap also has a small blinking east arrow, which stays steady with reduced motion.
+- Places lists "Arcade Districts (gate + fast travel)" under Games. You can search for district names, "cabinets" or "shiba scuffle", and the guide can walk you there.
+- The tour has an "Arcade Districts" step right after the Inu Arcade step.
+- Storefront titles sit low on the facade: venue banners are right above the cabinet plaque, and booth marquees are right above the door. That keeps them below the top bar at zoom 2 on 844x390 and 667x375. `titleRect()` in `src/districtart.js` is the source, and a test checks every storefront against it.

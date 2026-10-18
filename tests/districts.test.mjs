@@ -78,3 +78,17 @@ test('no trademarked game names, no gambling, no economy hooks, nothing Mememon 
     assert.ok(!src.includes(w), w);
   assert.ok(!/\bbet\b|\bodds\b|addbones|state\.bones|kibble\s*\+|payout/.test(src));
 });
+test('polish: districts are on the town map, in Places (Games) and in the tour right after the Arcade', async () => {
+  const GD = await import('../src/guide.js'); const P = GD.places({ plots: {} }), sh = P.find((p) => p.id === 'shuttle');
+  assert.ok(sh && sh.group === 'Games' && /Arcade Districts/.test(sh.name)); assert.equal(GD.searchPlaces(P, 'race park')[0].id, 'shuttle'); assert.ok(GD.searchPlaces(P, 'shiba scuffle').some((p) => p.id === 'shuttle'));
+  assert.ok(GD.guidePath(sh.tx * 32 - 6 * 32, sh.ty * 32, sh) || GD.guidePath((sh.tx + 0.5) * 32, (sh.ty + 1.5) * 32, sh), 'guide can path to the districts stop');
+  const i = GD.TOUR.findIndex((t) => t.place === 'shuttle'); assert.ok(i > 0 && GD.TOUR[i - 1].place === 'arcade'); assert.ok(GD.stepPlace({ plots: {} }, GD.TOUR[i]));
+  for (const d of D.DISTRICTS) assert.ok(GD.TOUR[i].text.includes(d.name), d.name); assert.match(GD.TOUR[i].text, /no Bones or \$KIBBLE/);
+  const main = readFileSync(new URL('../src/main.js', import.meta.url), 'utf8'); assert.match(main, /drawDistrictsMark\(b, s\)/); assert.match(main, /DIS\.HUB_GATE/);
+});
+test('polish: every storefront title sits below the top bar at zoom 2 on both phone sizes, above its door', async () => {
+  const A = await import('../src/districtart.js'), CAM_Y = 211.2, BAR = 50; // street camera y measured in the zone (proof results), top bar bottom in CSS px
+  for (const H of [390, 375]) { const safe = CAM_Y - H / 2 / 2 + BAR / 2;
+    for (const s of D.STRUCTS) { const r = A.titleRect(s); if (s.kind === 'hallside') { assert.equal(r, null); continue; }
+      assert.ok(r.y >= safe + 4, `${s.id} title at ${r.y} hidden under the bar (${safe}) at ${H}px`); assert.ok(r.y + r.h <= (s.y + s.h) * ST - 44, `${s.id} title clears the OPEN light + door`); } }
+});

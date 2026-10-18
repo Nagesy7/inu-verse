@@ -700,15 +700,18 @@ function streetPups() {
     { x: 9 * TILE + chase - 24 * Math.sign(Math.cos(t * 0.9)), y: 9.5 * TILE, coat: 'red', art: 'shiba-red', face: Math.cos(t * 0.9) > 0 ? 'right' : 'left', phase: t * 14 + 2, moving: true }];
 }
 
+// Arcade Districts on the town map: purple road stub + gate block at the hub gate east of the Arcade hall (minimap + full map)
+function drawDistrictsMark(b, s) { const g = DIS.HUB_GATE; b.fillStyle = '#141a2e'; b.fillRect((g.tx - 1) * s - 1, (g.ty - 1) * s - 1, 3 * s + 2, 3 * s + 2); b.fillStyle = '#6c4fd0'; b.fillRect((g.tx - 1) * s, (g.ty - 1) * s, 3 * s, 3 * s); b.fillStyle = '#ff5ad0'; b.fillRect(g.tx * s, g.ty * s, s, s); }
 function minimap(vx, vy, vw, vh) {
   const m = $('#minimap').getContext('2d'), s = 2;
   if (!miniBase) { miniBase = document.createElement('canvas'); miniBase.width = MAP_W * s; miniBase.height = MAP_H * s; const b = miniBase.getContext('2d');
     const col = { [T.GRASS]: '#52a349', [T.FLOWER]: '#62b05a', [T.ROAD]: '#4a4f63', [T.WALK]: '#dcd3bc', [T.PLAZA]: '#d6b383', [T.BUILDING]: '#e3b341', [T.WATER]: '#2f6cbd', [T.TREE]: '#2c7040', [T.PLOT]: '#a8764a', [T.HOME]: '#c8323c', [T.DIRT]: '#a8764a' };
-    for (let y = 0; y < MAP_H; y++) for (let x = 0; x < MAP_W; x++) { b.fillStyle = col[MAP[y][x]]; b.fillRect(x * s, y * s, s, s); } }
+    for (let y = 0; y < MAP_H; y++) for (let x = 0; x < MAP_W; x++) { b.fillStyle = col[MAP[y][x]]; b.fillRect(x * s, y * s, s, s); } drawDistrictsMark(b, s); }
   m.drawImage(miniBase, 0, 0);
   for (const p of PLOTS) if (state.plots[p.id]) { m.fillStyle = '#f2cc68'; m.fillRect(p.x * s, p.y * s, p.w * s, p.h * s); }
   { const pk = myPack(state); m.fillStyle = pk ? pk.color : '#6a8a4a'; m.fillRect(CLUBHOUSE.x * s, CLUBHOUSE.y * s, CLUBHOUSE.w * s, CLUBHOUSE.h * s); }
   if (vw) { m.strokeStyle = 'rgba(255,246,224,.85)'; m.lineWidth = 1; m.strokeRect(Math.round(vx / TILE * s) + 0.5, Math.round(vy / TILE * s) + 0.5, Math.round(vw / TILE * s), Math.round(vh / TILE * s)); }
+  { const g = DIS.HUB_GATE, on = reducedMotion() || Math.floor(time * 2) % 2; m.fillStyle = on ? '#ff5ad0' : '#ffd84a'; m.fillRect(g.tx * s + 1, g.ty * s - 2, 1, 6); m.fillRect(g.tx * s + 2, g.ty * s - 1, 1, 4); m.fillRect(g.tx * s + 3, g.ty * s, 1, 2); } // districts gate: east arrow
   m.fillStyle = '#fff'; for (const n of npcs) m.fillRect(Math.round(n.x / TILE * s) - 1, Math.round(n.y / TILE * s) - 1, 2, 2);
   const blink = Math.floor(time * 3) % 2; m.fillStyle = '#141a2e'; m.fillRect(Math.round(state.player.x / TILE * s) - 3, Math.round(state.player.y / TILE * s) - 3, 6, 6); m.fillStyle = blink ? '#ff5a5a' : '#ffd84a'; m.fillRect(Math.round(state.player.x / TILE * s) - 2, Math.round(state.player.y / TILE * s) - 2, 4, 4);
 }

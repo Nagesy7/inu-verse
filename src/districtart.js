@@ -44,9 +44,10 @@ const BAKE = {
   hallside: (c, s, w, h, o) => { R(c, 0, o, w, h, '#5a3a8a'); R(c, 0, o, w, 6, '#7a5ab0'); for (let i = 0; i < 4; i++) R(c, 6 + (i % 2) * 28, o + 14 + Math.floor(i / 2) * 50, 20, 30, '#2a1a4a'); text(c, '< HALL', w / 2, o + h - 12, GOLD, 6); },
   booth: (c, s, w, h, o, night) => { const cab = cabinet(s.id), col = ['#6c4fd0', '#d0503a', '#3a9a6a', '#e08a2a', '#3a7ad0', '#c04a8a', '#7a9a3a', '#d4a640'][Math.max(0, ['kibble-chomp', 'bark-invaders', 'pup-crossing', 'bone-breaker', 'street-sniffer', 'paw-fu-tower', 'bone-digger', 'pips-big-bark'].indexOf(s.id))];
     R(c, 0, o + 10, w, h - 10, INK); R(c, 2, o + 12, w - 4, h - 12, shade(col, 0.7)); R(c, 2, o + 12, w - 4, 6, shade(col, 1.15));
-    R(c, -2 + 2, o - 2, w - 4, 26, INK); R(c, 3, o - 1, w - 6, 24, cab.live ? col : '#5a5e6a'); R(c, 5, o + 1, w - 10, 20, cab.live ? shade(col, 0.55) : '#3a3e4a'); // marquee
-    const nm = label(cab).toUpperCase(), two = nm.length > 12 && nm.includes(' '); if (two) { const i = nm.lastIndexOf(' ', 12) > 0 ? nm.lastIndexOf(' ', 12) : nm.indexOf(' '); text(c, nm.slice(0, i), w / 2, o + 7, cab.live ? CREAM : '#c8c8d2', 5); text(c, nm.slice(i + 1), w / 2, o + 15, cab.live ? CREAM : '#c8c8d2', 5); } else text(c, nm, w / 2, o + 11, cab.live ? CREAM : '#c8c8d2', nm.length > 10 ? 5 : 6);
-    R(c, 6, o + 34, w - 12, 40, INK); R(c, 8, o + 36, w - 16, 36, night ? '#2a3a6a' : '#3a4a7a'); R(c, 12, o + 40, w - 24, 18, cab.live ? shade(col, 1.3) : '#4a4e5c'); for (let i = 0; i < 3; i++) R(c, 14 + i * 22, o + 62, 8, 6, cab.live ? GOLD : '#6a6e7a'); // window with a cabinet screen
+    R(c, 0, o - 2, w, 12, INK); R(c, 2, o, w - 4, 9, cab.live ? col : '#5a5e6a'); R(c, 2, o, w - 4, 3, cab.live ? shade(col, 1.25) : '#6a6e7a'); // roof cap
+    R(c, 6, o + 14, w - 12, 34, INK); R(c, 8, o + 16, w - 16, 30, night ? '#2a3a6a' : '#3a4a7a'); R(c, 12, o + 19, w - 24, 14, cab.live ? shade(col, 1.3) : '#4a4e5c'); for (let i = 0; i < 3; i++) R(c, 14 + i * 22, o + 37, 8, 6, cab.live ? GOLD : '#6a6e7a'); // window with a cabinet screen
+    const my = o + 50; R(c, 0, my, w, 28, INK); R(c, 2, my + 1, w - 4, 26, cab.live ? col : '#5a5e6a'); R(c, 4, my + 3, w - 8, 22, cab.live ? shade(col, 0.55) : '#3a3e4a'); // marquee: low, right over the door, so it stays in view at zoom 2
+    const nm = label(cab).toUpperCase(), two = nm.length > 12 && nm.includes(' '); if (two) { const i = nm.lastIndexOf(' ', 12) > 0 ? nm.lastIndexOf(' ', 12) : nm.indexOf(' '); text(c, nm.slice(0, i), w / 2, my + 9, cab.live ? CREAM : '#c8c8d2', 5); text(c, nm.slice(i + 1), w / 2, my + 17, cab.live ? CREAM : '#c8c8d2', 5); } else text(c, nm, w / 2, my + 13, cab.live ? CREAM : '#c8c8d2', nm.length > 10 ? 5 : 6);
     doorFace(c, s, Math.round(w / 2 - 12), o + h - 34, cab, night); R(c, 0, o + h - 2, w, 2, '#2a2e3a'); },
   arena: (c, s, w, h, o, night) => venue(c, s, w, h, o, night, { wall: '#d0503a', roof: '#8a2a1e', title: 'THE ARENA', dome: true }),
   barn: (c, s, w, h, o, night) => venue(c, s, w, h, o, night, { wall: '#a0442e', roof: '#6a5a3a', title: 'FUD FIELD', barn: true }),
@@ -62,10 +63,13 @@ function venue(c, s, w, h, o, night, v) { const cab = cabinet(s.id), top = o + 1
   if (v.checker) { for (let i = 0; i < w / 8; i++) for (let j = 0; j < 3; j++) R(c, i * 8, top - 22 + j * 6, 8, 6, (i + j) % 2 ? INK : '#f2f2e8'); R(c, 0, top - 4, w, 4, v.roof); }
   if (!v.dome && !v.barn && !v.stands && !v.blocks && !v.checker) R(c, 0, top - 10, w, 10, v.roof);
   R(c, 2, top, w - 4, h - (top - o), INK); R(c, 4, top + 2, w - 8, h - (top - o) - 2, v.wall); R(c, 4, top + 2, w - 8, 5, shade(v.wall, 1.2)); for (let i = 0; i < Math.floor(w / 40); i++) { const wx = 18 + i * 40; if (Math.abs(wx + 12 - w / 2) < 40) continue; R(c, wx, top + 30, 24, 28, INK); R(c, wx + 2, top + 32, 20, 24, night ? '#ffe9a0' : '#9fd6f0'); R(c, wx + 11, top + 32, 2, 24, INK); }
-  // banner: district name (generic) + cabinet label on a plaque over the door
-  const bw = Math.min(w - 40, 150); R(c, w / 2 - bw / 2 - 2, top + 8, bw + 4, 18, INK); R(c, w / 2 - bw / 2, top + 10, bw, 14, GOLD); text(c, v.title, w / 2, top + 17.5, INK, 7);
+  // banner: district name, low on the facade right above the cabinet plaque so it stays in view under the top bar at zoom 2
+  R(c, 4, top + 10, w - 8, 3, shade(v.wall, 0.8)); const bw = Math.min(w - 40, 150), by = o + h - 84; R(c, w / 2 - bw / 2 - 2, by, bw + 4, 18, INK); R(c, w / 2 - bw / 2, by + 2, bw, 14, GOLD); text(c, v.title, w / 2, by + 9.5, INK, 7);
   const pl = label(cab).toUpperCase(), pw = Math.min(w - 20, Math.max(80, pl.length * 6 + 16)); R(c, w / 2 - pw / 2 - 2, o + h - 60, pw + 4, 16, INK); R(c, w / 2 - pw / 2, o + h - 58, pw, 12, cab.live ? '#2a8a4a' : '#5a5e6a'); text(c, cab.live ? pl : `${pl} - SOON`, w / 2, o + h - 52, CREAM, 5);
   doorFace(c, s, Math.round(w / 2 - 12), o + h - 34, cab, night); R(c, 0, o + h - 2, w, 2, '#2a2e3a'); }
+// world-space rect of each storefront's title (venue banner / booth marquee): kept low on the facade (tests check zoom-2 view)
+export function titleRect(s) { const x = s.x * ST, y = s.y * ST, w = s.w * ST, h = s.h * ST; if (s.kind === 'booth') return { x, y: y + 50, w, h: 28 };
+  if (BAKE[s.kind] && s.kind !== 'hallside') { const bw = Math.min(w - 40, 150); return { x: x + w / 2 - bw / 2 - 2, y: y + h - 84, w: bw + 4, h: 18 }; } return null; }
 // depth prop for one structure: blit the baked sprite; live doors get a soft blinking OPEN light, venue flags wave
 export function structProp(s, t, night, rm) { const x = s.x * ST, y = s.y * ST, cab = cabinet(s.id);
   return { y: (s.y + s.h - 1) * ST + 2, d: (c) => { /* sorted at the alcove's top edge so a pup in the doorway draws in front */ c.drawImage(bake(s, night), x, y - PAD, s.w * ST, s.h * ST + PAD); if (!cab) return; const dx = (s.door[0]) * ST, dy = (s.y + s.h) * ST;

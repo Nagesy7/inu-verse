@@ -26,7 +26,7 @@ export const GROUPS = ['Featured', 'Games', 'Shops & Mall', 'Prizes & Boards', '
 const rect = (o) => (o && o.w ? { fx: o.x + o.w / 2, fy: o.y + o.h / 2 } : null);
 const RECTS = Object.fromEntries([...BUILDINGS, ...MALL_BUILDINGS, ...GAME_DOORS, ARCADE, BANK, CLUBHOUSE, CHAPEL, BARN, MARKET, CRAFT, ...PLOTS, ...NPC_HOMES, ...FIELDS].filter((o) => o?.id).map((o) => [o.id, o]));
 RECTS.leaders = LEADERS; RECTS.pond = { ...POND, id: 'pond' }; RECTS.pen = { ...PEN, id: 'pen' }; RECTS.board = { x: STATUE.x, y: STATUE.y - 2, w: 2, h: 2 };
-const GAME_IDS = new Set(['arcade', 'rescue', 'quest', 'launch']);
+const GAME_IDS = new Set(['arcade', 'rescue', 'quest', 'launch', 'shuttle']);
 const WORK_IDS = new Set(['cafe', 'office', 'bizboard']);
 function groupOf(it) {
   if (FEATURED.includes(it.id)) return 'Featured';
@@ -38,8 +38,8 @@ function groupOf(it) {
   if (it.kind === 'mall' || it.kind === 'building') return 'Shops & Mall';
   return 'Park & Square';
 }
-const NICE = { launch: 'Launch Hall ($KIBBLE + your coins)', bank: 'Kibble Bank', pools: 'VIP Lounge & Pools Monument', burn: 'Burn Festival Monument', board: 'Prize-pool board (Mall statue)', quests: 'Quest Board (cross-game quests)', cafe: 'Shiba Sips Café (jobs)', office: "President's Office" };
-const KEYWORDS = { bank: 'wallet balance inventory history purchases', cafe: 'jobs work coffee shift', arcade: 'games scores chomp invaders', rescue: 'inu rescue pups game door', quest: 'inu quest trainer gate game door', leaders: 'leaderboards scores prizes', board: 'prize pool kibble', pools: 'vip lounge holder pools', burn: 'burn kibble festival monument', mall: 'kibble shop luxury', launch: 'tokens launch hall coins', quests: 'quest chain weekly' };
+const NICE = { shuttle: 'Arcade Districts (gate + fast travel)', launch: 'Launch Hall ($KIBBLE + your coins)', bank: 'Kibble Bank', pools: 'VIP Lounge & Pools Monument', burn: 'Burn Festival Monument', board: 'Prize-pool board (Mall statue)', quests: 'Quest Board (cross-game quests)', cafe: 'Shiba Sips Café (jobs)', office: "President's Office" };
+const KEYWORDS = { shuttle: 'arcade districts arena fud field stadium parkour race park arcade row cabinets fast travel shiba scuffle', bank: 'wallet balance inventory history purchases', cafe: 'jobs work coffee shift', arcade: 'games scores chomp invaders', rescue: 'inu rescue pups game door', quest: 'inu quest trainer gate game door', leaders: 'leaderboards scores prizes', board: 'prize pool kibble', pools: 'vip lounge holder pools', burn: 'burn kibble festival monument', mall: 'kibble shop luxury', launch: 'tokens launch hall coins', quests: 'quest chain weekly' };
 // nearest walkable tile (spiral search) so every place has a reachable stand tile
 export function nearestWalkable(tx, ty, r = 6) { tx = Math.round(tx); ty = Math.round(ty); if (!isSolid(tx, ty)) return [tx, ty];
   for (let d = 1; d <= r; d++) for (let dy = -d; dy <= d; dy++) for (let dx = -d; dx <= d; dx++) { if (Math.max(Math.abs(dx), Math.abs(dy)) !== d) continue; if (!isSolid(tx + dx, ty + dy)) return [tx + dx, ty + dy]; } return null; }
@@ -77,6 +77,7 @@ export const TOUR = [
   { place: 'bank', featured: true, title: '★ Kibble Bank', text: 'Your wallet at a glance: $KIBBLE balance, items you own across every Inu game, purchase history and the public prize-pool and burn boards. No deposits, lending or yield.' },
   { place: 'mall', title: 'Kibble Mall', text: 'Luxury outfits, jewels, cars and furniture. Prices are in $KIBBLE (live: you pay in Phantom); everyday stuff costs bones you earn by playing.' },
   { place: 'arcade', title: 'Inu Arcade', text: 'Four retro games. Sign in and your best scores count toward the weekly prize pools.' },
+  { place: 'shuttle', title: 'Arcade Districts', text: 'Just east of the Arcade hall, the gate opens onto a long street of cabinet storefronts: Arcade Row, The Arena, FUD Field, Stadium, Parkour Park and Race Park. Walk into an open door to play; kiosks and this shuttle stop fast-travel between districts. Just for fun: no Bones or $KIBBLE change hands.' },
   { place: 'rescue', title: 'Rescue Station', text: 'Opens Inu Rescue: climb the girders and save pups from the grumpy cat. Your wallet comes along.' },
   { place: 'quest', title: 'Trainer Gate', text: 'Opens Inu Quest, the Shiba creature-collecting RPG. Beat the gym to complete a weekly quest step.' },
   { place: 'quests', title: 'Quest Board (more games)', text: 'The weekly quest chain links every Inu game: Meme Brawl, PepeBallz, Arcade, Rescue and Quest. Finish the chain for a free outfit.' },
