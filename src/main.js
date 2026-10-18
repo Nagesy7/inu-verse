@@ -76,6 +76,7 @@ import { buildDrawer, drawerOpen } from './hudmenu.js';
 import { makeDoorState, doorStep, doorExit, outsideOf } from './doors.js';
 import { isDoor, doorList, doorDir, COMMUNITY } from './world.js';
 import { createMultiplayer } from './multiplayer.js';
+import { createJoystick, joyPref, JOY_KEY } from './joystick.js';
 import { ensureShare, myHomePlot, layoutOf, layoutKey, homeApi, cleanLayout, cleanEntry, validHomeId, GB } from './homeshare.js';
 import * as KM from './kibblemood.js';
 import * as MWd from './moodworld.js';
@@ -93,6 +94,9 @@ const PRES_Q = new URLSearchParams(location.search).get('president'); let presFo
 let vignette = null, miniBase = null;
 const keys = new Set();
 const touch = { x: 0, y: 0, id: null };
+let JOYS = null, joyT = 0; // optional joystick (src/joystick.js), built with the touch controls below
+const joyApi = { get: () => joyPref(state), set: (v) => { if (state) { state.settings ||= {}; state.settings.joystick = !!v; persist(); } try { localStorage.setItem(JOY_KEY, v ? '1' : '0'); } catch {} JOYS?.set(!!v); joyApi.onChange?.(); }, onChange: null };
+globalThis.__joy = joyApi;
 const COARSE = matchMedia('(pointer: coarse)');
 function setA(label) { const b = document.getElementById('btn-a'); if (b && b.dataset.l !== label) { b.dataset.l = label; b.innerHTML = label ? `<span>${label}</span>` : 'A'; b.classList.toggle('ready', !!label); } }
 const player = { face: 'down', dir: 1, phase: 0, moving: false, path: [], target: null, v: { x: 0, y: 0 }, pw: MOB.makePathWalker(), running: false, holdRun: false };
@@ -175,7 +179,7 @@ function titleScreen() {
 
 function startGame(s) { loadProfile(s).catch(() => {}); ENG.ensureEngage(s); ENG.addSeasonXp(s, 'login', Math.floor((s.clockSec || 0) / DAY_LEN)); F5.ensureFly5(s); F5.holderCheck(s); s.town ||= makeTown(rng); townH = -1; seedTokens(s, rng); REL.ensureRel(s); ensureFarm(s); ensureBiz(s); s.clockSec ??= 0; catchUp(s, Date.now(), { season: seasonOf(Math.floor(s.clockSec / DAY_LEN)), rain: false }); hourIdx = Math.floor(s.clockSec / (DAY_LEN / 24));
   state = s; state.kibble ??= DEMO ? 20 : 0; if (!DEMO) state.kibble = 0; ensureWardrobe(state); ensurePacks(state); ensureMall(state); state.clockSec ??= 0; lastEarned = state.stats.bonesEarned; mode = 'world';
-  buildDrawer(document, { bork: () => { initAudio(); bork(); player.emote = { kind: 'bork', t: 1.2 }; emoteBubble('me', 'bork', time); } }); $('#title').hidden = true; $('#hud').hidden = false; $('#minimap-wrap').hidden = false; document.body.classList.add('inworld');
+  buildDrawer(document, { joystick: joyApi, bork: () => { initAudio(); bork(); player.emote = { kind: 'bork', t: 1.2 }; emoteBubble('me', 'bork', time); } }); $('#title').hidden = true; $('#hud').hidden = false; $('#minimap-wrap').hidden = false; document.body.classList.add('inworld');
   makeAlive(); mapImg = prerenderMap(); npcs = spawnNpcs(rng, 6); npcs.forEach((n) => { n.art = artKey(n.coat); }); amb = makeAmbient(42);
   Promise.all([artReady, buildingsReady, document.fonts?.load('8px Silkscreen').catch(() => {})]).then(() => { mapImg = prerenderMap(); });
   feel.fade(); $('#hud').classList.add('in');
@@ -416,10 +420,13 @@ $('#panel-close').onclick = () => closePanel();
   pad.addEventListener('pointermove', (e) => { if (e.pointerId === touch.id) upd(e); });
   const end = (e) => { if (e.pointerId !== touch.id) return; touch.id = null; touch.x = touch.y = 0; touch.mag = 0; player.holdRun = false; knob.style.transform = ''; pad.classList.remove('on'); };
   pad.addEventListener('pointerup', end); pad.addEventListener('pointercancel', end);
-  const act = () => { if (feel.talking()) return feel.advance(); if (mode === 'room' && !panel) return RP.act(); if (mode !== 'world' || panel || !state) return; if (carAction()) return; const it = nearestInteractable(state, state.player.x, state.player.y); const pup = nearPup(); if (pup && !it) petPup(pup); else if (it) interact(it); };
+  const act = () => { globalThis.__actCount = (globalThis.__actCount || 0) + 1; if (feel.talking()) return feel.advance(); if (mode === 'room' && !panel) return RP.act(); if (mode !== 'world' || panel || !state) return; if (carAction()) return; const it = nearestInteractable(state, state.player.x, state.player.y); const pup = nearPup(); if (pup && !it) petPup(pup); else if (it) interact(it); };
   $('#btn-a').addEventListener('pointerdown', (e) => { e.preventDefault(); initAudio(); act(); });
   $('#btn-b').addEventListener('pointerdown', (e) => { e.preventDefault(); initAudio(); if (mode === 'world' && !panel && state) { if (drive) return honk(); bork(); player.emote = { kind: 'bork', t: 1.2 }; emoteBubble('me', 'bork', time); } });
   $('#btn-menu')?.addEventListener('pointerdown', (e) => { e.preventDefault(); });
+  // optional Joystick controls (Settings): same touch input + A/B handlers; OFF = the old controls exactly as before
+  JOYS = createJoystick({ touch, onA: act, onStart: initAudio, runTap: () => stickTap(performance.now()), setRun: (v) => { player.holdRun = v; },
+    onB: () => { if (mode === 'world' && !panel && state) { if (drive) return honk(); bork(); player.emote = { kind: 'bork', t: 1.2 }; emoteBubble('me', 'bork', time); } } });
 }
 
 // ---------------- World update ----------------
@@ -1268,6 +1275,7 @@ function frame(now) {
     if (panel?.kind === 'cafe' && panel.shift && !panel.shift.settled) { tickShift(panel.shift, dt, rng); cafeUi(); }
   }
   MPL.step(dt); // live multiplayer (no-op when not configured)
+  if (JOYS && state && (joyT -= dt) <= 0) { joyT = 0.5; const want = joyPref(state); if (want !== JOYS.on) { JOYS.set(want); joyApi.onChange?.(); } } // saved / cloud-loaded Joystick setting
   if (mode === 'world') { updateWorld(dt); renderWorld(); drawSceneBars(); }
   else if (mode === 'room') { updateRoom(dt); RP.render(ctx, devicePixelRatio || 1); }
   else if (mode === 'build') { $('#prompt').hidden = true; renderBuild(); }
