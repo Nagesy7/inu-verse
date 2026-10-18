@@ -559,7 +559,7 @@ function renderWorld() {
     if (a.president) { drawPresident(ctx, a); if (a.emote) drawEmote(ctx, 0, -14, a.emote.kind, time); ctx.restore(); continue; }
     if (a.pupScale) { if (a.customPup) drawProfileShiba(ctx, 0, 0, a.profile, { face: a.face, phase: a.phase, moving: a.moving, name: a.name, scale: a.pupScale, fid: a.name }); else { drawShiba(ctx, 0, 0, { coat: a.coat, outfit: a.outfit, face: a.face, phase: a.phase, moving: a.moving, name: a.name, scale: a.pupScale, art: a.art, fid: a.name, wag: a.wag }); ctx.fillStyle = a.pupPatch; ctx.fillRect(-7 * a.pupScale, -30 * a.pupScale, 14 * a.pupScale, 4 * a.pupScale); ctx.fillStyle = a.pupHex; ctx.fillRect(-7 * a.pupScale, -26 * a.pupScale, 14 * a.pupScale, 3 * a.pupScale); } ctx.restore(); continue; }
     if (a.me) { const gl = statusGlow(state); if (gl) drawFlair(ctx, gl, time); }
-    const kt = a.me ? kennelMine() : a.mp ? (KN.remoteKennel(a) ? { tier: KN.remoteKennel(a) } : null) : null; if (kt) { KN.drawAura(ctx, kt.tier, time); KENNEL_TAG.cur = KN.tagFor(kt.tier, kt.preview); }
+    const kt = a.me ? kennelMine() : a.mp ? KN.remoteLook(a) : null; if (kt) { KN.drawAura(ctx, kt.tier, time); KENNEL_TAG.cur = KN.tagFor(kt.tier, kt.preview, kt.flair); }
     const pz = poseFor(a);
     if (a.profile) { drawProfileShiba(ctx, 0, 0, a.profile, { face: a.face, phase: a.phase, moving: a.moving, name: a.name, scale: 1.5, badge: a.badge, fid: a.me ? 'me' : a.name, emote: a.emote?.kind, pose: pz }); if (a.emote) drawEmote(ctx, 0, -110, a.emote.kind, time); }
     else drawShiba(ctx, 0, 0, { coat: a.coat, outfit: a.outfit, face: a.face, phase: a.phase, moving: a.moving, name: a.name, scale: 1.5, badge: a.badge, art: a.art, emote: a.emote?.kind, fid: a.me ? 'me' : a.name || a.id, wag: a.wag || (mm?.wag ? 1 : 0), pose: pz });
@@ -784,7 +784,7 @@ function openPanel(kind, opts = {}) {
   if (kind === 'bank') return renderBank();
   if (kind === 'kibblemood') { body.innerHTML = MWd.moodCardHtml(MOOD.current, esc); body.querySelectorAll('[data-copy]').forEach((b) => b.onclick = () => copyText(b.dataset.copy)); body.querySelector('[data-npcrules]').onclick = () => openPanel('npcrules'); return; }
   if (kind === 'dailybone') { body.innerHTML = MWd.dailyBoneHtml(MWd.MW.mood) + '<div class="row" style="justify-content:flex-start"><button class="btn ghost tiny" data-npcrules>How the town talks</button></div>'; body.querySelector('[data-npcrules]').onclick = () => openPanel('npcrules'); return; }
-  if (kind === 'kennel') { const draw = () => { if (panel?.kind !== 'kennel') return; body.innerHTML = KN.wallHtml({ wall: KEN.wall, me: KEN.real, wallet: KEN.wallet, override: KEN.override, show: KEN.show });
+  if (kind === 'kennel') { const draw = () => { if (panel?.kind !== 'kennel') return; body.innerHTML = KN.wallHtml({ wall: KEN.wall, me: KEN.real, wallet: KEN.wallet, override: KEN.override, overrideFlair: KEN.flair, show: KEN.show, peek: KEN.peeking });
       const cb = body.querySelector('#kn-show'); if (cb) cb.onchange = () => { KEN.show = cb.checked; KN.setShowMine(cb.checked); toast(cb.checked ? 'Kennel look on' : 'Kennel look hidden', 'good'); }; };
     draw(); refreshKennel(true).then(draw); return; }
   if (kind === 'npcrules') { body.innerHTML = NV.rulesHtml(MWd.voices()); return; }
@@ -1334,10 +1334,10 @@ function announceMood(mood) { if (!MWd.shouldAnnounce(mood, { override: !!MOOD.f
 function crierBanner(line) { let b = document.getElementById('crier-banner'); if (!b) { b = document.createElement('div'); b.id = 'crier-banner'; b.setAttribute('role', 'status'); document.body.appendChild(b); }
   b.innerHTML = `<b>${esc(MWd.CRIER_NAME)}</b><span>${esc(line)}</span>`; b.className = 'show mood-' + MWd.MW.mood; clearTimeout(b._t); b._t = setTimeout(() => { b.className = ''; }, 6000); }
 // ---- Kibble Kennel mirror (cosmetics only; tier API owned by kibble-pay / Inu Empires keeper; contract: kibble-pay docs/KENNEL_API.md) ----
-const KEN = { override: KN.overrideTier(), real: null, wall: null, wallet: null, show: KN.showMine(), at: 0 };
-function kennelMine() { return KN.myKennel({ override: KEN.override, real: KEN.real, show: KEN.show }); }
+const KEN = { override: KN.overrideTier(), flair: KN.overrideFlair(), peek: KN.peekWallet(), peeking: false, real: null, wall: null, wallet: null, show: KN.showMine(), at: 0 };
+function kennelMine() { return KN.myKennel({ override: KEN.override, overrideFlair: KEN.flair, real: KEN.real, show: KEN.show, peek: KEN.peeking }); }
 function mpProfile() { const t = KN.lookKennel(kennelMine()), p = hasCustomLook(state) ? myProfile() : null; if (!t) return p; return p ? { ...p, look: { kennel: t, ...p.look } } : { look: { kennel: t }, outfit: {} }; }
-async function refreshKennel(force) { const w = K.kp?.signedIn ? K.kp.address : null; const due = force || w !== KEN.wallet || Date.now() - KEN.at > KN.CACHE_MS; if (!due) return;
+async function refreshKennel(force) { const w = K.kp?.signedIn ? K.kp.address : KEN.peek; KEN.peeking = !K.kp?.signedIn && !!KEN.peek; const due = force || w !== KEN.wallet || Date.now() - KEN.at > KN.CACHE_MS; if (!due) return;
   KEN.wallet = w; KEN.at = Date.now(); const [me, wall] = await Promise.all([w ? KN.fetchKennel(w) : Promise.resolve(null), KN.fetchWall()]); KEN.real = me; KEN.wall = wall; }
 refreshKennel().then(raidAuto); setInterval(() => refreshKennel().then(raidAuto), 60_000); addEventListener('kibble:wallet', () => refreshKennel(true).then(raidAuto));
 // ---- Boss Raids (free for all; Kennel tier or an Inu cosmetic auto-enters you each hour; see inu-shared/boss-raids.md) ----

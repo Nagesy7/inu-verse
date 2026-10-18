@@ -177,10 +177,13 @@ function nameTag(ctx, x, dy, name, badge) {
   const tw = Math.ceil(ctx.measureText(name).width) + 8, ty = Math.round(dy - 8), kt = KENNEL_TAG.cur;
   const gold = (GOLD.name && name === GOLD.name) || !!kt?.gold; ctx.fillStyle = gold ? '#7a5a12' : '#121a36'; ctx.fillRect(Math.round(x - tw / 2), ty - 6, tw, 12); ctx.fillStyle = gold ? '#ffe27a' : '#d4a640'; ctx.fillRect(Math.round(x - tw / 2), ty + 5, tw, 1); if (gold) { ctx.fillRect(Math.round(x - tw / 2), ty - 7, tw, 1); }
   ctx.fillStyle = gold ? '#ffe27a' : '#f6e7b8'; ctx.fillText(name, Math.round(x), ty);
-  if (kt) { ctx.font = '7px Silkscreen, monospace'; const kw = Math.ceil(ctx.measureText(kt.text).width) + 12, kx = Math.round(x - kw / 2), ky = ty - (badge ? 34 : 20);
-    ctx.fillStyle = '#121a36'; ctx.fillRect(kx - 1, ky - 1, kw + 2, 12); ctx.fillStyle = kt.color; ctx.fillRect(kx, ky, kw, 10); ctx.fillStyle = 'rgba(255,255,255,.35)'; ctx.fillRect(kx, ky, kw, 2);
-    ctx.fillStyle = kt.ink; ctx.fillRect(kx + 3, ky + 4, 3, 3); ctx.fillRect(kx + 2, ky + 2, 1, 1); ctx.fillRect(kx + 4, ky + 1, 1, 2); ctx.fillRect(kx + 6, ky + 2, 1, 1); // paw
-    ctx.fillText(kt.text, Math.round(x + 3), ky + 5); ctx.font = '8px Silkscreen, monospace'; }
+  if (kt) { ctx.font = '7px Silkscreen, monospace'; const fw = kt.flair ? 14 : 0, kw = kt.text ? Math.ceil(ctx.measureText(kt.text).width) + 12 : 0, all = kw + fw + (kw && fw ? 2 : 0), kx = Math.round(x - all / 2), ky = ty - (badge ? 34 : 20);
+    if (kw) { ctx.fillStyle = '#121a36'; ctx.fillRect(kx - 1, ky - 1, kw + 2, 12); ctx.fillStyle = kt.color; ctx.fillRect(kx, ky, kw, 10); ctx.fillStyle = 'rgba(255,255,255,.35)'; ctx.fillRect(kx, ky, kw, 2);
+      ctx.fillStyle = kt.ink; ctx.fillRect(kx + 3, ky + 4, 3, 3); ctx.fillRect(kx + 2, ky + 2, 1, 1); ctx.fillRect(kx + 4, ky + 1, 1, 2); ctx.fillRect(kx + 6, ky + 2, 1, 1); // paw
+      ctx.fillText(kt.text, Math.round(kx + kw / 2 + 3), ky + 5); }
+    if (fw) { const fx = kx + all - fw; ctx.fillStyle = '#121a36'; ctx.fillRect(fx - 1, ky - 1, fw + 2, 12); ctx.fillStyle = kt.flairColor || '#5a6b86'; ctx.fillRect(fx, ky, fw, 10); ctx.fillStyle = 'rgba(255,255,255,.3)'; ctx.fillRect(fx, ky, fw, 2); // Locked flair (kn_badge_locked)
+      const lx = fx + 3, lc = kt.flairInk || '#f3f6fb'; ctx.fillStyle = lc; ctx.fillRect(lx + 2, ky + 1, 4, 1); ctx.fillRect(lx + 1, ky + 2, 1, 3); ctx.fillRect(lx + 6, ky + 2, 1, 3); ctx.fillRect(lx, ky + 4, 8, 5); ctx.fillStyle = '#121a36'; ctx.fillRect(lx + 3, ky + 6, 2, 2); }
+    ctx.font = '8px Silkscreen, monospace'; }
   if (badge) {
     const bt = `[${badge.tag}]`, bw = Math.ceil(ctx.measureText(bt).width) + 18, bx = Math.round(x - bw / 2), byy = ty - 20;
     ctx.fillStyle = '#121a36'; ctx.fillRect(bx - 1, byy - 1, bw + 2, 13); ctx.fillStyle = badge.color; ctx.fillRect(bx, byy, bw, 11);

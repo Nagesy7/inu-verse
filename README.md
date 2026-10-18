@@ -29,13 +29,16 @@ A check that can't run is "unknown" and nothing is guessed. PASS needs every che
 Results are cached 30 min per coin in Upstash (`launchhall:clean:v2:<mint>`), and at most 2 fresh checks run per request.
 
 ## Kibble Kennel look (cosmetics only)
-Tiers come from kibble-pay `GET /api/kennel?wallet=` (contract: `/workspace/inu-shared/kennel-api.md`; owner: the Inu Empires keeper).
+Tiers come from kibble-pay `GET /api/kennel?wallet=` **v2, hybrid** (contract: kibble-pay `docs/KENNEL_API.md`; owner: the Inu Empires keeper).
+Tiers are free **hold streaks**: Pup 100K for 7 days, Guard Dog 1M for 30, Alpha 10M for 90, Top Dog 50M for 90 (nobody can reach Pup before 22 Oct 2026).
+An optional Streamflow self-lock of 100K+ only adds a separate **Locked** flair (padlock badge, `kn_badge_locked`); it never sets or raises a tier.
 Inu Verse only reads it and shows the result on the pup:
-- a tier name tag
+- a tier name tag, plus a padlock tag for the Locked flair
 - an Alpha paw-print aura
 - a Top Dog gold aura and golden name
 
-The plaza **Kennel wall** lists Top Dogs once the API publishes them. Errors and 404s show nothing.
-Other players see a tier only when the realtime server verified their wallet. The tier is self-reported in the look message, so it's cosmetic.
-Use `?kennel=pup|guard|alpha|top` to preview (labelled PREVIEW, never sent to others). You can toggle it at the Kennel wall.
+The Kennel wall panel shows your tier, the flair and your streak progress (`streaks[]`, `nextStep`, e.g. "Pup in 5 days if held").
+The plaza **Kennel wall** lists verified members ranked by tier then $KIBBLE held, with the Locked flair, and "No Top Dogs yet" when empty. Errors, 404s and non-v2 bodies show nothing.
+Other players see a tier or flair only when the realtime server looked it up for their verified wallet (`k` + `lf`); anything a client sends is stripped.
+Previews (labelled PREVIEW, never sent to others): `?kennel=pup|guard|alpha|top`, `?kennel=pup-locked` or `&kflair=1` for the flair, `?kennelwallet=<address>` for a read-only look at a public wallet while signed out. You can toggle it at the Kennel wall.
 NPC personalities and the line rules are in `docs/npc-rules.md`.

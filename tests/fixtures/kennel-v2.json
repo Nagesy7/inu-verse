@@ -1,0 +1,413 @@
+{
+ "wallet": "Akk3DdxeRRLZABfpkFKYoDBk6Zim5wNLRYemNFjv56fn",
+ "noTier": {
+  "wallet": "Akk3DdxeRRLZABfpkFKYoDBk6Zim5wNLRYemNFjv56fn",
+  "tierSource": "hold-streak",
+  "v": 2,
+  "tierUntil": null,
+  "history": {
+   "complete": true,
+   "from": "2026-10-14T13:00:00.000Z",
+   "reason": null,
+   "txs": 13,
+   "accounts": 1,
+   "resets": {
+    "pup": 0,
+    "guard": 0,
+    "alpha": 0,
+    "top": 0
+   }
+  },
+  "launchDate": "2026-10-14T13:00:00.000Z",
+  "source": "chain",
+  "stale": false,
+  "fetchedAt": "2026-10-18T11:07:02.922Z",
+  "locks": [],
+  "lockedAmount": 0,
+  "unlockDate": null,
+  "locked": {
+   "flair": false,
+   "amount": 0,
+   "minAmount": 100000,
+   "unlockDate": null,
+   "count": 0
+  },
+  "tier": null,
+  "tierName": null,
+  "held": 112308.969356,
+  "streaks": [
+   {
+    "id": "pup",
+    "name": "Pup",
+    "amount": 100000,
+    "days": 7,
+    "holding": true,
+    "start": "2026-10-15T21:20:50.000Z",
+    "daysHeld": 2,
+    "earned": false,
+    "earnedAt": null,
+    "reachDate": "2026-10-22T21:20:50.000Z",
+    "needAmount": 0,
+    "needDays": 5,
+    "earliestPossible": "2026-10-21T13:00:00.000Z",
+    "progress": 0.3677
+   },
+   {
+    "id": "guard",
+    "name": "Guard Dog",
+    "amount": 1000000,
+    "days": 30,
+    "holding": false,
+    "start": null,
+    "daysHeld": 0,
+    "earned": false,
+    "earnedAt": null,
+    "reachDate": null,
+    "needAmount": 887691.03,
+    "needDays": 30,
+    "earliestPossible": "2026-11-13T13:00:00.000Z",
+    "progress": 0
+   },
+   {
+    "id": "alpha",
+    "name": "Alpha",
+    "amount": 10000000,
+    "days": 90,
+    "holding": false,
+    "start": null,
+    "daysHeld": 0,
+    "earned": false,
+    "earnedAt": null,
+    "reachDate": null,
+    "needAmount": 9887691.03,
+    "needDays": 90,
+    "earliestPossible": "2027-01-12T13:00:00.000Z",
+    "progress": 0
+   },
+   {
+    "id": "top",
+    "name": "Top Dog",
+    "amount": 50000000,
+    "days": 90,
+    "holding": false,
+    "start": null,
+    "daysHeld": 0,
+    "earned": false,
+    "earnedAt": null,
+    "reachDate": null,
+    "needAmount": 49887691.03,
+    "needDays": 90,
+    "earliestPossible": "2027-01-12T13:00:00.000Z",
+    "progress": 0
+   }
+  ],
+  "nextStep": {
+   "id": "pup",
+   "name": "Pup",
+   "amount": 100000,
+   "days": 7,
+   "holding": true,
+   "needAmount": 0,
+   "needDays": 5,
+   "reachDate": "2026-10-22T21:20:50.000Z",
+   "reachDateIfHeldFromNow": "2026-10-25T11:07:02.000Z"
+  }
+ },
+ "pupLocked": {
+  "wallet": "Akk3DdxeRRLZABfpkFKYoDBk6Zim5wNLRYemNFjv56fn",
+  "tierSource": "hold-streak",
+  "v": 2,
+  "tierUntil": null,
+  "history": {
+   "complete": true,
+   "from": "2026-10-14T13:00:00.000Z",
+   "reason": null,
+   "txs": 13,
+   "accounts": 1,
+   "resets": {
+    "pup": 0,
+    "guard": 0,
+    "alpha": 0,
+    "top": 0
+   }
+  },
+  "launchDate": "2026-10-14T13:00:00.000Z",
+  "source": "chain",
+  "stale": false,
+  "fetchedAt": "2026-10-18T11:07:02.922Z",
+  "locks": [
+   {
+    "id": "stream1",
+    "amount": 900000,
+    "unlockDate": "2027-01-01T00:00:00.000Z",
+    "daysLeft": 75
+   }
+  ],
+  "lockedAmount": 900000,
+  "unlockDate": "2027-01-01T00:00:00.000Z",
+  "locked": {
+   "flair": true,
+   "amount": 900000,
+   "minAmount": 100000,
+   "unlockDate": "2027-01-01T00:00:00.000Z",
+   "count": 1
+  },
+  "tier": "pup",
+  "tierName": "Pup",
+  "held": 1195500,
+  "streaks": [
+   {
+    "id": "pup",
+    "name": "Pup",
+    "amount": 100000,
+    "days": 7,
+    "holding": true,
+    "start": "2026-10-15T21:20:50.000Z",
+    "daysHeld": 31,
+    "earned": true,
+    "earnedAt": "2026-10-22T21:20:50.000Z",
+    "reachDate": "2026-10-22T21:20:50.000Z",
+    "needAmount": 0,
+    "needDays": 0,
+    "earliestPossible": "2026-10-21T13:00:00.000Z",
+    "progress": 1
+   },
+   {
+    "id": "guard",
+    "name": "Guard Dog",
+    "amount": 1000000,
+    "days": 30,
+    "holding": true,
+    "start": "2026-10-16T00:00:00.000Z",
+    "daysHeld": 12,
+    "earned": false,
+    "earnedAt": null,
+    "reachDate": "2026-11-15T00:00:00.000Z",
+    "needAmount": 0,
+    "needDays": 18,
+    "earliestPossible": "2026-11-13T13:00:00.000Z",
+    "progress": 0.4
+   },
+   {
+    "id": "alpha",
+    "name": "Alpha",
+    "amount": 10000000,
+    "days": 90,
+    "holding": false,
+    "start": null,
+    "daysHeld": 0,
+    "earned": false,
+    "earnedAt": null,
+    "reachDate": null,
+    "needAmount": 8804500,
+    "needDays": 90,
+    "earliestPossible": "2027-01-12T13:00:00.000Z",
+    "progress": 0
+   },
+   {
+    "id": "top",
+    "name": "Top Dog",
+    "amount": 50000000,
+    "days": 90,
+    "holding": false,
+    "start": null,
+    "daysHeld": 0,
+    "earned": false,
+    "earnedAt": null,
+    "reachDate": null,
+    "needAmount": 48804500,
+    "needDays": 90,
+    "earliestPossible": "2027-01-12T13:00:00.000Z",
+    "progress": 0
+   }
+  ],
+  "nextStep": {
+   "id": "guard",
+   "name": "Guard Dog",
+   "amount": 1000000,
+   "days": 30,
+   "holding": true,
+   "needAmount": 0,
+   "needDays": 18,
+   "reachDate": "2026-11-15T00:00:00.000Z",
+   "reachDateIfHeldFromNow": "2026-11-29T00:00:00.000Z"
+  }
+ },
+ "topDog": {
+  "wallet": "Akk3DdxeRRLZABfpkFKYoDBk6Zim5wNLRYemNFjv56fn",
+  "tierSource": "hold-streak",
+  "v": 2,
+  "tierUntil": null,
+  "history": {
+   "complete": true,
+   "from": "2026-10-14T13:00:00.000Z",
+   "reason": null,
+   "txs": 13,
+   "accounts": 1,
+   "resets": {
+    "pup": 0,
+    "guard": 0,
+    "alpha": 0,
+    "top": 0
+   }
+  },
+  "launchDate": "2026-10-14T13:00:00.000Z",
+  "source": "chain",
+  "stale": false,
+  "fetchedAt": "2026-10-18T11:07:02.922Z",
+  "locks": [],
+  "lockedAmount": 0,
+  "unlockDate": null,
+  "locked": {
+   "flair": false,
+   "amount": 0,
+   "minAmount": 100000,
+   "unlockDate": null,
+   "count": 0
+  },
+  "tier": "top",
+  "tierName": "Top Dog",
+  "held": 60000000,
+  "streaks": [
+   {
+    "id": "pup",
+    "name": "Pup",
+    "amount": 100000,
+    "days": 7,
+    "holding": true,
+    "start": "2026-10-15T00:00:00.000Z",
+    "daysHeld": 95,
+    "earned": true,
+    "earnedAt": "2027-01-13T00:00:00.000Z",
+    "reachDate": "2027-01-13T00:00:00.000Z",
+    "needAmount": 0,
+    "needDays": 0,
+    "earliestPossible": "2026-10-21T13:00:00.000Z",
+    "progress": 1
+   },
+   {
+    "id": "guard",
+    "name": "Guard Dog",
+    "amount": 1000000,
+    "days": 30,
+    "holding": true,
+    "start": "2026-10-15T00:00:00.000Z",
+    "daysHeld": 95,
+    "earned": true,
+    "earnedAt": "2027-01-13T00:00:00.000Z",
+    "reachDate": "2027-01-13T00:00:00.000Z",
+    "needAmount": 0,
+    "needDays": 0,
+    "earliestPossible": "2026-11-13T13:00:00.000Z",
+    "progress": 1
+   },
+   {
+    "id": "alpha",
+    "name": "Alpha",
+    "amount": 10000000,
+    "days": 90,
+    "holding": true,
+    "start": "2026-10-15T00:00:00.000Z",
+    "daysHeld": 95,
+    "earned": true,
+    "earnedAt": "2027-01-13T00:00:00.000Z",
+    "reachDate": "2027-01-13T00:00:00.000Z",
+    "needAmount": 0,
+    "needDays": 0,
+    "earliestPossible": "2027-01-12T13:00:00.000Z",
+    "progress": 1
+   },
+   {
+    "id": "top",
+    "name": "Top Dog",
+    "amount": 50000000,
+    "days": 90,
+    "holding": true,
+    "start": "2026-10-15T00:00:00.000Z",
+    "daysHeld": 95,
+    "earned": true,
+    "earnedAt": "2027-01-13T00:00:00.000Z",
+    "reachDate": "2027-01-13T00:00:00.000Z",
+    "needAmount": 0,
+    "needDays": 0,
+    "earliestPossible": "2027-01-12T13:00:00.000Z",
+    "progress": 1
+   }
+  ],
+  "nextStep": null
+ },
+ "apiError": {
+  "status": 500,
+  "body": {
+   "error": "chain read failed"
+  }
+ },
+ "v1LockTier": {
+  "wallet": "Akk3DdxeRRLZABfpkFKYoDBk6Zim5wNLRYemNFjv56fn",
+  "tier": "guard",
+  "tierName": "Guard Dog",
+  "lockedAmount": 1250000,
+  "unlockDate": "2026-12-01T00:00:00.000Z",
+  "source": "chain",
+  "stale": false
+ },
+ "wall": {
+  "wall": [
+   {
+    "wallet": "Akk3DdxeRRLZABfpkFKYoDBk6Zim5wNLRYemNFjv56fn",
+    "short": "Akk3…56fn",
+    "name": "Shiba Queen",
+    "tier": "top",
+    "tierName": "Top Dog",
+    "held": 60000000,
+    "lockedAmount": 0,
+    "lockedFlair": false,
+    "since": "2027-01-13T00:00:00.000Z"
+   },
+   {
+    "wallet": "Bkk3n7UUeb8TWZn5w8y6uWvd2iGyEqpH4tWqf9Q56fn",
+    "short": "Bkk3…56fn",
+    "name": "fuck",
+    "tier": "pup",
+    "tierName": "Pup",
+    "held": 150000,
+    "lockedAmount": 0,
+    "lockedFlair": false,
+    "since": "2026-10-22T00:00:00.000Z"
+   },
+   {
+    "wallet": "Ckk3n7UUeb8TWZn5w8y6uWvd2iGyEqpH4tWqf9Q56fn",
+    "short": "Ckk3…56fn",
+    "name": "Rin",
+    "tier": "pup",
+    "tierName": "Pup",
+    "held": 1195500,
+    "lockedAmount": 900000,
+    "lockedFlair": true,
+    "since": "2026-10-22T00:00:00.000Z"
+   }
+  ],
+  "topDogs": [
+   {
+    "wallet": "Akk3DdxeRRLZABfpkFKYoDBk6Zim5wNLRYemNFjv56fn",
+    "short": "Akk3…56fn",
+    "name": "Shiba Queen",
+    "since": "2027-01-13T00:00:00.000Z",
+    "held": 60000000,
+    "lockedAmount": 0
+   }
+  ],
+  "count": 3,
+  "empty": null,
+  "source": "verified hold-streak lookups (not a chain-wide scan)",
+  "updatedAt": "2027-01-14T00:00:00.000Z"
+ },
+ "emptyWall": {
+  "wall": [],
+  "topDogs": [],
+  "count": 0,
+  "empty": "No Top Dogs yet",
+  "source": "verified hold-streak lookups (not a chain-wide scan)",
+  "updatedAt": "2026-10-18T11:06:20.170Z"
+ }
+}
