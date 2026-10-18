@@ -1,4 +1,5 @@
 // City Board panel: Prize Pools, Featured billboards, Burn-for-status, President drops.
+import { walletHtml, walletText } from './wallets.js';
 import * as F from './flywheels.js'; import { fmtK, POOL_RULES } from './mall.js'; import { jobBoard } from './jobs.js'; import { farmBoard, ensureFarm } from './farm.js'; import { bizBoard, ensureBiz } from './biz.js';
 const esc = (s) => String(s).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c]);
 const top = (rows, n = 3) => rows.slice(0, n).map((r, i) => `<li${r.me ? ' class="me"' : ''}>${i + 1}. ${esc(r.name)} <b>${Math.floor(r.score)}</b></li>`).join('');
@@ -41,10 +42,10 @@ async function fillPrizeWallet() {
     let bal = '–';
     if (P.prizeWallet?.ata) { try { const b = await (await fetch(KP + '/api/rpc', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ jsonrpc: '2.0', id: 1, method: 'getTokenAccountBalance', params: [P.prizeWallet.ata] }) })).json(); bal = b.result ? u(b.result.value.amount) : 'no KIBBLE account yet'; } catch {} }
     const tx = (x) => `<a href="${e(x.explorer)}" target="_blank" rel="noopener">${e(x.txShort)}</a>`;
-    el.innerHTML = `<b>Prize wallet (live, on-chain)</b><small>${P.prizeWallet ? `<a href="${e(P.prizeWallet.explorer)}" target="_blank" rel="noopener">${e(P.prizeWallet.short)}</a> · balance ${e(bal)}` : 'prize wallet not set'}</small>
+    el.innerHTML = `<b>Prize wallet (live, on-chain)</b><small>${P.prizeWallet ? `${P.prizeWallet.address ? walletHtml(P.prizeWallet.address) : `<a href="${e(P.prizeWallet.explorer)}" target="_blank" rel="noopener">${e(P.prizeWallet.short)}</a>`} · balance ${e(bal)}` : 'prize wallet not set'}</small>
       <small>Prize pool fee accrued, not yet swept: ${u(P.unsweptBaseUnits)} · sweep every ${e(P.sweep.everyDays)} days</small>
       <small>Sweeps: ${P.sweeps.slice(0, 3).map((x) => `${u(x.amountBaseUnits)} ${tx(x)}`).join(' · ') || 'none yet'}</small>
-      <small>Payouts: ${P.payouts.slice(0, 5).map((x) => `${e(x.pool)} #${e(x.rank)} ${e(x.wallet)} ${u(x.amountBaseUnits)} ${tx(x)}`).join(' · ') || 'none yet'}</small>
+      <small>Payouts: ${P.payouts.slice(0, 5).map((x) => `${e(x.pool)} #${e(x.rank)} ${e(walletText(x.wallet) || x.wallet)} ${u(x.amountBaseUnits)} ${tx(x)}`).join(' · ') || 'none yet'}</small>
       <small><a href="${KP}/pools" target="_blank" rel="noopener">Full prize pool board ↗</a></small>`;
   } catch { el.innerHTML = `<b>Prize wallet</b><small><a href="${KP}/pools" target="_blank" rel="noopener">Open prize pool board ↗</a></small>`; }
 }

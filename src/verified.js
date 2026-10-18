@@ -2,6 +2,7 @@
 // re-checks lazily with a TTL) and GET /api/coins?news=1 (server-deduped, rate-limited announcements).
 // Rules: coins that did not opt in show NOTHING (null record -> empty string). Data that couldn't be read shows
 // "couldn't check", never a pass. Wording is fixed: 'Verified Launch: checks passed at <time>'. No advice.
+import { splitHtml, SPLIT_NOTE, KIBBLE_MINT, KIBBLE_SPLIT, WALLET_CSS } from './wallets.js';
 export const ORDER = ['authorities', 'feeSplit', 'snipes', 'top10'];
 export const SNIPE_SLOTS = 5;
 export const LABELS = { authorities: 'Mint + freeze authority renounced', feeSplit: 'Creator fee split published', snipes: `No snipes in the first ${SNIPE_SLOTS} slots`, top10: 'Top 10 holders each under 1% of supply' };
@@ -38,7 +39,7 @@ export function badgeHtml(mint, { open = false, rec = recOf(mint), fixture = fal
   return `<details class="vf ${b.cls}" data-vf="${esc(mint)}"${open ? ' open' : ''}><summary><span class="vf-seal">${b.icon}</span><span class="vf-txt">${esc(b.text)}</span>${fixture ? '<span class="vf-fx">TEST FIXTURE</span>' : ''}<span class="vf-more">tap for checks</span></summary>${breakdownHtml(rec, o)}</details>`; }
 export function breakdownHtml(rec, o) { if (!rec) return '';
   if (rec.status === 'pending' || !rec.checks) return `<div class="vf-body small">${rec.status === 'pending' ? 'First check is running. It refreshes about every 15 minutes.' : `Couldn't check right now (${esc(rec.error || 'data unavailable')}). Nothing is shown as passed.`}</div>`;
-  const rows = ORDER.map((k) => { const x = rec.checks[k] || { status: 'unknown', note: "Couldn't check" }; return `<li class="vf-${x.status}"><b>${STATUS_TXT[x.status] || STATUS_TXT.unknown}</b><span><b>${LABELS[k]}</b><br>${esc(x.note)}<br><i class="vf-src">Source: ${esc(x.source || 'Solana RPC via our server')}</i></span></li>`; }).join('');
+  const rows = ORDER.map((k) => { const x = rec.checks[k] || { status: 'unknown', note: "Couldn't check" }; return `<li class="vf-${x.status}"><b>${STATUS_TXT[x.status] || STATUS_TXT.unknown}</b><span><b>${LABELS[k]}</b><br>${esc(x.note)}${k === 'feeSplit' && x.split ? splitHtml(x.split, { note: rec.mint === KIBBLE_MINT ? SPLIT_NOTE : '' }) : ''}<br><i class="vf-src">Source: ${esc(x.source || 'Solana RPC via our server')}</i></span></li>`; }).join('');
   const rv = rec.status === 'revoked' ? `<div class="vf-why"><b>Revoked at ${esc(fmtTime(rec.revokedAt, o))}</b>: ${esc(rec.revokeReason || 'a check failed')}${rec.firstVerifiedAt ? ` · first verified ${esc(fmtTime(rec.firstVerifiedAt, o))}` : ''}</div>` : '';
   return `<div class="vf-body">${rv}<ul class="vf-list">${rows}</ul><div class="small">Last checked ${esc(fmtTime(rec.checkedAt, o))}${rec.stale ? ' (older result, re-checking)' : ''}${rec.recheckNote ? ' · ' + esc(rec.recheckNote) : ''}. ${esc(RULES)}</div></div>`; }
 
@@ -74,6 +75,10 @@ export function fixtures(now = Date.now()) { const src = { authorities: 'Solana 
   const recs = { [FIX.pass]: { mint: FIX.pass, optIn: true, status: 'verified', checks: ok, checkedAt: passed, passedAt: passed, firstVerifiedAt: now - 3000_000 },
     [FIX.revoked]: { mint: FIX.revoked, optIn: true, status: 'revoked', checks: { ...ok, top10: top10Fail }, checkedAt: now - 2 * 60_000, passedAt: now - 40 * 60_000, firstVerifiedAt: now - 6000_000, revokedAt: now - 20 * 60_000, revokeReason: `${LABELS.top10}: ${top10Fail.note}` },
     [FIX.none]: null };
+  // $KIBBLE as it would look AFTER the creator signs (fee split from the signed declaration; top-10 couldn't be read). TEST FIXTURE.
+  recs[KIBBLE_MINT] = { mint: KIBBLE_MINT, optIn: true, status: 'unknown', fixture: true, checkedAt: now - 3 * 60_000, checks: { authorities: P('authorities', 'Mint authority and freeze authority are both renounced'),
+    feeSplit: { status: 'pass', note: "Published by creator — not enforced on-chain: 40% Kennel Chest, 35% President's Vault, 25% Bone Vault", source: 'Published by creator — not enforced on-chain: declaration signed by the on-chain creator Kennel Chest Akk3…56fn (ed25519 signature checked by our server); on-chain fee-sharing config D81S…HzM8 not found', split: KIBBLE_SPLIT.map((s) => ({ ...s })), splitSource: 'declaration' },
+    snipes: P('snipes', 'Only the creator picked up tokens in slots 457209987–457209991 (1 transaction read)'), top10: { status: 'unknown', note: "Couldn't check: holder list unavailable from RPC right now", source: src.top10 } } };
   const news = [{ id: FIX.pass + ':fixture', mint: FIX.pass, name: 'Fixture Pup', symbol: 'TESTPUP', passedAt: passed, at: now - 60_000, pump: `https://pump.fun/coin/${FIX.pass}`, fixture: true }];
   return { coins, recs, news }; }
 
@@ -94,7 +99,7 @@ export const CSS = `.vf{margin:4px 0;border:2px solid #0c1022;background:#1b2346
 #crier-banner.news{background:#f7f1df;color:#141a2e;border-color:#141a2e;box-shadow:0 0 0 3px #d4a640,0 4px 0 #0008}#crier-banner.news b{color:#8a1a1a}#crier-banner.news a{color:#1a5a2a;font-size:9px;pointer-events:auto}
 body.short .regcoin{flex-wrap:wrap}body.short .regcoin>div:first-child{flex:1 1 100%}body.short .regcoin>.row{flex-wrap:wrap}
 @media (max-height:420px){.vf summary{min-height:24px;padding:2px 4px}.vf-news h4{font-size:11px}.vf-list li{padding:2px 0}}`;
-export function injectCss(doc = globalThis.document) { if (!doc || doc.getElementById('vf-css')) return; const s = doc.createElement('style'); s.id = 'vf-css'; s.textContent = CSS; doc.head.appendChild(s); }
+export function injectCss(doc = globalThis.document) { if (!doc || doc.getElementById('vf-css')) return; const s = doc.createElement('style'); s.id = 'vf-css'; s.textContent = CSS + WALLET_CSS; doc.head.appendChild(s); }
 
 // Verified Launch opt-in (also used by the Coin board's "register an existing pump.fun coin" form). Off by default.
 export function verifiedOptHtml(on, id) { return `<label class="vfopt" style="display:flex;gap:6px;align-items:flex-start;margin:6px 0;padding:5px 6px;border:2px dashed var(--goldd,#8a6a1a);font-size:11px;line-height:1.35"><input id="${id}" type="checkbox" style="width:auto;margin-top:2px" ${on ? 'checked' : ''}><span><b>Opt in to the Verified Launch badge</b> (optional). Four on-chain checks: mint + freeze authority renounced · creator fee split published on pump.fun · no snipes in the first 5 slots · each top-10 holder under 1%. Badge only if all four pass; re-checked about every 15 min and revoked, with the reason, if one later fails. Unticked = nothing shown.</span></label>`; }

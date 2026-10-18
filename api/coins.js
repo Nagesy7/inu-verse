@@ -19,10 +19,13 @@ import crypto from "node:crypto";
 import { evaluatePairs, PAIR_CANDIDATES } from "./_lib/pairs.js";
 import { rpcUrl, redact } from "./_lib/rpc.js";
 import { cleanChecks, makeRpc } from "./_lib/clean.js";
+import { checkDeclaration } from "./_lib/declaration.js";
+import { TREASURY_WALLET, KIBBLE_SPLIT } from "../src/wallets.js";
+import { DECL_MAX_AGE_MS } from "../src/declaration.js";
 import { verifiedChecks, nextRecord, publicRecord, queueAnnouncement, releaseNews, VKEY, SNIPE_KEY, VLOCK, VERIFIED_TTL_MS, VERIFY_PER_REQ, SNIPE_SLOTS, ANNOUNCE_GAP_S } from "./_lib/verified.js";
 
 export const KIBBLE_MINT = "4VE9sy4fEMJdZ6i7MkYPbnqDJd2oqzJQmg44WJ3opump";
-export const OWNER_WALLET = "BzLYTFAfUsjzQ5x8bx5BbPK4DFtaHrLCuferkvkxTNGJ";
+export const OWNER_WALLET = TREASURY_WALLET; // President's Vault (src/wallets.js)
 export const PUMP_PROGRAM = "6EF8rrecthR5Dkzon8Nwu78hRvfCKubJ14M5uBEwF6P";
 export const REPORTS_TO_HIDE = 3;
 const KP = "https://kibble-pay.vercel.app";
@@ -114,8 +117,12 @@ async function cleanFor(store, mints, D) { const out = {}; let budget = CLEAN_PE
 // ---- Verified Launch (opt-in) · GET /api/coins?verified=<mint>[,...] and GET /api/coins?news=1 (see api/_lib/verified.js) ----
 // Lazy re-check with a TTL: a stored record (launchhall:verified:v1:<mint>) older than VERIFIED_TTL_MS is recomputed on read,
 // at most VERIFY_PER_REQ coins per request, one lock per coin. Coins that did not opt in get null (the client shows nothing).
+export const DECL_KEY = "declaration:", OPTIN_KEY = "verifiedoptin:"; // $KIBBLE isn't on the board: its opt-in lives in OPTIN_KEY
+async function coinForVerified(store, m) { if (m === KIBBLE_MINT) return { mint: m, name: "Kibble", symbol: "KIBBLE", creator: null, verifiedOptIn: !!(await store.get(OPTIN_KEY + m)) };
+  try { return JSON.parse((await store.get("coin:" + m)) || "null"); } catch { return null; } }
+const getDecl = async (store, m) => { try { return JSON.parse((await store.get(DECL_KEY + m)) || "null"); } catch { return null; } };
 async function verifiedFor(store, mints, D) { const out = {}; let budget = VERIFY_PER_REQ;
-  for (const m of mints) { let coin = null; try { coin = JSON.parse((await store.get("coin:" + m)) || "null"); } catch {}
+  for (const m of mints) { const coin = await coinForVerified(store, m);
     if (!coin || coin.removed || coin.hidden || !coin.verifiedOptIn) { out[m] = null; continue; }
     let rec = null; try { rec = JSON.parse((await store.get(VKEY + m)) || "null"); } catch {}
     const age = rec?.checkedAt ? D.now() - Math.max(rec.checkedAt, rec.lastAttemptAt || 0) : Infinity;
@@ -124,7 +131,7 @@ async function verifiedFor(store, mints, D) { const out = {}; let budget = VERIF
     if (!mine) { out[m] = rec ? { ...publicRecord(rec), stale: true } : { mint: m, optIn: true, status: "pending" }; continue; }
     budget--;
     try { const snipeCache = { get: async (x) => JSON.parse((await store.get(SNIPE_KEY + x)) || "null"), set: (x, v) => store.set(SNIPE_KEY + x, JSON.stringify(v)) };
-      const r = await D.verify(m, coin.creator, snipeCache); const next = nextRecord(rec, r, r.checkedAt);
+      const r = await D.verify(m, coin.creator, snipeCache, await getDecl(store, m)); const next = nextRecord(rec, r, r.checkedAt);
       if (next.newly) { try { await queueAnnouncement(store, coin, next); } catch {} }
       await store.set(VKEY + m, JSON.stringify({ ...next, newly: false })); out[m] = publicRecord(next); }
     catch { out[m] = rec ? { ...publicRecord(rec), stale: true } : { mint: m, optIn: true, status: "unknown", error: "checks unavailable right now" }; }
@@ -144,7 +151,7 @@ export function makeHandler({ env = process.env, store = upstashStore(env), deps
   json.env = env;
   const RPC = rpcUrl(env);
   const D = { sessionWallet: (t) => sessionWallet(t), pumpCreator: (m) => pumpCreator(m, { rpc: RPC }), launchTx: (s) => launchTx(s, { rpc: RPC }), now: () => Date.now(), dexInfo: (m) => dexInfo(m), pairs: () => evaluatePairs(), clean: (m, creatorHint) => cleanChecks(m, { rpc: makeRpc(RPC, fetch, env), creatorHint, dexLiquidityUsd: (x) => dexLiquidity(x), solUsd: () => solUsd() }),
-    verify: (m, creatorHint, snipeCache) => verifiedChecks(m, { rpc: makeRpc(RPC, fetch, env), creatorHint, snipeCache }), ...deps };
+    verify: (m, creatorHint, snipeCache, declaration) => verifiedChecks(m, { rpc: makeRpc(RPC, fetch, env), creatorHint, snipeCache, declaration }), ...deps };
   return async function handler(req, res) {
     if (req.method === "OPTIONS") { res.statusCode = 204; return res.end(); }
     if (req.method === "GET" && /[?&]pairs=1/.test(req.url || "")) return json(res, 200, await D.pairs());
@@ -156,6 +163,10 @@ export function makeHandler({ env = process.env, store = upstashStore(env), deps
         if (!mints.length) return json(res, 400, { error: "clean=<mint>[,<mint>...]" }); return json(res, 200, { clean: await cleanFor(store, mints, D), ttlMs: CLEAN_TTL_MS }); }
       if (req.method === "GET" && q.verified) { const mints = [...new Set(String(q.verified).split(",").map((x) => x.trim()).filter((x) => B58.test(x)))].slice(0, CLEAN_MAX);
         if (!mints.length) return json(res, 400, { error: "verified=<mint>[,<mint>...]" }); return json(res, 200, { verified: await verifiedFor(store, mints, D), ttlMs: VERIFIED_TTL_MS, snipeSlots: SNIPE_SLOTS }); }
+      if (req.method === "GET" && q.declare) { const m = String(q.declare).trim(); if (!B58.test(m)) return json(res, 400, { error: "declare=<mint>" });
+        const coin = await coinForVerified(store, m); if (!coin || coin.removed) return json(res, 404, { error: "coin not registered" });
+        const pc = await D.pumpCreator(m).catch(() => ({ ok: false, reason: "creator lookup failed" })), d = await getDecl(store, m);
+        return json(res, 200, { mint: m, symbol: coin.symbol || "", creator: pc.ok ? pc.creator : null, creatorError: pc.ok ? null : pc.reason, split: m === KIBBLE_MINT ? KIBBLE_SPLIT : d?.split || null, publishedSplit: m === KIBBLE_MINT, declaration: d, optIn: !!coin.verifiedOptIn, maxAgeMs: DECL_MAX_AGE_MS }); }
       if (req.method === "GET" && q.news) return json(res, 200, { news: await releaseNews(store, D.now()), gapS: ANNOUNCE_GAP_S });
       if (req.method === "GET") { const all = q.all === "1"; if (all && !(await isAdmin(req, env, D))) return json(res, 403, { error: "admin only" });
         return json(res, 200, { coins: await listCoins(store, all), reportsToHide: REPORTS_TO_HIDE, kibble: KIBBLE_MINT, verification: "pump.fun bonding-curve creator == signed-in wallet" }); }
@@ -163,6 +174,22 @@ export function makeHandler({ env = process.env, store = upstashStore(env), deps
       const body = typeof req.body === "string" ? JSON.parse(req.body || "{}") : req.body || {};
       const mint = String(body.mint || "").trim(); if (!B58.test(mint)) return json(res, 400, { error: "that is not a Solana mint address" });
       const key = "coin:" + mint;
+      // Creator-signed opt-in + fee split declaration (signMessage in the creator's own wallet; the server never signs). The signer
+      // must be the coin's ON-CHAIN pump.fun creator, read live; $KIBBLE's split must equal the published one in src/wallets.js.
+      if (body.action === "declare") {
+        const ip = String(req.headers["x-forwarded-for"] || req.socket?.remoteAddress || "?").split(",")[0].trim(), rk = "rl:declare:" + crypto.createHash("sha256").update(ip).digest("hex").slice(0, 16) + ":" + Math.floor(D.now() / 3.6e6);
+        try { const n = await store.incr(rk); if (n === 1) await store.expire(rk, 3700); if (n > 20) return json(res, 429, { error: "too many attempts, try again later" }); } catch {}
+        const coin = await coinForVerified(store, mint); if (!coin || coin.removed) return json(res, 404, { error: "register the coin first" });
+        const split = mint === KIBBLE_MINT ? KIBBLE_SPLIT.map((x) => ({ address: x.address, bps: x.bps })) : body.split;
+        const d = { mint, symbol: mint === KIBBLE_MINT ? "KIBBLE" : clean(coin.symbol, 12), split, signer: String(body.signer || ""), issuedAt: Number(body.issuedAt), signature: String(body.signature || "") };
+        if (!B58.test(d.signer)) return json(res, 400, { error: "bad signer" });
+        const pc = await D.pumpCreator(mint); if (!pc.ok) return json(res, 400, { error: pc.reason });
+        const v = checkDeclaration(d, { creator: pc.creator, now: D.now(), fresh: true, expectedSplit: mint === KIBBLE_MINT ? split : null });
+        if (!v.ok) return json(res, v.reason.startsWith("signer") ? 403 : 400, { error: v.reason });
+        const stored = { ...d, message: v.message, verifiedAt: D.now() }; await store.set(DECL_KEY + mint, JSON.stringify(stored));
+        if (mint === KIBBLE_MINT) await store.set(OPTIN_KEY + mint, String(D.now())); else if (!coin.verifiedOptIn) { coin.verifiedOptIn = true; coin.verifiedOptInAt = D.now(); await store.set(key, JSON.stringify(coin)); }
+        try { await store.del(VKEY + mint); } catch {} // next ?verified= read re-checks with the declaration
+        return json(res, 200, { ok: true, declaration: stored, optIn: true }); }
       if (body.action === "register") {
         let wallet = await D.sessionWallet(bearer(req)), via = "session", lt0 = null;
         if (!wallet && body.signature) { // no-extension launch: prove it with the create transaction itself

@@ -18,6 +18,7 @@ import { makeAlive, stepAlive, drawAliveGround, drawAliveSky, ALIVE } from './al
 import { makeAmbient, stepAmbient, throwBall, dayPhase, timeForHour, drawGroundLife, drawSkyLife, drawAtmosphere, drawEmote, lightsFor, addMail, unreadMail, EMOTES, DAY_LEN } from './ambient.js';
 import { initAudio, setMusicActive, setMuted, isMuted, footstep, chirp, bork, blip, uiClick, uiOpen, uiClose, textBlip, rustle, fanfare, cafeChime, munch, sip, clink, crierBell } from './audio.js';
 import * as VF from './verified.js'; // Verified Launch badge (opt-in) + town crier news
+import * as WL from './wallets.js'; // named wallets (President's Vault, Kennel Chest, Bone Vault)
 import { DISHES, order as dinerOrder, favourite as dinerFav, dishById } from './diner.js';
 import { makeCafePlay } from './cafeplay.js';
 import { drawDishIcon } from './dinerart.js';
@@ -199,7 +200,7 @@ function startGame(s) { loadProfile(s).catch(() => {}); ENG.ensureEngage(s); ENG
   { const sp = new URLSearchParams(location.search).get('spawn'), d = sp && [ARCADE, ...GAME_DOORS].find((x) => x.id === sp);
     if (d && d.door) { const o = outsideOf({ ...d.door, id: d.id }); Object.assign(state.player, { x: o.x, y: o.y }); player.face = o.face; } }
   cam.x = state.player.x; cam.y = state.player.y; hud(); persist(); wayUi(true);
-  setTimeout(tourCheck, 1400);
+  if (/[?&]kibblesign=1/.test(location.search)) setTimeout(() => openPanel('launch', { tab: 'kibble', sign: true }), 900); else setTimeout(tourCheck, 1400); // ?kibblesign=1: creator signing card for $KIBBLE
 }
 
 // ---------------- Input ----------------
@@ -824,7 +825,7 @@ function openPanel(kind, opts = {}) {
 const priceTag = (m) => m.cur === 'bones' ? `${m.price} bones` : (() => { const q = wallet().quote(Math.round(m.price * 1e6)); return `${m.price} KIBBLE <small>+2% = ${(q.total / 1e6).toFixed(2)}</small>`; })();
 function carIcon(model, color) { const m = CAR_MODELS[model]; return iconCanvas((x) => { x.imageSmoothingEnabled = false; x.scale(0.75, 0.75); drawCar(x, 43, 58, { col: CAR_COLORS[color], kind: m.kind, dir: 'east' }); }, 64, 52); }
 function renderDealer() { const body = $('#panel-body'), lux = panel.dealer === 'luxauto', g = ensureGarage(state); panel.col ||= {};
-  body.innerHTML = `<h2>${lux ? 'Zoomies Luxury Autos' : 'Zoomies Motors'}</h2><p class="sub">${lux ? `Luxury cars in ${kibText(state)}. ${FEE_LABEL}. Paid to the treasury <code>${TREASURY.slice(0, 6)}…${TREASURY.slice(-4)}</code> via the ${wallet().simulated ? 'simulated' : 'live'} wallet.` : `Everyday cars priced in bones (you have ${Math.floor(state.bones)}).`} Pick a colour, buy, then drive it from your Garage.</p><div class="grid" id="dealgrid"></div>`;
+  body.innerHTML = `<h2>${lux ? 'Zoomies Luxury Autos' : 'Zoomies Motors'}</h2><p class="sub">${lux ? `Luxury cars in ${kibText(state)}. ${FEE_LABEL}. Paid to the treasury, ${WL.walletHtml(TREASURY)}, via the ${wallet().simulated ? 'simulated' : 'live'} wallet.` : `Everyday cars priced in bones (you have ${Math.floor(state.bones)}).`} Pick a colour, buy, then drive it from your Garage.</p><div class="grid" id="dealgrid"></div>`;
   const grid = $('#dealgrid');
   for (const [id, m] of Object.entries(CAR_MODELS).filter(([, m]) => m.dealer === panel.dealer)) { const col = panel.col[id] || (lux ? 'Gold' : 'Red'), owned = g.cars.filter((c) => c.model === id).length;
     const card = document.createElement('div'); card.className = 'card'; card.appendChild(carIcon(id, col));
@@ -970,7 +971,7 @@ const VFX = { on: /[?&]verifiedpreview=1/.test(location.search), data: null }; i
 VF.injectCss();
 async function loadVerified() { const want = REG.coins.filter((c) => c.verifiedOptIn && !c.fixture).map((c) => c.mint); if (want.length) await VF.fetchVerified(want);
   document.querySelectorAll('[data-vfslot]').forEach((el) => { const m = el.dataset.vfslot, open = !!el.querySelector('details[open]'); el.innerHTML = vfBadge(m, open); }); }
-const vfBadge = (mint, open) => VF.badgeHtml(mint, { open, fixture: !!REG.coins.find((c) => c.mint === mint)?.fixture });
+const vfBadge = (mint, open) => VF.badgeHtml(mint, { open, fixture: !!REG.coins.find((c) => c.mint === mint)?.fixture || !!VF.recOf(mint)?.fixture });
 const vfSlot = (mint, open = false) => `<div class="vfslot" data-vfslot="${mint}">${vfBadge(mint, open)}</div>`;
 const NEWS = { list: [], crier: VF.makeCrier(), pending: null };
 async function refreshNews() { if (document.hidden) return; const real = await VF.fetchNews(); NEWS.list = [...(VFX.on ? VFX.data.news : []), ...real];
@@ -992,7 +993,7 @@ function renderLaunch() {
   const K0 = RC.KIBBLE, link = (u, l, cls = 'btn') => `<a class="${cls}" href="${u}" target="_blank" rel="noopener noreferrer">${l}</a>`;
   if (tab === 'kibble') body.innerHTML = `${head}<div class="card rcoin" style="text-align:left"><h3 style="margin:0">$KIBBLE <span class="small">official · Solana ${K0.program} · mint authority renounced</span></h3>
      <div class="small">Contract address (only this one is real):</div><div class="ca"><code id="kib-ca">${K0.mint}</code><button class="btn alt" data-copy="${K0.mint}">Copy</button></div>
-     ${statBox(K0.mint)}${cleanSlot(K0.mint)}<div class="small" id="kib-src">Live from DexScreener, refreshed every minute. Shows "unavailable" if the feed is down.</div>
+     ${statBox(K0.mint)}<div class="kibsplit"><b>Creator fee split</b>${WL.splitHtml(WL.KIBBLE_SPLIT)}</div>${vfSlot(K0.mint)}${cleanSlot(K0.mint)}<div id="kibsign"></div>${panel.sign ? '' : '<div class="row" style="justify-content:flex-start;margin:2px 0"><button class="btn tiny ghost" id="kib-signopen">Creator: opt $KIBBLE in to Verified Launch</button></div>'}<div class="small" id="kib-src">Live from DexScreener, refreshed every minute. Shows "unavailable" if the feed is down.</div>
      <div class="row" style="justify-content:flex-start">${link(RC.PUMP_COIN(K0.mint), 'View on pump.fun', 'btn green')}${link(RC.DEX_URL(K0.mint), 'DexScreener chart', 'btn ghost')}</div></div>${NFA}`;
   else if (tab === 'launch') body.innerHTML = `${head}<div id="noext" class="noext"><div class="small">Loading launcher…</div></div><details class="card" style="text-align:left"><summary><b>Prefer pump.fun's own page (any pair)? Step-by-step guide</b></summary>
      <p class="small">Inu Verse never creates, holds or signs tokens. You launch on pump.fun with your own wallet; pump.fun shows you every fee and step before you sign.</p>
@@ -1029,7 +1030,9 @@ function renderLaunch() {
     el.innerHTML = r.pairs.map((p) => `<div class="pairrow ${p.featured ? 'feat' : ''}"><b>${p.featured ? '★ ' : ''}$${esc(p.symbol)}</b><span class="small">${esc(p.name)}${p.mcap != null && !p.featured ? ' · MC ' + RC.fmtUsd(p.mcap) + ' · liq ' + RC.fmtUsd(p.liquidity) : ''}</span><code>${RC.short(p.mint)}</code><button class="btn tiny ghost" data-copy="${p.mint}">Copy CA</button>${p.featured ? `<div class="small kibnote">${p.mcap != null ? 'MC ' + RC.fmtUsd(p.mcap) + ' · liq ' + RC.fmtUsd(p.liquidity) + ' · ' : ''}${esc(p.note || "If $KIBBLE doesn't appear under Custom Pairs when you paste the CA, it isn't available as a pair yet.")}</div>` : ''}</div>`).join('')
       + `<div class="small">${r.rules ? `Inu/Doge pairs shown only while market cap ≥ ${RC.fmtUsd(r.rules.minMcapUsd)}, liquidity ≥ ${RC.fmtUsd(r.rules.minLiquidityUsd)} and RugCheck shows no danger (checked live). $KIBBLE is always featured (no thresholds), but pump.fun decides whether it can be picked yet.` : 'Pair checks unavailable right now: only $KIBBLE shown.'}</div>`;
     el.querySelectorAll('[data-copy]').forEach((b) => b.onclick = () => copyText(b.dataset.copy)); });
-  if (tab === 'board') { renderRegBoard(); refreshRegistry(true); } else if (tab === 'kibble') { refreshRealStats(); loadClean([RC.KIBBLE.mint]); }
+  if (tab === 'board') { renderRegBoard(); refreshRegistry(true); } else if (tab === 'kibble') { refreshRealStats(); loadClean([RC.KIBBLE.mint]); (VFX.on ? Promise.resolve() : VF.fetchVerified([RC.KIBBLE.mint])).then(() => { const el = document.querySelector(`[data-vfslot="${RC.KIBBLE.mint}"]`); if (el) el.innerHTML = vfBadge(RC.KIBBLE.mint, !!el.querySelector('details[open]')); });
+    const mountKs = () => import('./kibblesign.js').then((m) => m.mountSign($('#kibsign'), { onDone: () => VF.fetchVerified([RC.KIBBLE.mint]) })).catch(() => { const el = $('#kibsign'); if (el) el.innerHTML = '<div class="small">Signing card unavailable right now.</div>'; });
+    if (panel.sign) { mountKs(); setTimeout(() => $('#kibsign')?.scrollIntoView?.({ block: 'start' }), 300); } if ($('#kib-signopen')) $('#kib-signopen').onclick = () => { panel.sign = true; $('#kib-signopen').remove(); mountKs(); }; }
 }
 async function copyText(t) { try { await navigator.clipboard.writeText(t); toast('Copied contract address', 'good'); } catch { const i = document.createElement('textarea'); i.value = t; document.body.appendChild(i); i.select(); try { document.execCommand('copy'); toast('Copied', 'good'); } catch { toast(t); } i.remove(); } }
 async function registerCoin() {
@@ -1311,7 +1314,7 @@ function renderMall() {
     return;
   }
   if (cat === 'office') {
-    body.innerHTML = `${demo}<h2>President's Office</h2><div class="packhead"><span id="presimg"></span><div><h3 style="margin:0">${OWNER.name}</h3><div class="small">${OWNER.title}</div><div class="small">President's treasury (Solana): <code style="word-break:break-all">${OWNER_WALLET}</code> <span id="office-note">${esc(officeTreasuryNote(DEMO))}</span></div></div></div>${pools}
+    body.innerHTML = `${demo}<h2>President's Office</h2><div class="packhead"><span id="presimg"></span><div><h3 style="margin:0">${OWNER.name}</h3><div class="small">${OWNER.title}</div><div class="small">President's treasury (Solana): ${WL.walletHtml(OWNER_WALLET)} <span id="office-note">${esc(officeTreasuryNote(DEMO))}</span></div></div></div>${pools}
       <p class="sub">Fee routing per purchase: 1% → President's Treasury · 0.25% → daily pool · 0.5% → weekly pool · 0.25% → monthly pool. All of the price goes to the treasury wallet; the pools are an off-chain ledger, paid out by rank (see Prize Rules).</p>
       <h3>Fee ledger</h3>${officeLedgerNote(DEMO) ? `<p class="small" id="office-ledger-note">${officeLedgerNote(DEMO)}</p>` : `<div class="board">${m.ledger.map((l) => `<div class="post"><b>${esc(MALL_ITEMS[l.item]?.name || l.item)}</b> price ${fmtK(l.price)} · fee ${fmtK(l.fee)} = owner ${fmtK(l.owner)} + daily ${fmtK(l.daily)} + weekly ${fmtK(l.weekly)} + monthly ${fmtK(l.monthly)}</div>`).join('') || '<p class="small">No purchases yet.</p>'}</div>`}`;
     $('#presimg').appendChild(spriteCanvas('golden', { top: 'gold_suit', hat: 'crown', neck: 'diamond_chain', bottom: 'slacks_black', feet: 'loafers' }, 72, 92, 1));

@@ -2,8 +2,9 @@
 // is awarded only when all four pass. Anything that cannot be read is "unknown" ("couldn't check"), never a pass.
 //
 //   (a) authorities  mint authority AND freeze authority are both renounced           getAccountInfo(mint, jsonParsed)
-//   (b) feeSplit     a pump.fun creator fee split is published                        getAccountInfo(SharingConfig PDA)
-//                    (SharingConfig account exists, owned by the pump.fun fee program, for this mint, shares add up to 100%)
+//   (b) feeSplit     a creator fee split is published. First the on-chain pump.fun SharingConfig PDA (must match the
+//                    expected split: $KIBBLE's official 40/35/25); if that account doesn't exist, a declaration signed by
+//                    the coin's on-chain creator, labelled "Published by creator — not enforced on-chain"
 //   (c) snipes       NO SNIPES RULE: no wallet other than the creator picked up tokens in the first SNIPE_SLOTS slots of the
 //                    coin's life, i.e. slots S .. S+SNIPE_SLOTS-1 where S is the slot of the coin's first bonding-curve
 //                    transaction (its creation). SNIPE_SLOTS = 5 (the creation slot + the next 4, about 2 seconds).
@@ -17,6 +18,10 @@
 // the past, so once it is definite it is stored for good and later re-checks skip it.
 import { bondingCurveOf, PUMP_PROGRAM, b58encode } from "../coins.js";
 import { holderTable, sharingConfigOf, parseSharing, PUMP_FEES } from "./clean.js";
+import { checkDeclaration } from "./declaration.js";
+import { sameSplit, splitDiff } from "../../src/declaration.js";
+import { nameOf, KIBBLE_MINT, KIBBLE_SPLIT } from "../../src/wallets.js";
+export const expectedSplitOf = (mint) => (mint === KIBBLE_MINT ? KIBBLE_SPLIT : null); // published split to compare against
 
 export const SNIPE_SLOTS = 5, TOP_HOLDER_MAX_PCT = 1, TOP_N = 10;
 export const VERIFY_HISTORY_PAGES = 5, SNIPE_MAX_TXS = 60, SNIPE_SETTLE_S = 90; // window must be 90 s old before it counts
@@ -26,7 +31,7 @@ export const ORDER = ["authorities", "feeSplit", "snipes", "top10"];
 export const LABELS = { authorities: "Mint + freeze authority renounced", feeSplit: "Creator fee split published", snipes: `No snipes in the first ${SNIPE_SLOTS} slots`, top10: `Top ${TOP_N} holders each under ${TOP_HOLDER_MAX_PCT}% of supply` };
 export const SOURCES = {
   authorities: "Solana RPC (via our server): getAccountInfo on the mint account",
-  feeSplit: "Solana RPC (via our server): pump.fun fee-sharing config account (PDA [\"sharing-config\", mint] of pfeeUx…VojVZ)",
+  feeSplit: "On-chain pump.fun fee-sharing config (PDA [\"sharing-config\", mint] of pfeeUx…VojVZ), else a creator-signed declaration",
   snipes: `Solana RPC (via our server): bonding-curve signatures back to creation + getTransaction for slots S..S+${SNIPE_SLOTS - 1}`,
   top10: "Solana RPC (via our server): getTokenLargestAccounts (20 largest accounts) + account owners; bonding curve and pool vaults excluded",
 };
@@ -42,16 +47,29 @@ export async function checkAuthorities(mint, rpc) {
     return { ctx, c: ck("authorities", "pass", "Mint authority and freeze authority are both renounced") }; }
   catch { return { c: ck("authorities", "unknown", "Couldn't check: mint account unavailable from RPC right now") }; }
 }
-export async function checkFeeSplit(mint, rpc) {
-  const account = sharingConfigOf(mint);
-  try { const v = (await rpc.one("getAccountInfo", [account, { encoding: "base64" }]))?.value;
-    if (!v) return ck("feeSplit", "fail", "No creator fee split published (no pump.fun fee-sharing config on-chain)", { account });
-    if (v.owner !== PUMP_FEES) return ck("feeSplit", "unknown", "Couldn't check: fee-sharing account has an unexpected owner", { account });
-    const cfg = parseSharing(Buffer.from(v.data[0], "base64")); if (!cfg || cfg.mint !== mint) return ck("feeSplit", "unknown", "Couldn't check: fee-sharing config unreadable", { account });
-    const list = cfg.shareholders.map((h) => `${short(h.address)} ${h.bps / 100}%`).join(", ");
-    if (!cfg.shareholders.length || cfg.totalBps !== 10000) return ck("feeSplit", "fail", `Fee split config found but shares add up to ${cfg.totalBps / 100}% (need 100%)`, { account });
-    return ck("feeSplit", "pass", `Fee split published: ${list}${cfg.adminRevoked ? " (locked)" : " (admin can still edit it)"}${cfg.status === "paused" ? ", currently paused" : ""}`, { account, shareholders: cfg.shareholders, locked: cfg.adminRevoked }); }
-  catch { return ck("feeSplit", "unknown", "Couldn't check: fee-sharing config unavailable from RPC right now", { account }); }
+// Fee split: (1) derive + read the pump.fun SharingConfig PDA ["sharing-config", mint] of the Pump Fees program (strongest proof).
+// If it exists, its shares must match the expected split ($KIBBLE: the official 40/35/25 in src/wallets.js; other coins: the
+// creator's declaration if any). (2) If it does not exist, fall back to the creator-signed declaration, labelled
+// "Published by creator — not enforced on-chain". On-chain vs declaration disagreement fails with the reason.
+const withNames = (split) => split.map((h) => ({ address: h.address, bps: h.bps, name: nameOf(h.address) }));
+export async function checkFeeSplit(mint, rpc, { creator = null, declaration = null, expected = expectedSplitOf(mint) } = {}) {
+  const account = sharingConfigOf(mint), onSrc = `On-chain: pump.fun fee-sharing config ${short(account)} (PDA ["sharing-config", mint] of the Pump Fees program pfeeUx…VojVZ)`;
+  let v; try { v = (await rpc.one("getAccountInfo", [account, { encoding: "base64" }]))?.value; } catch { return ck("feeSplit", "unknown", "Couldn't check: fee-sharing config unavailable from RPC right now", { account }); }
+  const decl = declaration ? checkDeclaration(declaration, { creator }) : null, want = expected || (decl?.ok ? declaration.split : null);
+  if (v) {
+    if (v.owner !== PUMP_FEES) return ck("feeSplit", "unknown", "Couldn't check: fee-sharing account has an unexpected owner", { account, source: onSrc });
+    const cfg = parseSharing(Buffer.from(v.data[0], "base64")); if (!cfg || cfg.mint !== mint) return ck("feeSplit", "unknown", "Couldn't check: fee-sharing config unreadable", { account, source: onSrc });
+    const got = cfg.shareholders.map((h) => ({ address: h.address, bps: h.bps })), extra = { account, source: onSrc, split: withNames(got), splitSource: "onchain", locked: cfg.adminRevoked };
+    if (!got.length || cfg.totalBps !== 10000) return ck("feeSplit", "fail", `On-chain fee split shares add up to ${cfg.totalBps / 100}% (need 100%)`, extra);
+    if (want && !sameSplit(want, got)) return ck("feeSplit", "fail", `On-chain fee split doesn't match the ${expected ? "published" : "creator's declared"} split: ${splitDiff(want, got)}`, extra);
+    if (declaration && decl?.ok && !sameSplit(declaration.split, got)) return ck("feeSplit", "fail", `On-chain fee split and the creator's signed declaration disagree: ${splitDiff(declaration.split, got)}`, extra);
+    return ck("feeSplit", "pass", `Fee split enforced on-chain: ${got.map((h) => `${h.bps / 100}% ${nameOf(h.address) || short(h.address)}`).join(", ")}${cfg.adminRevoked ? " (locked)" : " (admin can still edit it)"}${want ? ", matches the published split" : ""}`, extra);
+  }
+  const declSrc = `Published by creator — not enforced on-chain: declaration signed by the on-chain creator${declaration?.signer ? ` ${nameOf(declaration.signer) ? nameOf(declaration.signer) + " " : ""}${short(declaration.signer)}` : ""} (ed25519 signature checked by our server); on-chain fee-sharing config ${short(account)} not found`;
+  if (!declaration) return ck("feeSplit", "fail", "No creator fee split published (no on-chain fee-sharing config and no creator-signed declaration)", { account });
+  if (!decl.ok) return ck("feeSplit", decl.unknown ? "unknown" : "fail", `${decl.unknown ? "Couldn't check" : "Creator declaration rejected"}: ${decl.reason}`, { account, source: declSrc });
+  if (expected && !sameSplit(expected, declaration.split)) return ck("feeSplit", "fail", `Creator declaration doesn't match the published split: ${splitDiff(expected, declaration.split)}`, { account, source: declSrc });
+  return ck("feeSplit", "pass", `Published by creator — not enforced on-chain: ${declaration.split.map((h) => `${h.bps / 100}% ${nameOf(h.address) || short(h.address)}`).join(", ")}`, { account, source: declSrc, split: withNames(declaration.split), splitSource: "declaration", declaredAt: declaration.issuedAt });
 }
 const tokBal = (list, owner, mint) => (list || []).filter((b) => b.owner === owner && b.mint === mint).reduce((s, b) => s + Number(b.uiTokenAmount?.amount || 0), 0);
 // Snipes: the curve's history back to its first transaction (creation slot S), then every successful tx in S..S+SNIPE_SLOTS-1.
@@ -88,12 +106,12 @@ export async function checkTopHolders(mint, rpc, supply) {
   catch { return ck("top10", "unknown", "Couldn't check: holder list unavailable from RPC right now"); }
 }
 // All four checks. snipeCache: { get(mint) -> stored check | null, set(mint, check) } so a definite, settled result is reused.
-export async function verifiedChecks(mint, { rpc, creatorHint = null, snipeCache = null, now = Date.now() } = {}) {
+export async function verifiedChecks(mint, { rpc, creatorHint = null, snipeCache = null, declaration = null, now = Date.now() } = {}) {
   const a = await checkAuthorities(mint, rpc);
   let creator = creatorHint; try { const v = (await rpc.one("getAccountInfo", [bondingCurveOf(mint), { encoding: "base64" }]))?.value; if (v?.owner === PUMP_PROGRAM) { const d = Buffer.from(v.data[0], "base64"); if (d.length >= 81) creator = b58encode(d.subarray(49, 81)); } } catch {}
   let snipes = null; try { snipes = await snipeCache?.get(mint); } catch {}
   if (!snipes) { snipes = await checkSnipes(mint, rpc, { creator, nowS: now / 1000 }); if (snipes.status !== "unknown") try { await snipeCache?.set(mint, snipes); } catch {} }
-  const checks = { authorities: a.c, feeSplit: await checkFeeSplit(mint, rpc), snipes, top10: await checkTopHolders(mint, rpc, a.ctx?.supply) };
+  const checks = { authorities: a.c, feeSplit: await checkFeeSplit(mint, rpc, { creator, declaration }), snipes, top10: await checkTopHolders(mint, rpc, a.ctx?.supply) };
   return { mint, checks, verdict: verdictOf(checks), creator, checkedAt: now };
 }
 // pass only if all four pass; any fail -> fail; otherwise unknown ("couldn't check").

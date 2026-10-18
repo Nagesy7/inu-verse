@@ -2,6 +2,7 @@
 // Logic lives in noext.js; this file is DOM only. Styles are injected here so the shared style.css stays untouched.
 import * as NX from './noext.js';
 import { verifiedOptHtml } from './verified.js';
+import { nameOf, walletHtml } from './wallets.js';
 const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 const short = (a) => (a ? `${a.slice(0, 4)}…${a.slice(-4)}` : '');
 const CSS = `.noext{display:grid;grid-template-columns:1fr 1fr;gap:8px;text-align:left;margin-bottom:8px}@media (max-width:560px){.noext{grid-template-columns:1fr}}
@@ -59,7 +60,7 @@ function walletCard() {
   const cfg = S.cfg || {}, soon = !cfg.phantomAppId, w = S.wallet;
   const social = (p, l) => `<button class="btn ${soon ? 'ghost soon' : 'green'}" data-nx="${p}" ${soon ? 'disabled title="Coming soon"' : ''}>${l}${soon ? '<small>coming soon</small>' : ''}</button>`;
   const hasExt = NX.extensionWallet().available();
-  return `<div class="card"><h4><span class="num">1</span>Your wallet</h4>${w ? `<div class="small" style="margin:0">Connected with <b>${esc(w.label)}</b></div><div class="addr">${esc(w.address)}</div><div class="row"><button class="btn tiny ghost" data-nx="copy">Copy address</button><button class="btn tiny ghost" data-nx="disconnect">Disconnect</button></div>`
+  return `<div class="card"><h4><span class="num">1</span>Your wallet</h4>${w ? `<div class="small" style="margin:0">Connected with <b>${esc(w.label)}</b></div><div class="addr">${esc(w.address)}</div>${nameOf(w.address) ? `<div class="small">${walletHtml(w.address)}</div>` : ''}<div class="row"><button class="btn tiny ghost" data-nx="copy">Copy address</button><button class="btn tiny ghost" data-nx="disconnect">Disconnect</button></div>`
     : `<div class="small" style="margin:0 0 4px">No extension needed: sign in and Phantom creates a wallet that <b>you</b> own.</div><div class="row">${social('google', 'Sign in with Google')}${social('apple', 'Sign in with Apple')}</div>
       <div class="row"><button class="btn alt" data-nx="extension">${hasExt ? 'Use Phantom extension' : 'Phantom extension'}</button><span class="small" style="margin:0">${hasExt ? 'detected' : 'not detected'}</span>${hasExt ? '' : `<a class="btn ghost" href="https://phantom.app/ul/browse/${encodeURIComponent(location.href.split('?')[0])}?ref=${encodeURIComponent(location.origin)}">Open in Phantom app ↗</a>`}</div>${soon ? '<div class="small" style="margin:2px 0 0">Google/Apple sign-in is being set up. You can use the Phantom extension or app meanwhile.</div>' : ''}`}
     ${S.err ? `<div class="small bad">${esc(S.err)}</div>` : ''}</div>`; }

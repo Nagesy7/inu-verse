@@ -4,7 +4,8 @@
 // Contract: wallet.purchase({ state, itemId, name, priceU }) -> Promise<{ ok, reason?, quote, sig, simulated }>
 import { ensureMall, feeSplit, settle, toU, fromU, fmtK, OWNER_WALLET } from './mall.js';
 
-export const TREASURY = 'BzLYTFAfUsjzQ5x8bx5BbPK4DFtaHrLCuferkvkxTNGJ'; // = mall.OWNER_WALLET (literal: wallet.js and mall.js import each other)
+import { TREASURY_WALLET } from './wallets.js';
+export const TREASURY = TREASURY_WALLET; // President's Vault = mall.OWNER_WALLET (both read src/wallets.js)
 export const SimWallet = {
   id: 'sim', simulated: true,
   quote: (priceU) => feeSplit(priceU),

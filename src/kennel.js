@@ -2,6 +2,7 @@
 // truth; HYBRID since 18 Oct 2026). Tiers come from free HOLD STREAKS (keep a tier's $KIBBLE in your wallet for its days); an
 // optional Streamflow self-lock of 100K+ only adds one separate 'Locked' flair (kn_badge_locked) and never sets or raises a tier.
 // Inu Verse never holds or moves tokens and never asks for a lock. 404 / errors / non-v2 bodies -> unknown -> nothing shown.
+import { nameOf, walletText, walletHtml } from './wallets.js';
 import { cleanName } from './mpshared.js';
 export const API = 'https://kibble-pay.vercel.app/api/kennel';
 export const TIERS = {
@@ -49,7 +50,7 @@ export async function fetchKennel(wallet, { f = globalThis.fetch, now = Date.now
 // GET /api/kennel?wall=1 (kibble-pay v2): only wallets whose hold-streak tier the server verified from chain, ranked by tier then
 // $KIBBLE held. Names go through our own name filter (profanity/addresses -> short address).
 const RANK = { pup: 1, guard: 2, alpha: 3, top: 4 };
-const entry = (d) => { if (typeof d?.wallet !== 'string') return null; const short = shortW(d.wallet), nm = typeof d.name === 'string' ? cleanName(d.name, short) : short;
+const entry = (d) => { if (typeof d?.wallet !== 'string') return null; const short = shortW(d.wallet), nm = nameOf(d.wallet) || (typeof d.name === 'string' ? cleanName(d.name, short) : short); // our own wallets carry their src/wallets.js name
   return { wallet: d.wallet, label: nm || short, tier: tierId(d.tier) || 'top', held: Math.max(0, num(d.held)), lockedFlair: d.lockedFlair === true, since: d.since || null }; };
 const byHeld = (a, b) => (RANK[b.tier] - RANK[a.tier]) || (b.held - a.held);
 export async function fetchWall({ f = globalThis.fetch, api = API } = {}) {
@@ -116,12 +117,12 @@ export function progressHtml(me, now = Date.now()) { if (me?.status !== 'ok') re
   return `<div class="kn-progress"><p class="small kn-next">${nextLine(me)}</p>${rows ? `<ul class="small kn-streaks" style="list-style:none;padding:0;margin:4px 0">${rows}</ul>` : ''}${launch}${hist}<p class="small">Dates are Sydney time.</p></div>`; }
 export function wallHtml({ wall, me, wallet, override, overrideFlair: of = false, show, peek = false, now = Date.now() }) {
   const tiers = TIER_IDS.map((id) => { const T = TIERS[id]; return `<li>${chip(id)} hold ${fmt(T.amount)} $KIBBLE for ${T.days} days in a row · ${id === 'top' ? 'gold aura, golden name, a spot on this wall' : id === 'alpha' ? 'paw-print aura + tag' : 'name tag'}</li>`; }).join('');
-  const row = (d) => `<li><b>${d.tier === 'top' ? '★ ' : ''}${esc(d.label)}</b> ${chip(d.tier)}${d.lockedFlair ? ' ' + flairChip() : ''}${d.held ? ` <span class="small">${fmt(d.held)} $KIBBLE held</span>` : ''}${d.since ? ` <span class="small">since ${esc(sydDate(d.since))}</span>` : ''}</li>`;
+  const row = (d) => `<li><b>${d.tier === 'top' ? '★ ' : ''}${esc(d.label)}</b>${nameOf(d.wallet) ? ' ' + walletHtml(d.wallet).replace(/<b>[^<]*<\/b> /, '') : ''} ${chip(d.tier)}${d.lockedFlair ? ' ' + flairChip() : ''}${d.held ? ` <span class="small">${fmt(d.held)} $KIBBLE held</span>` : ''}${d.since ? ` <span class="small">since ${esc(sydDate(d.since))}</span>` : ''}</li>`;
   const others = wall?.status === 'ok' ? (wall.wall || []).filter((d) => d.tier !== 'top') : [];
   const dogs = wall?.status === 'ok' ? (wall.topDogs.length ? `<ol class="kn-wall">${wall.topDogs.map(row).join('')}</ol>` : `<p class="small kn-empty">${esc(wall.empty || 'No Top Dogs yet')}. The first verified Top Dog shows up here.</p>`)
       + (others.length ? `<p class="small" style="margin:8px 0 2px"><b>Kennel members</b> (verified tiers, ranked by $KIBBLE held)</p><ol class="kn-wall">${others.slice(0, 20).map(row).join('')}</ol>` : '')
     : `<p class="small kn-soon">Kennel members will be listed here once the Kibble Kennel publishes its wall${wall?.reason ? ` (${esc(wall.reason)})` : ''}. Nobody is shown until it does.</p>`;
-  const who = peek && wallet ? `Viewing <b>${esc(shortW(wallet))}</b> (read-only preview, not your pup). ` : '';
+  const who = peek && wallet ? `Viewing <b>${esc(nameOf(wallet) ? walletText(wallet) : shortW(wallet))}</b> (read-only preview, not your pup). ` : '';
   const mine = override || of ? `Previewing <b>${override ? esc(TIERS[override].name) : 'no tier'}${of ? ' + Locked flair' : ''}</b> (preview only, not a real tier).` : !wallet ? 'Connect your wallet to show your Kennel tier on your pup.'
     : me?.status === 'ok' ? who + (me.source === 'holder-only' ? 'No chain data right now, so no tier is shown.' : (me.tier ? `Your tier: ${chip(me.tier)}` : 'No Kennel tier on this wallet yet.') + (me.locked?.flair ? ' ' + flairChip() : '') + (me.stale ? ' (cached)' : '')
         + (me.held ? ` <span class="small">· ${fmt(me.held)} $KIBBLE held now</span>` : '') + (me.locked?.flair ? `<br>Locked flair: ${fmt(me.locked.amount)} $KIBBLE in your own self-lock${me.locked.unlockDate ? ` until ${esc(sydDate(me.locked.unlockDate))}` : ''}. It is a badge only and does not change your tier.` : '')) + progressHtml(me, now)

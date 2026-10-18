@@ -14,7 +14,8 @@ import { wallet, DEMO } from './wallet.js';
 
 export const U = 1_000_000;
 export const OWNER = { name: 'President Inu', title: 'Owner of Kibble Mall & the shopping district' };
-export const OWNER_WALLET = 'BzLYTFAfUsjzQ5x8bx5BbPK4DFtaHrLCuferkvkxTNGJ'; // President's treasury (Solana receive address). Simulated: no transfers are made.
+import { TREASURY_WALLET } from './wallets.js';
+export const OWNER_WALLET = TREASURY_WALLET; // President's Vault (src/wallets.js), Solana receive address. Simulated: no transfers are made.
 export const FEE_BPS = { owner: 100, daily: 25, weekly: 50, monthly: 25 }; // basis points (sum 200 = 2%)
 export const FEE_TOTAL_BPS = 200;
 export const FEE_LABEL = 'price includes 2%: 1% treasury, 1% community prize pools';
