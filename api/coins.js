@@ -4,6 +4,7 @@
 //   GET  /api/coins                         -> { coins: [visible coins], reportsToHide }
 //   GET  /api/coins?all=1   (admin)         -> every coin incl. hidden
 //   POST /api/coins {action:"register", mint}  Bearer <kibble-pay SIWS session>
+//   POST /api/coins {action:"register", mint, signature}  no session: proof = the confirmed Launch Hall create tx (see launchTx)
 //   POST /api/coins {action:"report", mint, reason}          anonymous, one report per IP per coin
 //   POST /api/coins {action:"moderate", mint, op:"hide"|"show"|"delete"}  admin only
 //
@@ -29,7 +30,7 @@ export function memoryStore() { const m = new Map(); return {
   async del(k) { m.delete(k); }, async setNX(k, v) { if (m.has(k)) return false; m.set(k, String(v)); return true; },
   async sadd(k, v) { const s = new Set(JSON.parse(m.get(k) || "[]")); s.add(v); m.set(k, JSON.stringify([...s])); },
   async srem(k, v) { const s = new Set(JSON.parse(m.get(k) || "[]")); s.delete(v); m.set(k, JSON.stringify([...s])); },
-  async smembers(k) { return JSON.parse(m.get(k) || "[]"); }, async incr(k) { const n = Number(m.get(k) || 0) + 1; m.set(k, String(n)); return n; } }; }
+  async smembers(k) { return JSON.parse(m.get(k) || "[]"); }, async incr(k) { const n = Number(m.get(k) || 0) + 1; m.set(k, String(n)); return n; }, async expire() {} }; }
 export function upstashStore(env = process.env, f = fetch) {
   const url = env.UPSTASH_REDIS_REST_URL || env.KV_REST_API_URL, tok = env.UPSTASH_REDIS_REST_TOKEN || env.KV_REST_API_TOKEN;
   if (!url || !tok) return null;
@@ -37,7 +38,7 @@ export function upstashStore(env = process.env, f = fetch) {
   const P = env.REGISTRY_PREFIX || "launchhall:"; // distinct namespace: this Upstash DB is shared with Kibble Pay
   return { get: (k) => cmd("GET", P + k), set: (k, v) => cmd("SET", P + k, String(v)), del: (k) => cmd("DEL", P + k),
     setNX: async (k, v) => (await cmd("SET", P + k, String(v), "NX")) === "OK", sadd: (k, v) => cmd("SADD", P + k, v), srem: (k, v) => cmd("SREM", P + k, v),
-    smembers: (k) => cmd("SMEMBERS", P + k), incr: (k) => cmd("INCR", P + k) }; }
+    smembers: (k) => cmd("SMEMBERS", P + k), incr: (k) => cmd("INCR", P + k), expire: (k, sec) => cmd("EXPIRE", P + k, sec) }; }
 
 // ---- base58 + PDA (no deps) ----
 const ALPH = "123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz";
@@ -65,6 +66,14 @@ export async function pumpCreator(mint, { rpc, f = fetch } = {}) {
   if (v.owner !== PUMP_PROGRAM) return { ok: false, reason: "bonding curve not owned by pump.fun" };
   const d = Buffer.from(v.data[0], "base64"); if (d.length < 81) return { ok: false, reason: "old pump.fun curve without a creator field" };
   return { ok: true, creator: b58encode(d.subarray(49, 81)), complete: d[48] === 1 }; }
+// Launch-tx proof (no-extension launches): the confirmed transaction that created the coin. Its fee payer signed it, so
+// "fee payer == pump.fun bonding-curve creator" is the same creator-vs-wallet check as a signed-in session.
+export const LAUNCH_PROOF_MAX_AGE_S = 24 * 3600;
+export async function launchTx(sig, { rpc, f = fetch } = {}) {
+  const r = await f(rpc, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ jsonrpc: "2.0", id: 1, method: "getTransaction", params: [sig, { encoding: "json", commitment: "confirmed", maxSupportedTransactionVersion: 0 }] }) });
+  const t = (await r.json()).result; if (!t) return { ok: false, reason: "launch transaction not found yet, try again in a few seconds" };
+  if (t.meta?.err) return { ok: false, reason: "that launch transaction failed on-chain" };
+  const keys = t.transaction?.message?.accountKeys || []; return { ok: true, feePayer: keys[0], keys, blockTime: t.blockTime || 0 }; }
 export async function dexInfo(mint, f = fetch) { try { const r = await f(`https://api.dexscreener.com/tokens/v1/solana/${mint}`); if (!r.ok) return null; const a = await r.json(); if (!Array.isArray(a) || !a.length) return null;
   const p = a.find((x) => x.baseToken?.address === mint) || a[0]; const allow = [KIBBLE_MINT, ...PAIR_CANDIDATES.map((c) => c.mint)], qp = a.find((x) => x.baseToken?.address === mint && allow.includes(x.quoteToken?.address));
   return { quoteMint: qp?.quoteToken?.address || p.quoteToken?.address || "", name: p.baseToken?.name || "", symbol: p.baseToken?.symbol || "", pairedWithKibble: a.some((x) => x.quoteToken?.address === KIBBLE_MINT || (x.baseToken?.address === KIBBLE_MINT && x.quoteToken?.address === mint)), quote: p.quoteToken?.symbol || "" }; } catch { return null; } }
@@ -79,7 +88,8 @@ async function isAdmin(req, env, deps) { const t = req.headers["x-admin-token"];
 const bearer = (req) => (req.headers.authorization || "").replace(/^Bearer /, "");
 
 export function makeHandler({ env = process.env, store = upstashStore(env), deps = {} } = {}) {
-  const D = { sessionWallet: (t) => sessionWallet(t), pumpCreator: (m) => pumpCreator(m, { rpc: env.SOLANA_RPC || "https://api.mainnet-beta.solana.com" }), dexInfo: (m) => dexInfo(m), pairs: () => evaluatePairs(), ...deps };
+  const RPC = env.SOLANA_RPC || "https://api.mainnet-beta.solana.com";
+  const D = { sessionWallet: (t) => sessionWallet(t), pumpCreator: (m) => pumpCreator(m, { rpc: RPC }), launchTx: (s) => launchTx(s, { rpc: RPC }), now: () => Date.now(), dexInfo: (m) => dexInfo(m), pairs: () => evaluatePairs(), ...deps };
   return async function handler(req, res) {
     if (req.method === "OPTIONS") { res.statusCode = 204; return res.end(); }
     if (req.method === "GET" && /[?&]pairs=1/.test(req.url || "")) return json(res, 200, await D.pairs());
@@ -94,14 +104,22 @@ export function makeHandler({ env = process.env, store = upstashStore(env), deps
       const mint = String(body.mint || "").trim(); if (!B58.test(mint)) return json(res, 400, { error: "that is not a Solana mint address" });
       const key = "coin:" + mint;
       if (body.action === "register") {
-        const wallet = await D.sessionWallet(bearer(req)); if (!wallet) return json(res, 401, { error: "sign in with Phantom first" });
+        let wallet = await D.sessionWallet(bearer(req)), via = "session", lt0 = null;
+        if (!wallet && body.signature) { // no-extension launch: prove it with the create transaction itself
+          if (!/^[1-9A-HJ-NP-Za-km-z]{64,90}$/.test(String(body.signature))) return json(res, 400, { error: "bad transaction signature" });
+          const lt = lt0 = await D.launchTx(String(body.signature)); if (!lt.ok) return json(res, 400, { error: lt.reason });
+          if (!lt.keys.includes(mint) || !lt.keys.includes(PUMP_PROGRAM)) return json(res, 400, { error: "that transaction did not create this pump.fun coin" });
+          if (lt.blockTime && D.now() / 1000 - lt.blockTime > LAUNCH_PROOF_MAX_AGE_S) return json(res, 400, { error: "launch proof too old: sign in with Phantom to register" });
+          wallet = B58.test(lt.feePayer || "") ? lt.feePayer : null; via = "launch transaction"; }
+        if (!wallet) return json(res, 401, { error: "sign in with Phantom first" });
         if (mint === KIBBLE_MINT) return json(res, 400, { error: "$KIBBLE is already featured" });
         const prev = await store.get(key); if (prev) { const p = JSON.parse(prev); if (p.removed) return json(res, 403, { error: "this coin was removed by moderation" }); return json(res, 200, { ok: true, coin: p, already: true }); }
         const pc = await D.pumpCreator(mint); if (!pc.ok) return json(res, 400, { error: pc.reason });
         if (pc.creator !== wallet) return json(res, 403, { error: `pump.fun lists ${pc.creator.slice(0, 4)}…${pc.creator.slice(-4)} as the creator, not your wallet` });
         const dx = await D.dexInfo(mint);
-        const coin = { mint, creator: wallet, name: clean(dx?.name, 32), symbol: clean(dx?.symbol, 12).replace(/^\$/, ""), pairedWithKibble: !!dx?.pairedWithKibble, quote: clean(dx?.quote, 12), quoteMint: clean(dx?.quoteMint, 44),
-          verifiedBy: "pump.fun bonding-curve creator", registeredAt: Date.now(), reports: 0, hidden: false };
+        const lk = via === "launch transaction" && lt0?.keys?.includes(KIBBLE_MINT); // brand-new coins are not on DexScreener yet
+        const coin = { mint, creator: wallet, name: clean(dx?.name || (via !== "session" ? body.name : ""), 32), symbol: clean(dx?.symbol || (via !== "session" ? body.symbol : ""), 12).replace(/^\$/, ""), pairedWithKibble: !!dx?.pairedWithKibble || !!lk, quote: clean(dx?.quote || (lk ? "KIBBLE" : ""), 12), quoteMint: clean(dx?.quoteMint || (lk ? KIBBLE_MINT : ""), 44),
+          verifiedBy: "pump.fun bonding-curve creator", proof: via, launchedInHall: via === "launch transaction", registeredAt: Date.now(), reports: 0, hidden: false };
         await store.set(key, JSON.stringify(coin)); await store.sadd("coins", mint); return json(res, 200, { ok: true, coin }); }
       const raw = await store.get(key); if (!raw) return json(res, 404, { error: "coin not registered" }); const coin = JSON.parse(raw);
       if (body.action === "report") {

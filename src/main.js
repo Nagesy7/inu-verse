@@ -121,6 +121,7 @@ addEventListener('kibble:paid', (e) => { toast(e.detail.burn ? 'Burn confirmed: 
 addEventListener('kibble:failed', (e) => toast(e.detail.reason || 'Payment failed', 'bad'));
 addEventListener('kibble:wallet', () => { if (state) { state.walletAddr = wallet().address; hud(); } });
 bootKibble(); refreshRegistry(true);
+if (localStorage.getItem('inu.noext.resume')) import('./launchui.js').then((m) => m.resumeAuth({ toast })).catch(() => {}); // finish Google/Apple sign-in after Phantom's redirect
 function hud() { GOLD.name = F5.isVip(state) ? state.player.name : null; { const P = DEMO ? poolsOf(state) : serverPools, el = $('#pools'); if (el) el.textContent = P ? `D${(P.daily / 1e6).toFixed(2)} W${(P.weekly / 1e6).toFixed(2)} M${(P.monthly / 1e6).toFixed(2)}` : 'pools'; } $('#bones').textContent = Math.floor(state.bones); $('#kibble').textContent = DEMO ? state.kibble.toFixed(2) : (wallet().live ? (wallet().balanceUi ?? '–') : 'soon'); $('#hud-name').textContent = state.player.name; }
 
 function resize() { const nw = Math.round(innerWidth * devicePixelRatio), nh = Math.round(innerHeight * devicePixelRatio); if (cv.width !== nw || cv.height !== nh) { cv.width = nw; cv.height = nh; vignette = null; } // only touch the backing store on a real size change (visualViewport fires during address-bar moves; re-setting width clears the canvas)
@@ -810,12 +811,12 @@ function renderLaunch() {
      <div class="small">Contract address (only this one is real):</div><div class="ca"><code id="kib-ca">${K0.mint}</code><button class="btn alt" data-copy="${K0.mint}">Copy</button></div>
      ${statBox(K0.mint)}<div class="small" id="kib-src">Live from DexScreener, refreshed every minute. Shows "unavailable" if the feed is down.</div>
      <div class="row" style="justify-content:flex-start">${link(RC.PUMP_COIN(K0.mint), 'View on pump.fun', 'btn green')}${link(RC.DEX_URL(K0.mint), 'DexScreener chart', 'btn ghost')}</div></div>${NFA}`;
-  else if (tab === 'launch') body.innerHTML = `${head}<div class="card" style="text-align:left"><b>Launch your own coin on pump.fun</b>
+  else if (tab === 'launch') body.innerHTML = `${head}<div id="noext" class="noext"><div class="small">Loading launcher…</div></div><details class="card" style="text-align:left"><summary><b>Prefer pump.fun's own page (any pair)? Step-by-step guide</b></summary>
      <p class="small">Inu Verse never creates, holds or signs tokens. You launch on pump.fun with your own wallet; pump.fun shows you every fee and step before you sign.</p>
      <ol class="small steps"><li>Open pump.fun's create page (button below) and connect Phantom there.</li>
      <li><b>Pick your pair:</b> on pump.fun's create form choose <b>Custom</b> under the pool liquidity pair, then paste one of these contract addresses into the search and select the matching coin (check the address!). pump.fun has no link that preselects the pair, so copy it from here:<div id="pairlist" class="pairlist"><span class="small">Loading eligible pairs…</span></div></li>
      <li>After launch, copy your coin's mint address and register it on the <b>Coin board</b> tab so it shows on the board and city billboards.</li></ol>
-     <div class="row" style="justify-content:flex-start"><button class="btn green" id="go-pump">Open pump.fun create ↗</button>${isMobile() ? '<button class="btn alt" id="go-phantom">Open in Phantom app ↗</button>' : ''}</div></div>${NFA}`;
+     <div class="row" style="justify-content:flex-start"><button class="btn green" id="go-pump">Open pump.fun create ↗</button>${isMobile() ? '<button class="btn alt" id="go-phantom">Open in Phantom app ↗</button>' : ''}</div></details>${NFA}`;
   else if (tab === 'board') body.innerHTML = `${head}<div class="launch rboard"><div><div class="card form" style="text-align:left"><b>Register a coin you launched</b>
      <div class="small">Sign in with Phantom, paste your coin's mint. We check pump.fun's on-chain record that <i>your wallet</i> created it.</div>
      <input id="reg-mint" placeholder="Your coin's mint address" maxlength="44" autocomplete="off" spellcheck="false"><button class="btn green" id="reg-go">${K.kp?.signedIn ? 'Register coin' : 'Sign in & register'}</button><div class="small" id="reg-msg"></div></div>${NFA}</div>
@@ -840,6 +841,7 @@ function renderLaunch() {
   if ($('#go-pump')) $('#go-pump').onclick = () => { blip(880); window.open(RC.PUMP_CREATE, '_blank', 'noopener'); };
   if ($('#go-phantom')) $('#go-phantom').onclick = () => { location.href = RC.phantomBrowse(RC.PUMP_CREATE); };
   if ($('#reg-go')) $('#reg-go').onclick = registerCoin;
+  if (tab === 'launch') import('./launchui.js').then((m) => m.mountNoExt($('#noext'), { toast, copyText, persist, refreshRegistry, openBoard: () => { panel.tab = 'board'; renderLaunch(); } })).catch(() => { const el = $('#noext'); if (el) el.innerHTML = '<div class="small">Launcher unavailable right now: use the pump.fun guide below.</div>'; });
   if (tab === 'launch') RC.listPairs().then((r) => { const el = $('#pairlist'); if (!el) return;
     el.innerHTML = r.pairs.map((p) => `<div class="pairrow ${p.featured ? 'feat' : ''}"><b>${p.featured ? '★ ' : ''}$${esc(p.symbol)}</b><span class="small">${esc(p.name)}${p.mcap != null && !p.featured ? ' · MC ' + RC.fmtUsd(p.mcap) + ' · liq ' + RC.fmtUsd(p.liquidity) : ''}</span><code>${RC.short(p.mint)}</code><button class="btn tiny ghost" data-copy="${p.mint}">Copy CA</button>${p.featured ? `<div class="small kibnote">${p.mcap != null ? 'MC ' + RC.fmtUsd(p.mcap) + ' · liq ' + RC.fmtUsd(p.liquidity) + ' · ' : ''}${esc(p.note || "If $KIBBLE doesn't appear under Custom Pairs when you paste the CA, it isn't available as a pair yet.")}</div>` : ''}</div>`).join('')
       + `<div class="small">${r.rules ? `Inu/Doge pairs shown only while market cap ≥ ${RC.fmtUsd(r.rules.minMcapUsd)}, liquidity ≥ ${RC.fmtUsd(r.rules.minLiquidityUsd)} and RugCheck shows no danger (checked live). $KIBBLE is always featured (no thresholds), but pump.fun decides whether it can be picked yet.` : 'Pair checks unavailable right now: only $KIBBLE shown.'}</div>`;
