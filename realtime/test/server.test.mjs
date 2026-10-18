@@ -7,10 +7,10 @@ import WebSocket from 'ws';
 
 const URL0 = process.env.MP_URL, CAP = Number(process.env.MP_CAP || 3), ORIGIN = 'http://localhost:8642';
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
-function client(room, { origin = ORIGIN, guest } = {}) { return new Promise((res, rej) => {
+function client(room, { origin = ORIGIN, guest, tok, look } = {}) { return new Promise((res, rej) => {
   const ws = new WebSocket(`${URL0}/ws?room=${encodeURIComponent(room)}`, { origin }); const c = { ws, msgs: [], welcome: null };
   ws.on('message', (d) => { const m = JSON.parse(String(d)); c.msgs.push(m); if (m.t === 'w') { c.welcome = m; res(c); } });
-  ws.on('open', () => ws.send(JSON.stringify({ t: 'hi', guest: guest || 'Pup' + (1000 + Math.floor(Math.random() * 9000)), name: 'ignored-for-guests', look: { coat: 'tan', eq: {} }, s: { x: 100, y: 100, f: 'down', ts: Date.now() } })));
+  ws.on('open', () => ws.send(JSON.stringify({ t: 'hi', tok, guest: guest || 'Pup' + (1000 + Math.floor(Math.random() * 9000)), name: 'ignored-for-guests', look: look || { coat: 'tan', eq: {} }, s: { x: 100, y: 100, f: 'down', ts: Date.now() } })));
   ws.on('unexpected-response', (_, r) => rej(new Error('http ' + r.statusCode))); ws.on('error', rej); }); }
 const of = (c, t) => c.msgs.filter((m) => m.t === t);
 const room = (n) => `t${n}-${Date.now().toString(36)}`;
@@ -57,3 +57,22 @@ test('server: Round 3 actions ride the emote path (same limits) and the pose cod
   const C = await client(r, { guest: 'Pup5656' }); assert.equal(C.welcome.players.find((p) => p.name === 'Pup1212').s.p, 4, 'late joiner sees the pose');
   A.ws.send(JSON.stringify({ t: 's', x: 120, y: 100, f: 'down', m: 0, p: 77, ts: Date.now() })); await sleep(200); assert.equal(of(B, 's').at(-1).p, 0, 'bad pose codes sanitised');
   A.ws.close(); B.ws.close(); C.ws.close(); });
+
+// Kennel tiers come from the server's own kibble-pay lookup. Run wrangler dev with --var KP_URL:http://127.0.0.1:8799 and
+// MP_KP_MOCK=8799: this test serves a fake kibble-pay (save = token check, kennel = tier) and counts the lookups.
+test('server: Kennel tier looked up server-side for verified wallets only, client tiers ignored, one lookup per TTL', { skip: !URL0 || !process.env.MP_KP_MOCK }, async () => {
+  const http = await import('node:http'), B58 = '123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz', WAL = Array.from({ length: 44 }, () => B58[Math.floor(Math.random() * 58)]).join(''); let kennelCalls = 0; // fresh wallet each run: the colo cache may remember old ones
+  const srv = http.createServer((req, res) => { const u = new globalThis.URL(req.url, 'http://x'); res.setHeader('content-type', 'application/json');
+    if (u.pathname === '/api/save') return req.headers.authorization === 'Bearer good' ? res.end(JSON.stringify({ wallet: WAL })) : (res.statusCode = 401, res.end('{}'));
+    if (u.pathname === '/api/kennel') { kennelCalls++; return res.end(JSON.stringify({ wallet: u.searchParams.get('wallet'), tier: 'alpha' })); } res.statusCode = 404; res.end('{}'); });
+  await new Promise((r) => srv.listen(Number(process.env.MP_KP_MOCK), '127.0.0.1', r));
+  try { const r = room('k'), fakeLook = { coat: 'tan', eq: {}, pl: { look: { kennel: 'top' }, outfit: {} } };
+    const O = await client(r, { guest: 'Pup7070' }), A = await client(r, { tok: 'good', look: { coat: 'tan', eq: {}, pl: { look: { kennel: 'pup' }, outfit: {} } } }), G = await client(r, { guest: 'Pup8080', look: fakeLook });
+    await sleep(600); const jA = of(O, 'j').find((m) => m.p.w), jG = of(O, 'j').find((m) => m.p.name === 'Pup8080');
+    assert.equal(jA.p.look.pl, undefined, 'client tier stripped'); assert.equal(jG.p.look.pl, undefined); assert.equal(jG.p.k, null, 'guest: no tier');
+    assert.deepEqual(of(O, 'k').map((m) => [m.id, m.k]), [[A.welcome.id, 'alpha']], 'only the server-looked-up tier is broadcast');
+    G.ws.send(JSON.stringify({ t: 'l', look: fakeLook })); await sleep(250); assert.equal(of(O, 'k').length, 1, 'guest look change: still no tier');
+    A.ws.close(); await sleep(200); const A2 = await client(r, { tok: 'good' }); await sleep(400); G.ws.close(); await sleep(200); const C = await client(r, { guest: 'Pup9090' });
+    assert.equal(C.welcome.players.find((p) => p.id === A2.welcome.id).k, 'alpha', 'late joiner gets k in the welcome'); assert.equal(kennelCalls, 1, 'one lookup per wallet per TTL');
+    O.ws.close(); await sleep(200); const B = await client(r, { tok: 'bad' }); await sleep(300); assert.equal(C.msgs.filter((m) => m.t === 'k' && m.id === B.welcome.id).length, 0, 'unverified: no tier');
+    for (const c of [A2, C, B]) c.ws.close(); } finally { srv.closeAllConnections?.(); srv.close(); } });

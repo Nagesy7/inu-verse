@@ -38,10 +38,11 @@ export function createMultiplayer({ getLocal, toast = () => {}, now = () => perf
   function fail() { drop('offline'); S.retryAt = clock() + S.backoff * (0.8 + Math.random() * 0.4); S.backoff = Math.min(60000, S.backoff * 2); }
   const local = (L) => ({ x: L.x, y: L.y, f: L.f, m: L.m ? 1 : 0, r: L.r ? 1 : 0, d: L.d ? 1 : 0, p: L.p | 0 });
   function addRemote(p) { if (!p?.id || p.id === S.id) return; const r = { id: p.id, name: String(p.name || 'Pup').slice(0, MP.NAME_MAX), w: p.w || null, buf: [], off: null, phase: Math.random() * 6, emote: null, x: 0, y: 0, cur: null };
-    setLook(r, p.look); const s = p.s && cleanState(p.s); if (s) { pushSnap(r, s, clock()); r.x = s.x; r.y = s.y; remoteState(r, s, now()); } S.remotes.set(p.id, r); }
+    setLook(r, p.look); r.kennel = typeof p.k === 'string' ? p.k : null; const s = p.s && cleanState(p.s); if (s) { pushSnap(r, s, clock()); r.x = s.x; r.y = s.y; remoteState(r, s, now()); } S.remotes.set(p.id, r); }
   function setLook(r, look) { const l = cleanLook(look); r.coat = l.coat; r.outfit = l.eq; r.art = artKey(l.coat);
-    // Kibble Kennel tier rides as pl.look.kennel (cosmetic, self-reported); a pl carrying only that key is not a custom profile
-    const kn = l.pl?.look?.kennel; r.kennel = typeof kn === 'string' ? kn : null; const plOnlyKennel = l.pl && Object.keys(l.pl.look).every((k) => k === 'kennel') && !Object.values(l.pl.outfit || {}).some(Boolean);
+    // Kibble Kennel tier: ONLY the server-looked-up value (p.k / {t:'k'}) is used; a tier inside the look is ignored.
+    // (A pl carrying only that key is not a custom profile.)
+    const plOnlyKennel = l.pl && Object.keys(l.pl.look).every((k) => k === 'kennel') && !Object.values(l.pl.outfit || {}).some(Boolean);
     r.profile = l.pl && !plOnlyKennel ? (() => { try { return normalizeProfile({ name: r.name, look: l.pl.look, outfit: l.pl.outfit }); } catch { return null; } })() : null; }
   function onMsg(m) { const t = now();
     if (m.t === 'w') { S.id = m.id; S.me = m.name; S.inst = m.inst; S.room = m.room; S.status = 'online'; S.backoff = 2000; S.remotes.clear(); for (const p of m.players || []) addRemote(p); ui.update(); return; }
@@ -51,6 +52,7 @@ export function createMultiplayer({ getLocal, toast = () => {}, now = () => perf
     const r = S.remotes.get(m.id); if (!r) return;
     if (m.t === 's') { const s = cleanState(m); if (s) { pushSnap(r, s, clock()); remoteState(r, s, t); } }
     else if (m.t === 'l') setLook(r, m.look);
+    else if (m.t === 'k') r.kennel = typeof m.k === 'string' ? m.k : null; // server-verified Kennel tier
     else if (m.t === 'c') { if (S.muted.has(r.name)) return; const c = cleanChat(m.text); if (c.ok) say('mp:' + r.id, c.text, t, { force: true, life: 4.5 }); } // filtered again client-side
     else if (m.t === 'e' && emoteOk(m.k)) { if (remoteEmote(r, m.k, t) && m.k !== 'wave') return; r.emote = { kind: m.k, t: m.k === 'zoomies' ? 2.4 : 2.5 }; if (!S.muted.has(r.name)) emoteBubble('mp:' + r.id, m.k, t); } }
   const changed = (a, b) => !b || Math.abs(a.x - b.x) > 0.5 || Math.abs(a.y - b.y) > 0.5 || a.f !== b.f || a.m !== b.m || a.r !== b.r || a.d !== b.d || (a.p | 0) !== (b.p | 0);

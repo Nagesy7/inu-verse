@@ -24,17 +24,21 @@ test('a real tier from the contract shape is shown and cached 10 min', async () 
 test('?kennel= preview is labelled and never sent to other players', () => {
   assert.equal(KN.overrideTier('?kennel=alpha'), 'alpha'); assert.equal(KN.overrideTier('?kennel=<x>'), null); const m = KN.myKennel({ override: 'top' });
   assert.equal(m.preview, true); assert.match(KN.tagFor('top', true).text, /PREVIEW/); assert.equal(KN.lookKennel(m), null); assert.equal(KN.lookKennel({ tier: 'top', preview: false }), 'top'); assert.equal(KN.tagFor('top').gold, true); assert.equal(KN.tagFor('pup').gold, false); });
-test('multiplayer: tier survives the look sanitiser and shows only with a server-verified wallet', async () => {
+test('multiplayer: only the server-looked-up tier (p.k / {t:"k"}) shows, and only with a server-verified wallet', async () => {
   assert.equal(cleanLook({ coat: 'tan', pl: { look: { kennel: 'top' }, outfit: {} } }).pl.look.kennel, 'top');
   function fakeWS() { const socks = []; class Ws { constructor() { this.readyState = 0; this.sent = []; socks.push(this); } send(s) { this.sent.push(s); } close() {} open() { this.readyState = 1; this.onopen?.(); } recv(o) { this.onmessage?.({ data: JSON.stringify(o) }); } } Ws.socks = socks; Ws.OPEN = 1; return Ws; }
   let ms = 0; const WS = fakeWS(); const mp = createMultiplayer({ getLocal: () => ({ room: 'city', x: 100, y: 100, f: 'down', name: 'Me', look: { coat: 'tan', eq: {} } }), WS, clock: () => ms, now: () => ms / 1000, doc: null });
   await mp.start('ws://x'); mp.step(0.016); const ws = WS.socks[0]; ws.open();
   ws.recv({ t: 'w', id: 'me', name: 'Me', room: 'city', inst: 1, players: [
-    { id: 'a', name: 'Rin', w: 'Akk3…56fn', look: { coat: 'black', eq: {}, pl: { look: { kennel: 'top' }, outfit: {} } }, s: { x: 120, y: 100, ts: 0 } },
-    { id: 'b', name: 'Fake', look: { coat: 'tan', eq: {}, pl: { look: { kennel: 'top' }, outfit: {} } }, s: { x: 140, y: 100, ts: 0 } }] });
+    { id: 'a', name: 'Rin', w: 'Akk3…56fn', k: 'top', look: { coat: 'black', eq: {}, pl: { look: { kennel: 'pup' }, outfit: {} } }, s: { x: 120, y: 100, ts: 0 } },
+    { id: 'b', name: 'Fake', look: { coat: 'tan', eq: {}, pl: { look: { kennel: 'top' }, outfit: {} } }, s: { x: 140, y: 100, ts: 0 } },
+    { id: 'c', name: 'Selfie', w: 'Bkk3…56fn', look: { coat: 'tan', eq: {}, pl: { look: { kennel: 'top' }, outfit: {} } }, s: { x: 160, y: 100, ts: 0 } }] });
   ms += 500; const acts = mp.actors({ x0: 0, y0: 0, x1: 900, y1: 900 }, { x: 100, y: 100 }); const rin = acts.find((a) => a.name === 'Rin'), fake = acts.find((a) => a.name === 'Fake');
   assert.equal(KN.remoteKennel(rin), 'top'); assert.equal(rin.profile, null, 'kennel-only pl is not a custom profile'); assert.equal(rin.art, 'layer:black');
-  assert.equal(KN.remoteKennel(fake), null, 'no verified wallet -> no tier'); });
+  assert.equal(KN.remoteKennel(fake), null, 'no verified wallet -> no tier');
+  assert.equal(KN.remoteKennel(acts.find((a) => a.name === 'Selfie')), null, 'self-reported tier in the look is ignored');
+  ws.recv({ t: 'k', id: 'c', k: 'alpha' }); assert.equal(KN.remoteKennel(mp.actors(null).find((a) => a.name === 'Selfie')), 'alpha', 'server tier update');
+  ws.recv({ t: 'k', id: 'a', k: null }); assert.equal(KN.remoteKennel(mp.actors(null).find((a) => a.name === 'Rin')), null, 'server dropped the tier'); });
 test('wall: 404 -> opens soon; Top Dogs listed when the API has them; cosmetics-only copy, no banned words', async () => {
   const soon = KN.wallHtml({ wall: { status: 'unknown', topDogs: [], reason: 'not live yet' }, me: { status: 'unknown', reason: 'kennel API not live yet' }, wallet: W, show: true });
   assert.match(soon, /listed here once the Kibble Kennel publishes/); assert.match(soon, /Kennel tier: unknown/); assert.match(soon, /Cosmetics only/);
