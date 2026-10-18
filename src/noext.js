@@ -4,11 +4,11 @@
 //   3. asks the server to build the create tx for {player pubkey, mint PUBLIC key}, 4. checks the tx (player pays/creates,
 //   only player + mint sign, nothing pre-signed), 5. has the wallet sign + send it with one tap (mint co-signs locally),
 //   6. waits for confirmation and auto-registers the coin on the Hall board (creator == fee payer, checked on-chain).
-import { minLamports, sol } from './launchcost.js';
+import { minLamports, sol, planRoute, SLIPPAGE_CHOICES, ROUTE_ALT } from './launchcost.js';
 export const KIBBLE_MINT = '4VE9sy4fEMJdZ6i7MkYPbnqDJd2oqzJQmg44WJ3opump';
 let kitP = null;
 export const loadKit = () => (kitP ||= import('./vendor/phantom-kit.js'));
-export { minLamports, sol };
+export { minLamports, sol, planRoute, SLIPPAGE_CHOICES, ROUTE_ALT };
 
 export function apiClient(f = globalThis.fetch, base = '') {
   const post = async (path, body) => { const r = await f(base + path, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(body) }); const j = await r.json().catch(() => ({})); if (!r.ok) throw Object.assign(new Error(j.error || 'request failed (' + r.status + ')'), { status: r.status }); return j; };
@@ -33,6 +33,15 @@ export function checkUnsignedTx(tx, player, mint) {
   const signers = keys.slice(0, n); if (signers.length !== 2 || !signers.includes(mint)) throw new Error('Safety check failed: unexpected signers.');
   if (tx.signatures.some((s) => s.some((b) => b !== 0))) throw new Error('Safety check failed: transaction was already signed.');
   return { signers };
+}
+
+// The only lookup table we accept is the public pump.fun one; a $KIBBLE dev buy must carry a slippage floor.
+export function checkRoute(tx, built, { pair, devBuySol }) {
+  const alts = (tx.message.addressTableLookups || []).map((l) => l.accountKey.toBase58());
+  if (alts.some((a) => a !== ROUTE_ALT) || alts.length > 1) throw new Error('Safety check failed: unexpected address lookup table.');
+  if (built.pair !== pair) throw new Error('Safety check failed: pair changed.');
+  if (pair === 'KIBBLE' && devBuySol > 0 && !(BigInt(built.minOut || 0) > 0n)) throw new Error('Safety check failed: no slippage floor on the $KIBBLE route.');
+  return { alts };
 }
 
 // Phantom extension: Phantom signs first (Phantom's multi-signer guidance), then the local mint key, then we relay the
@@ -61,15 +70,19 @@ export async function embeddedSdk(cfg) {
   return { sdk: sdkSingleton, kit };
 }
 
-export async function launchCoin({ form, wallet, kit, api, onStep = () => {}, sleep = (ms) => new Promise((r) => setTimeout(r, ms)), confirmTries = 40, registerTries = 12 }) {
+export async function launchCoin({ form, wallet, kit, api, review = null, onStep = () => {}, sleep = (ms) => new Promise((r) => setTimeout(r, ms)), confirmTries = 40, registerTries = 12 }) {
   const player = wallet.address; if (!player) throw new Error('Connect a wallet first.');
   onStep('meta', 'Uploading your coin image + details…');
   const meta = await api.metadata({ name: form.name, symbol: form.symbol, description: form.description, twitter: form.twitter, telegram: form.telegram, website: form.website, image: form.image });
   const mintKp = kit.Keypair.generate(), mint = mintKp.publicKey.toBase58(); // stays in this tab only
   onStep('build', 'Building your pump.fun launch transaction…');
-  const built = await api.build({ player, mint, name: form.name, symbol: form.symbol, uri: meta.uri, pair: form.pair || 'SOL', devBuySol: form.pair === 'KIBBLE' ? 0 : Number(form.devBuySol) || 0 });
-  if (built.simulation?.ok === false) throw Object.assign(new Error(built.hint || 'pump.fun rejected the launch in a dry run.'), { built });
+  const pair = form.pair || 'KIBBLE', devBuySol = Number(form.devBuySol) || 0;
+  const built = await api.build({ player, mint, name: form.name, symbol: form.symbol, uri: meta.uri, pair, devBuySol, slippageBps: Number(form.slippageBps) || 300 });
+  if (built.simulation?.ok === false || !built.tx) throw Object.assign(new Error(built.hint || 'pump.fun rejected the launch in a dry run.'), { built });
   const tx = kit.VersionedTransaction.deserialize(b64ToBytes(built.tx)); checkUnsignedTx(tx, player, mint);
+  checkRoute(tx, built, { pair, devBuySol });
+  // The player sees the exact route + every fee from the mainnet dry run and must confirm BEFORE the wallet opens.
+  if (review) { onStep('review', 'Check the route and fees…', { built }); if (!(await review(built))) throw Object.assign(new Error('You cancelled before signing. Nothing was sent.'), { cancelled: true }); }
   onStep('sign', 'Approve the launch in Phantom…');
   const signature = await wallet.signAndSendLaunch(tx, mintKp, { api, kit });
   onStep('confirm', 'Sent! Waiting for Solana to confirm…', { signature, mint });

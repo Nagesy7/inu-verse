@@ -30,7 +30,7 @@ const unsignedOf = (b64) => K.VersionedTransaction.deserialize(Buffer.from(b64, 
 const spki = (pub) => crypto.createPublicKey({ key: Buffer.concat([Buffer.from('302a300506032b6570032100', 'hex'), Buffer.from(pub)]), format: 'der', type: 'spki' });
 const verifySig = (tx, i) => crypto.verify(null, Buffer.from(tx.message.serialize()), spki(tx.message.staticAccountKeys[i].toBytes()), Buffer.from(tx.signatures[i]));
 
-for (const [label, extra] of [['SOL, no dev buy', {}], ['SOL + 0.05 SOL dev buy', { devBuySol: 0.05 }], ['$KIBBLE pair', { pair: 'KIBBLE' }]]) {
+for (const [label, extra] of [['SOL, no dev buy', { pair: 'SOL' }], ['SOL + 0.05 SOL dev buy', { pair: 'SOL', devBuySol: 0.05 }], ['$KIBBLE pair (default when no pair is sent)', {}], ['$KIBBLE pair', { pair: 'KIBBLE' }]]) {
   test(`build (${label}) returns an UNSIGNED tx: fee payer + creator = player, signers = {player, browser mint}, no server signer`, async () => {
     const { rpc } = mocks(), h = makeLaunchHandler({ env: {}, store: memoryStore(), deps: rpc }), mint = CK.Keypair.generate().publicKey.toBase58(), me = player.publicKey.toBase58();
     const r = await call(h, { method: 'POST', body: { action: 'build', player: me, mint, name: 'Shiba Star', symbol: 'STAR', uri: 'https://ipfs.io/ipfs/bafytest', ...extra } });
@@ -41,16 +41,16 @@ for (const [label, extra] of [['SOL, no dev buy', {}], ['SOL + 0.05 SOL dev buy'
     assert.ok(keys.includes(PUMP_PROGRAM), 'calls pump.fun');
     const create = tx.message.compiledInstructions.find((ix) => keys[ix.programIdIndex] === PUMP_PROGRAM); // create_v2: accounts[0] mint, creator arg = player
     assert.equal(keys[create.accountKeyIndexes[0]], mint); assert.ok(Buffer.from(create.data).includes(Buffer.from(player.publicKey.toBytes())), 'creator argument = player');
-    if (extra.pair === 'KIBBLE') { assert.ok(keys.includes(KIBBLE_MINT), '$KIBBLE quote mint passed'); assert.equal(r.body.quoteMint, KIBBLE_MINT); }
+    if (extra.pair !== 'SOL') { assert.equal(r.body.pair, 'KIBBLE'); assert.ok(keys.includes(KIBBLE_MINT), '$KIBBLE quote mint passed'); assert.equal(r.body.quoteMint, KIBBLE_MINT); }
     assert.equal(r.body.minLamports.total, minLamports(extra).total); }); }
 
-test('server refuses anything that looks like a key, bad pairs ($WALLETFLWR is not offered) and $KIBBLE dev buys', async () => {
+test('server refuses anything that looks like a key, bad pairs ($WALLETFLWR is not offered) and bad slippage', async () => {
   const { rpc } = mocks(), h = makeLaunchHandler({ env: {}, store: memoryStore(), deps: rpc }), kp = CK.Keypair.generate(), me = player.publicKey.toBase58();
   const base = { action: 'build', player: me, mint: kp.publicKey.toBase58(), name: 'X', symbol: 'X', uri: 'https://ipfs.io/ipfs/x1234567' };
   for (const bad of [{ mintSecretKey: b58encode(kp.secretKey) }, { mintKeypair: Array.from(kp.secretKey) }, { extra: Array.from(kp.secretKey) }, { note: b58encode(kp.secretKey) }]) {
     const r = await call(h, { method: 'POST', body: { ...base, ...bad } }); assert.equal(r.code, 400); assert.match(r.body.error, /Never send private keys/); }
   assert.equal((await call(h, { method: 'POST', body: { ...base, pair: 'WALLETFLWR' } })).code, 400);
-  assert.equal((await call(h, { method: 'POST', body: { ...base, pair: 'KIBBLE', devBuySol: 0.1 } })).code, 400);
+  for (const slippageBps of [0, 10, 5000, 2.5, 'x']) assert.equal((await call(h, { method: 'POST', body: { ...base, pair: 'KIBBLE', devBuySol: 0.1, slippageBps } })).code, 400, 'slippage ' + slippageBps);
   assert.equal((await call(h, { method: 'POST', body: { ...base, mint: me } })).code, 400);
   assert.equal(carriesSecret({ player: me, mint: kp.publicKey.toBase58() }), false); assert.equal(validateBuild({ ...base, devBuySol: 99 }).ok, false);
   const src = ['src/noext.js', 'src/launchui.js', 'api/launch.js', 'api/_lib/launchtx.js'].map((f) => fs.readFileSync(f, 'utf8')).join('\n');
@@ -121,7 +121,7 @@ test('metadata: hosted fallback (no PINATA_JWT) and Pinata IPFS path; bad input 
 test('config: social login only when PHANTOM_APP_ID is set; min SOL maths', () => {
   assert.equal(publicConfig({}).socialLogin, false); assert.equal(publicConfig({}).phantomAppId, null);
   const c = publicConfig({ PHANTOM_APP_ID: '0b1c2d3e-aaaa-bbbb-cccc-1234567890ab' }); assert.equal(c.socialLogin, true); assert.equal(c.redirectUrl, 'https://inu-verse-tawny.vercel.app/');
-  assert.ok(minLamports().total > 5e6 && minLamports().total < 1e7); assert.ok(minLamports({ devBuySol: 0.1 }).total > 0.1e9 + 5e6); assert.equal(minLamports({ pair: 'KIBBLE', devBuySol: 1 }).parts.devBuy, 0); });
+  assert.ok(minLamports().total > 5e6 && minLamports().total < 1e7); assert.ok(minLamports({ devBuySol: 0.1 }).total > 0.1e9 + 5e6); assert.equal(minLamports({ pair: 'KIBBLE', devBuySol: 1 }).parts.devBuy, 1e9); assert.equal(minLamports().total, minLamports({ pair: 'KIBBLE' }).total, '$KIBBLE is the default pair'); });
 
 // ---- Server-side RPC proxy: allowlist, rate limit, and the provider key never leaves the server ----
 import { rpcUrl, redact, RPC_ALLOW, rpcProvider } from '../api/_lib/rpc.js';

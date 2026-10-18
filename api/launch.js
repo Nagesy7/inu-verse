@@ -4,7 +4,7 @@
 // and creator, and the new mint's keypair is generated and used only in the player's browser.
 //
 //   POST /api/launch {action:"metadata", name, symbol, description, twitter, telegram, website, image:dataURL} -> {uri, image, storage}
-//   POST /api/launch {action:"build", player, mint(PUBLIC key), name, symbol, uri, pair:"SOL"|"KIBBLE", devBuySol} -> {tx(base64, unsigned), ...}
+//   POST /api/launch {action:"build", player, mint(PUBLIC key), name, symbol, uri, pair:"KIBBLE"(default)|"SOL", devBuySol, slippageBps} -> {tx(base64, unsigned), route{steps,fees,notes}, simulation, ...}
 //   POST /api/launch {action:"send", tx}   relays an already fully-signed launch tx to Solana (extension path); adds no signature
 //   POST /api/launch {action:"rpc", method, params}  allowlisted RPC proxy: getBalance, getLatestBlockhash, getSignatureStatuses, getAccountInfo
 //   GET  /api/launch?balance=<address>     live SOL balance      GET /api/launch?sig=<signature>  confirmation status
@@ -57,7 +57,7 @@ export function makeLaunchHandler({ env = process.env, store = upstashStore(env)
         if (await limited(req, "build")) return json(res, 429, { error: "too many requests, try again later" });
         const b = validateBuild(body); if (!b.ok) return json(res, 400, { error: b.errors.join("; ") });
         let out; try { out = await buildCreateTx(b.v, rpc()); }
-        catch (e) { const msg = String(e?.message || e); return json(res, 502, { error: /quote|6063|6100|eligible/i.test(msg) && b.v.pair === "KIBBLE" ? "pump.fun is not accepting $KIBBLE as a pair right now. Launch with SOL, or use pump.fun's own page." : "could not build the transaction: " + msg.slice(0, 160) }); }
+        catch (e) { const msg = String(e?.message || e); if (e?.status) return json(res, e.status, { error: msg.slice(0, 200) }); return json(res, 502, { error: /quote|6063|6100|eligible/i.test(msg) && b.v.pair === "KIBBLE" ? "pump.fun is not accepting $KIBBLE as a pair right now. Launch with SOL, or use pump.fun's own page." : "could not build the transaction: " + msg.slice(0, 160) }); }
         return json(res, 200, { ...out, hint: explainSim(out.simulation) });
       }
       if (body.action === "rpc") { // allowlisted read-only RPC proxy for the browser (the key stays server-side)

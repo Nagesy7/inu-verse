@@ -1,0 +1,229 @@
+{
+ "at": "2026-10-18T07:02:40.625Z",
+ "source": "local builder + public RPC",
+ "note": "simulation only; nothing signed or sent",
+ "results": [
+  {
+   "case": "$KIBBLE default + 0.01 SOL opening swap",
+   "ok": true,
+   "err": null,
+   "units": 326278,
+   "size": 1109,
+   "signers": [
+    "9WzDXwBbmkg8ZTbNMqUxvQRAyrZzDsGYdLVL9zYtAWWM",
+    "DSXxHZMz3kBNCy5w2DoZwcCeAFuXH8FW3RSGEcskbDyE"
+   ],
+   "unsigned": true,
+   "lookupTable": "Hyif6eWb8x88RVrvjPfabsgRYnwkVnyByEXTVTXbUcyP",
+   "minOut": "1303985102879",
+   "route": {
+    "pair": "KIBBLE",
+    "steps": [
+     {
+      "from": "SOL",
+      "to": "$KIBBLE",
+      "venue": "the $KIBBLE pump.fun bonding curve",
+      "in": "0.01 SOL",
+      "out": "348,747.5460 $KIBBLE"
+     },
+     {
+      "from": "$KIBBLE",
+      "to": "$SIMP",
+      "venue": "your new $SIMP bonding curve (created in this same transaction)",
+      "in": "347,704.4327 $KIBBLE",
+      "out": "1,344,314.5390 $SIMP"
+     }
+    ],
+    "fees": [
+     {
+      "key": "pumpfun",
+      "label": "pump.fun trading fee",
+      "bps": 95,
+      "amount": "0.000094 SOL",
+      "plain": "0.95% of the SOL → $KIBBLE swap, charged once on the first leg (pump.fun charges protocol fees on the first leg of a multi-hop route). About half funds pump.fun's buyback."
+     },
+     {
+      "key": "creator",
+      "label": "Creator fee",
+      "bps": 30,
+      "amount": "1,043.1132 $KIBBLE",
+      "plain": "0.3% of the $KIBBLE → $SIMP swap, charged on the last leg and paid into your own coin's creator rewards (you are the creator). $KIBBLE's creator fee is not charged on this route."
+     },
+     {
+      "key": "lp",
+      "label": "Liquidity fee",
+      "bps": 0,
+      "amount": "0",
+      "plain": "0% while your coin trades on its bonding curve."
+     },
+     {
+      "key": "slippage",
+      "label": "Slippage limit",
+      "bps": 300,
+      "amount": "at least 1,303,985.1028 $SIMP",
+      "plain": "The SOL → $KIBBLE price can move before your transaction lands. Your limit is 3%: if you would get less than the minimum, the whole launch fails and nothing is swapped (Solana still keeps the network + priority fee)."
+     },
+     {
+      "key": "network",
+      "label": "Network fee",
+      "amount": "0.00001 SOL",
+      "lamports": 10000,
+      "plain": "Solana's base fee: 2 signatures × 0.000005 SOL (your wallet + the new coin's address)."
+     },
+     {
+      "key": "priority",
+      "label": "Priority fee",
+      "amount": "0.000045 SOL",
+      "lamports": 45000,
+      "plain": "450,000 compute units × 0.1 lamports, so validators pick it up quickly."
+     },
+     {
+      "key": "rent",
+      "label": "Account deposits (rent)",
+      "amount": "0.007881 SOL",
+      "lamports": 7880544,
+      "plain": "One-time Solana storage deposits for your coin's mint, metadata, bonding curve and your token accounts. pump.fun charges no separate create fee."
+     }
+    ],
+    "notes": [
+     "Charity routing isn't available for $KIBBLE-paired coins.",
+     "Uses Hyif6eWb8x88RVrvjPfabsgRYnwkVnyByEXTVTXbUcyP, a public address lookup table widely used by pump.fun transactions, to fit everything in one transaction. It only shortens addresses; it can't move funds.",
+     "Inu Verse never signs, holds or moves your SOL or tokens. You sign in your own wallet."
+    ],
+    "total": {
+     "lamports": 17935544,
+     "text": "0.0179 SOL",
+     "from": "mainnet dry run"
+    }
+   }
+  },
+  {
+   "case": "$KIBBLE default, create only",
+   "ok": true,
+   "err": null,
+   "units": 144178,
+   "size": 1002,
+   "signers": [
+    "9WzDXwBbmkg8ZTbNMqUxvQRAyrZzDsGYdLVL9zYtAWWM",
+    "ApHc8DykgeeLkT97xfPe8wprSoDNN5A6iXqX63ALdQox"
+   ],
+   "unsigned": true,
+   "lookupTable": null,
+   "minOut": null,
+   "route": {
+    "pair": "KIBBLE",
+    "steps": [],
+    "fees": [
+     {
+      "key": "network",
+      "label": "Network fee",
+      "amount": "0.00001 SOL",
+      "lamports": 10000,
+      "plain": "Solana's base fee: 2 signatures × 0.000005 SOL (your wallet + the new coin's address)."
+     },
+     {
+      "key": "priority",
+      "label": "Priority fee",
+      "amount": "0.00003 SOL",
+      "lamports": 30000,
+      "plain": "300,000 compute units × 0.1 lamports, so validators pick it up quickly."
+     },
+     {
+      "key": "rent",
+      "label": "Account deposits (rent)",
+      "amount": "0.007066 SOL",
+      "lamports": 7066280,
+      "plain": "One-time Solana storage deposits for your coin's mint, metadata, bonding curve and your token accounts. pump.fun charges no separate create fee."
+     }
+    ],
+    "notes": [
+     "Charity routing isn't available for $KIBBLE-paired coins.",
+     "Inu Verse never signs, holds or moves your SOL or tokens. You sign in your own wallet."
+    ],
+    "total": {
+     "lamports": 7106280,
+     "text": "0.007106 SOL",
+     "from": "mainnet dry run"
+    }
+   }
+  },
+  {
+   "case": "SOL pair + 0.01 SOL",
+   "ok": true,
+   "err": null,
+   "units": 192200,
+   "size": 1214,
+   "signers": [
+    "9WzDXwBbmkg8ZTbNMqUxvQRAyrZzDsGYdLVL9zYtAWWM",
+    "wAHjvzaPL2NfRxXvQ9vTnqAGqhmWvGMj1hZiWmDAG59"
+   ],
+   "unsigned": true,
+   "lookupTable": null,
+   "minOut": null,
+   "route": {
+    "pair": "SOL",
+    "steps": [
+     {
+      "from": "SOL",
+      "to": "$SIMP",
+      "venue": "your new $SIMP bonding curve (created in this same transaction)",
+      "in": "0.01 SOL",
+      "out": "353,134.7272 $SIMP"
+     }
+    ],
+    "fees": [
+     {
+      "key": "pumpfun",
+      "label": "pump.fun trading fee",
+      "bps": 95,
+      "amount": "0.000094 SOL",
+      "plain": "0.95% of your opening swap."
+     },
+     {
+      "key": "creator",
+      "label": "Creator fee",
+      "bps": 30,
+      "amount": "0.00003 SOL",
+      "plain": "Paid into your own coin's creator rewards (you are the creator)."
+     },
+     {
+      "key": "slippage",
+      "label": "Slippage",
+      "bps": 0,
+      "amount": "none",
+      "plain": "Your coin is created and bought in one transaction, so nobody can trade in between."
+     },
+     {
+      "key": "network",
+      "label": "Network fee",
+      "amount": "0.00001 SOL",
+      "lamports": 10000,
+      "plain": "Solana's base fee: 2 signatures × 0.000005 SOL (your wallet + the new coin's address)."
+     },
+     {
+      "key": "priority",
+      "label": "Priority fee",
+      "amount": "0.00003 SOL",
+      "lamports": 30000,
+      "plain": "300,000 compute units × 0.1 lamports, so validators pick it up quickly."
+     },
+     {
+      "key": "rent",
+      "label": "Account deposits (rent)",
+      "amount": "0.008412 SOL",
+      "lamports": 8412480,
+      "plain": "One-time Solana storage deposits for your coin's mint, metadata, bonding curve and your token accounts. pump.fun charges no separate create fee."
+     }
+    ],
+    "notes": [
+     "Inu Verse never signs, holds or moves your SOL or tokens. You sign in your own wallet."
+    ],
+    "total": {
+     "lamports": 18452480,
+     "text": "0.0185 SOL",
+     "from": "mainnet dry run"
+    }
+   }
+  }
+ ]
+}

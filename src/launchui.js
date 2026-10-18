@@ -10,13 +10,14 @@ const CSS = `.noext{display:grid;grid-template-columns:1fr 1fr;gap:8px;text-alig
 .noext label{display:block;font-size:10px;color:#b9b08e;margin-top:4px}.noext .two{display:grid;grid-template-columns:1fr 1fr;gap:6px}.noext .addr{font:11px monospace;word-break:break-all;color:var(--cream);background:var(--navy);padding:4px 6px;border:2px dashed var(--goldd)}
 .noext .qr{float:right;margin:0 0 4px 8px;background:#fff;padding:4px;line-height:0}.noext .qr svg{width:96px;height:96px}.noext .bal b{font-size:15px}.noext .ok{color:#7fe0a0}.noext .bad{color:#ff8f8f}.noext .warnbox{border:2px solid #d84a54;background:#2a1020;padding:6px;font-size:10px;line-height:1.45;color:#f3d7d7}
 .noext .imgprev{width:48px;height:48px;object-fit:cover;border:2px solid var(--goldd);vertical-align:middle;margin-right:6px;image-rendering:auto}.noext .prog li{font-size:11px;margin:2px 0}.noext .prog li.done{color:#7fe0a0}.noext .prog li.now{color:var(--goldl)}
+.noext .route{border:2px solid var(--goldd);background:#141c33;padding:6px;font-size:10px;line-height:1.45;margin:6px 0}.noext .route h5{margin:0 0 3px;color:var(--goldl);font-size:11px;font-weight:normal;text-transform:uppercase}.noext .route ol,.noext .route ul{margin:2px 0;padding-left:16px}.noext .route .amt{color:var(--cream);font-weight:bold}.noext .route.live{border-color:#7fe0a0}
 .noext .full{grid-column:1/-1}.noext ul.tight{margin:4px 0;padding-left:16px;font-size:10px;line-height:1.45}.noext details summary{cursor:pointer;font-size:11px}
 body.short .noext .qr svg{width:80px;height:80px}body.short .noext .small{margin-top:4px}`;
 function injectCss() { if (document.getElementById('noext-css')) return; const s = document.createElement('style'); s.id = 'noext-css'; s.textContent = CSS; document.head.appendChild(s); }
 
-const S = { cfg: null, wallet: null, balance: null, balT: 0, busy: false, result: null, steps: [], err: '', form: { pair: 'SOL', devBuySol: 0 }, api: NX.apiClient() };
-const STEP_ORDER = ['meta', 'build', 'sign', 'confirm', 'register', 'done'];
-const STEP_TEXT = { meta: 'Upload image + details', build: 'Server builds unsigned tx', sign: 'You approve in Phantom', confirm: 'Solana confirms', register: 'Added to the Coin board', done: 'Done' };
+const S = { cfg: null, wallet: null, balance: null, balT: 0, busy: false, result: null, steps: [], err: '', form: { pair: 'KIBBLE', devBuySol: 0, slippageBps: 300 }, review: null, api: NX.apiClient() };
+const STEP_ORDER = ['meta', 'build', 'review', 'sign', 'confirm', 'register', 'done'];
+const STEP_TEXT = { meta: 'Upload image + details', build: 'Server builds unsigned tx + mainnet dry run', review: 'You check the route + every fee', sign: 'You approve in Phantom', confirm: 'Solana confirms', register: 'Added to the Coin board', done: 'Done' };
 let root = null, ctx = {};
 
 async function loadCfg() { if (S.cfg) return S.cfg; try { S.cfg = await S.api.config(); } catch { S.cfg = { phantomAppId: null, socialLogin: false }; } return S.cfg; }
@@ -62,11 +63,11 @@ function walletCard() {
       <div class="row"><button class="btn alt" data-nx="extension">${hasExt ? 'Use Phantom extension' : 'Phantom extension'}</button><span class="small" style="margin:0">${hasExt ? 'detected' : 'not detected'}</span>${hasExt ? '' : `<a class="btn ghost" href="https://phantom.app/ul/browse/${encodeURIComponent(location.href.split('?')[0])}?ref=${encodeURIComponent(location.origin)}">Open in Phantom app ↗</a>`}</div>${soon ? '<div class="small" style="margin:2px 0 0">Google/Apple sign-in is being set up. You can use the Phantom extension or app meanwhile.</div>' : ''}`}
     ${S.err ? `<div class="small bad">${esc(S.err)}</div>` : ''}</div>`; }
 
-function topupCard(kit) { const w = S.wallet; if (!w?.address) return `<div class="card"><h4><span class="num">2</span>Top up with SOL</h4><div class="small" style="margin:0">Connect a wallet first. Launching costs about <b>${NX.sol(NX.minLamports().total)} SOL</b> with no dev buy.</div></div>`;
+function topupCard(kit) { const w = S.wallet; if (!w?.address) return `<div class="card"><h4><span class="num">2</span>Top up with SOL</h4><div class="small" style="margin:0">Connect a wallet first. Launching costs about <b>${NX.sol(NX.minLamports().total)} SOL</b> with no opening swap.</div></div>`;
   const n = need();
   return `<div class="card"><h4><span class="num">2</span>Top up with SOL</h4>${kit ? `<div class="qr" title="Scan to send SOL">${qrSvg(w.address, kit)}</div>` : ''}<div class="small" style="margin:0">Send SOL (Solana network only) to your wallet:</div><div class="addr">${esc(w.address)}</div>
     <div class="row"><button class="btn tiny alt" data-nx="copy">Copy address</button><button class="btn tiny ghost" data-nx="refresh">Refresh balance</button></div><div class="bal small" id="nx-bal" style="margin:0"></div>
-    <details><summary>How is the minimum worked out?</summary><ul class="tight"><li>pump.fun create (accounts rent + network fee): ${NX.sol(n.parts.create + n.parts.priority)} SOL</li>${n.parts.devBuy ? `<li>Dev buy: ${NX.sol(n.parts.devBuy)} SOL + fees/token account ${NX.sol(n.parts.devBuyFees)} SOL</li>` : ''}<li>Kept for later fees: ${NX.sol(n.parts.reserve)} SOL</li></ul></details>
+    <details><summary>How is the minimum worked out?</summary><ul class="tight"><li>pump.fun create (accounts rent + network fee): ${NX.sol(n.parts.create + n.parts.priority)} SOL</li>${n.parts.devBuy ? `<li>Opening swap: ${NX.sol(n.parts.devBuy)} SOL + fees/token account ${NX.sol(n.parts.devBuyFees)} SOL</li>` : ''}<li>Kept for later fees: ${NX.sol(n.parts.reserve)} SOL</li></ul></details>
     <details><summary><b>Buy SOL</b> (no card checkout inside Inu Verse)</summary><ul class="tight"><li>Phantom Connect has no built-in card on-ramp, so buy SOL elsewhere and send it here.</li><li><b>Coinbase / any exchange:</b> buy SOL → Send/Withdraw → paste the address above (or scan the QR) → network <b>Solana</b>. Send a small test first.</li><li><b>Phantom app:</b> sign in with the same Google/Apple account, tap Buy (card/Apple Pay where available), then it is already in this wallet.</li></ul></details></div>`; }
 
 function formCard() { const f = S.form, n = need(), kib = f.pair === 'KIBBLE';
@@ -75,16 +76,27 @@ function formCard() { const f = S.form, n = need(), kib = f.pair === 'KIBBLE';
     <label>Description<textarea id="nx-desc" maxlength="500" placeholder="What is your coin about?">${esc(f.description || '')}</textarea></label>
     <div class="two"><label>X / Twitter (optional)<input id="nx-twitter" placeholder="https://x.com/…" value="${esc(f.twitter || '')}"></label><label>Telegram (optional)<input id="nx-telegram" placeholder="https://t.me/…" value="${esc(f.telegram || '')}"></label></div>
     <label>Website (optional)<input id="nx-website" placeholder="https://…" value="${esc(f.website || '')}"></label>
-    <div class="two"><label>Pair<select id="nx-pair"><option value="SOL" ${kib ? '' : 'selected'}>SOL (default)</option><option value="KIBBLE" ${kib ? 'selected' : ''}>★ $KIBBLE</option></select></label>
-      <label>Dev buy (SOL, optional)<input id="nx-dev" type="number" min="0" max="5" step="0.01" value="${kib ? 0 : f.devBuySol || 0}" ${kib ? 'disabled' : ''}></label></div>
-    <div class="small" style="margin:2px 0">${kib ? '★ $KIBBLE pair: pump.fun\'s official create_v2 accepts pump coins as the quote, so this transaction pairs your coin with $KIBBLE directly. The server dry-runs it first; if pump.fun refuses the pair at that moment you will be told, and you can launch with SOL or use pump.fun\'s own page below. Dev buy is off for $KIBBLE pairs (it would spend $KIBBLE).' : 'SOL pair: standard pump.fun bonding curve. Want $KIBBLE as the pair? Pick ★ $KIBBLE. Other pairs: use pump.fun\'s own page (guide below).'}</div>
-    <div class="warnbox"><b>Read before launching:</b> this launches a REAL token on Solana mainnet from <b>your</b> wallet. You are the creator and pay about <b>${NX.sol(n.total - n.parts.reserve)} SOL</b>${n.parts.devBuy ? ' including your dev buy' : ''}. It cannot be undone or deleted. Memecoins usually go to zero. Inu Verse never holds your SOL, tokens or keys and never signs for you, and will <b>never ask for your seed phrase or private key</b>. Not financial advice.
+    <div class="two"><label>Pair<select id="nx-pair"><option value="KIBBLE" ${kib ? 'selected' : ''}>★ $KIBBLE (default)</option><option value="SOL" ${kib ? '' : 'selected'}>SOL</option></select></label>
+      <label>Opening swap (SOL, optional)<input id="nx-dev" type="number" min="0" max="5" step="0.01" value="${f.devBuySol || 0}"></label></div>
+    ${kib && f.devBuySol > 0 ? `<label>Slippage limit (SOL → $KIBBLE leg)<select id="nx-slip">${NX.SLIPPAGE_CHOICES.map((b) => `<option value="${b}" ${b === f.slippageBps ? 'selected' : ''}>${b / 100}%</option>`).join('')}</select></label>` : ''}
+    <div class="small" style="margin:2px 0">${kib ? '★ $KIBBLE pair (pump.fun Custom Pairs): pump.fun\'s official create_v2 takes $KIBBLE as the quote, so your coin trades against $KIBBLE. An opening swap is paid in SOL and routed SOL → $KIBBLE → your coin in the same transaction. The server dry-runs it on mainnet first; if pump.fun refuses the pair at that moment you will be told, and you can pick SOL.' : 'SOL pair: standard pump.fun bonding curve. ★ $KIBBLE is the default pair. Other pairs: use pump.fun\'s own page (guide below).'}</div>
+    ${routePlan()}
+    <div class="warnbox"><b>Read before launching:</b> this launches a REAL token on Solana mainnet from <b>your</b> wallet. You are the creator and pay about <b>${NX.sol(n.total - n.parts.reserve)} SOL</b>${n.parts.devBuy ? ' including your opening swap' : ''}. It cannot be undone or deleted. Memecoins usually go to zero. Inu Verse never holds your SOL, tokens or keys and never signs for you, and will <b>never ask for your seed phrase or private key</b>. Not financial advice.
       <label style="color:#f3d7d7"><input id="nx-ack" type="checkbox" style="width:auto" ${f.ack ? 'checked' : ''}> I understand and want to launch this coin myself.</label></div>
     <div class="row"><button class="btn green big" id="nx-go" ${canLaunch() ? '' : 'disabled'}>${S.busy ? 'Launching…' : 'Launch coin (one tap in Phantom)'}</button></div>${progress()}</div>`; }
 
+// Before anything is built: the planned route and fee rates. After the dry run: exact amounts, and nothing opens the wallet until the player confirms.
+function routePlan() { const f = S.form, p = NX.planRoute({ pair: f.pair, devBuySol: f.devBuySol, slippageBps: f.slippageBps, symbol: f.symbol });
+  return `<div class="route" id="nx-plan"><h5>Route + fees (before you sign)</h5><ol>${p.steps.map((x) => `<li>${esc(x)}</li>`).join('')}</ol><ul>${p.fees.map((x) => `<li>${esc(x)}</li>`).join('')}${p.notes.map((x) => `<li>${esc(x)}</li>`).join('')}</ul><div>Exact amounts come from a mainnet dry run, and you confirm them before your wallet opens.</div></div>`; }
+export function reviewHtml(built) { const r = built?.route; if (!r) return '';
+  return `<div class="route live" id="nx-review"><h5>Check before signing · mainnet dry run</h5>${r.steps.length ? `<ol>${r.steps.map((s) => `<li>${esc(s.in)} → <span class="amt">${esc(s.out)}</span> via ${esc(s.venue)}</li>`).join('')}</ol>` : '<div>No swap: create only.</div>'}
+    <ul>${r.fees.map((x) => `<li><b>${esc(x.label)}</b>${x.amount ? `: <span class="amt">${esc(x.amount)}</span>` : ''}. ${esc(x.plain)}</li>`).join('')}${r.notes.map((x) => `<li>${esc(x)}</li>`).join('')}</ul>
+    ${r.total ? `<div>Your wallet's SOL goes down by about <span class="amt">${esc(r.total.text)}</span> in total (${esc(r.total.from)}).</div>` : ''}
+    <div class="row"><button class="btn green" data-rv="ok">Looks right: open my wallet to sign</button><button class="btn ghost" data-rv="no">Cancel</button></div></div>`; }
+
 function progress() { if (!S.steps.length && !S.err2 && !S.result) return '';
   const cur = S.steps[S.steps.length - 1], r = S.result;
-  return `<ol class="prog">${STEP_ORDER.filter((s) => s !== 'done').map((s) => `<li class="${S.steps.includes(s) ? (s === cur && !r ? 'now' : 'done') : ''}">${STEP_TEXT[s]}</li>`).join('')}</ol>
+  return `${S.review ? reviewHtml(S.review.built) : ''}<ol class="prog">${STEP_ORDER.filter((s) => s !== 'done').map((s) => `<li class="${S.steps.includes(s) ? (s === cur && !r ? 'now' : 'done') : ''}">${STEP_TEXT[s]}</li>`).join('')}</ol>
     ${S.err2 ? `<div class="small bad">${esc(S.err2)}</div>` : ''}${r ? `<div class="small ok" style="margin:2px 0">${r.registered ? 'Your coin is live and on the Coin board!' : 'Your coin is live on pump.fun.' + (r.regError ? ' Board listing: ' + esc(r.regError) : '')}</div>
     <div class="addr">${esc(r.mint)}</div><div class="row"><a class="btn tiny green" target="_blank" rel="noopener noreferrer" href="https://pump.fun/coin/${esc(r.mint)}">View on pump.fun</a><a class="btn tiny ghost" target="_blank" rel="noopener noreferrer" href="https://solscan.io/tx/${esc(r.signature)}">Transaction</a><button class="btn tiny alt" data-nx="board">Coin board</button></div>` : ''}`; }
 
@@ -101,7 +113,9 @@ function bind() {
   const f = S.form, v = (id) => root.querySelector(id);
   for (const [id, k] of [['#nx-name', 'name'], ['#nx-desc', 'description'], ['#nx-twitter', 'twitter'], ['#nx-telegram', 'telegram'], ['#nx-website', 'website']]) { const el = v(id); if (el) el.oninput = () => { f[k] = el.value.trim(); paintBalance(); }; }
   const sy = v('#nx-symbol'); if (sy) sy.oninput = () => { sy.value = sy.value.toUpperCase().replace(/[^A-Z0-9]/g, ''); f.symbol = sy.value; paintBalance(); };
-  const pr = v('#nx-pair'); if (pr) pr.onchange = () => { f.pair = pr.value; if (f.pair === 'KIBBLE') f.devBuySol = 0; render(); };
+  const pr = v('#nx-pair'); if (pr) pr.onchange = () => { f.pair = pr.value; render(); };
+  const sl = v('#nx-slip'); if (sl) sl.onchange = () => { f.slippageBps = Number(sl.value); render(); };
+  root.querySelectorAll('[data-rv]').forEach((b) => b.onclick = () => { const r = S.review; if (!r) return; S.review = null; r.done(b.dataset.rv === 'ok'); render(); });
   const dv = v('#nx-dev'); if (dv) dv.onchange = () => { f.devBuySol = Math.max(0, Math.min(5, Number(dv.value) || 0)); render(); };
   const ack = v('#nx-ack'); if (ack) ack.onchange = () => { f.ack = ack.checked; paintBalance(); };
   const im = v('#nx-image'); if (im) im.onchange = async () => { const file = im.files?.[0]; if (!file) return; try { f.image = await NX.imageToDataUrl(file); render(); } catch { ctx.toast?.('Could not read that image', 'bad'); } };
@@ -109,8 +123,10 @@ function bind() {
 }
 async function launch() { if (!canLaunch()) return; S.busy = true; S.steps = []; S.err2 = ''; S.result = null; render();
   try { const kit = S.kit || await NX.loadKit();
-    S.result = await NX.launchCoin({ form: S.form, wallet: S.wallet, kit, api: S.api, onStep: (s) => { S.steps.push(s); render(); } });
+    S.result = await NX.launchCoin({ form: S.form, wallet: S.wallet, kit, api: S.api, onStep: (s) => { S.steps.push(s); render(); },
+      review: (built) => new Promise((done) => { S.review = { built, done }; render(); root?.querySelector('#nx-review')?.scrollIntoView?.({ block: 'nearest' }); }) });
     ctx.toast?.(`$${S.form.symbol} launched!`, 'good'); ctx.refreshRegistry?.(true);
-  } catch (e) { S.err2 = /reject|cancel|denied/i.test(e?.message || '') ? 'You cancelled in Phantom. Nothing was sent.' : (e?.message || String(e)); }
+  } catch (e) { S.err2 = e?.cancelled ? e.message : /reject|cancel|denied/i.test(e?.message || '') ? 'You cancelled in Phantom. Nothing was sent.' : (e?.message || String(e)); }
+  S.review = null;
   S.busy = false; render(); refreshBalance(); }
 export const _state = S;
