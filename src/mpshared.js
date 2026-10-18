@@ -91,7 +91,9 @@ export const shortAddr = (a) => (typeof a === 'string' && a.length > 10 ? a.slic
 // ---- state / look sanitising (server and client both apply these to anything that crosses the wire) ----
 const num = (v, lo, hi) => { v = Number(v); return Number.isFinite(v) ? Math.max(lo, Math.min(hi, v)) : null; };
 export function cleanState(m) { const x = num(m?.x, 0, MP.WORLD_MAX), y = num(m?.y, 0, MP.WORLD_MAX); if (x == null || y == null) return null;
-  return { x: Math.round(x * 2) / 2, y: Math.round(y * 2) / 2, f: FACES.includes(m.f) ? m.f : 'down', m: m.m ? 1 : 0, r: m.r ? 1 : 0, d: m.d ? 1 : 0, p: Number.isInteger(m.p) && m.p > 0 && m.p < POSES.length ? m.p : 0, ts: num(m.ts, 0, 9e15) ?? 0 }; }
+  return { x: Math.round(x * 2) / 2, y: Math.round(y * 2) / 2, f: FACES.includes(m.f) ? m.f : 'down', m: m.m ? 1 : 0, r: m.r ? 1 : 0, d: m.d ? 1 : 0, p: Number.isInteger(m.p) && m.p > 0 && m.p < POSES.length ? m.p : 0, ts: num(m.ts, 0, 9e15) ?? 0, ...companionOffset(m) }; }
+// Inu Quest companion follower: optional small offset from its owner (whole px, |v| <= 96). Absent = no companion out / old server.
+const companionOffset = (m) => { const cx = num(m?.cx, -96, 96), cy = num(m?.cy, -96, 96); return cx == null || cy == null ? {} : { cx: Math.round(cx), cy: Math.round(cy) }; };
 const HEX = /^#[0-9a-fA-F]{6}$/, ID = /^[a-z0-9_-]{1,40}$/i, WORD = /^[a-z0-9_-]{1,24}$/i;
 export function cleanLook(l) { if (!l || typeof l !== 'object') return { coat: 'tan', eq: {} };
   const eq = {}; for (const k of ['hat', 'eyes', 'neck', 'top', 'bottom', 'feet']) if (typeof l.eq?.[k] === 'string' && ID.test(l.eq[k])) eq[k] = l.eq[k];
@@ -115,7 +117,7 @@ export function interpolate(buf, t) { if (!buf.length) return null; if (t <= buf
 export function pushSnap(rp, s, recvNow) { const ts = s.ts || recvNow; const off = recvNow - ts; rp.off = rp.off == null ? off : Math.min(rp.off + 1, off); // min = least-delayed packet; +1 ms/msg lets it follow clock drift
   const t = ts + rp.off, buf = (rp.buf ||= []), last = buf[buf.length - 1];
   if (last && t <= last.t) return; if (last && t - last.t > 250) buf.push({ ...last, t: t - MP.SEND_MS, m: last.m });
-  buf.push({ x: s.x, y: s.y, f: s.f, m: s.m, r: s.r, d: s.d, t }); while (buf.length > 2 && buf[1].t < recvNow - 1500) buf.shift(); if (buf.length > 30) buf.splice(0, buf.length - 30); }
+  buf.push({ x: s.x, y: s.y, f: s.f, m: s.m, r: s.r, d: s.d, t, ...(s.cx != null ? { cx: s.cx, cy: s.cy } : {}) }); while (buf.length > 2 && buf[1].t < recvNow - 1500) buf.shift(); if (buf.length > 30) buf.splice(0, buf.length - 30); }
 // pick at most `cap` remote players to draw: inside the view (+margin), nearest to `me` first
 export function cullPlayers(list, view, me, cap, margin = 80) { return list.filter((p) => p.x > view.x0 - margin && p.x < view.x1 + margin && p.y > view.y0 - margin && p.y < view.y1 + margin * 2)
   .sort((a, b) => Math.hypot(a.x - me.x, a.y - me.y) - Math.hypot(b.x - me.x, b.y - me.y)).slice(0, cap); }

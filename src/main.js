@@ -63,6 +63,8 @@ import { createGuide } from './guideui.js';
 import { isRealWallet } from './guide.js';
 import * as PAIR from './pairing.js';
 import { ensureFly, featuredOf, statusGlow, poolsOf, FEATURED_SLOTS, claimPresDrop } from './flywheels.js';
+import * as IQC from './companions.js';
+import { renderCompanions } from './companionui.js';
 import { makeTown, townHour, lineFor, playerDid, friendsOf, rivalsOf, breadRound, sydneyMinutes } from './townai.js';
 import { mountCreator, drawPreview, profileOfChoices } from './creatorui.js';
 import { startTitleFx } from './titlefx.js';
@@ -102,6 +104,17 @@ const cam = { x: 0, y: 0 };
 let drive = null; const petF = { x: 0, y: 0, dir: 1, phase: 0, moving: false }; let honkT = 0; // driving state (runtime) + pet follower
 const pres = makePresident(7); // President Inu's seeded visit schedule
 const PRES_Q = new URLSearchParams(location.search).get('president'); let presForced = false;
+// Inu Quest companions (cosmetic followers, read-only bridge; choice kept in the Verse save). ?companions=fixture|fixture-wren|none
+// loads a local sample profile on localhost only (dev/proof); production always goes through the bridge with the player's session.
+const CMP = { prof: null, status: 'idle', F: IQC.makeFollower(), remotes: new Map(), seq: 0, lastT: 0 };
+const CMP_FIX = /^(localhost|127\.0\.0\.1)$/.test(location.hostname) ? new URLSearchParams(location.search).get('companions') : null;
+async function loadCompanionProfile() { const my = ++CMP.seq; CMP.status = 'loading'; let fixture = null;
+  if (CMP_FIX && CMP_FIX !== 'none') fixture = await fetch(`tests/fixtures/${CMP_FIX === 'fixture-wren' ? 'companions-wren-beaten' : 'companions-sample'}.json`).then((r) => (r.ok ? r.json() : null)).catch(() => null);
+  const online = navigator.onLine !== false, prof = CMP_FIX === 'none' ? null : await IQC.loadCompanions({ kp: DEMO ? null : K.kp, fixture, online });
+  if (my !== CMP.seq) return; CMP.prof = prof; CMP.status = prof ? 'ready' : !online ? 'offline' : 'none'; if (panel?.kind === 'companions') openPanel('companions'); }
+addEventListener('kibble:wallet', () => { if (state) loadCompanionProfile(); }); addEventListener('online', () => { if (state && !CMP.prof) loadCompanionProfile(); });
+globalThis.__cmp = CMP; // dev/proof hook (read-only view of follower state)
+const myCompanion = () => (state && mode === 'world' && !drive ? IQC.chosen(CMP.prof, state.companion) : null);
 // ambient life pass: Sydney clock for Taro's bread round (?sydney=HH:MM pins it for proof shots; cosmetic only), refreshed once a second
 const SYD_Q = /^(\d{1,2}):(\d{2})$/.exec(new URLSearchParams(location.search).get('sydney') || ''); let sydMin = 0, sydAt = -1;
 const sydneyNow = () => (globalThis.__sydneyMin ?? (SYD_Q ? +SYD_Q[1] * 60 + +SYD_Q[2] : sydneyMinutes()));
@@ -212,7 +225,7 @@ function titleScreen() {
   requestAnimationFrame(loop);
 }
 
-function startGame(s) { loadProfile(s).catch(() => {}); ENG.ensureEngage(s); ENG.addSeasonXp(s, 'login', Math.floor((s.clockSec || 0) / DAY_LEN)); F5.ensureFly5(s); F5.holderCheck(s); s.town ||= makeTown(rng); townH = -1; seedTokens(s, rng); REL.ensureRel(s); ensureFarm(s); ensureBiz(s); s.clockSec ??= 0; catchUp(s, Date.now(), { season: seasonOf(Math.floor(s.clockSec / DAY_LEN)), rain: false }); hourIdx = Math.floor(s.clockSec / (DAY_LEN / 24));
+function startGame(s) { loadProfile(s).catch(() => {}); IQC.ensureChoice(s); loadCompanionProfile(); ENG.ensureEngage(s); ENG.addSeasonXp(s, 'login', Math.floor((s.clockSec || 0) / DAY_LEN)); F5.ensureFly5(s); F5.holderCheck(s); s.town ||= makeTown(rng); townH = -1; seedTokens(s, rng); REL.ensureRel(s); ensureFarm(s); ensureBiz(s); s.clockSec ??= 0; catchUp(s, Date.now(), { season: seasonOf(Math.floor(s.clockSec / DAY_LEN)), rain: false }); hourIdx = Math.floor(s.clockSec / (DAY_LEN / 24));
   state = s; state.kibble ??= DEMO ? 20 : 0; if (!DEMO) state.kibble = 0; ensureWardrobe(state); ensurePacks(state); ensureMall(state); state.clockSec ??= 0; lastEarned = state.stats.bonesEarned; mode = 'world'; LS.ensureStreak(state); setTimeout(() => syncStreak(), 0);
   buildDrawer(document, { joystick: joyApi, bork: () => { initAudio(); bork(); player.emote = { kind: 'bork', t: 1.2 }; emoteBubble('me', 'bork', time); } }); $('#title').hidden = true; $('#hud').hidden = false; $('#minimap-wrap').hidden = false; document.body.classList.add('inworld');
   makeAlive(); mapImg = prerenderMap(); npcs = spawnNpcs(rng, 6); npcs.forEach((n) => { n.art = artKey(n.coat); }); amb = makeAmbient(42);
@@ -448,6 +461,7 @@ $('#btn-guide').onclick = () => guide?.startTour(true);
 $('#btn-pack').onclick = () => { if (mode === 'world') openPanel('packs'); };
 $('#btn-wardrobe').onclick = () => { if (mode === 'world') openPanel('wardrobe'); };
 $('#btn-garage').onclick = () => { if (mode === 'world') openPanel('garage'); };
+$('#btn-companion').onclick = () => { if (mode === 'world') openPanel('companions'); };
 $('#panel-close').onclick = () => closePanel();
 // ---- touch controls (virtual stick on the left, A/B + menu on the right) ----
 { const pad = $('#stick'), knob = $('#knob');
@@ -517,6 +531,8 @@ function updateWorld(dt) {
   stepActor(ACT, dt, time, { moving: player.moving || !!drive, busy: !!panel || !!scene });
   { const vw = innerWidth / ZOOM, vh = innerHeight / ZOOM; stepAlive(ALIVE, dt, { x0: cam.x - vw / 2, y0: cam.y - vh / 2, x1: cam.x + vw / 2, y1: cam.y + vh / 2 }, Math.random, player.running && !drive ? p : null); }
   for (const e of stepAmbient(amb, dt, p, npcs, { running: player.running && !drive, hour: dayPhase(time + dayOffset).hour, dark: dayPhase(time + dayOffset).dark })) { if (e.kind === 'flush') chirp(); if (e.kind === 'fetched') toast(`${e.who} brought the ball back!`, 'good'); }
+  { const c = myCompanion(), F = CMP.F; if (!c) F.c = null; else { if (F.c?.id !== c.id || F.c?.form?.id !== c.form?.id) { if (!F.c) IQC.resetFollower(F, p, c); else F.c = c; }
+      IQC.stepFollow(F, p, dt, { rm: reducedMotion(), back: activePet(state) ? 56 : 30 }); /* walks behind the Verse pet when both are out */ const ph = dayPhase(time + dayOffset); IQC.react(F, IQC.envFor(F, { rain: amb.rain, dark: ph.dark, others: [...CMP.remotes.values()] })); } }
   if (rng() < dt * 0.08) chirp();
   if (player.moving) { stepAcc += dt; if (stepAcc > 0.26) { stepAcc = 0; const tt = MAP[Math.floor(p.y / TILE)]?.[Math.floor(p.x / TILE)]; if (tt === T.GRASS || tt === T.FLOWER) { feel.rustle(p.x, p.y + 10); rustle(); } else { feel.dust(p.x, p.y + 11); footstep(); } } }
   feel.step(dt); document.body.classList.toggle('driving', !!drive); moodTick(dt);
@@ -576,6 +592,9 @@ function renderWorld() {
   for (const p of mapImg.props) if (p.y > Tp && p.y < Bt) list.push(p);
   for (const p of dyn) if (!p.flat) list.push(p);
   for (const p of carProps(amb)) list.push(p);
+  { const now = performance.now() / 1000, fdt = Math.min(0.1, Math.max(0, now - (CMP.lastT || now))); CMP.lastT = now; const rm = reducedMotion();
+    IQC.stepRemotes(CMP.remotes, actors, fdt, { rm }); for (const F of CMP.remotes.values()) IQC.react(F, IQC.envFor(F, { rain: amb.rain, dark: phase.dark, others: [CMP.F, ...CMP.remotes.values()] }));
+    for (const F of [CMP.F, ...CMP.remotes.values()]) if (F.c && F.x > L && F.x < Rt && F.y > Tp && F.y < Bt) list.push({ y: F.y + 2, d: (c) => IQC.drawFollower(c, F, time, { rm, fallback: IQC.drawFallbackPup }) }); }
   for (const p of catProps(amb, view)) list.push(p); for (const p of leashProps(view, walkNow())) list.push(p);
   for (const a of actors) if (a.x > L && a.x < Rt && a.y > Tp && a.y < Bt) list.push({ y: a.y + 6, a });
   list.sort((p, q) => p.y - q.y);
@@ -816,6 +835,7 @@ function openPanel(kind, opts = {}) {
   if (kind === 'salon') return renderSalon();
   if (kind === 'engage') return renderEngage({ ...farmCtx(), tab: opts.tab, day: gameDay(), open: (t) => openPanel('engage', { tab: t }) });
   if (kind === 'bank') return renderBank();
+  if (kind === 'companions') return renderCompanions(body, { state, getProfile: () => CMP.prof, status: CMP.status, signedIn: !DEMO && !!K.kp?.session, persist, toast, onChange: () => { const c = myCompanion(); if (c) IQC.resetFollower(CMP.F, state.player, c); else CMP.F.c = null; } });
   if (kind === 'bureau') return PAB.renderBureau(body, { drawShiba }, opts);
   if (kind === 'kibblemood') { body.innerHTML = MWd.moodCardHtml(MOOD.current, esc); body.querySelectorAll('[data-copy]').forEach((b) => b.onclick = () => copyText(b.dataset.copy)); body.querySelector('[data-npcrules]').onclick = () => openPanel('npcrules'); return; }
   if (kind === 'dailybone') { body.innerHTML = MWd.dailyBoneHtml(MWd.MW.mood) + '<div class="row" style="justify-content:flex-start"><button class="btn ghost tiny" data-npcrules>How the town talks</button></div>'; body.querySelector('[data-npcrules]').onclick = () => openPanel('npcrules'); return; }
@@ -1447,7 +1467,9 @@ function frame(now) {
 // Live multiplayer: other players in the same room ('city' while walking the world). Off unless /api/config has a realtimeUrl.
 const MPL = createMultiplayer({ toast, onActions: () => wheel.open(), onVisit: (id, name, kind) => (kind === 'shop' ? visitShop(id, name) : visitShared(id, name)), now: () => time, getLocal: () => state && { h: sharedHomeId(), room: mode === 'world' ? 'city' : mode === 'room' && RP.id ? 'r-' + RP.id : null, roomName: mode === 'room' ? RP.sc?.name : null,
   x: mode === 'room' ? RP.R.p.x : state.player.x, y: mode === 'room' ? RP.R.p.y : state.player.y, f: player.face, m: player.moving, r: player.running, d: !!drive, emote: player.emote, act: ACT.act, p: poseCodeOf(ACT),
-  name: state.player.name, token: K.kp?.session || null, look: { coat: state.player.coat, eq: state.wardrobe.equipped, pl: mpProfile() } } });
+  name: state.player.name, token: K.kp?.session || null, look: { coat: state.player.coat, eq: state.wardrobe.equipped, pl: cpLook(mpProfile()) }, cp: CMP.F.c && mode === 'world' && !drive ? IQC.wireOffset(CMP.F, state.player) : null } });
+// companion id + form ride in the look's pl.look (cpi/cpf); remote clients strip them before reading the Shiba look
+function cpLook(pl) { const w = CMP.F.c && mode === 'world' && !drive ? IQC.toWire(CMP.F.c) : null; if (!w) return pl; return pl ? { ...pl, look: { ...pl.look, ...w } } : { look: w, outfit: {} }; }
 MPL.start().catch(() => {});
 // ---- $KIBBLE town mood (src/kibblemood.js + src/moodworld.js): one shared /api/kibble-mood fetch per minute, paused when hidden ----
 let crierRing = 0, crierPending = false;

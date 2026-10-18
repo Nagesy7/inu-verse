@@ -337,3 +337,14 @@ body.short .title-card>.row{position:sticky;bottom:-4px;z-index:3;background:#1b
 #hud .chip.streak{cursor:pointer;min-height:28px}#hud .chip.streak img{image-rendering:pixelated}#hud .chip.streak.device small{color:#ffb84a}
 .profstreak{display:flex;flex-direction:row;align-items:center;gap:10px;margin:6px 0}.profstreak>div{flex:1;display:flex;flex-direction:column}.profstreak img,.pins img{image-rendering:pixelated}
 .grid.pins .card.locked{opacity:.65}.grid.pins .card{align-items:center;text-align:center}
+/* Inu Quest companions picker */
+.cp-row{justify-content:space-between;align-items:center;margin:6px 0 10px}
+.cp-grid{grid-template-columns:repeat(auto-fill,minmax(118px,1fr))}
+.cp-card{color:var(--cream);font:inherit;cursor:pointer;display:flex;flex-direction:column;align-items:center;gap:2px}
+.cp-card .cp-face{width:48px;height:48px;image-rendering:pixelated;background:var(--navy3);border:2px solid var(--goldd)}
+.cp-card small{color:#b9b08e;font-size:10px}.cp-card .cp-line{font-size:9px}.cp-card .cp-line b{color:var(--goldl)}
+.cp-card.locked{opacity:.6;cursor:not-allowed}.cp-card .cp-hint{color:#e8b4a0}
+.cp-empty{text-align:center;padding:14px 8px;border:3px dashed var(--goldd);background:var(--navy2)}
+.cp-empty p{margin:8px 0 0;font-size:12px}
+.cp-paw{width:24px;height:24px;margin:0 auto;background:radial-gradient(circle at 50% 70%,var(--goldd) 38%,transparent 40%),radial-gradient(circle at 20% 30%,var(--goldd) 14%,transparent 16%),radial-gradient(circle at 50% 15%,var(--goldd) 14%,transparent 16%),radial-gradient(circle at 80% 30%,var(--goldd) 14%,transparent 16%)}
+@media (max-height:420px){.cp-grid{grid-template-columns:repeat(auto-fill,minmax(104px,1fr));gap:6px}.cp-card{padding:6px}}

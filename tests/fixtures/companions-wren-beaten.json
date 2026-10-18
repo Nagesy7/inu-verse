@@ -1,0 +1,187 @@
+{
+ "schema": "inu-quest/companions",
+ "v": 1,
+ "minReader": 1,
+ "game": "inu-quest",
+ "origin": "https://inu-quest.vercel.app",
+ "trainer": {
+  "name": "ZACH"
+ },
+ "active": "inu:0",
+ "companions": [
+  {
+   "id": "inu:0",
+   "kind": "inu",
+   "unlocked": true,
+   "name": "Fernshiba",
+   "species": "fernshiba",
+   "speciesName": "Fernshiba",
+   "line": "sprigpup",
+   "form": {
+    "id": "fernshiba",
+    "name": "Fernshiba",
+    "stage": 2,
+    "final": false
+   },
+   "forms": [
+    {
+     "id": "sprigpup",
+     "name": "Sprigpup",
+     "stage": 1,
+     "current": false,
+     "sprite": {
+      "sheet": "https://inu-quest.vercel.app/companions/v1/inu/sprigpup.png",
+      "map": "https://inu-quest.vercel.app/companions/v1/index.json",
+      "key": "inu/sprigpup"
+     }
+    },
+    {
+     "id": "fernshiba",
+     "name": "Fernshiba",
+     "stage": 2,
+     "current": true,
+     "sprite": {
+      "sheet": "https://inu-quest.vercel.app/companions/v1/inu/fernshiba.png",
+      "map": "https://inu-quest.vercel.app/companions/v1/index.json",
+      "key": "inu/fernshiba"
+     }
+    },
+    {
+     "id": "arborinu",
+     "name": "Arborinu",
+     "stage": 3,
+     "current": false,
+     "sprite": {
+      "sheet": "https://inu-quest.vercel.app/companions/v1/inu/arborinu.png",
+      "map": "https://inu-quest.vercel.app/companions/v1/index.json",
+      "key": "inu/arborinu"
+     }
+    }
+   ],
+   "level": 23,
+   "sprite": {
+    "sheet": "https://inu-quest.vercel.app/companions/v1/inu/fernshiba.png",
+    "map": "https://inu-quest.vercel.app/companions/v1/index.json",
+    "key": "inu/fernshiba"
+   },
+   "traits": {
+    "coat": "#c98f55",
+    "belly": "#fff4dc",
+    "accent": "#3e9b45",
+    "mark": "leaf",
+    "size": "medium"
+   }
+  },
+  {
+   "id": "inu:1",
+   "kind": "inu",
+   "unlocked": true,
+   "name": "Pawpip",
+   "species": "pawpip",
+   "speciesName": "Pawpip",
+   "line": "pawpip",
+   "form": {
+    "id": "pawpip",
+    "name": "Pawpip",
+    "stage": 1,
+    "final": false
+   },
+   "forms": [
+    {
+     "id": "pawpip",
+     "name": "Pawpip",
+     "stage": 1,
+     "current": true,
+     "sprite": {
+      "sheet": "https://inu-quest.vercel.app/companions/v1/inu/pawpip.png",
+      "map": "https://inu-quest.vercel.app/companions/v1/index.json",
+      "key": "inu/pawpip"
+     }
+    },
+    {
+     "id": "barkley",
+     "name": "Barkley",
+     "stage": 2,
+     "current": false,
+     "sprite": {
+      "sheet": "https://inu-quest.vercel.app/companions/v1/inu/barkley.png",
+      "map": "https://inu-quest.vercel.app/companions/v1/index.json",
+      "key": "inu/barkley"
+     }
+    },
+    {
+     "id": "howlbrave",
+     "name": "Howlbrave",
+     "stage": 3,
+     "current": false,
+     "sprite": {
+      "sheet": "https://inu-quest.vercel.app/companions/v1/inu/howlbrave.png",
+      "map": "https://inu-quest.vercel.app/companions/v1/index.json",
+      "key": "inu/howlbrave"
+     }
+    }
+   ],
+   "level": 6,
+   "sprite": {
+    "sheet": "https://inu-quest.vercel.app/companions/v1/inu/pawpip.png",
+    "map": "https://inu-quest.vercel.app/companions/v1/index.json",
+    "key": "inu/pawpip"
+   },
+   "traits": {
+    "coat": "#d8a868",
+    "belly": "#fff8e8",
+    "accent": "#e04848",
+    "mark": "normal",
+    "size": "small"
+   }
+  },
+  {
+   "id": "wren-wanderly",
+   "kind": "trainer",
+   "unlocked": true,
+   "name": "Wren Wanderly",
+   "species": null,
+   "speciesName": null,
+   "line": null,
+   "form": null,
+   "forms": [],
+   "level": null,
+   "sprite": {
+    "sheet": "https://inu-quest.vercel.app/companions/v1/trainers/wren-wanderly.png",
+    "map": "https://inu-quest.vercel.app/companions/v1/index.json",
+    "key": "trainers/wren-wanderly"
+   },
+   "traits": {
+    "role": "trail ranger",
+    "hat": "straw sun hat",
+    "hatColor": "#e8d070",
+    "poncho": "#5a8a48",
+    "satchel": "#8a5a30",
+    "hair": "#b86a3a"
+   }
+  },
+  {
+   "id": "biscuit",
+   "kind": "pet",
+   "unlocked": true,
+   "name": "Biscuit",
+   "species": null,
+   "speciesName": null,
+   "line": null,
+   "form": null,
+   "forms": [],
+   "level": null,
+   "sprite": {
+    "sheet": "https://inu-quest.vercel.app/companions/v1/pets/biscuit.png",
+    "map": "https://inu-quest.vercel.app/companions/v1/index.json",
+    "key": "pets/biscuit"
+   },
+   "traits": {
+    "breed": "corgi pup",
+    "coat": "#e8903a",
+    "belly": "#f8f0e0",
+    "size": "tiny"
+   }
+  }
+ ]
+}
