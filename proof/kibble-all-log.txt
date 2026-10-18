@@ -1,0 +1,60 @@
+zoomies: shown=zoomies override=true crier=["zoomies"]
+saved proof/kibble-mood-zoomies.png
+happy: shown=happy override=true crier=["happy"]
+saved proof/kibble-mood-happy.png
+chill: shown=chill override=true crier=["chill"]
+saved proof/kibble-mood-chill.png
+grumpy: shown=grumpy override=true crier=["grumpy"]
+saved proof/kibble-mood-grumpy.png
+doghouse: shown=doghouse override=true crier=["doghouse"]
+saved proof/kibble-mood-doghouse.png
+live mood response: {"mint":"4VE9sy4fEMJdZ6i7MkYPbnqDJd2oqzJQmg44WJ3opump","symbol":"KIBBLE","price":0.000002972945033003046,"priceSol":null,"change1h":null,"change24h":null,"mood":"chill","rawMood":"chill","pendingMood":null,"updatedAt":"2026-10-18T06:46:39.986Z","source":"pump.fun","changeSource":"computed from Inu Verse price samples","liquidityUsd":24.39,"marketCapUsd":2972.95,"stale":false,"cached":true,"ageMs":47045,"shown":"chill"}
+crier announced: ["chill"]
+saved proof/kibble-crier.png
+saved proof/kibble-statue-card.png
+card CA: 4VE9sy4fEMJdZ6i7MkYPbnqDJd2oqzJQmg44WJ3opump · NFA: Not financial advice. Just how the town feels today.
+saved proof/kibble-daily-bone.png
+saved proof/kibble-npc-rules.png
+npc lines said so far today: null
+after reload crier announced again? []
+saved proof/kibble-weather-grumpy-844x390.png
+saved proof/kibble-statue-card-844x390.png
+saved proof/kibble-weather-grumpy-667x375.png
+saved proof/kibble-statue-card-667x375.png
+KIBBLE clean: {
+ "overall": "fail",
+ "checks": {
+  "mint": "pass - No one can mint more",
+  "freeze": "pass - No one can freeze holders",
+  "top10": "pass 0.83 - 0.83% of supply held by the 10 largest wallets (excluding the pump.fun curve / pool vaults)",
+  "creatorPct": "pass 0 - Creator Akk3…56fn holds 0% of supply",
+  "creatorSold": "fail 100 - Creator balance went down by 100% of what it received (offloaded or moved)",
+  "snipes": "pass 0 - No other wallet picked up tokens in the creation slot (457209987)",
+  "feeSplit": "warn - No creator fee split published on pump.fun (no fee-sharing config on-chain)",
+  "liquidity": "fail 0.233 - 0.233 SOL (~$24) in the pump.fun bonding curve: locked by the program (can't be pulled), but very thin"
+ },
+ "rpcCalls": 13,
+ "cached": true
+}
+saved proof/kibble-clean-badge.png
+saved proof/kibble-clean-breakdown.png
+board coins with a badge: 0
+board badges: []
+saved proof/kibble-clean-board.png
+saved proof/kibble-clean-badge-667x375.png
+saved proof/kibble-clean-breakdown-667x375.png
+pup: mine={"tier":"pup","preview":true} api=null wall={"status":"unknown","topDogs":[],"reason":"Top Dog list not published by the Kennel API yet"}
+saved proof/kibble-kennel-pup.png
+guard: mine={"tier":"guard","preview":true} api=null wall={"status":"unknown","topDogs":[],"reason":"Top Dog list not published by the Kennel API yet"}
+saved proof/kibble-kennel-guard.png
+alpha: mine={"tier":"alpha","preview":true} api=null wall={"status":"unknown","topDogs":[],"reason":"Top Dog list not published by the Kennel API yet"}
+saved proof/kibble-kennel-alpha.png
+top: mine={"tier":"top","preview":true} api=null wall={"status":"unknown","topDogs":[],"reason":"Top Dog list not published by the Kennel API yet"}
+saved proof/kibble-kennel-top.png
+saved proof/kibble-kennel-wall.png
+saved proof/kibble-kennel-wall-panel.png
+saved proof/kibble-kennel-top-844x390.png
+saved proof/kibble-kennel-wall-panel-844x390.png
+saved proof/kibble-kennel-top-667x375.png
+saved proof/kibble-kennel-wall-panel-667x375.png
+kibble-pay /api/kennel status: 200
