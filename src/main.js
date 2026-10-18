@@ -31,6 +31,8 @@ import * as RC from './realcoins.js';
 import * as CL from './cleanlaunch.js';
 import * as NV from './npcvoices.js';
 import * as KN from './kennel.js';
+import * as RD from './raidui.js';
+import { eventAt as raidEventAt } from './bossraid.js';
 import { KENNEL_TAG } from './art.js';
 import { KIBBLE_PLAZA } from './world.js';
 import { ensureFarm, tickFarm, seasonOf, marketHour, rollFarmWeek, catchUp, fishCatch, WEEK_DAYS } from './farm.js';
@@ -498,7 +500,7 @@ function renderWorld() {
     const tx0 = Math.floor(-ox / TILE) - 1, ty0 = Math.floor(-oy / TILE) - 1; ctx.save(); ctx.scale(SCALE, SCALE); drawWater(ctx, time, tx0, ty0, tx0 + Math.ceil(vw / TILE) + 2, ty0 + Math.ceil(vh / TILE) + 2); ctx.restore(); }
   const phase = dayPhase(time + dayOffset);
   globalThis.__inuNight = phase.dark;
-  const dyn = [...HUB_GATES.map((g) => hubGateProp(g, time)), ...dynamicProps(state, time, myPack(state)), ...presidentProps(pres, time), ...doorProps(time), ...carWorldProps(), ...crewProps(), ...adProps(trend, adRot, adIdx, !!globalThis.__inuNight, time, featuredMap()), ...confettiProps(), ...squareProps(state, time, Math.floor(gameDay() / 7)), ...arcadeProps(time, arcadeTop), ...MWd.statueProps(time, { drawShiba, artLoaded: () => !!ART['shiba-golden'] }), ...MWd.newsProps(time), ...KN.wallProps(KIBBLE_PLAZA.wall, KEN.wall, time, TILE), ...MWd.firepitProps(time), ...MWd.plazaSkyProps(time)];
+  const dyn = [...HUB_GATES.map((g) => hubGateProp(g, time)), ...dynamicProps(state, time, myPack(state)), ...presidentProps(pres, time), ...doorProps(time), ...carWorldProps(), ...crewProps(), ...adProps(trend, adRot, adIdx, !!globalThis.__inuNight, time, featuredMap()), ...confettiProps(), ...squareProps(state, time, Math.floor(gameDay() / 7)), ...arcadeProps(time, arcadeTop), ...MWd.statueProps(time, { drawShiba, artLoaded: () => !!ART['shiba-golden'] }), ...MWd.newsProps(time), ...KN.wallProps(KIBBLE_PLAZA.wall, KEN.wall, time, TILE), ...RD.gateProps(KIBBLE_PLAZA.raid, time, TILE), ...MWd.firepitProps(time), ...MWd.plazaSkyProps(time)];
   for (const d of dyn) if (d.flat) d.d(ctx);
   const view = { x0: -ox, y0: -oy, x1: -ox + vw, y1: -oy + vh };
   drawGroundLife(ctx, amb, phase); drawAliveGround(ctx, ALIVE, view, phase); feel.drawGround(ctx);
@@ -695,6 +697,7 @@ function openPanel(kind, opts = {}) {
       const cb = body.querySelector('#kn-show'); if (cb) cb.onchange = () => { KEN.show = cb.checked; KN.setShowMine(cb.checked); toast(cb.checked ? 'Kennel look on' : 'Kennel look hidden', 'good'); }; };
     draw(); refreshKennel(true).then(draw); return; }
   if (kind === 'npcrules') { body.innerHTML = NV.rulesHtml(MWd.voices()); return; }
+  if (kind === 'raid') { RD.mountRaid({ body, api: RAPI, kp: K.kp, toast, isOpen: () => panel?.kind === 'raid', getEntry: () => RAID.entry, setEntry: (e) => { RAID.entry = e; } }); return; }
   if (kind === 'fly5') return renderFly5({ ...farmCtx(), kp: DEMO ? null : K.kp, tab: opts.tab, day: gameDay(), week: Math.floor(gameDay() / 7), month: Math.floor(gameDay() / 28), nowH: state.clockSec / (DAY_LEN / 24), open: (t) => openPanel('fly5', { tab: t }) });
   if (kind === 'matchmaker') return renderMatchmaker({ ...farmCtx(), tab: opts.tab, weekFrac: ((state.clockSec / DAY_LEN) % WEEK_DAYS) / WEEK_DAYS, open: (t) => openPanel('matchmaker', { tab: t }), startDuo: (partner, jobId) => { if (!partner) return toast('No partner', 'bad'); closePanel(); playDuo(jobId, partner); } });
   if (kind === 'city') return renderCity({ ...farmCtx(), tab: opts.tab, nowH: state.clockSec / (DAY_LEN / 24), dayFrac: (state.clockSec % DAY_LEN) / DAY_LEN, trend, presOn: pres.on && pres.stage === 'visit', presKey: 'visit' + pres.n, open: (t) => openPanel('city', { tab: t }) });
@@ -1203,9 +1206,14 @@ function kennelMine() { return KN.myKennel({ override: KEN.override, real: KEN.r
 function mpProfile() { const t = KN.lookKennel(kennelMine()), p = hasCustomLook(state) ? myProfile() : null; if (!t) return p; return p ? { ...p, look: { kennel: t, ...p.look } } : { look: { kennel: t }, outfit: {} }; }
 async function refreshKennel(force) { const w = K.kp?.signedIn ? K.kp.address : null; const due = force || w !== KEN.wallet || Date.now() - KEN.at > KN.CACHE_MS; if (!due) return;
   KEN.wallet = w; KEN.at = Date.now(); const [me, wall] = await Promise.all([w ? KN.fetchKennel(w) : Promise.resolve(null), KN.fetchWall()]); KEN.real = me; KEN.wall = wall; }
-refreshKennel(); setInterval(() => refreshKennel(), 60_000); addEventListener('kibble:wallet', () => refreshKennel());
+refreshKennel().then(raidAuto); setInterval(() => refreshKennel().then(raidAuto), 60_000); addEventListener('kibble:wallet', () => refreshKennel(true).then(raidAuto));
+// ---- Boss Raids (free for all; Kennel tier or an Inu cosmetic auto-enters you each hour; see inu-shared/boss-raids.md) ----
+const RAPI = RD.raidApi({ session: () => K.kp?.session }), RAID = { entry: null, ev: null };
+async function raidAuto() { if (!state || DEMO) return; const ev = raidEventAt(Date.now()); if (RAID.ev !== ev.eventId) { RAID.ev = ev.eventId; RAID.entry = null; }
+  try { const r = await RD.autoEnter({ api: RAPI, signedIn: !!K.kp?.session, kennelTier: KEN.real?.tier || null, state }); if (r.entered) { RAID.entry = r.entry || (r.why === 'kennel' ? 'auto:kennel' : 'auto:cosmetic'); if (!r.already) toast(`Auto-entered this hour's Boss Raid: ${ev.bossName}. Free, skill only.`, 'good'); } } catch {} }
+globalThis.__raid = () => ({ ...RAID, ui: RD._raid });
 globalThis.__kennel = () => ({ ...KEN, mine: kennelMine() });
-function kibbleSpot(id) { if (id === 'kwall') { openPanel('kennel'); return; } if (id === 'kstatue') openPanel('kibblemood'); else if (id === 'dailybone') openPanel('dailybone');
+function kibbleSpot(id) { if (id === 'kwall') { openPanel('kennel'); return; } if (id === 'raidgate') { openPanel('raid'); return; } if (id === 'kstatue') openPanel('kibblemood'); else if (id === 'dailybone') openPanel('dailybone');
   else if (id === 'crier') { crierRing = 1.5; feel.say(MWd.CRIER_NAME, MWd.crierLine(MWd.MW.mood) + ' ' + KM.lineFor(MWd.MW.mood, rng), textBlip); } }
 titleScreen(); requestAnimationFrame(frame);
 cv.addEventListener('wheel', (e) => { if (mode !== 'world') return; e.preventDefault(); const now = performance.now(); if (now - (cv._wz || 0) < 180) return; cv._wz = now; setZoom(stepZoom(ZOOM, e.deltaY < 0 ? 1 : -1)); }, { passive: false });
