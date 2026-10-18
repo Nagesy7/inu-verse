@@ -1,0 +1,156 @@
+{
+ "tapStarted": {
+  "v": {
+   "x": 85.41985556144381,
+   "y": 34.167942224577686
+  },
+  "running": false,
+  "pts": 1,
+  "moving": true,
+  "face": "right",
+  "x": 696.2386960772152,
+  "y": 992.0954784308858,
+  "mark": true
+ },
+ "tapArrived": {
+  "tile": [
+   25,
+   32
+  ],
+  "goal": [
+   25,
+   32
+  ],
+  "markerCleared": true
+ },
+ "keyCancels": {
+  "ptsBefore": 1,
+  "ptsAfter": 0,
+  "face": "down"
+ },
+ "runShift": {
+  "v": {
+   "x": 161,
+   "y": 0
+  },
+  "running": true,
+  "pts": 0,
+  "moving": true,
+  "face": "right",
+  "x": 700.2520906950606,
+  "y": 978.6420469200929,
+  "mark": false
+ },
+ "stopAfterRun": {
+  "v": {
+   "x": 0,
+   "y": 0
+  },
+  "running": false,
+  "pts": 0,
+  "moving": false,
+  "face": "right",
+  "x": 1239.437100695065,
+  "y": 978.6420469200929,
+  "mark": false
+ },
+ "stickEdge": {
+  "v": {
+   "x": -161,
+   "y": 0
+  },
+  "running": true,
+  "pts": 0,
+  "moving": true,
+  "face": "left",
+  "x": 602.0109870000001,
+  "y": 976,
+  "mark": false
+ },
+ "stickHalf": {
+  "v": {
+   "x": -92,
+   "y": 0
+  },
+  "running": false,
+  "pts": 0,
+  "moving": true,
+  "face": "left",
+  "x": 554.3314800000002,
+  "y": 976,
+  "mark": false
+ },
+ "doorPlan": {
+  "v": {
+   "x": 65.43215941294491,
+   "y": -64.67327511854462
+  },
+  "running": false,
+  "pts": 2,
+  "moving": true,
+  "face": "right",
+  "x": 1270.4330453506009,
+  "y": 1896.8992912534202,
+  "mark": true,
+  "target": "bank"
+ },
+ "doorTap": {
+  "panel": "bank",
+  "enters": 1,
+  "fade": true
+ },
+ "doorAfterClose": {
+  "enters": 1
+ },
+ "npcEl": "game",
+ "ns": {
+  "x": 678,
+  "y": 167
+ },
+ "npcPlan": {
+  "v": {
+   "x": 92,
+   "y": 0
+  },
+  "running": false,
+  "pts": 1,
+  "moving": true,
+  "face": "right",
+  "x": 994.277206,
+  "y": 688,
+  "mark": true,
+  "npcT": true
+ },
+ "npcEnd": {
+  "d": 6.899999999999864,
+  "v": {
+   "x": 0,
+   "y": 0
+  },
+  "running": false,
+  "pts": 0,
+  "moving": false,
+  "face": "right",
+  "x": 1104,
+  "y": 688,
+  "mark": false
+ },
+ "npcTap": {
+  "npc": "Kuro",
+  "panel": "friend",
+  "dialog": false,
+  "text": ""
+ },
+ "pixelSnap": {
+  "samples": 20,
+  "offGrid": 0,
+  "playerScreenX": [
+   1312
+  ]
+ },
+ "fps_844x390@1x": 59,
+ "fps_844x390@4x": 35,
+ "fps_667x375@1x": 59,
+ "fps_667x375@4x": 34,
+ "errors": []
+}

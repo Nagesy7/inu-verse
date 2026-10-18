@@ -114,7 +114,7 @@ canvas#game{width:100vw;height:100vh;height:100dvh;touch-action:none}
 #prompt{padding:2px 8px;animation:bob 1.2s ease-in-out infinite;bottom:max(18px,env(safe-area-inset-bottom))}@keyframes bob{50%{transform:translateX(-50%) translateY(-3px)}}
 #minimap-wrap{right:max(8px,env(safe-area-inset-right));bottom:max(8px,env(safe-area-inset-bottom));padding:0}
 #minimap{image-rendering:pixelated;width:128px;height:140px}
-#fade{position:fixed;inset:0;background:#0c1022;opacity:0;pointer-events:none;z-index:40}#fade.go{animation:fadeDip .42s ease-in-out}
+#fade{position:fixed;inset:0;background:#0c1022;opacity:0;pointer-events:none;z-index:40}#fade.go{animation:fadeDip .2s ease-in-out}
 @keyframes fadeDip{0%{opacity:0}35%{opacity:1}100%{opacity:0}}
 #dialog{position:fixed;left:50%;bottom:max(70px,calc(env(safe-area-inset-bottom) + 60px));transform:translateX(-50%);width:min(620px,92vw);min-height:86px;z-index:20;padding:4px 10px 6px;cursor:pointer;animation:dlgIn .22s cubic-bezier(.2,1.4,.4,1)}
 #dialog.out{animation:dlgOut .18s ease-in forwards}@keyframes dlgIn{from{transform:translateX(-50%) translateY(20px) scale(.92);opacity:0}}@keyframes dlgOut{to{transform:translateX(-50%) translateY(14px);opacity:0}}

@@ -26,6 +26,7 @@ import { MALL_ITEMS, quote, buyMallItem, ensureMall, rollPeriods, fmtK, FEE_LABE
 import { GAMES, boardRows, poolEntries } from './leaderboards.js';
 import { makeCrew, stepCrew, takeGig, drawVest, drawTool, drawCones } from './workers.js';
 import { trending, adProps, adAt } from './coinads.js';
+import * as MOB from './mobility.js';
 import * as RC from './realcoins.js';
 import { ensureFarm, tickFarm, seasonOf, marketHour, rollFarmWeek, catchUp, fishCatch, WEEK_DAYS } from './farm.js';
 import { ensureBiz, bizHour, bizDay, rollBizWeek } from './biz.js';
@@ -61,7 +62,7 @@ import { faceTalk, faceReact } from './face.js';
 import { stepChat, drawChat, emoteBubble } from './chat.js';
 import { buildDrawer, drawerOpen } from './hudmenu.js';
 import { makeDoorState, doorStep, doorExit, outsideOf } from './doors.js';
-import { isDoor, doorList, COMMUNITY } from './world.js';
+import { isDoor, doorList, doorDir, COMMUNITY } from './world.js';
 import { ensurePacks, myPack, meIn, createPack, joinPack, leavePack, kickMember, recruitNpc, contribute, buyForPack, donateFurniture, upgradeClubhouse, placePackFurniture, movePackFurniture, storePackFurniture, postToBoard, recordActivity, memberScore, packScore, leaderboard, simulatePacks, packOfName, PACK_CREATE_COST, EMBLEMS, SEASON, SCORE, ME } from './packs.js';
 
 const $ = (s) => document.querySelector(s);
@@ -78,7 +79,8 @@ const keys = new Set();
 const touch = { x: 0, y: 0, id: null };
 const COARSE = matchMedia('(pointer: coarse)');
 function setA(label) { const b = document.getElementById('btn-a'); if (b && b.dataset.l !== label) { b.dataset.l = label; b.innerHTML = label ? `<span>${label}</span>` : 'A'; b.classList.toggle('ready', !!label); } }
-const player = { face: 'down', dir: 1, phase: 0, moving: false, path: [], target: null };
+const player = { face: 'down', dir: 1, phase: 0, moving: false, path: [], target: null, v: { x: 0, y: 0 }, pw: MOB.makePathWalker(), running: false, holdRun: false };
+const stickTap = MOB.makeTapper(), groundTap = MOB.makeTapper(); let dustAcc = 0;
 let build = null; // {plotId, readOnly, home, sel:{kind:'new'|'move', id, uid, rot}, hover:{x,y}, picked}
 let panel = null; // {kind, ...}
 let REG = { coins: [], offline: false, loaded: 0 }; // Launch Hall registered coins
@@ -200,19 +202,37 @@ const screenToWorld = (sx, sy) => ({ x: (sx - innerWidth / 2) / ZOOM + cam.x, y:
 cv.addEventListener('mousemove', (e) => { if (mode === 'build') build.hover = roomCell(e.clientX, e.clientY); });
 cv.addEventListener('click', (e) => {
   if (mode === 'world' && !panel) {
-    const w = screenToWorld(e.clientX, e.clientY); const ad = adAt(trend, adRot, adIdx, w.x, w.y); if (ad) { blip(990); openPanel('launch', ad.coin.real ? { tab: ad.coin.mint === RC.KIBBLE.mint ? 'kibble' : 'board' } : { sel: ad.coin.id }); return; } clickWorldTile(Math.floor(w.x / TILE), Math.floor(w.y / TILE));
+    const w = screenToWorld(e.clientX, e.clientY); const ad = adAt(trend, adRot, adIdx, w.x, w.y); if (ad) { blip(990); openPanel('launch', ad.coin.real ? { tab: ad.coin.mint === RC.KIBBLE.mint ? 'kibble' : 'board' } : { sel: ad.coin.id }); return; } clickWorldTile(Math.floor(w.x / TILE), Math.floor(w.y / TILE), w.x, w.y);
   } else if (mode === 'build') buildClick(roomCell(e.clientX, e.clientY));
 });
 $('#minimap').addEventListener('click', (e) => { if (mode === 'world' && !panel) { if (guide) return guide.openMap(); const r = e.target.getBoundingClientRect(); clickWorldTile(Math.floor((e.clientX - r.left) / 2), Math.floor((e.clientY - r.top) / 2)); } });
-function clickWorldTile(tx, ty) {
+// Tap/click-to-walk: A* (8-way, no corner cutting) + string-pulled legs. Tapping a building/door walks there and enters,
+// tapping an NPC walks up to them and talks; double-tap = run there. Keys / stick cancel it instantly.
+const solidT = (x, y) => isSolid(x, y);
+function npcAtWorld(wx, wy) { let best = null, bd = 22; const cands = [...npcs.map((n) => ({ n, x: n.x, y: n.y })), ...crew.filter((w) => w.on).map((w) => ({ n: w, x: w.x, y: w.y, crew: true }))];
+  if (presidentPresent(pres)) cands.push({ n: pres, x: pres.x, y: pres.y, pres: true });
+  for (const c of cands) { const dx = Math.abs(wx - c.x), dy = c.y - wy; if (dy < -10 || dy > 44) continue; const d = Math.hypot(dx, Math.max(0, dy - 18)); if (dx < 16 && d < bd) { bd = d; best = c; } } return best; }
+function planTo(goal, { target = null, npcT = null, run = false, mark = true } = {}) {
+  const sx = Math.floor(state.player.x / TILE), sy = Math.floor(state.player.y / TILE);
+  const raw = MOB.astar(sx, sy, goal[0], goal[1], solidT, { w: MAP_W, h: MAP_H }); if (!raw) { player.clickMark = null; return false; }
+  const pts = MOB.smoothPath(raw, solidT, TILE).slice(1), end = raw[raw.length - 1];
+  Object.assign(player.pw, { pts: pts.length ? pts : [end], goal: end, run, stuckT: 0, lastD: Infinity, replans: player.pw.goal && player.pw.goal[0] === end[0] && player.pw.goal[1] === end[1] ? player.pw.replans : 0 });
+  player.path = player.pw.pts; player.target = target; player.npcT = npcT;
+  if (mark) player.clickMark = { x: (end[0] + 0.5) * TILE, y: (end[1] + 0.5) * TILE, t: 1, npc: !!npcT };
+  return true; }
+function clickWorldTile(tx, ty, wx, wy) {
+    const run = groundTap(performance.now());
+    if (wx != null) { const hit = npcAtWorld(wx, wy); if (hit) { if (!hit.crew && !hit.pres) hit.n.held = 6; return planTo([Math.floor(hit.x / TILE), Math.floor(hit.y / TILE)], { npcT: hit, run }); } }
     let target = null;
     for (const b of BUILDINGS) if (tx >= b.x && tx < b.x + b.w && ty >= b.y && ty < b.y + b.h) target = interactables(state).find((i) => i.id === b.id);
     for (const p of [...PLOTS, ...NPC_HOMES, CLUBHOUSE, ...MALL_BUILDINGS]) if (tx >= p.x && tx < p.x + p.w && ty >= p.y && ty < p.y + p.h) target = interactables(state).find((i) => i.id === p.id);
-    const goal = target ? [target.tx, target.ty] : [tx, ty];
-    const sx = Math.floor(state.player.x / TILE), sy = Math.floor(state.player.y / TILE);
-    const path = findPath(sx, sy, goal[0], goal[1]);
-    if (path) { player.path = path.slice(1); player.target = target; player.clickMark = { x: (goal[0] + 0.5) * TILE, y: (goal[1] + 0.5) * TILE, t: 1 }; }
+    if (!target) target = interactables(state).find((i) => i.tx === tx && i.ty === ty) || null;
+    planTo(target ? [target.tx, target.ty] : [tx, ty], { target, run });
 }
+globalThis.__walkTo = (tx, ty, run = false) => planTo([tx, ty], { run }); globalThis.__mob = () => ({ v: { ...player.v }, running: player.running, pts: player.pw.pts.length, moving: player.moving, face: player.face, x: state.player.x, y: state.player.y, mark: !!player.clickMark });
+function arrive() { const t = player.target, nt = player.npcT; player.target = null; player.npcT = null; player.clickMark = null;
+  if (t) { if (isWalkDoor(t)) { player.face = doorDir(t).face; if (doorReady()) enterDoor(t); } else interact(t); }
+  else if (nt) { const pup = nearPup(); if (pup) nt.n.held = 0; if (pup) petPup(pup); else if (player.pw.replans++ < 3) planTo([Math.floor(nt.x / TILE), Math.floor(nt.y / TILE)], { npcT: nt, run: player.pw.run, mark: false }); } }
 $('#prompt').onclick = () => { const it = nearestInteractable(state, state.player.x, state.player.y); const pup = nearPup(); if (pup && !it) petPup(pup); else if (it) interact(it); };
 addEventListener('pointerdown', () => initAudio(), { once: true });
 document.addEventListener('pointerdown', (e) => { if (e.target.closest('button,.btn,.coat,[data-buy],[data-inv]')) { initAudio(); uiClick(); } });
@@ -281,7 +301,7 @@ globalThis.__doors = { url: gameDoorUrl, open: openGameDoor };
 // ---- onboarding tour + wayfinding (src/guide.js, src/guideui.js) ----
 const guide = createGuide({ state: () => state, mode: () => mode, toast: (m, k) => toast(m, k), panelOpen: () => !!panel, persist: () => persist(), miniBase: () => miniBase,
   wallet: () => state?.walletAddr, saveProfile: () => { if (state && hasCustomLook(state)) saveProfile(state); },
-  walk: (path) => { player.path = path; player.target = null; player.clickMark = null; }, stopWalk: () => { player.path = []; } });
+  walk: (path) => { Object.assign(player.pw, { pts: path.slice(), goal: path[path.length - 1] || null, run: false, stuckT: 0, lastD: Infinity, replans: 0 }); player.path = player.pw.pts; player.target = null; player.npcT = null; player.clickMark = null; }, stopWalk: () => stopWalk() });
 globalThis.__guide = guide;
 function wayUi(on) { const w = document.getElementById('wayctl'); if (w) w.hidden = !on; }
 async function tourCheck() { if (!state || mode !== 'world') return; const w = state.walletAddr; const prof = isRealWallet(w) ? await profileStore().get(w).catch(() => null) : null; guide.maybeStartTour(prof); }
@@ -356,11 +376,11 @@ $('#panel-close').onclick = () => closePanel();
 // ---- touch controls (virtual stick on the left, A/B + menu on the right) ----
 { const pad = $('#stick'), knob = $('#knob');
   const upd = (e) => { const r = pad.getBoundingClientRect(), cx = r.left + r.width / 2, cy = r.top + r.height / 2, R = r.width / 2; let dx = e.clientX - cx, dy = e.clientY - cy; const d = Math.hypot(dx, dy); if (d > R) { dx *= R / d; dy *= R / d; }
-    knob.style.transform = `translate(${dx}px,${dy}px)`; const m = Math.hypot(dx, dy) / R; if (m < 0.22) { touch.x = touch.y = 0; return; } touch.x = dx / (m * R); touch.y = dy / (m * R);
+    knob.style.transform = `translate(${dx}px,${dy}px)`; const m = Math.hypot(dx, dy) / R; touch.mag = m; if (m < 0.22) { touch.x = touch.y = 0; return; } touch.x = dx / (m * R); touch.y = dy / (m * R);
     if (Math.abs(touch.x) < 0.38) touch.x = 0; if (Math.abs(touch.y) < 0.38) touch.y = 0; };
-  pad.addEventListener('pointerdown', (e) => { e.preventDefault(); initAudio(); touch.id = e.pointerId; pad.setPointerCapture(e.pointerId); pad.classList.add('on'); upd(e); });
+  pad.addEventListener('pointerdown', (e) => { e.preventDefault(); initAudio(); touch.id = e.pointerId; pad.setPointerCapture(e.pointerId); pad.classList.add('on'); player.holdRun = stickTap(performance.now()); upd(e); });
   pad.addEventListener('pointermove', (e) => { if (e.pointerId === touch.id) upd(e); });
-  const end = (e) => { if (e.pointerId !== touch.id) return; touch.id = null; touch.x = touch.y = 0; knob.style.transform = ''; pad.classList.remove('on'); };
+  const end = (e) => { if (e.pointerId !== touch.id) return; touch.id = null; touch.x = touch.y = 0; touch.mag = 0; player.holdRun = false; knob.style.transform = ''; pad.classList.remove('on'); };
   pad.addEventListener('pointerup', end); pad.addEventListener('pointercancel', end);
   const act = () => { if (feel.talking()) return feel.advance(); if (mode !== 'world' || panel || !state) return; if (carAction()) return; const it = nearestInteractable(state, state.player.x, state.player.y); const pup = nearPup(); if (pup && !it) petPup(pup); else if (it) interact(it); };
   $('#btn-a').addEventListener('pointerdown', (e) => { e.preventDefault(); initAudio(); act(); });
@@ -375,20 +395,29 @@ function updateWorld(dt) {
     if (keys.has('w') || keys.has('arrowup')) dy -= 1; if (keys.has('s') || keys.has('arrowdown')) dy += 1;
     if (keys.has('a') || keys.has('arrowleft')) dx -= 1; if (keys.has('d') || keys.has('arrowright')) dx += 1;
   }
-  if (!panel && (touch.x || touch.y)) { dx = touch.x; dy = touch.y; }
-  const speed = 92; // world px/s (world is zoomed 2x, so ~184 screen px/s)
-  if (drive) { player.path = []; const m = CAR_MODELS[drive.car.model], top = m.speed, l = Math.hypot(dx, dy);
+  const sx0 = !panel ? touch.x : 0, sy0 = !panel ? touch.y : 0;
+  const inp = MOB.pickInput({ keys: { x: dx, y: dy }, stick: { x: sx0, y: sy0 }, stickMag: touch.mag || 0, shift: keys.has('shift'), holdRun: player.holdRun, path: player.pw.pts.length > 0, pathRun: player.pw.run });
+  if (inp.source === 'stick' || inp.source === 'keys') { dx = inp.dir.x; dy = inp.dir.y; } else { dx = dy = 0; }
+  const speed = MOB.WALK_SPEED; // world px/s (world is zoomed 2x, so ~184 screen px/s); run = x1.75
+  if (drive) { stopWalk(); const m = CAR_MODELS[drive.car.model], top = m.speed, l = Math.hypot(dx, dy);
     if (l) { drive.v = Math.min(top, drive.v + 260 * dt); drive.vx = dx / l; drive.vy = dy / l; drive.dir = Math.abs(dx) >= Math.abs(dy) ? (dx > 0 ? 'east' : 'west') : (dy > 0 ? 'south' : 'north'); } else drive.v = Math.max(0, drive.v - 320 * dt);
     if (drive.v > 0) { const bx = p.x, by = p.y; moveBody(p, drive.vx * drive.v * dt, drive.vy * drive.v * dt, 14); if (Math.hypot(p.x - bx, p.y - by) < drive.v * dt * 0.3 && l) { drive.v *= 0.3; if (drive.bump <= 0) { blip(180); drive.bump = 0.4; } } }
     drive.bump = (drive.bump || 0) - dt; player.moving = false; player.face = { east: 'right', west: 'left', south: 'down', north: 'up' }[drive.dir]; dx = dy = 0; }
-  if (dx || dy) { player.path = []; player.target = null; const l = Math.hypot(dx, dy); moveBody(p, (dx / l) * speed * dt, (dy / l) * speed * dt); if (dx) player.dir = dx > 0 ? 1 : -1; player.face = dx ? (dx > 0 ? 'right' : 'left') : (dy > 0 ? 'down' : 'up'); player.moving = true; }
-  else if (player.path.length) {
-    const [tx, ty] = player.path[0], gx = (tx + 0.5) * TILE, gy = (ty + 0.5) * TILE, ddx = gx - p.x, ddy = gy - p.y, d = Math.hypot(ddx, ddy), st = speed * dt;
-    if (d <= st) { p.x = gx; p.y = gy; player.path.shift(); if (!player.path.length && player.target) { const t = player.target; player.target = null; interact(t); } }
-    else { p.x += (ddx / d) * st; p.y += (ddy / d) * st; }
-    if (Math.abs(ddx) > 1) player.dir = ddx > 0 ? 1 : -1; if (d > 0.5) player.face = Math.abs(ddx) > Math.abs(ddy) ? (ddx > 0 ? 'right' : 'left') : (ddy > 0 ? 'down' : 'up'); player.moving = true;
-  } else player.moving = false;
-  if (player.moving) player.phase += dt * 12; else player.phase += dt * 2;
+  if (!drive) {
+    if (inp.cancelPath && player.pw.pts.length) { player.pw.pts = []; player.path = player.pw.pts; player.target = null; player.npcT = null; player.clickMark = null; }
+    const top = speed * (inp.run ? MOB.RUN_MULT : 1); let want = { x: dx * top, y: dy * top }, snap = null;
+    if (inp.source === 'path') { const f = MOB.followStep(player.pw, p, top, dt, TILE);
+      if (f?.stuck && player.pw.goal && player.pw.replans++ < 3) planTo(player.pw.goal, { target: player.target, npcT: player.npcT, run: player.pw.run, mark: false });
+      else if (f?.stuck) { player.pw.pts = []; player.clickMark = null; }
+      if (f) { want = f.want; snap = f.snap; if (f.arrive) { player.v = { x: 0, y: 0 }; if (snap) { const bx = snap.x - p.x, by = snap.y - p.y; moveBody(p, bx, by); } arrive(); } } player.path = player.pw.pts; }
+    player.v = MOB.stepVelocity(player.v, want, dt);
+    if (player.v.x || player.v.y) { const bx = p.x, by = p.y; moveBody(p, player.v.x * dt, player.v.y * dt); // wall: kill the blocked axis so speed never builds up against it (path mode re-plans instead)
+      if (inp.source !== 'path') { if (Math.abs(p.x - bx) < 1e-4) player.v.x = 0; if (Math.abs(p.y - by) < 1e-4) player.v.y = 0; } }
+    const sp = Math.hypot(player.v.x, player.v.y); player.moving = sp > 12; player.running = inp.run && sp > speed * 1.1;
+    if (sp > 12) { if (Math.abs(player.v.x) > 1) player.dir = player.v.x > 0 ? 1 : -1; player.face = MOB.faceOf(player.v.x, player.v.y, player.face); }
+    if (player.running) { dustAcc += dt; if (dustAcc > 0.11) { dustAcc = 0; feel.dust(p.x - player.dir * 6, p.y + 11); } }
+  }
+  if (player.moving) player.phase += dt * (player.running ? 21 : 12) * Math.min(1, Math.hypot(player.v.x, player.v.y) / speed + 0.25); else player.phase += dt * 2;
   { const nowH = ((time + dayOffset) / DAY_LEN) * 24;
     if (PRES_Q && !presForced) { presForced = true; startVisit(pres, PRES_KINDS.includes(PRES_Q) ? PRES_Q : null, { dayLen: DAY_LEN }); }
     updatePresident(pres, dt, { nowH, dayLen: DAY_LEN, npcs, rng, toast: (s) => toast(s, 'good'), banner: presBanner, fanfare, snack: () => toast('President Inu bought a taiyaki from the snack cart!', 'good') }); }
@@ -399,6 +428,7 @@ function updateWorld(dt) {
   { const h = Math.floor(dayPhase(time + dayOffset).hour), pOn = pres.on && pres.stage !== 'away', replan = pOn !== presWas; presWas = pOn; if (state.town && (h !== townH || replan)) { const fresh = h !== townH; townH = h; for (const e of townHour(state.town, { rng, hour: h, day: gameDay(), president: pOn ? pres : null, replan: !fresh })) {
       if (e.kind === 'shopClosed' || e.kind === 'shopOpened' || e.kind === 'job' || e.kind === 'friends' || e.kind === 'rivals') toast(state.town.log[0]?.text || '', ''); } } }
   for (const n of npcs) { const tf = state.town?.folk[n.name]; if (state.spouse?.name === n.name && !scene) { const H = state.spouse.helps === 'biz' && state.biz?.mine ? LOTS_POS[state.biz.mine.lot] : [17.5, 92.6]; if (H && Math.hypot(n.x - H[0] * TILE, n.y - H[1] * TILE) > 64) { n.x = H[0] * TILE; n.y = H[1] * TILE; n.path = []; } n.wait = Math.max(n.wait || 0, 1); }
+    if (n.held > 0) { n.held -= dt; n.moving = false; continue; } // tapped by the player: wait for them to walk up
     if (amb.ball?.dog === n && amb.ball.state !== 'air') continue; if (n.wag > 0) { n.wag -= dt; n.moving = true; n.phase += dt * 20; continue; } if (n.emote) { n.emote.t -= dt; if (n.emote.t <= 0) n.emote = null; } const arr = updateNpc(n, dt, rng, scene || state.spouse?.name === n.name ? null : tf?.goal); if (tf) { if (arr && !tf.arrived && tf.act !== 'nap' && rng() < 0.3) n.emote = { kind: tf.mood === 'grumpy' ? 'angry' : tf.mood === 'happy' ? 'happy' : 'note', t: 1.6 }; tf.arrived = arr; } }
   { const pet = activePet(state); if (pet && !drive) { if (!petF.id || petF.id !== pet.id) Object.assign(petF, { id: pet.id, x: p.x - 20, y: p.y + 4 }); followStep(petF, p.x - player.dir * 22, p.y + 2, dt); if (petF.love > 0) petF.love -= dt; } else if (drive) Object.assign(petF, { x: p.x, y: p.y }); }
   if (honkT > 0) honkT -= dt;
@@ -409,7 +439,8 @@ function updateWorld(dt) {
   if (player.moving) { stepAcc += dt; if (stepAcc > 0.26) { stepAcc = 0; const tt = MAP[Math.floor(p.y / TILE)]?.[Math.floor(p.x / TILE)]; if (tt === T.GRASS || tt === T.FLOWER) { feel.rustle(p.x, p.y + 10); rustle(); } else { feel.dust(p.x, p.y + 11); footstep(); } } }
   feel.step(dt); document.body.classList.toggle('driving', !!drive);
   if (mode === 'world' && !panel && !drive && !entering && !arcadeOpen) { doorAcc -= dt; if (doorAcc <= 0) { doorAcc = 1; doorsNow = doorList(state).filter((d) => d.kind !== 'plot' || state.plots[d.id]); }
-    const d = doorStep(doorSt, { x: p.x, y: p.y, face: player.face, moving: player.moving }, doorsNow, time); if (d) enterDoor(d); }
+    const ds = player.pw.pts.length ? (player.target && isWalkDoor(player.target) ? doorsNow.filter((q) => q.id === player.target.id && q.kind === player.target.kind) : []) : doorsNow; // tap-walking only enters the door you tapped
+    const d = doorStep(doorSt, { x: p.x, y: p.y, face: player.face, moving: player.moving }, ds, time); if (d) enterDoor(d); }
   { const vw = innerWidth / ZOOM, vh = innerHeight / ZOOM; stepChat({ now: time, player: p, npcs, hour: dayPhase(time + dayOffset).hour, rain: amb.rain > 0.3, rng, inView: (x, y) => Math.abs(x - cam.x) < vw / 2 - 20 && Math.abs(y - cam.y) < vh / 2 - 30, placeOf: chatPlace }); }
   mailAcc += dt; if (mailAcc > 45) { mailAcc = 0; if (rng() < 0.6 && addMail(state, rng)) { toast('New note in your mailbox!', 'good'); persist(); } }
   // smooth camera
@@ -451,7 +482,9 @@ function renderWorld() {
   for (const d of dyn) if (d.flat) d.d(ctx);
   const view = { x0: -ox, y0: -oy, x1: -ox + vw, y1: -oy + vh };
   drawGroundLife(ctx, amb, phase); drawAliveGround(ctx, ALIVE, view, phase); feel.drawGround(ctx);
-  if (player.clickMark && player.path.length) { const m = player.clickMark, k = Math.round(10 + Math.sin(time * 6) * 2); ctx.fillStyle = '#f2cc68'; for (const [ax, ay] of [[-k, 0], [k - 4, 0], [0, -k / 2], [0, k / 2 - 2]]) ctx.fillRect(Math.round(m.x + ax), Math.round(m.y + 6 + ay), 4, 3); }
+  if (player.clickMark && player.pw.pts.length) { const m = player.clickMark, X = Math.round(m.x), Y = Math.round(m.y + 8), k = 7 + Math.round((Math.sin(time * 7) + 1) * 1.5), col = m.npc ? '#ff9ac0' : '#f2cc68'; // destination marker: pixel ring + bobbing arrow
+    ctx.fillStyle = '#141a2e'; ctx.fillRect(X - k - 1, Y - 3, 2 * k + 2, 6); ctx.fillRect(X - k + 2, Y - 5, 2 * k - 4, 10); ctx.fillStyle = col; ctx.fillRect(X - k, Y - 2, 2 * k, 4); ctx.fillRect(X - k + 3, Y - 4, 2 * k - 6, 8); ctx.fillStyle = '#141a2e'; ctx.fillRect(X - k + 3, Y - 1, 2 * k - 6, 2); ctx.fillRect(X - k + 5, Y - 2, 2 * k - 10, 4);
+    const ay = Y - 22 + Math.round(Math.sin(time * 6) * 2); ctx.fillStyle = '#141a2e'; ctx.fillRect(X - 5, ay - 1, 10, 5); ctx.fillRect(X - 3, ay + 4, 6, 2); ctx.fillRect(X - 1, ay + 6, 2, 2); ctx.fillStyle = col; ctx.fillRect(X - 4, ay, 8, 3); ctx.fillRect(X - 2, ay + 3, 4, 2); }
   const actors = [...npcs.map((n) => ({ ...n, npc: true, badge: badgeOf(packOfName(state, n.name)) })), ...(drive ? [] : [{ x: state.player.x, y: state.player.y, coat: state.player.coat, outfit: state.wardrobe.equipped, face: player.face, phase: player.phase, moving: player.moving, name: state.player.name, me: true, badge: badgeOf(myPack(state)), emote: player.emote, art: artKey(state.player.coat, state.wardrobe.equipped), profile: hasCustomLook(state) ? myProfile() : null }]), ...streetPups(), ...presActors(), ...petActors(), ...crewActors(), ...pupActors()];
   // one depth-sorted list: static props (culled), dynamic props and actors, by ground y
   const L = -ox - 200, Rt = -ox + vw + 200, Tp = -oy - 60, Bt = -oy + vh + 400, list = [];
@@ -548,9 +581,12 @@ function minimap(vx, vy, vw, vh) {
 // ---- walk-in doors (src/doors.js): walking into a door enters; A is for talking, signs, shops counters etc. ----
 const doorSt = makeDoorState(); let doorAcc = 0, doorsNow = [], entering = null, lastDoor = null;
 const isWalkDoor = (it) => isDoor(it) && (it.kind !== 'plot' || !!state.plots[it.id]);
-function enterDoor(d) { lastDoor = d; keys.clear(); player.path = [];
+function stopWalk() { player.pw.pts = []; player.path = player.pw.pts; player.target = null; player.npcT = null; player.clickMark = null; }
+const doorReady = () => time >= doorSt.until;
+// Entering marks the door used (cooldown + must step off the tile), so arriving by tap AND by walking can never double-fire.
+function enterDoor(d) { lastDoor = d; keys.clear(); stopWalk(); player.v = { x: 0, y: 0 }; doorExit(doorSt, time); globalThis.__doorEnters = (globalThis.__doorEnters || 0) + 1;
   if (d.kind === 'gamedoor' || (d.kind === 'arcade' && COARSE.matches)) return enterExternal(d);
-  interact(d, true); }
+  feel.fade(); interact(d, true); if (panel) panel.viaDoor = true; }
 // External games: same-tab navigation (a movement event is not a user gesture, so window.open would be popup-blocked).
 // Your spot is saved one tile outside the door, so coming back (browser Back) puts you outside, not in the doorway.
 function enterExternal(d) { const url = d.kind === 'arcade' ? arcadeUrl() : gameDoorUrl(d.id), name = d.name.replace(/^.*\((.*)\)$/, '$1');
@@ -652,7 +688,7 @@ function renderGarage() { const body = $('#panel-body'), g = ensureGarage(state)
     else if (t.dataset.home) { g.active = t.dataset.home; persist(); renderGarage(); }
     else if (t.dataset.walk) { st.active = st.active === t.dataset.walk ? null : t.dataset.walk; persist(); renderGarage(); }
     else if (t.dataset.rename) { const n = prompt('New name?'); if (n) { renamePet(state, t.dataset.rename, n); persist(); renderGarage(); } } }; }
-function closePanel() { doorExit(doorSt, time); const dg = $('#dialog'); if (dg) { dg.style.pointerEvents = ''; dg.style.visibility = ''; }
+function closePanel() { doorExit(doorSt, time); if (panel?.viaDoor) feel.fade(); const dg = $('#dialog'); if (dg) { dg.style.pointerEvents = ''; dg.style.visibility = ''; }
   if (panel?.kind === 'cafe' && panel.shift && !panel.shift.settled && panel.shift.earned > 0) { finishShift(state, panel.shift); packAct('shift'); toast(`Shift ended early: +${panel.shift.paid} bones`, 'good'); hud(); persist(); }
   if (panel) uiClose(); panel = null; $('#panel').hidden = true;
 }
