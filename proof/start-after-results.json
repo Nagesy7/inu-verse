@@ -1,0 +1,708 @@
+{
+ "url": "https://inu-verse-tawny.vercel.app/",
+ "tag": "after",
+ "options": [
+  {
+   "tab": "look",
+   "k": "coat",
+   "v": "#e8a25a",
+   "selected": true,
+   "distinctStyle": true,
+   "aria": "true",
+   "previewChanged": true,
+   "captionChanged": true,
+   "caption": "Coat: Sesame Tanthey/them · Hard Worker · Beach Casual · Cosy Cottage"
+  },
+  {
+   "tab": "look",
+   "k": "coat",
+   "v": "#f4e3c8",
+   "selected": true,
+   "distinctStyle": true,
+   "aria": "true",
+   "previewChanged": true,
+   "captionChanged": true,
+   "caption": "Coat: Creamthey/them · Hard Worker · Beach Casual · Cosy Cottage"
+  },
+  {
+   "tab": "look",
+   "k": "coat",
+   "v": "#3a2a22",
+   "selected": true,
+   "distinctStyle": true,
+   "aria": "true",
+   "previewChanged": true,
+   "captionChanged": true,
+   "caption": "Coat: Black & Tanthey/them · Hard Worker · Beach Casual · Cosy Cottage"
+  },
+  {
+   "tab": "look",
+   "k": "coat",
+   "v": "#c8c8d0",
+   "selected": true,
+   "distinctStyle": true,
+   "aria": "true",
+   "previewChanged": true,
+   "captionChanged": true,
+   "caption": "Coat: Silverthey/them · Hard Worker · Beach Casual · Cosy Cottage"
+  },
+  {
+   "tab": "look",
+   "k": "coat",
+   "v": "#d9673a",
+   "selected": true,
+   "distinctStyle": true,
+   "aria": "true",
+   "previewChanged": true,
+   "captionChanged": true,
+   "caption": "Coat: Redthey/them · Hard Worker · Beach Casual · Cosy Cottage"
+  },
+  {
+   "tab": "look",
+   "k": "coat",
+   "v": "#f2d27a",
+   "selected": true,
+   "distinctStyle": true,
+   "aria": "true",
+   "previewChanged": true,
+   "captionChanged": true,
+   "caption": "Coat: Honeythey/them · Hard Worker · Beach Casual · Cosy Cottage"
+  },
+  {
+   "tab": "look",
+   "k": "coat",
+   "v": "#7a5a44",
+   "selected": true,
+   "distinctStyle": true,
+   "aria": "true",
+   "previewChanged": true,
+   "captionChanged": true,
+   "caption": "Coat: Cocoathey/them · Hard Worker · Beach Casual · Cosy Cottage"
+  },
+  {
+   "tab": "look",
+   "k": "coat",
+   "v": "#ffffff",
+   "selected": true,
+   "distinctStyle": true,
+   "aria": "true",
+   "previewChanged": true,
+   "captionChanged": true,
+   "caption": "Coat: Snowthey/them · Hard Worker · Beach Casual · Cosy Cottage"
+  },
+  {
+   "tab": "look",
+   "k": "pattern",
+   "v": "none",
+   "selected": true,
+   "distinctStyle": true,
+   "aria": "true",
+   "previewChanged": false,
+   "captionChanged": true,
+   "caption": "Pattern: Nonethey/them · Hard Worker · Beach Casual · Cosy Cottage"
+  },
+  {
+   "tab": "look",
+   "k": "pattern",
+   "v": "spots",
+   "selected": true,
+   "distinctStyle": true,
+   "aria": "true",
+   "previewChanged": false,
+   "captionChanged": true,
+   "caption": "Pattern: Spotsthey/them · Hard Worker · Beach Casual · Cosy Cottage"
+  },
+  {
+   "tab": "look",
+   "k": "pattern",
+   "v": "saddle",
+   "selected": true,
+   "distinctStyle": true,
+   "aria": "true",
+   "previewChanged": false,
+   "captionChanged": true,
+   "caption": "Pattern: Saddlethey/them · Hard Worker · Beach Casual · Cosy Cottage"
+  },
+  {
+   "tab": "look",
+   "k": "pattern",
+   "v": "brindle",
+   "selected": true,
+   "distinctStyle": true,
+   "aria": "true",
+   "previewChanged": false,
+   "captionChanged": true,
+   "caption": "Pattern: Brindlethey/them · Hard Worker · Beach Casual · Cosy Cottage"
+  },
+  {
+   "tab": "look",
+   "k": "pattern",
+   "v": "socks",
+   "selected": true,
+   "distinctStyle": true,
+   "aria": "true",
+   "previewChanged": true,
+   "captionChanged": true,
+   "caption": "Pattern: Socksthey/them · Hard Worker · Beach Casual · Cosy Cottage"
+  },
+  {
+   "tab": "look",
+   "k": "pattern",
+   "v": "mask",
+   "selected": true,
+   "distinctStyle": true,
+   "aria": "true",
+   "previewChanged": true,
+   "captionChanged": true,
+   "caption": "Pattern: Maskthey/them · Hard Worker · Beach Casual · Cosy Cottage"
+  },
+  {
+   "tab": "look",
+   "k": "markings",
+   "v": "none",
+   "selected": true,
+   "distinctStyle": true,
+   "aria": "true",
+   "previewChanged": true,
+   "captionChanged": true,
+   "caption": "Markings: Nonethey/them · Hard Worker · Beach Casual · Cosy Cottage"
+  },
+  {
+   "tab": "look",
+   "k": "markings",
+   "v": "star",
+   "selected": true,
+   "distinctStyle": true,
+   "aria": "true",
+   "previewChanged": true,
+   "captionChanged": true,
+   "caption": "Markings: Starthey/them · Hard Worker · Beach Casual · Cosy Cottage"
+  },
+  {
+   "tab": "look",
+   "k": "markings",
+   "v": "blaze",
+   "selected": true,
+   "distinctStyle": true,
+   "aria": "true",
+   "previewChanged": true,
+   "captionChanged": true,
+   "caption": "Markings: Blazethey/them · Hard Worker · Beach Casual · Cosy Cottage"
+  },
+  {
+   "tab": "look",
+   "k": "markings",
+   "v": "freckles",
+   "selected": true,
+   "distinctStyle": true,
+   "aria": "true",
+   "previewChanged": true,
+   "captionChanged": true,
+   "caption": "Markings: Frecklesthey/them · Hard Worker · Beach Casual · Cosy Cottage"
+  },
+  {
+   "tab": "look",
+   "k": "markings",
+   "v": "heart",
+   "selected": true,
+   "distinctStyle": true,
+   "aria": "true",
+   "previewChanged": true,
+   "captionChanged": true,
+   "caption": "Markings: Heartthey/them · Hard Worker · Beach Casual · Cosy Cottage"
+  },
+  {
+   "tab": "look",
+   "k": "eyeShape",
+   "v": "round",
+   "selected": true,
+   "distinctStyle": true,
+   "aria": "true",
+   "previewChanged": true,
+   "captionChanged": true,
+   "caption": "Eyes: Roundthey/them · Hard Worker · Beach Casual · Cosy Cottage"
+  },
+  {
+   "tab": "look",
+   "k": "eyeShape",
+   "v": "almond",
+   "selected": true,
+   "distinctStyle": true,
+   "aria": "true",
+   "previewChanged": true,
+   "captionChanged": true,
+   "caption": "Eyes: Almondthey/them · Hard Worker · Beach Casual · Cosy Cottage"
+  },
+  {
+   "tab": "look",
+   "k": "eyeShape",
+   "v": "sleepy",
+   "selected": true,
+   "distinctStyle": true,
+   "aria": "true",
+   "previewChanged": true,
+   "captionChanged": true,
+   "caption": "Eyes: Sleepythey/them · Hard Worker · Beach Casual · Cosy Cottage"
+  },
+  {
+   "tab": "look",
+   "k": "eyeShape",
+   "v": "sparkle",
+   "selected": true,
+   "distinctStyle": true,
+   "aria": "true",
+   "previewChanged": true,
+   "captionChanged": true,
+   "caption": "Eyes: Sparklethey/them · Hard Worker · Beach Casual · Cosy Cottage"
+  },
+  {
+   "tab": "look",
+   "k": "eyeColor",
+   "v": "#2a1a12",
+   "selected": true,
+   "distinctStyle": true,
+   "aria": "true",
+   "previewChanged": true,
+   "captionChanged": true,
+   "caption": "Eye colour: colour 1they/them · Hard Worker · Beach Casual · Cosy Cottage"
+  },
+  {
+   "tab": "look",
+   "k": "eyeColor",
+   "v": "#3a6ad8",
+   "selected": true,
+   "distinctStyle": true,
+   "aria": "true",
+   "previewChanged": true,
+   "captionChanged": true,
+   "caption": "Eye colour: colour 2they/them · Hard Worker · Beach Casual · Cosy Cottage"
+  },
+  {
+   "tab": "look",
+   "k": "eyeColor",
+   "v": "#2f9a5a",
+   "selected": true,
+   "distinctStyle": true,
+   "aria": "true",
+   "previewChanged": true,
+   "captionChanged": true,
+   "caption": "Eye colour: colour 3they/them · Hard Worker · Beach Casual · Cosy Cottage"
+  },
+  {
+   "tab": "look",
+   "k": "eyeColor",
+   "v": "#c88a2a",
+   "selected": true,
+   "distinctStyle": true,
+   "aria": "true",
+   "previewChanged": true,
+   "captionChanged": true,
+   "caption": "Eye colour: colour 4they/them · Hard Worker · Beach Casual · Cosy Cottage"
+  },
+  {
+   "tab": "look",
+   "k": "eyeColor",
+   "v": "#8a4ad8",
+   "selected": true,
+   "distinctStyle": true,
+   "aria": "true",
+   "previewChanged": true,
+   "captionChanged": true,
+   "caption": "Eye colour: colour 5they/them · Hard Worker · Beach Casual · Cosy Cottage"
+  },
+  {
+   "tab": "look",
+   "k": "ears",
+   "v": "pointy",
+   "selected": true,
+   "distinctStyle": true,
+   "aria": "true",
+   "previewChanged": true,
+   "captionChanged": true,
+   "caption": "Ears: Pointythey/them · Hard Worker · Beach Casual · Cosy Cottage"
+  },
+  {
+   "tab": "look",
+   "k": "ears",
+   "v": "floppy",
+   "selected": true,
+   "distinctStyle": true,
+   "aria": "true",
+   "previewChanged": true,
+   "captionChanged": true,
+   "caption": "Ears: Floppythey/them · Hard Worker · Beach Casual · Cosy Cottage"
+  },
+  {
+   "tab": "look",
+   "k": "ears",
+   "v": "folded",
+   "selected": true,
+   "distinctStyle": true,
+   "aria": "true",
+   "previewChanged": true,
+   "captionChanged": true,
+   "caption": "Ears: Foldedthey/them · Hard Worker · Beach Casual · Cosy Cottage"
+  },
+  {
+   "tab": "look",
+   "k": "ears",
+   "v": "tall",
+   "selected": true,
+   "distinctStyle": true,
+   "aria": "true",
+   "previewChanged": true,
+   "captionChanged": true,
+   "caption": "Ears: Tallthey/them · Hard Worker · Beach Casual · Cosy Cottage"
+  },
+  {
+   "tab": "look",
+   "k": "tail",
+   "v": "curl",
+   "selected": true,
+   "distinctStyle": true,
+   "aria": "true",
+   "previewChanged": true,
+   "captionChanged": true,
+   "caption": "Tail: Curlthey/them · Hard Worker · Beach Casual · Cosy Cottage"
+  },
+  {
+   "tab": "look",
+   "k": "tail",
+   "v": "fluffy",
+   "selected": true,
+   "distinctStyle": true,
+   "aria": "true",
+   "previewChanged": true,
+   "captionChanged": true,
+   "caption": "Tail: Fluffythey/them · Hard Worker · Beach Casual · Cosy Cottage"
+  },
+  {
+   "tab": "look",
+   "k": "tail",
+   "v": "straight",
+   "selected": true,
+   "distinctStyle": true,
+   "aria": "true",
+   "previewChanged": true,
+   "captionChanged": true,
+   "caption": "Tail: Straightthey/them · Hard Worker · Beach Casual · Cosy Cottage"
+  },
+  {
+   "tab": "look",
+   "k": "tail",
+   "v": "bob",
+   "selected": true,
+   "distinctStyle": true,
+   "aria": "true",
+   "previewChanged": true,
+   "captionChanged": true,
+   "caption": "Tail: Bobthey/them · Hard Worker · Beach Casual · Cosy Cottage"
+  },
+  {
+   "tab": "look",
+   "k": "size",
+   "v": "small",
+   "selected": true,
+   "distinctStyle": true,
+   "aria": "true",
+   "previewChanged": true,
+   "captionChanged": true,
+   "caption": "Size: Smallthey/them · Hard Worker · Beach Casual · Cosy Cottage"
+  },
+  {
+   "tab": "look",
+   "k": "size",
+   "v": "medium",
+   "selected": true,
+   "distinctStyle": true,
+   "aria": "true",
+   "previewChanged": true,
+   "captionChanged": true,
+   "caption": "Size: Mediumthey/them · Hard Worker · Beach Casual · Cosy Cottage"
+  },
+  {
+   "tab": "look",
+   "k": "size",
+   "v": "large",
+   "selected": true,
+   "distinctStyle": true,
+   "aria": "true",
+   "previewChanged": true,
+   "captionChanged": true,
+   "caption": "Size: Largethey/them · Hard Worker · Beach Casual · Cosy Cottage"
+  },
+  {
+   "tab": "you",
+   "k": "pronouns",
+   "v": "they/them",
+   "selected": true,
+   "distinctStyle": true,
+   "aria": "true",
+   "previewChanged": false,
+   "captionChanged": true,
+   "caption": "Pronouns: They/themthey/them · Hard Worker · Beach Casual · Cosy Cottage"
+  },
+  {
+   "tab": "you",
+   "k": "pronouns",
+   "v": "she/her",
+   "selected": true,
+   "distinctStyle": true,
+   "aria": "true",
+   "previewChanged": false,
+   "captionChanged": true,
+   "caption": "Pronouns: She/hershe/her · Hard Worker · Beach Casual · Cosy Cottage"
+  },
+  {
+   "tab": "you",
+   "k": "pronouns",
+   "v": "he/him",
+   "selected": true,
+   "distinctStyle": true,
+   "aria": "true",
+   "previewChanged": false,
+   "captionChanged": true,
+   "caption": "Pronouns: He/himhe/him · Hard Worker · Beach Casual · Cosy Cottage"
+  },
+  {
+   "tab": "you",
+   "k": "pronouns",
+   "v": "any",
+   "selected": true,
+   "distinctStyle": true,
+   "aria": "true",
+   "previewChanged": false,
+   "captionChanged": true,
+   "caption": "Pronouns: Anyany · Hard Worker · Beach Casual · Cosy Cottage"
+  },
+  {
+   "tab": "you",
+   "k": "outfit",
+   "v": "casual",
+   "selected": true,
+   "distinctStyle": true,
+   "aria": "true",
+   "previewChanged": true,
+   "captionChanged": true,
+   "caption": "Starting outfit: Beach Casualany · Hard Worker · Beach Casual · Cosy Cottage"
+  },
+  {
+   "tab": "you",
+   "k": "outfit",
+   "v": "smart",
+   "selected": true,
+   "distinctStyle": true,
+   "aria": "true",
+   "previewChanged": true,
+   "captionChanged": true,
+   "caption": "Starting outfit: Smartany · Hard Worker · Smart · Cosy Cottage"
+  },
+  {
+   "tab": "you",
+   "k": "outfit",
+   "v": "cosy",
+   "selected": true,
+   "distinctStyle": true,
+   "aria": "true",
+   "previewChanged": true,
+   "captionChanged": true,
+   "caption": "Starting outfit: Cosy Hoodieany · Hard Worker · Cosy Hoodie · Cosy Cottage"
+  },
+  {
+   "tab": "you",
+   "k": "outfit",
+   "v": "street",
+   "selected": true,
+   "distinctStyle": true,
+   "aria": "true",
+   "previewChanged": true,
+   "captionChanged": true,
+   "caption": "Starting outfit: Streetany · Hard Worker · Street · Cosy Cottage"
+  },
+  {
+   "tab": "you",
+   "k": "trait",
+   "v": "hardworker",
+   "selected": true,
+   "distinctStyle": true,
+   "aria": "true",
+   "previewChanged": false,
+   "captionChanged": true,
+   "caption": "Personality: Hard Workerany · Hard Worker · Street · Cosy Cottage"
+  },
+  {
+   "tab": "you",
+   "k": "trait",
+   "v": "greenpaw",
+   "selected": true,
+   "distinctStyle": true,
+   "aria": "true",
+   "previewChanged": false,
+   "captionChanged": true,
+   "caption": "Personality: Green Pawany · Green Paw · Street · Cosy Cottage"
+  },
+  {
+   "tab": "you",
+   "k": "trait",
+   "v": "charmer",
+   "selected": true,
+   "distinctStyle": true,
+   "aria": "true",
+   "previewChanged": false,
+   "captionChanged": true,
+   "caption": "Personality: Charmerany · Charmer · Street · Cosy Cottage"
+  },
+  {
+   "tab": "you",
+   "k": "trait",
+   "v": "hustler",
+   "selected": true,
+   "distinctStyle": true,
+   "aria": "true",
+   "previewChanged": false,
+   "captionChanged": true,
+   "caption": "Personality: Hustlerany · Hustler · Street · Cosy Cottage"
+  },
+  {
+   "tab": "life",
+   "k": "home",
+   "v": "apartment",
+   "selected": true,
+   "distinctStyle": true,
+   "aria": "true",
+   "previewChanged": false,
+   "captionChanged": true,
+   "caption": "Starting home: City Apartmentany · Hustler · Street · City Apartment"
+  },
+  {
+   "tab": "life",
+   "k": "home",
+   "v": "cottage",
+   "selected": true,
+   "distinctStyle": true,
+   "aria": "true",
+   "previewChanged": false,
+   "captionChanged": true,
+   "caption": "Starting home: Cosy Cottageany · Hustler · Street · Cosy Cottage"
+  },
+  {
+   "tab": "life",
+   "k": "home",
+   "v": "farmhouse",
+   "selected": true,
+   "distinctStyle": true,
+   "aria": "true",
+   "previewChanged": false,
+   "captionChanged": true,
+   "caption": "Starting home: Farmhouseany · Hustler · Street · Farmhouse"
+  },
+  {
+   "tab": "life",
+   "k": "path",
+   "v": "none",
+   "selected": true,
+   "distinctStyle": true,
+   "aria": "true",
+   "previewChanged": false,
+   "captionChanged": true,
+   "caption": "Starting path (optional): No pathany · Hustler · Street · Farmhouse"
+  },
+  {
+   "tab": "life",
+   "k": "path",
+   "v": "farmer",
+   "selected": true,
+   "distinctStyle": true,
+   "aria": "true",
+   "previewChanged": false,
+   "captionChanged": true,
+   "caption": "Starting path (optional): Farmerany · Hustler · Street · Farmhouse · Farmer"
+  },
+  {
+   "tab": "life",
+   "k": "path",
+   "v": "shopkeeper",
+   "selected": true,
+   "distinctStyle": true,
+   "aria": "true",
+   "previewChanged": false,
+   "captionChanged": true,
+   "caption": "Starting path (optional): Shopkeeperany · Hustler · Street · Farmhouse · Shopkeeper"
+  },
+  {
+   "tab": "life",
+   "k": "path",
+   "v": "worker",
+   "selected": true,
+   "distinctStyle": true,
+   "aria": "true",
+   "previewChanged": true,
+   "captionChanged": true,
+   "caption": "Starting path (optional): Workerany · Hustler · Street · Farmhouse · Worker"
+  },
+  {
+   "tab": "life",
+   "k": "path",
+   "v": "socialite",
+   "selected": true,
+   "distinctStyle": true,
+   "aria": "true",
+   "previewChanged": true,
+   "captionChanged": true,
+   "caption": "Starting path (optional): Socialiteany · Hustler · Street · Farmhouse · Socialite"
+  }
+ ],
+ "phones": {
+  "667x375": {
+   "card": [
+    13,
+    6,
+    654,
+    369
+   ],
+   "inViewport": true,
+   "hScroll": false,
+   "docHScroll": false,
+   "clippedX": [],
+   "startVisible": true
+  },
+  "750x342": {
+   "card": [
+    15,
+    6,
+    735,
+    336
+   ],
+   "inViewport": true,
+   "hScroll": false,
+   "docHScroll": false,
+   "clippedX": [],
+   "startVisible": true
+  },
+  "844x390": {
+   "card": [
+    17,
+    6,
+    827,
+    384
+   ],
+   "inViewport": true,
+   "hScroll": false,
+   "docHScroll": false,
+   "clippedX": [],
+   "startVisible": true
+  }
+ },
+ "keyboard": {
+  "k": "pattern",
+  "v": "spots",
+  "outline": "dashed rgb(127, 211, 255)",
+  "selectedAfterEnter": true
+ },
+ "errors": [],
+ "summary": {
+  "options": 59,
+  "ok": 59,
+  "noVisibleChange": []
+ }
+}

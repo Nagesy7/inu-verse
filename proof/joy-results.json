@@ -1,0 +1,260 @@
+{
+ "url": "https://inu-verse-tawny.vercel.app/",
+ "viewports": {
+  "667x375": {
+   "off": {
+    "oldStick": true,
+    "oldA": true,
+    "newStick": false,
+    "label": "Joystick controls: off"
+   },
+   "labelAfterToggle": "Joystick controls: on",
+   "on": {
+    "oldStick": false,
+    "newStick": true,
+    "pad": {
+     "l": 16,
+     "t": 251,
+     "r": 108,
+     "b": 343
+    },
+    "a": {
+     "l": 599,
+     "t": 251,
+     "r": 651,
+     "b": 303
+    },
+    "b": {
+     "l": 541,
+     "t": 291,
+     "r": 593,
+     "b": 343
+    },
+    "inViewport": true,
+    "clearOfCentre": true,
+    "clearOfHud": true,
+    "padSize": 92
+   },
+   "saved": {
+    "local": "1",
+    "save": {
+     "joystick": true
+    }
+   },
+   "afterReload": {
+    "newStick": true,
+    "oldStick": false,
+    "label": "Joystick controls: on"
+   },
+   "multitouch": {
+    "movedBeforeA": 44,
+    "aPressedWhileMoving": true,
+    "keptMovingAfterA": true,
+    "sprintAtEdge": true,
+    "sprintDbg": {
+     "running": true,
+     "v": {
+      "x": 161,
+      "y": 0
+     }
+    },
+    "stopsOnRelease": true
+   },
+   "offAgain": {
+    "oldStick": true,
+    "newStick": false,
+    "saved": {
+     "joystick": false
+    }
+   }
+  },
+  "750x342": {
+   "off": {
+    "oldStick": true,
+    "oldA": true,
+    "newStick": false,
+    "label": "Joystick controls: off"
+   },
+   "labelAfterToggle": "Joystick controls: on",
+   "on": {
+    "oldStick": false,
+    "newStick": true,
+    "pad": {
+     "l": 16,
+     "t": 218,
+     "r": 108,
+     "b": 310
+    },
+    "a": {
+     "l": 682,
+     "t": 218,
+     "r": 734,
+     "b": 270
+    },
+    "b": {
+     "l": 624,
+     "t": 258,
+     "r": 676,
+     "b": 310
+    },
+    "inViewport": true,
+    "clearOfCentre": true,
+    "clearOfHud": true,
+    "padSize": 92
+   },
+   "saved": {
+    "local": "1",
+    "save": {
+     "joystick": true
+    }
+   },
+   "afterReload": {
+    "newStick": true,
+    "oldStick": false,
+    "label": "Joystick controls: on"
+   },
+   "multitouch": {
+    "movedBeforeA": 44,
+    "aPressedWhileMoving": true,
+    "keptMovingAfterA": true,
+    "sprintAtEdge": true,
+    "sprintDbg": {
+     "running": true,
+     "v": {
+      "x": 161,
+      "y": 0
+     }
+    },
+    "stopsOnRelease": true
+   },
+   "offAgain": {
+    "oldStick": true,
+    "newStick": false,
+    "saved": {
+     "joystick": false
+    }
+   }
+  },
+  "844x390": {
+   "off": {
+    "oldStick": true,
+    "oldA": true,
+    "newStick": false,
+    "label": "Joystick controls: off"
+   },
+   "labelAfterToggle": "Joystick controls: on",
+   "on": {
+    "oldStick": false,
+    "newStick": true,
+    "pad": {
+     "l": 16,
+     "t": 266,
+     "r": 108,
+     "b": 358
+    },
+    "a": {
+     "l": 776,
+     "t": 266,
+     "r": 828,
+     "b": 318
+    },
+    "b": {
+     "l": 718,
+     "t": 306,
+     "r": 770,
+     "b": 358
+    },
+    "inViewport": true,
+    "clearOfCentre": true,
+    "clearOfHud": true,
+    "padSize": 92
+   },
+   "saved": {
+    "local": "1",
+    "save": {
+     "joystick": true
+    }
+   },
+   "afterReload": {
+    "newStick": true,
+    "oldStick": false,
+    "label": "Joystick controls: on"
+   },
+   "multitouch": {
+    "movedBeforeA": 44,
+    "aPressedWhileMoving": true,
+    "keptMovingAfterA": true,
+    "sprintAtEdge": true,
+    "sprintDbg": {
+     "running": true,
+     "v": {
+      "x": 161,
+      "y": 0
+     }
+    },
+    "stopsOnRelease": true
+   },
+   "offAgain": {
+    "oldStick": true,
+    "newStick": false,
+    "saved": {
+     "joystick": false
+    }
+   }
+  },
+  "1280x800": {
+   "off": {
+    "oldStick": false,
+    "oldA": false,
+    "newStick": false,
+    "label": "Joystick controls: off"
+   },
+   "labelAfterToggle": "Joystick controls: on",
+   "on": {
+    "oldStick": false,
+    "newStick": true,
+    "pad": {
+     "l": 16,
+     "t": 676,
+     "r": 108,
+     "b": 768
+    },
+    "a": {
+     "l": 1212,
+     "t": 676,
+     "r": 1264,
+     "b": 728
+    },
+    "b": {
+     "l": 1154,
+     "t": 716,
+     "r": 1206,
+     "b": 768
+    },
+    "inViewport": true,
+    "clearOfCentre": true,
+    "clearOfHud": true,
+    "padSize": 92
+   },
+   "saved": {
+    "local": "1",
+    "save": {
+     "joystick": true
+    }
+   },
+   "afterReload": {
+    "newStick": true,
+    "oldStick": false,
+    "label": "Joystick controls: on"
+   },
+   "offAgain": {
+    "oldStick": false,
+    "newStick": false,
+    "saved": {
+     "joystick": false
+    }
+   }
+  }
+ },
+ "errors": []
+}

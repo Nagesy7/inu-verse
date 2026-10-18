@@ -1,0 +1,414 @@
+{
+ "url": "https://inu-verse-tawny.vercel.app/",
+ "runs": {
+  "1280x800": {
+   "townEaters": [
+    "Mochi",
+    "Yuzu"
+   ],
+   "diners": [
+    {
+     "name": "Mochi",
+     "seat": "s1",
+     "folk": true,
+     "state": "sit",
+     "x": 80,
+     "y": 176,
+     "waiting": null
+    },
+    {
+     "name": "Yuzu",
+     "seat": "s3",
+     "folk": true,
+     "state": "sit",
+     "x": 304,
+     "y": 176,
+     "waiting": null
+    },
+    {
+     "name": "Kiki",
+     "seat": "s6",
+     "folk": false,
+     "state": "sit",
+     "x": 144,
+     "y": 240,
+     "waiting": null
+    },
+    {
+     "name": "Sora",
+     "seat": "s8",
+     "folk": false,
+     "state": "sit",
+     "x": 368,
+     "y": 240,
+     "waiting": null
+    }
+   ],
+   "seatedEaters": [
+    "Mochi",
+    "Yuzu"
+   ],
+   "menuOpened": true,
+   "menuItems": 13,
+   "refused": {
+    "bonesAfter": 3,
+    "toast": "Not enough Bones (Salmon Bento Box is 15, you have 3)",
+    "ticket": null
+   },
+   "order": {
+    "bonesBefore": 100,
+    "bonesAfter": 94,
+    "deducted": 6,
+    "me": {
+     "seat": "s2",
+     "ticket": 3
+    },
+    "diner": {
+     "counts": {
+      "pupLatte": 1
+     },
+     "orders": 1,
+     "spent": 6,
+     "last": "pupLatte"
+    }
+   },
+   "served": true,
+   "toast": [
+    "Puppy Latte served. Enjoy!"
+   ],
+   "cleared": true,
+   "favourite": {
+    "counts": {
+     "pupLatte": 1
+    },
+    "orders": 1,
+    "spent": 6,
+    "last": "pupLatte"
+   },
+   "counterMenu": true,
+   "counterOrder": {
+    "on": true,
+    "bones": 89,
+    "diner": {
+     "counts": {
+      "pupLatte": 1,
+      "honeyScone": 1
+     },
+     "orders": 2,
+     "spent": 11,
+     "last": "honeyScone"
+    },
+    "served": 5,
+    "cleared": 3,
+    "me": {
+     "seat": "s2",
+     "ticket": 1
+    },
+    "tickets": [
+     {
+      "who": "me",
+      "seat": "s2",
+      "dish": "honeyScone",
+      "phase": "cook"
+     }
+    ],
+    "diners": [
+     {
+      "name": "Mochi",
+      "seat": "s1",
+      "folk": true,
+      "state": "sit",
+      "x": 80,
+      "y": 176,
+      "waiting": null
+     },
+     {
+      "name": "Yuzu",
+      "seat": "s3",
+      "folk": true,
+      "state": "sit",
+      "x": 304,
+      "y": 176,
+      "waiting": null
+     },
+     {
+      "name": "Kiki",
+      "seat": "s6",
+      "folk": false,
+      "state": "sit",
+      "x": 144,
+      "y": 240,
+      "waiting": null
+     },
+     {
+      "name": "Sora",
+      "seat": "s8",
+      "folk": false,
+      "state": "sit",
+      "x": 368,
+      "y": 240,
+      "waiting": null
+     }
+    ],
+    "waiter": {
+     "x": 272,
+     "y": 144
+    }
+   },
+   "counterSeated": true,
+   "shiftPanel": true,
+   "shiftOrders": [
+    "Kiki",
+    "Mochi"
+   ],
+   "shiftDiners": [
+    {
+     "name": "Mochi",
+     "waiting": 2
+    },
+    {
+     "name": "Yuzu",
+     "waiting": null
+    },
+    {
+     "name": "Kiki",
+     "waiting": 1
+    },
+    {
+     "name": "Sora",
+     "waiting": null
+    }
+   ],
+   "shiftServedTo": "Kiki",
+   "shiftDinerEating": {
+    "who": "Kiki",
+    "seat": "s6",
+    "dish": "pupLatte",
+    "phase": "eat"
+   }
+  },
+  "844x390": {
+   "townEaters": [],
+   "diners": [
+    {
+     "name": "Kiki",
+     "seat": "s1",
+     "folk": false,
+     "state": "sit",
+     "x": 80,
+     "y": 176,
+     "waiting": null
+    },
+    {
+     "name": "Sora",
+     "seat": "s3",
+     "folk": false,
+     "state": "sit",
+     "x": 304,
+     "y": 176,
+     "waiting": null
+    }
+   ],
+   "seatedEaters": [],
+   "menuOpened": true,
+   "menuItems": 13,
+   "refused": {
+    "bonesAfter": 3,
+    "toast": "Not enough Bones (Salmon Bento Box is 15, you have 3)",
+    "ticket": null
+   },
+   "order": {
+    "bonesBefore": 100,
+    "bonesAfter": 94,
+    "deducted": 6,
+    "me": {
+     "seat": "s2",
+     "ticket": 3
+    },
+    "diner": {
+     "counts": {
+      "pupLatte": 1
+     },
+     "orders": 1,
+     "spent": 6,
+     "last": "pupLatte"
+    }
+   },
+   "served": true,
+   "toast": [
+    "Puppy Latte served. Enjoy!"
+   ],
+   "cleared": true,
+   "favourite": {
+    "counts": {
+     "pupLatte": 1
+    },
+    "orders": 1,
+    "spent": 6,
+    "last": "pupLatte"
+   }
+  },
+  "667x375": {
+   "townEaters": [
+    "Goma"
+   ],
+   "diners": [
+    {
+     "name": "Goma",
+     "seat": "s1",
+     "folk": true,
+     "state": "sit",
+     "x": 80,
+     "y": 176,
+     "waiting": null
+    },
+    {
+     "name": "Kiki",
+     "seat": "s3",
+     "folk": false,
+     "state": "sit",
+     "x": 304,
+     "y": 176,
+     "waiting": null
+    },
+    {
+     "name": "Sora",
+     "seat": "s6",
+     "folk": false,
+     "state": "sit",
+     "x": 144,
+     "y": 240,
+     "waiting": null
+    }
+   ],
+   "seatedEaters": [
+    "Goma"
+   ],
+   "menuOpened": true,
+   "menuItems": 13,
+   "refused": {
+    "bonesAfter": 3,
+    "toast": "Not enough Bones (Salmon Bento Box is 15, you have 3)",
+    "ticket": null
+   },
+   "order": {
+    "bonesBefore": 100,
+    "bonesAfter": 94,
+    "deducted": 6,
+    "me": {
+     "seat": "s2",
+     "ticket": 4
+    },
+    "diner": {
+     "counts": {
+      "pupLatte": 1
+     },
+     "orders": 1,
+     "spent": 6,
+     "last": "pupLatte"
+    }
+   },
+   "served": true,
+   "toast": [
+    "Puppy Latte served. Enjoy!"
+   ],
+   "cleared": true,
+   "favourite": {
+    "counts": {
+     "pupLatte": 1
+    },
+    "orders": 1,
+    "spent": 6,
+    "last": "pupLatte"
+   }
+  },
+  "750x342": {
+   "townEaters": [
+    "Kuro",
+    "Yuzu",
+    "Goma"
+   ],
+   "diners": [
+    {
+     "name": "Kuro",
+     "seat": "s1",
+     "folk": true,
+     "state": "sit",
+     "x": 80,
+     "y": 176,
+     "waiting": null
+    },
+    {
+     "name": "Yuzu",
+     "seat": "s3",
+     "folk": true,
+     "state": "sit",
+     "x": 304,
+     "y": 176,
+     "waiting": null
+    },
+    {
+     "name": "Goma",
+     "seat": "s6",
+     "folk": true,
+     "state": "sit",
+     "x": 144,
+     "y": 240,
+     "waiting": null
+    },
+    {
+     "name": "Kiki",
+     "seat": "s8",
+     "folk": false,
+     "state": "sit",
+     "x": 368,
+     "y": 240,
+     "waiting": null
+    }
+   ],
+   "seatedEaters": [
+    "Kuro",
+    "Yuzu",
+    "Goma"
+   ],
+   "menuOpened": true,
+   "menuItems": 13,
+   "refused": {
+    "bonesAfter": 3,
+    "toast": "Not enough Bones (Salmon Bento Box is 15, you have 3)",
+    "ticket": null
+   },
+   "order": {
+    "bonesBefore": 100,
+    "bonesAfter": 94,
+    "deducted": 6,
+    "me": {
+     "seat": "s2",
+     "ticket": 5
+    },
+    "diner": {
+     "counts": {
+      "pupLatte": 1
+     },
+     "orders": 1,
+     "spent": 6,
+     "last": "pupLatte"
+    }
+   },
+   "served": true,
+   "toast": [
+    "Puppy Latte served. Enjoy!"
+   ],
+   "cleared": true,
+   "favourite": {
+    "counts": {
+     "pupLatte": 1
+    },
+    "orders": 1,
+    "spent": 6,
+    "last": "pupLatte"
+   }
+  }
+ },
+ "errors": []
+}

@@ -1,0 +1,126 @@
+{
+ "url": "https://inu-verse-tawny.vercel.app/",
+ "door": "cafe",
+ "runs": [
+  {
+   "vp": "844x390",
+   "approach": "left",
+   "start": [
+    2,
+    18
+   ],
+   "startSolid": false,
+   "stickVisible": true,
+   "entered": true,
+   "enters": 1,
+   "mode": "room",
+   "room": "cafe",
+   "panel": null
+  },
+  {
+   "vp": "844x390",
+   "approach": "right",
+   "start": [
+    6,
+    18
+   ],
+   "startSolid": false,
+   "stickVisible": true,
+   "entered": true,
+   "enters": 1,
+   "mode": "room",
+   "room": "cafe",
+   "panel": null
+  },
+  {
+   "vp": "844x390",
+   "approach": "front",
+   "start": [
+    4,
+    21
+   ],
+   "startSolid": false,
+   "stickVisible": true,
+   "entered": true,
+   "enters": 1,
+   "mode": "room",
+   "room": "cafe",
+   "panel": null
+  },
+  {
+   "vp": "844x390",
+   "approach": "diag",
+   "start": [
+    2,
+    20
+   ],
+   "startSolid": false,
+   "stickVisible": true,
+   "entered": true,
+   "enters": 1,
+   "mode": "room",
+   "room": "cafe",
+   "panel": null
+  },
+  {
+   "vp": "667x375",
+   "approach": "left",
+   "start": [
+    2,
+    18
+   ],
+   "startSolid": false,
+   "stickVisible": true,
+   "entered": true,
+   "enters": 1,
+   "mode": "room",
+   "room": "cafe",
+   "panel": null
+  },
+  {
+   "vp": "667x375",
+   "approach": "right",
+   "start": [
+    6,
+    18
+   ],
+   "startSolid": false,
+   "stickVisible": true,
+   "entered": true,
+   "enters": 1,
+   "mode": "room",
+   "room": "cafe",
+   "panel": null
+  },
+  {
+   "vp": "667x375",
+   "approach": "front",
+   "start": [
+    4,
+    21
+   ],
+   "startSolid": false,
+   "stickVisible": true,
+   "entered": true,
+   "enters": 1,
+   "mode": "room",
+   "room": "cafe",
+   "panel": null
+  },
+  {
+   "vp": "667x375",
+   "approach": "diag",
+   "start": [
+    2,
+    20
+   ],
+   "startSolid": false,
+   "stickVisible": true,
+   "entered": true,
+   "enters": 1,
+   "mode": "room",
+   "room": "cafe",
+   "panel": null
+  }
+ ]
+}

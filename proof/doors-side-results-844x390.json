@@ -1,0 +1,10617 @@
+{
+ "url": "https://inu-verse-tawny.vercel.app/",
+ "viewport": "844x390",
+ "phone": true,
+ "doors": [
+  {
+   "name": "Shiba Sips Café",
+   "target": "building:cafe",
+   "approach": "front",
+   "style": "stick",
+   "start": [
+    4,
+    20
+   ],
+   "fired": 1,
+   "ok": true,
+   "ms": 480,
+   "after": {
+    "mode": "room",
+    "panel": null,
+    "room": "cafe"
+   }
+  },
+  {
+   "name": "Shiba Sips Café",
+   "target": "building:cafe",
+   "approach": "front",
+   "style": "tap",
+   "start": [
+    4,
+    20
+   ],
+   "fired": 1,
+   "ok": true,
+   "ms": 540,
+   "tapVia": "touch",
+   "after": {
+    "mode": "room",
+    "panel": null,
+    "room": "cafe"
+   }
+  },
+  {
+   "name": "Shiba Sips Café",
+   "target": "building:cafe",
+   "approach": "left",
+   "style": "stick",
+   "start": [
+    2,
+    18
+   ],
+   "fired": 1,
+   "ok": true,
+   "ms": 240,
+   "after": {
+    "mode": "room",
+    "panel": null,
+    "room": "cafe"
+   }
+  },
+  {
+   "name": "Shiba Sips Café",
+   "target": "building:cafe",
+   "approach": "left",
+   "style": "tap",
+   "start": [
+    2,
+    18
+   ],
+   "fired": 1,
+   "ok": true,
+   "ms": 240,
+   "tapVia": "touch",
+   "after": {
+    "mode": "room",
+    "panel": null,
+    "room": "cafe"
+   }
+  },
+  {
+   "name": "Shiba Sips Café",
+   "target": "building:cafe",
+   "approach": "diag-left",
+   "style": "stick",
+   "start": [
+    2,
+    20
+   ],
+   "fired": 1,
+   "ok": true,
+   "ms": 480,
+   "after": {
+    "mode": "room",
+    "panel": null,
+    "room": "cafe"
+   }
+  },
+  {
+   "name": "Shiba Sips Café",
+   "target": "building:cafe",
+   "approach": "diag-left",
+   "style": "tap",
+   "start": [
+    2,
+    20
+   ],
+   "fired": 1,
+   "ok": true,
+   "ms": 540,
+   "tapVia": "touch",
+   "after": {
+    "mode": "room",
+    "panel": null,
+    "room": "cafe"
+   }
+  },
+  {
+   "name": "Shiba Sips Café",
+   "target": "building:cafe",
+   "approach": "wall-left",
+   "style": "stick",
+   "start": [
+    3,
+    19
+   ],
+   "fired": 1,
+   "ok": true,
+   "ms": 240,
+   "after": {
+    "mode": "room",
+    "panel": null,
+    "room": "cafe"
+   }
+  },
+  {
+   "name": "Shiba Sips Café",
+   "target": "building:cafe",
+   "approach": "right",
+   "style": "stick",
+   "start": [
+    6,
+    18
+   ],
+   "fired": 1,
+   "ok": true,
+   "ms": 240,
+   "after": {
+    "mode": "room",
+    "panel": null,
+    "room": "cafe"
+   }
+  },
+  {
+   "name": "Shiba Sips Café",
+   "target": "building:cafe",
+   "approach": "right",
+   "style": "tap",
+   "start": [
+    6,
+    18
+   ],
+   "fired": 1,
+   "ok": true,
+   "ms": 240,
+   "tapVia": "touch",
+   "after": {
+    "mode": "room",
+    "panel": null,
+    "room": "cafe"
+   }
+  },
+  {
+   "name": "Shiba Sips Café",
+   "target": "building:cafe",
+   "approach": "diag-right",
+   "style": "stick",
+   "start": [
+    6,
+    20
+   ],
+   "fired": 1,
+   "ok": true,
+   "ms": 300,
+   "after": {
+    "mode": "room",
+    "panel": null,
+    "room": "cafe"
+   }
+  },
+  {
+   "name": "Shiba Sips Café",
+   "target": "building:cafe",
+   "approach": "diag-right",
+   "style": "tap",
+   "start": [
+    6,
+    20
+   ],
+   "fired": 1,
+   "ok": true,
+   "ms": 300,
+   "tapVia": "touch",
+   "after": {
+    "mode": "room",
+    "panel": null,
+    "room": "cafe"
+   }
+  },
+  {
+   "name": "Shiba Sips Café",
+   "target": "building:cafe",
+   "approach": "wall-right",
+   "style": "stick",
+   "start": [
+    5,
+    19
+   ],
+   "fired": 1,
+   "ok": true,
+   "ms": 240,
+   "after": {
+    "mode": "room",
+    "panel": null,
+    "room": "cafe"
+   }
+  },
+  {
+   "name": "Paws & Pillows",
+   "target": "building:shop",
+   "approach": "front",
+   "style": "stick",
+   "start": [
+    20,
+    20
+   ],
+   "fired": 1,
+   "ok": true,
+   "ms": 540,
+   "after": {
+    "mode": "room",
+    "panel": null,
+    "room": "shop"
+   }
+  },
+  {
+   "name": "Paws & Pillows",
+   "target": "building:shop",
+   "approach": "front",
+   "style": "tap",
+   "start": [
+    20,
+    20
+   ],
+   "fired": 1,
+   "ok": true,
+   "ms": 540,
+   "tapVia": "touch",
+   "after": {
+    "mode": "room",
+    "panel": null,
+    "room": "shop"
+   }
+  },
+  {
+   "name": "Paws & Pillows",
+   "target": "building:shop",
+   "approach": "left",
+   "style": "stick",
+   "start": [
+    18,
+    18
+   ],
+   "fired": 1,
+   "ok": true,
+   "ms": 240,
+   "after": {
+    "mode": "room",
+    "panel": null,
+    "room": "shop"
+   }
+  },
+  {
+   "name": "Paws & Pillows",
+   "target": "building:shop",
+   "approach": "left",
+   "style": "tap",
+   "start": [
+    18,
+    18
+   ],
+   "fired": 1,
+   "ok": true,
+   "ms": 240,
+   "tapVia": "touch",
+   "after": {
+    "mode": "room",
+    "panel": null,
+    "room": "shop"
+   }
+  },
+  {
+   "name": "Paws & Pillows",
+   "target": "building:shop",
+   "approach": "diag-left",
+   "style": "stick",
+   "start": [
+    18,
+    20
+   ],
+   "fired": 1,
+   "ok": true,
+   "ms": 300,
+   "after": {
+    "mode": "room",
+    "panel": null,
+    "room": "shop"
+   }
+  },
+  {
+   "name": "Paws & Pillows",
+   "target": "building:shop",
+   "approach": "diag-left",
+   "style": "tap",
+   "start": [
+    18,
+    20
+   ],
+   "fired": 1,
+   "ok": true,
+   "ms": 300,
+   "tapVia": "touch",
+   "after": {
+    "mode": "room",
+    "panel": null,
+    "room": "shop"
+   }
+  },
+  {
+   "name": "Paws & Pillows",
+   "target": "building:shop",
+   "approach": "wall-left",
+   "style": "stick",
+   "start": [
+    19,
+    19
+   ],
+   "fired": 1,
+   "ok": true,
+   "ms": 240,
+   "after": {
+    "mode": "room",
+    "panel": null,
+    "room": "shop"
+   }
+  },
+  {
+   "name": "Paws & Pillows",
+   "target": "building:shop",
+   "approach": "right",
+   "style": "stick",
+   "start": [
+    22,
+    18
+   ],
+   "fired": 1,
+   "ok": true,
+   "ms": 240,
+   "after": {
+    "mode": "room",
+    "panel": null,
+    "room": "shop"
+   }
+  },
+  {
+   "name": "Paws & Pillows",
+   "target": "building:shop",
+   "approach": "right",
+   "style": "tap",
+   "start": [
+    22,
+    18
+   ],
+   "fired": 1,
+   "ok": true,
+   "ms": 240,
+   "tapVia": "touch",
+   "after": {
+    "mode": "room",
+    "panel": null,
+    "room": "shop"
+   }
+  },
+  {
+   "name": "Paws & Pillows",
+   "target": "building:shop",
+   "approach": "diag-right",
+   "style": "stick",
+   "skip": "blocked by scenery"
+  },
+  {
+   "name": "Paws & Pillows",
+   "target": "building:shop",
+   "approach": "diag-right",
+   "style": "tap",
+   "skip": "blocked by scenery"
+  },
+  {
+   "name": "Paws & Pillows",
+   "target": "building:shop",
+   "approach": "wall-right",
+   "style": "stick",
+   "skip": "blocked by scenery"
+  },
+  {
+   "name": "Fetch Fashion",
+   "target": "building:fashion",
+   "approach": "front",
+   "style": "stick",
+   "start": [
+    32,
+    17
+   ],
+   "fired": 1,
+   "ok": true,
+   "ms": 480,
+   "after": {
+    "mode": "room",
+    "panel": null,
+    "room": "fashion"
+   }
+  },
+  {
+   "name": "Fetch Fashion",
+   "target": "building:fashion",
+   "approach": "front",
+   "style": "tap",
+   "start": [
+    32,
+    17
+   ],
+   "fired": 1,
+   "ok": true,
+   "ms": 540,
+   "tapVia": "touch",
+   "after": {
+    "mode": "room",
+    "panel": null,
+    "room": "fashion"
+   }
+  },
+  {
+   "name": "Fetch Fashion",
+   "target": "building:fashion",
+   "approach": "left",
+   "style": "stick",
+   "start": [
+    30,
+    15
+   ],
+   "fired": 1,
+   "ok": true,
+   "ms": 240,
+   "after": {
+    "mode": "room",
+    "panel": null,
+    "room": "fashion"
+   }
+  },
+  {
+   "name": "Fetch Fashion",
+   "target": "building:fashion",
+   "approach": "left",
+   "style": "tap",
+   "start": [
+    30,
+    15
+   ],
+   "fired": 1,
+   "ok": true,
+   "ms": 240,
+   "tapVia": "touch",
+   "after": {
+    "mode": "room",
+    "panel": null,
+    "room": "fashion"
+   }
+  },
+  {
+   "name": "Fetch Fashion",
+   "target": "building:fashion",
+   "approach": "diag-left",
+   "style": "stick",
+   "start": [
+    32,
+    15
+   ],
+   "fired": 1,
+   "ok": true,
+   "ms": 300,
+   "after": {
+    "mode": "room",
+    "panel": null,
+    "room": "fashion"
+   }
+  },
+  {
+   "name": "Fetch Fashion",
+   "target": "building:fashion",
+   "approach": "diag-left",
+   "style": "tap",
+   "start": [
+    32,
+    15
+   ],
+   "fired": 1,
+   "ok": true,
+   "ms": 300,
+   "tapVia": "touch",
+   "after": {
+    "mode": "room",
+    "panel": null,
+    "room": "fashion"
+   }
+  },
+  {
+   "name": "Fetch Fashion",
+   "target": "building:fashion",
+   "approach": "wall-left",
+   "style": "stick",
+   "start": [
+    31,
+    16
+   ],
+   "fired": 1,
+   "ok": true,
+   "ms": 240,
+   "after": {
+    "mode": "room",
+    "panel": null,
+    "room": "fashion"
+   }
+  },
+  {
+   "name": "Fetch Fashion",
+   "target": "building:fashion",
+   "approach": "right",
+   "style": "stick",
+   "start": [
+    30,
+    19
+   ],
+   "fired": 1,
+   "ok": true,
+   "ms": 240,
+   "after": {
+    "mode": "room",
+    "panel": null,
+    "room": "fashion"
+   }
+  },
+  {
+   "name": "Fetch Fashion",
+   "target": "building:fashion",
+   "approach": "right",
+   "style": "tap",
+   "start": [
+    30,
+    19
+   ],
+   "fired": 1,
+   "ok": true,
+   "ms": 240,
+   "tapVia": "touch",
+   "after": {
+    "mode": "room",
+    "panel": null,
+    "room": "fashion"
+   }
+  },
+  {
+   "name": "Fetch Fashion",
+   "target": "building:fashion",
+   "approach": "diag-right",
+   "style": "stick",
+   "start": [
+    32,
+    19
+   ],
+   "fired": 1,
+   "ok": true,
+   "ms": 300,
+   "after": {
+    "mode": "room",
+    "panel": null,
+    "room": "fashion"
+   }
+  },
+  {
+   "name": "Fetch Fashion",
+   "target": "building:fashion",
+   "approach": "diag-right",
+   "style": "tap",
+   "start": [
+    32,
+    19
+   ],
+   "fired": 1,
+   "ok": true,
+   "ms": 300,
+   "tapVia": "touch",
+   "after": {
+    "mode": "room",
+    "panel": null,
+    "room": "fashion"
+   }
+  },
+  {
+   "name": "Fetch Fashion",
+   "target": "building:fashion",
+   "approach": "wall-right",
+   "style": "stick",
+   "start": [
+    31,
+    18
+   ],
+   "fired": 1,
+   "ok": true,
+   "ms": 240,
+   "after": {
+    "mode": "room",
+    "panel": null,
+    "room": "fashion"
+   }
+  },
+  {
+   "name": "Launch Hall",
+   "target": "building:launch",
+   "approach": "front",
+   "style": "stick",
+   "start": [
+    41,
+    20
+   ],
+   "fired": 1,
+   "ok": true,
+   "ms": 540,
+   "after": {
+    "mode": "world",
+    "panel": "launch",
+    "room": null
+   }
+  },
+  {
+   "name": "Launch Hall",
+   "target": "building:launch",
+   "approach": "front",
+   "style": "tap",
+   "start": [
+    41,
+    20
+   ],
+   "fired": 1,
+   "ok": true,
+   "ms": 540,
+   "tapVia": "touch",
+   "after": {
+    "mode": "world",
+    "panel": "launch",
+    "room": null
+   }
+  },
+  {
+   "name": "Launch Hall",
+   "target": "building:launch",
+   "approach": "left",
+   "style": "stick",
+   "start": [
+    39,
+    18
+   ],
+   "fired": 1,
+   "ok": true,
+   "ms": 240,
+   "after": {
+    "mode": "world",
+    "panel": "launch",
+    "room": null
+   }
+  },
+  {
+   "name": "Launch Hall",
+   "target": "building:launch",
+   "approach": "left",
+   "style": "tap",
+   "start": [
+    39,
+    18
+   ],
+   "fired": 1,
+   "ok": true,
+   "ms": 240,
+   "tapVia": "touch",
+   "after": {
+    "mode": "world",
+    "panel": "launch",
+    "room": null
+   }
+  },
+  {
+   "name": "Launch Hall",
+   "target": "building:launch",
+   "approach": "diag-left",
+   "style": "stick",
+   "start": [
+    39,
+    20
+   ],
+   "fired": 1,
+   "ok": true,
+   "ms": 300,
+   "after": {
+    "mode": "world",
+    "panel": "launch",
+    "room": null
+   }
+  },
+  {
+   "name": "Launch Hall",
+   "target": "building:launch",
+   "approach": "diag-left",
+   "style": "tap",
+   "start": [
+    39,
+    20
+   ],
+   "fired": 1,
+   "ok": true,
+   "ms": 300,
+   "tapVia": "touch",
+   "after": {
+    "mode": "world",
+    "panel": "launch",
+    "room": null
+   }
+  },
+  {
+   "name": "Launch Hall",
+   "target": "building:launch",
+   "approach": "wall-left",
+   "style": "stick",
+   "start": [
+    40,
+    19
+   ],
+   "fired": 1,
+   "ok": true,
+   "ms": 240,
+   "after": {
+    "mode": "world",
+    "panel": "launch",
+    "room": null
+   }
+  },
+  {
+   "name": "Launch Hall",
+   "target": "building:launch",
+   "approach": "right",
+   "style": "stick",
+   "start": [
+    43,
+    18
+   ],
+   "fired": 1,
+   "ok": true,
+   "ms": 240,
+   "after": {
+    "mode": "world",
+    "panel": "launch",
+    "room": null
+   }
+  },
+  {
+   "name": "Launch Hall",
+   "target": "building:launch",
+   "approach": "right",
+   "style": "tap",
+   "start": [
+    43,
+    18
+   ],
+   "fired": 1,
+   "ok": true,
+   "ms": 240,
+   "tapVia": "touch",
+   "after": {
+    "mode": "world",
+    "panel": "launch",
+    "room": null
+   }
+  },
+  {
+   "name": "Launch Hall",
+   "target": "building:launch",
+   "approach": "diag-right",
+   "style": "stick",
+   "start": [
+    43,
+    20
+   ],
+   "fired": 1,
+   "ok": true,
+   "ms": 300,
+   "after": {
+    "mode": "world",
+    "panel": "launch",
+    "room": null
+   }
+  },
+  {
+   "name": "Launch Hall",
+   "target": "building:launch",
+   "approach": "diag-right",
+   "style": "tap",
+   "start": [
+    43,
+    20
+   ],
+   "fired": 1,
+   "ok": true,
+   "ms": 300,
+   "tapVia": "touch",
+   "after": {
+    "mode": "world",
+    "panel": "launch",
+    "room": null
+   }
+  },
+  {
+   "name": "Launch Hall",
+   "target": "building:launch",
+   "approach": "wall-right",
+   "style": "stick",
+   "start": [
+    42,
+    19
+   ],
+   "fired": 1,
+   "ok": true,
+   "ms": 240,
+   "after": {
+    "mode": "world",
+    "panel": "launch",
+    "room": null
+   }
+  },
+  {
+   "name": "Zoomies Motors",
+   "target": "building:cars",
+   "approach": "front",
+   "style": "stick",
+   "start": [
+    52,
+    20
+   ],
+   "fired": 1,
+   "ok": true,
+   "ms": 540,
+   "after": {
+    "mode": "room",
+    "panel": null,
+    "room": "cars"
+   }
+  },
+  {
+   "name": "Zoomies Motors",
+   "target": "building:cars",
+   "approach": "front",
+   "style": "tap",
+   "start": [
+    52,
+    20
+   ],
+   "fired": 1,
+   "ok": true,
+   "ms": 540,
+   "tapVia": "touch",
+   "after": {
+    "mode": "room",
+    "panel": null,
+    "room": "cars"
+   }
+  },
+  {
+   "name": "Zoomies Motors",
+   "target": "building:cars",
+   "approach": "left",
+   "style": "stick",
+   "start": [
+    51,
+    18
+   ],
+   "fired": 1,
+   "ok": true,
+   "ms": 240,
+   "after": {
+    "mode": "room",
+    "panel": null,
+    "room": "cars"
+   }
+  },
+  {
+   "name": "Zoomies Motors",
+   "target": "building:cars",
+   "approach": "left",
+   "style": "tap",
+   "start": [
+    51,
+    18
+   ],
+   "fired": 1,
+   "ok": true,
+   "ms": 240,
+   "tapVia": "touch",
+   "after": {
+    "mode": "room",
+    "panel": null,
+    "room": "cars"
+   }
+  },
+  {
+   "name": "Zoomies Motors",
+   "target": "building:cars",
+   "approach": "diag-left",
+   "style": "stick",
+   "start": [
+    50,
+    20
+   ],
+   "fired": 1,
+   "ok": true,
+   "ms": 300,
+   "after": {
+    "mode": "room",
+    "panel": null,
+    "room": "cars"
+   }
+  },
+  {
+   "name": "Zoomies Motors",
+   "target": "building:cars",
+   "approach": "diag-left",
+   "style": "tap",
+   "start": [
+    50,
+    20
+   ],
+   "fired": 1,
+   "ok": true,
+   "ms": 300,
+   "tapVia": "touch",
+   "after": {
+    "mode": "room",
+    "panel": null,
+    "room": "cars"
+   }
+  },
+  {
+   "name": "Zoomies Motors",
+   "target": "building:cars",
+   "approach": "wall-left",
+   "style": "stick",
+   "start": [
+    51,
+    19
+   ],
+   "fired": 1,
+   "ok": true,
+   "ms": 240,
+   "after": {
+    "mode": "room",
+    "panel": null,
+    "room": "cars"
+   }
+  },
+  {
+   "name": "Zoomies Motors",
+   "target": "building:cars",
+   "approach": "right",
+   "style": "stick",
+   "start": [
+    54,
+    18
+   ],
+   "fired": 1,
+   "ok": true,
+   "ms": 240,
+   "after": {
+    "mode": "room",
+    "panel": null,
+    "room": "cars"
+   }
+  },
+  {
+   "name": "Zoomies Motors",
+   "target": "building:cars",
+   "approach": "right",
+   "style": "tap",
+   "start": [
+    54,
+    18
+   ],
+   "fired": 1,
+   "ok": true,
+   "ms": 240,
+   "tapVia": "touch",
+   "after": {
+    "mode": "room",
+    "panel": null,
+    "room": "cars"
+   }
+  },
+  {
+   "name": "Zoomies Motors",
+   "target": "building:cars",
+   "approach": "diag-right",
+   "style": "stick",
+   "start": [
+    54,
+    20
+   ],
+   "fired": 1,
+   "ok": true,
+   "ms": 300,
+   "after": {
+    "mode": "room",
+    "panel": null,
+    "room": "cars"
+   }
+  },
+  {
+   "name": "Zoomies Motors",
+   "target": "building:cars",
+   "approach": "diag-right",
+   "style": "tap",
+   "start": [
+    54,
+    20
+   ],
+   "fired": 1,
+   "ok": true,
+   "ms": 300,
+   "tapVia": "touch",
+   "after": {
+    "mode": "room",
+    "panel": null,
+    "room": "cars"
+   }
+  },
+  {
+   "name": "Zoomies Motors",
+   "target": "building:cars",
+   "approach": "wall-right",
+   "style": "stick",
+   "start": [
+    53,
+    19
+   ],
+   "fired": 1,
+   "ok": true,
+   "ms": 240,
+   "after": {
+    "mode": "room",
+    "panel": null,
+    "room": "cars"
+   }
+  },
+  {
+   "name": "Kibble Mall",
+   "target": "mall:mall",
+   "approach": "front",
+   "style": "stick",
+   "start": [
+    32,
+    60
+   ],
+   "fired": 1,
+   "ok": true,
+   "ms": 540,
+   "after": {
+    "mode": "room",
+    "panel": null,
+    "room": "mall"
+   }
+  },
+  {
+   "name": "Kibble Mall",
+   "target": "mall:mall",
+   "approach": "front",
+   "style": "tap",
+   "start": [
+    32,
+    60
+   ],
+   "fired": 1,
+   "ok": true,
+   "ms": 540,
+   "tapVia": "touch",
+   "after": {
+    "mode": "room",
+    "panel": null,
+    "room": "mall"
+   }
+  },
+  {
+   "name": "Kibble Mall",
+   "target": "mall:mall",
+   "approach": "left",
+   "style": "stick",
+   "start": [
+    30,
+    58
+   ],
+   "fired": 1,
+   "ok": true,
+   "ms": 240,
+   "after": {
+    "mode": "room",
+    "panel": null,
+    "room": "mall"
+   }
+  },
+  {
+   "name": "Kibble Mall",
+   "target": "mall:mall",
+   "approach": "left",
+   "style": "tap",
+   "start": [
+    30,
+    58
+   ],
+   "fired": 1,
+   "ok": true,
+   "ms": 240,
+   "tapVia": "touch",
+   "after": {
+    "mode": "room",
+    "panel": null,
+    "room": "mall"
+   }
+  },
+  {
+   "name": "Kibble Mall",
+   "target": "mall:mall",
+   "approach": "diag-left",
+   "style": "stick",
+   "start": [
+    30,
+    60
+   ],
+   "fired": 1,
+   "ok": true,
+   "ms": 300,
+   "after": {
+    "mode": "room",
+    "panel": null,
+    "room": "mall"
+   }
+  },
+  {
+   "name": "Kibble Mall",
+   "target": "mall:mall",
+   "approach": "diag-left",
+   "style": "tap",
+   "start": [
+    30,
+    60
+   ],
+   "fired": 1,
+   "ok": true,
+   "ms": 300,
+   "tapVia": "touch",
+   "after": {
+    "mode": "room",
+    "panel": null,
+    "room": "mall"
+   }
+  },
+  {
+   "name": "Kibble Mall",
+   "target": "mall:mall",
+   "approach": "wall-left",
+   "style": "stick",
+   "start": [
+    31,
+    59
+   ],
+   "fired": 1,
+   "ok": true,
+   "ms": 240,
+   "after": {
+    "mode": "room",
+    "panel": null,
+    "room": "mall"
+   }
+  },
+  {
+   "name": "Kibble Mall",
+   "target": "mall:mall",
+   "approach": "right",
+   "style": "stick",
+   "start": [
+    34,
+    58
+   ],
+   "fired": 1,
+   "ok": true,
+   "ms": 240,
+   "after": {
+    "mode": "room",
+    "panel": null,
+    "room": "mall"
+   }
+  },
+  {
+   "name": "Kibble Mall",
+   "target": "mall:mall",
+   "approach": "right",
+   "style": "tap",
+   "start": [
+    34,
+    58
+   ],
+   "fired": 1,
+   "ok": true,
+   "ms": 240,
+   "tapVia": "touch",
+   "after": {
+    "mode": "room",
+    "panel": null,
+    "room": "mall"
+   }
+  },
+  {
+   "name": "Kibble Mall",
+   "target": "mall:mall",
+   "approach": "diag-right",
+   "style": "stick",
+   "start": [
+    34,
+    60
+   ],
+   "fired": 1,
+   "ok": true,
+   "ms": 300,
+   "after": {
+    "mode": "room",
+    "panel": null,
+    "room": "mall"
+   }
+  },
+  {
+   "name": "Kibble Mall",
+   "target": "mall:mall",
+   "approach": "diag-right",
+   "style": "tap",
+   "start": [
+    34,
+    60
+   ],
+   "fired": 1,
+   "ok": true,
+   "ms": 300,
+   "tapVia": "touch",
+   "after": {
+    "mode": "room",
+    "panel": null,
+    "room": "mall"
+   }
+  },
+  {
+   "name": "Kibble Mall",
+   "target": "mall:mall",
+   "approach": "wall-right",
+   "style": "stick",
+   "start": [
+    33,
+    59
+   ],
+   "fired": 1,
+   "ok": true,
+   "ms": 240,
+   "after": {
+    "mode": "room",
+    "panel": null,
+    "room": "mall"
+   }
+  },
+  {
+   "name": "Gilded Collar Jewelers",
+   "target": "mall:jewel",
+   "approach": "front",
+   "style": "stick",
+   "start": [
+    7,
+    54
+   ],
+   "fired": 1,
+   "ok": true,
+   "ms": 540,
+   "after": {
+    "mode": "world",
+    "panel": "mall",
+    "room": null
+   }
+  },
+  {
+   "name": "Gilded Collar Jewelers",
+   "target": "mall:jewel",
+   "approach": "front",
+   "style": "tap",
+   "start": [
+    7,
+    54
+   ],
+   "fired": 1,
+   "ok": true,
+   "ms": 540,
+   "tapVia": "touch",
+   "after": {
+    "mode": "world",
+    "panel": "mall",
+    "room": null
+   }
+  },
+  {
+   "name": "Gilded Collar Jewelers",
+   "target": "mall:jewel",
+   "approach": "left",
+   "style": "stick",
+   "start": [
+    9,
+    52
+   ],
+   "fired": 1,
+   "ok": true,
+   "ms": 240,
+   "after": {
+    "mode": "world",
+    "panel": "mall",
+    "room": null
+   }
+  },
+  {
+   "name": "Gilded Collar Jewelers",
+   "target": "mall:jewel",
+   "approach": "left",
+   "style": "tap",
+   "start": [
+    9,
+    52
+   ],
+   "fired": 1,
+   "ok": true,
+   "ms": 240,
+   "tapVia": "touch",
+   "after": {
+    "mode": "world",
+    "panel": "mall",
+    "room": null
+   }
+  },
+  {
+   "name": "Gilded Collar Jewelers",
+   "target": "mall:jewel",
+   "approach": "diag-left",
+   "style": "stick",
+   "start": [
+    7,
+    52
+   ],
+   "fired": 1,
+   "ok": true,
+   "ms": 300,
+   "after": {
+    "mode": "world",
+    "panel": "mall",
+    "room": null
+   }
+  },
+  {
+   "name": "Gilded Collar Jewelers",
+   "target": "mall:jewel",
+   "approach": "diag-left",
+   "style": "tap",
+   "start": [
+    7,
+    52
+   ],
+   "fired": 1,
+   "ok": true,
+   "ms": 300,
+   "tapVia": "touch",
+   "after": {
+    "mode": "world",
+    "panel": "mall",
+    "room": null
+   }
+  },
+  {
+   "name": "Gilded Collar Jewelers",
+   "target": "mall:jewel",
+   "approach": "wall-left",
+   "style": "stick",
+   "start": [
+    8,
+    53
+   ],
+   "fired": 1,
+   "ok": true,
+   "ms": 240,
+   "after": {
+    "mode": "world",
+    "panel": "mall",
+    "room": null
+   }
+  },
+  {
+   "name": "Gilded Collar Jewelers",
+   "target": "mall:jewel",
+   "approach": "right",
+   "style": "stick",
+   "start": [
+    9,
+    56
+   ],
+   "fired": 1,
+   "ok": true,
+   "ms": 240,
+   "after": {
+    "mode": "world",
+    "panel": "mall",
+    "room": null
+   }
+  },
+  {
+   "name": "Gilded Collar Jewelers",
+   "target": "mall:jewel",
+   "approach": "right",
+   "style": "tap",
+   "start": [
+    9,
+    56
+   ],
+   "fired": 1,
+   "ok": true,
+   "ms": 240,
+   "tapVia": "touch",
+   "after": {
+    "mode": "world",
+    "panel": "mall",
+    "room": null
+   }
+  },
+  {
+   "name": "Gilded Collar Jewelers",
+   "target": "mall:jewel",
+   "approach": "diag-right",
+   "style": "stick",
+   "start": [
+    7,
+    56
+   ],
+   "fired": 1,
+   "ok": true,
+   "ms": 300,
+   "after": {
+    "mode": "world",
+    "panel": "mall",
+    "room": null
+   }
+  },
+  {
+   "name": "Gilded Collar Jewelers",
+   "target": "mall:jewel",
+   "approach": "diag-right",
+   "style": "tap",
+   "start": [
+    7,
+    56
+   ],
+   "fired": 1,
+   "ok": true,
+   "ms": 300,
+   "tapVia": "touch",
+   "after": {
+    "mode": "world",
+    "panel": "mall",
+    "room": null
+   }
+  },
+  {
+   "name": "Gilded Collar Jewelers",
+   "target": "mall:jewel",
+   "approach": "wall-right",
+   "style": "stick",
+   "start": [
+    8,
+    55
+   ],
+   "fired": 1,
+   "ok": true,
+   "ms": 240,
+   "after": {
+    "mode": "world",
+    "panel": "mall",
+    "room": null
+   }
+  },
+  {
+   "name": "Royal Paws Designer",
+   "target": "mall:designer",
+   "approach": "front",
+   "style": "stick",
+   "start": [
+    52,
+    57
+   ],
+   "fired": 1,
+   "ok": true,
+   "ms": 540,
+   "after": {
+    "mode": "world",
+    "panel": "mall",
+    "room": null
+   }
+  },
+  {
+   "name": "Royal Paws Designer",
+   "target": "mall:designer",
+   "approach": "front",
+   "style": "tap",
+   "start": [
+    52,
+    57
+   ],
+   "fired": 1,
+   "ok": true,
+   "ms": 540,
+   "tapVia": "touch",
+   "after": {
+    "mode": "world",
+    "panel": "mall",
+    "room": null
+   }
+  },
+  {
+   "name": "Royal Paws Designer",
+   "target": "mall:designer",
+   "approach": "left",
+   "style": "stick",
+   "start": [
+    50,
+    55
+   ],
+   "fired": 1,
+   "ok": true,
+   "ms": 240,
+   "after": {
+    "mode": "world",
+    "panel": "mall",
+    "room": null
+   }
+  },
+  {
+   "name": "Royal Paws Designer",
+   "target": "mall:designer",
+   "approach": "left",
+   "style": "tap",
+   "start": [
+    50,
+    55
+   ],
+   "fired": 1,
+   "ok": true,
+   "ms": 240,
+   "tapVia": "touch",
+   "after": {
+    "mode": "world",
+    "panel": "mall",
+    "room": null
+   }
+  },
+  {
+   "name": "Royal Paws Designer",
+   "target": "mall:designer",
+   "approach": "diag-left",
+   "style": "stick",
+   "start": [
+    50,
+    57
+   ],
+   "fired": 1,
+   "ok": true,
+   "ms": 240,
+   "after": {
+    "mode": "world",
+    "panel": "mall",
+    "room": null
+   }
+  },
+  {
+   "name": "Royal Paws Designer",
+   "target": "mall:designer",
+   "approach": "diag-left",
+   "style": "tap",
+   "start": [
+    50,
+    57
+   ],
+   "fired": 1,
+   "ok": true,
+   "ms": 300,
+   "tapVia": "touch",
+   "after": {
+    "mode": "world",
+    "panel": "mall",
+    "room": null
+   }
+  },
+  {
+   "name": "Royal Paws Designer",
+   "target": "mall:designer",
+   "approach": "wall-left",
+   "style": "stick",
+   "start": [
+    51,
+    56
+   ],
+   "fired": 1,
+   "ok": true,
+   "ms": 180,
+   "after": {
+    "mode": "world",
+    "panel": "mall",
+    "room": null
+   }
+  },
+  {
+   "name": "Royal Paws Designer",
+   "target": "mall:designer",
+   "approach": "right",
+   "style": "stick",
+   "start": [
+    54,
+    55
+   ],
+   "fired": 1,
+   "ok": true,
+   "ms": 240,
+   "after": {
+    "mode": "world",
+    "panel": "mall",
+    "room": null
+   }
+  },
+  {
+   "name": "Royal Paws Designer",
+   "target": "mall:designer",
+   "approach": "right",
+   "style": "tap",
+   "start": [
+    54,
+    55
+   ],
+   "fired": 1,
+   "ok": true,
+   "ms": 240,
+   "tapVia": "touch",
+   "after": {
+    "mode": "world",
+    "panel": "mall",
+    "room": null
+   }
+  },
+  {
+   "name": "Royal Paws Designer",
+   "target": "mall:designer",
+   "approach": "diag-right",
+   "style": "stick",
+   "start": [
+    54,
+    57
+   ],
+   "fired": 1,
+   "ok": true,
+   "ms": 300,
+   "after": {
+    "mode": "world",
+    "panel": "mall",
+    "room": null
+   }
+  },
+  {
+   "name": "Royal Paws Designer",
+   "target": "mall:designer",
+   "approach": "diag-right",
+   "style": "tap",
+   "start": [
+    54,
+    57
+   ],
+   "fired": 1,
+   "ok": true,
+   "ms": 300,
+   "tapVia": "touch",
+   "after": {
+    "mode": "world",
+    "panel": "mall",
+    "room": null
+   }
+  },
+  {
+   "name": "Royal Paws Designer",
+   "target": "mall:designer",
+   "approach": "wall-right",
+   "style": "stick",
+   "start": [
+    53,
+    56
+   ],
+   "fired": 1,
+   "ok": true,
+   "ms": 240,
+   "after": {
+    "mode": "world",
+    "panel": "mall",
+    "room": null
+   }
+  },
+  {
+   "name": "Golden Den Furniture",
+   "target": "mall:goldden",
+   "approach": "front",
+   "style": "stick",
+   "start": [
+    20,
+    65
+   ],
+   "fired": 1,
+   "ok": true,
+   "ms": 540,
+   "after": {
+    "mode": "world",
+    "panel": "mall",
+    "room": null
+   }
+  },
+  {
+   "name": "Golden Den Furniture",
+   "target": "mall:goldden",
+   "approach": "front",
+   "style": "tap",
+   "start": [
+    20,
+    65
+   ],
+   "fired": 1,
+   "ok": true,
+   "ms": 540,
+   "tapVia": "touch",
+   "after": {
+    "mode": "world",
+    "panel": "mall",
+    "room": null
+   }
+  },
+  {
+   "name": "Golden Den Furniture",
+   "target": "mall:goldden",
+   "approach": "left",
+   "style": "stick",
+   "skip": "blocked by scenery"
+  },
+  {
+   "name": "Golden Den Furniture",
+   "target": "mall:goldden",
+   "approach": "left",
+   "style": "tap",
+   "skip": "blocked by scenery"
+  },
+  {
+   "name": "Golden Den Furniture",
+   "target": "mall:goldden",
+   "approach": "diag-left",
+   "style": "stick",
+   "skip": "blocked by scenery"
+  },
+  {
+   "name": "Golden Den Furniture",
+   "target": "mall:goldden",
+   "approach": "diag-left",
+   "style": "tap",
+   "skip": "blocked by scenery"
+  },
+  {
+   "name": "Golden Den Furniture",
+   "target": "mall:goldden",
+   "approach": "wall-left",
+   "style": "stick",
+   "skip": "blocked by scenery"
+  },
+  {
+   "name": "Golden Den Furniture",
+   "target": "mall:goldden",
+   "approach": "right",
+   "style": "stick",
+   "start": [
+    18,
+    67
+   ],
+   "fired": 1,
+   "ok": true,
+   "ms": 240,
+   "after": {
+    "mode": "world",
+    "panel": "mall",
+    "room": null
+   }
+  },
+  {
+   "name": "Golden Den Furniture",
+   "target": "mall:goldden",
+   "approach": "right",
+   "style": "tap",
+   "start": [
+    18,
+    67
+   ],
+   "fired": 1,
+   "ok": true,
+   "ms": 240,
+   "tapVia": "touch",
+   "after": {
+    "mode": "world",
+    "panel": "mall",
+    "room": null
+   }
+  },
+  {
+   "name": "Golden Den Furniture",
+   "target": "mall:goldden",
+   "approach": "diag-right",
+   "style": "stick",
+   "start": [
+    20,
+    67
+   ],
+   "fired": 1,
+   "ok": true,
+   "ms": 300,
+   "after": {
+    "mode": "world",
+    "panel": "mall",
+    "room": null
+   }
+  },
+  {
+   "name": "Golden Den Furniture",
+   "target": "mall:goldden",
+   "approach": "diag-right",
+   "style": "tap",
+   "start": [
+    20,
+    67
+   ],
+   "fired": 1,
+   "ok": true,
+   "ms": 300,
+   "tapVia": "touch",
+   "after": {
+    "mode": "world",
+    "panel": "mall",
+    "room": null
+   }
+  },
+  {
+   "name": "Golden Den Furniture",
+   "target": "mall:goldden",
+   "approach": "wall-right",
+   "style": "stick",
+   "start": [
+    19,
+    66
+   ],
+   "fired": 1,
+   "ok": true,
+   "ms": 240,
+   "after": {
+    "mode": "world",
+    "panel": "mall",
+    "room": null
+   }
+  },
+  {
+   "name": "Zoomies Luxury Autos",
+   "target": "mall:luxauto",
+   "approach": "front",
+   "style": "stick",
+   "start": [
+    47,
+    68
+   ],
+   "fired": 1,
+   "ok": true,
+   "ms": 540,
+   "after": {
+    "mode": "world",
+    "panel": "dealer",
+    "room": null
+   }
+  },
+  {
+   "name": "Zoomies Luxury Autos",
+   "target": "mall:luxauto",
+   "approach": "front",
+   "style": "tap",
+   "start": [
+    47,
+    68
+   ],
+   "fired": 1,
+   "ok": true,
+   "ms": 540,
+   "tapVia": "touch",
+   "after": {
+    "mode": "world",
+    "panel": "dealer",
+    "room": null
+   }
+  },
+  {
+   "name": "Zoomies Luxury Autos",
+   "target": "mall:luxauto",
+   "approach": "left",
+   "style": "stick",
+   "start": [
+    46,
+    66
+   ],
+   "fired": 1,
+   "ok": true,
+   "ms": 240,
+   "after": {
+    "mode": "world",
+    "panel": "dealer",
+    "room": null
+   }
+  },
+  {
+   "name": "Zoomies Luxury Autos",
+   "target": "mall:luxauto",
+   "approach": "left",
+   "style": "tap",
+   "start": [
+    46,
+    66
+   ],
+   "fired": 1,
+   "ok": true,
+   "ms": 240,
+   "tapVia": "touch",
+   "after": {
+    "mode": "world",
+    "panel": "dealer",
+    "room": null
+   }
+  },
+  {
+   "name": "Zoomies Luxury Autos",
+   "target": "mall:luxauto",
+   "approach": "diag-left",
+   "style": "stick",
+   "start": [
+    45,
+    68
+   ],
+   "fired": 1,
+   "ok": true,
+   "ms": 300,
+   "after": {
+    "mode": "world",
+    "panel": "dealer",
+    "room": null
+   }
+  },
+  {
+   "name": "Zoomies Luxury Autos",
+   "target": "mall:luxauto",
+   "approach": "diag-left",
+   "style": "tap",
+   "start": [
+    45,
+    68
+   ],
+   "fired": 1,
+   "ok": true,
+   "ms": 300,
+   "tapVia": "touch",
+   "after": {
+    "mode": "world",
+    "panel": "dealer",
+    "room": null
+   }
+  },
+  {
+   "name": "Zoomies Luxury Autos",
+   "target": "mall:luxauto",
+   "approach": "wall-left",
+   "style": "stick",
+   "start": [
+    46,
+    67
+   ],
+   "fired": 1,
+   "ok": true,
+   "ms": 240,
+   "after": {
+    "mode": "world",
+    "panel": "dealer",
+    "room": null
+   }
+  },
+  {
+   "name": "Zoomies Luxury Autos",
+   "target": "mall:luxauto",
+   "approach": "right",
+   "style": "stick",
+   "start": [
+    49,
+    66
+   ],
+   "fired": 1,
+   "ok": true,
+   "ms": 240,
+   "after": {
+    "mode": "world",
+    "panel": "dealer",
+    "room": null
+   }
+  },
+  {
+   "name": "Zoomies Luxury Autos",
+   "target": "mall:luxauto",
+   "approach": "right",
+   "style": "tap",
+   "start": [
+    49,
+    66
+   ],
+   "fired": 1,
+   "ok": true,
+   "ms": 240,
+   "tapVia": "touch",
+   "after": {
+    "mode": "world",
+    "panel": "dealer",
+    "room": null
+   }
+  },
+  {
+   "name": "Zoomies Luxury Autos",
+   "target": "mall:luxauto",
+   "approach": "diag-right",
+   "style": "stick",
+   "start": [
+    49,
+    68
+   ],
+   "fired": 1,
+   "ok": true,
+   "ms": 300,
+   "after": {
+    "mode": "world",
+    "panel": "dealer",
+    "room": null
+   }
+  },
+  {
+   "name": "Zoomies Luxury Autos",
+   "target": "mall:luxauto",
+   "approach": "diag-right",
+   "style": "tap",
+   "start": [
+    49,
+    68
+   ],
+   "fired": 1,
+   "ok": true,
+   "ms": 300,
+   "tapVia": "touch",
+   "after": {
+    "mode": "world",
+    "panel": "dealer",
+    "room": null
+   }
+  },
+  {
+   "name": "Zoomies Luxury Autos",
+   "target": "mall:luxauto",
+   "approach": "wall-right",
+   "style": "stick",
+   "start": [
+    48,
+    67
+   ],
+   "fired": 1,
+   "ok": true,
+   "ms": 240,
+   "after": {
+    "mode": "world",
+    "panel": "dealer",
+    "room": null
+   }
+  },
+  {
+   "name": "President's Office",
+   "target": "mall:office",
+   "approach": "front",
+   "style": "stick",
+   "start": [
+    32,
+    81
+   ],
+   "fired": 1,
+   "ok": true,
+   "ms": 540,
+   "after": {
+    "mode": "world",
+    "panel": "mall",
+    "room": null
+   }
+  },
+  {
+   "name": "President's Office",
+   "target": "mall:office",
+   "approach": "front",
+   "style": "tap",
+   "start": [
+    32,
+    81
+   ],
+   "fired": 1,
+   "ok": true,
+   "ms": 540,
+   "tapVia": "touch",
+   "after": {
+    "mode": "world",
+    "panel": "mall",
+    "room": null
+   }
+  },
+  {
+   "name": "President's Office",
+   "target": "mall:office",
+   "approach": "left",
+   "style": "stick",
+   "start": [
+    30,
+    79
+   ],
+   "fired": 1,
+   "ok": true,
+   "ms": 240,
+   "after": {
+    "mode": "world",
+    "panel": "mall",
+    "room": null
+   }
+  },
+  {
+   "name": "President's Office",
+   "target": "mall:office",
+   "approach": "left",
+   "style": "tap",
+   "start": [
+    30,
+    79
+   ],
+   "fired": 1,
+   "ok": true,
+   "ms": 240,
+   "tapVia": "touch",
+   "after": {
+    "mode": "world",
+    "panel": "mall",
+    "room": null
+   }
+  },
+  {
+   "name": "President's Office",
+   "target": "mall:office",
+   "approach": "diag-left",
+   "style": "stick",
+   "start": [
+    30,
+    81
+   ],
+   "fired": 1,
+   "ok": true,
+   "ms": 300,
+   "after": {
+    "mode": "world",
+    "panel": "mall",
+    "room": null
+   }
+  },
+  {
+   "name": "President's Office",
+   "target": "mall:office",
+   "approach": "diag-left",
+   "style": "tap",
+   "start": [
+    30,
+    81
+   ],
+   "fired": 1,
+   "ok": true,
+   "ms": 300,
+   "tapVia": "touch",
+   "after": {
+    "mode": "world",
+    "panel": "mall",
+    "room": null
+   }
+  },
+  {
+   "name": "President's Office",
+   "target": "mall:office",
+   "approach": "wall-left",
+   "style": "stick",
+   "start": [
+    31,
+    80
+   ],
+   "fired": 1,
+   "ok": true,
+   "ms": 240,
+   "after": {
+    "mode": "world",
+    "panel": "mall",
+    "room": null
+   }
+  },
+  {
+   "name": "President's Office",
+   "target": "mall:office",
+   "approach": "right",
+   "style": "stick",
+   "start": [
+    34,
+    79
+   ],
+   "fired": 1,
+   "ok": true,
+   "ms": 240,
+   "after": {
+    "mode": "world",
+    "panel": "mall",
+    "room": null
+   }
+  },
+  {
+   "name": "President's Office",
+   "target": "mall:office",
+   "approach": "right",
+   "style": "tap",
+   "start": [
+    34,
+    79
+   ],
+   "fired": 1,
+   "ok": true,
+   "ms": 240,
+   "tapVia": "touch",
+   "after": {
+    "mode": "world",
+    "panel": "mall",
+    "room": null
+   }
+  },
+  {
+   "name": "President's Office",
+   "target": "mall:office",
+   "approach": "diag-right",
+   "style": "stick",
+   "start": [
+    34,
+    81
+   ],
+   "fired": 1,
+   "ok": true,
+   "ms": 300,
+   "after": {
+    "mode": "world",
+    "panel": "mall",
+    "room": null
+   }
+  },
+  {
+   "name": "President's Office",
+   "target": "mall:office",
+   "approach": "diag-right",
+   "style": "tap",
+   "start": [
+    34,
+    81
+   ],
+   "fired": 1,
+   "ok": true,
+   "ms": 300,
+   "tapVia": "touch",
+   "after": {
+    "mode": "world",
+    "panel": "mall",
+    "room": null
+   }
+  },
+  {
+   "name": "President's Office",
+   "target": "mall:office",
+   "approach": "wall-right",
+   "style": "stick",
+   "start": [
+    33,
+    80
+   ],
+   "fired": 1,
+   "ok": true,
+   "ms": 240,
+   "after": {
+    "mode": "world",
+    "panel": "mall",
+    "room": null
+   }
+  },
+  {
+   "name": "Pawsome Pets",
+   "target": "mall:petshop",
+   "approach": "front",
+   "style": "stick",
+   "start": [
+    16,
+    78
+   ],
+   "fired": 1,
+   "ok": true,
+   "ms": 540,
+   "after": {
+    "mode": "world",
+    "panel": "pets",
+    "room": null
+   }
+  },
+  {
+   "name": "Pawsome Pets",
+   "target": "mall:petshop",
+   "approach": "front",
+   "style": "tap",
+   "start": [
+    16,
+    78
+   ],
+   "fired": 1,
+   "ok": true,
+   "ms": 600,
+   "tapVia": "touch",
+   "after": {
+    "mode": "world",
+    "panel": "pets",
+    "room": null
+   }
+  },
+  {
+   "name": "Pawsome Pets",
+   "target": "mall:petshop",
+   "approach": "left",
+   "style": "stick",
+   "start": [
+    14,
+    76
+   ],
+   "fired": 1,
+   "ok": true,
+   "ms": 240,
+   "after": {
+    "mode": "world",
+    "panel": "pets",
+    "room": null
+   }
+  },
+  {
+   "name": "Pawsome Pets",
+   "target": "mall:petshop",
+   "approach": "left",
+   "style": "tap",
+   "start": [
+    14,
+    76
+   ],
+   "fired": 1,
+   "ok": true,
+   "ms": 240,
+   "tapVia": "touch",
+   "after": {
+    "mode": "world",
+    "panel": "pets",
+    "room": null
+   }
+  },
+  {
+   "name": "Pawsome Pets",
+   "target": "mall:petshop",
+   "approach": "diag-left",
+   "style": "stick",
+   "start": [
+    14,
+    78
+   ],
+   "fired": 1,
+   "ok": true,
+   "ms": 300,
+   "after": {
+    "mode": "world",
+    "panel": "pets",
+    "room": null
+   }
+  },
+  {
+   "name": "Pawsome Pets",
+   "target": "mall:petshop",
+   "approach": "diag-left",
+   "style": "tap",
+   "start": [
+    14,
+    78
+   ],
+   "fired": 1,
+   "ok": true,
+   "ms": 300,
+   "tapVia": "touch",
+   "after": {
+    "mode": "world",
+    "panel": "pets",
+    "room": null
+   }
+  },
+  {
+   "name": "Pawsome Pets",
+   "target": "mall:petshop",
+   "approach": "wall-left",
+   "style": "stick",
+   "start": [
+    15,
+    77
+   ],
+   "fired": 1,
+   "ok": true,
+   "ms": 240,
+   "after": {
+    "mode": "world",
+    "panel": "pets",
+    "room": null
+   }
+  },
+  {
+   "name": "Pawsome Pets",
+   "target": "mall:petshop",
+   "approach": "right",
+   "style": "stick",
+   "start": [
+    18,
+    76
+   ],
+   "fired": 1,
+   "ok": true,
+   "ms": 240,
+   "after": {
+    "mode": "world",
+    "panel": "pets",
+    "room": null
+   }
+  },
+  {
+   "name": "Pawsome Pets",
+   "target": "mall:petshop",
+   "approach": "right",
+   "style": "tap",
+   "start": [
+    18,
+    76
+   ],
+   "fired": 1,
+   "ok": true,
+   "ms": 240,
+   "tapVia": "touch",
+   "after": {
+    "mode": "world",
+    "panel": "pets",
+    "room": null
+   }
+  },
+  {
+   "name": "Pawsome Pets",
+   "target": "mall:petshop",
+   "approach": "diag-right",
+   "style": "stick",
+   "start": [
+    18,
+    78
+   ],
+   "fired": 1,
+   "ok": true,
+   "ms": 300,
+   "after": {
+    "mode": "world",
+    "panel": "pets",
+    "room": null
+   }
+  },
+  {
+   "name": "Pawsome Pets",
+   "target": "mall:petshop",
+   "approach": "diag-right",
+   "style": "tap",
+   "start": [
+    18,
+    78
+   ],
+   "fired": 1,
+   "ok": true,
+   "ms": 300,
+   "tapVia": "touch",
+   "after": {
+    "mode": "world",
+    "panel": "pets",
+    "room": null
+   }
+  },
+  {
+   "name": "Pawsome Pets",
+   "target": "mall:petshop",
+   "approach": "wall-right",
+   "style": "stick",
+   "start": [
+    17,
+    77
+   ],
+   "fired": 1,
+   "ok": true,
+   "ms": 240,
+   "after": {
+    "mode": "world",
+    "panel": "pets",
+    "room": null
+   }
+  },
+  {
+   "name": "Cosy Corner Furniture",
+   "target": "mall:cosy",
+   "approach": "front",
+   "style": "stick",
+   "start": [
+    20,
+    67
+   ],
+   "fired": 1,
+   "ok": true,
+   "ms": 540,
+   "after": {
+    "mode": "world",
+    "panel": "furn",
+    "room": null
+   }
+  },
+  {
+   "name": "Cosy Corner Furniture",
+   "target": "mall:cosy",
+   "approach": "front",
+   "style": "tap",
+   "start": [
+    20,
+    67
+   ],
+   "fired": 1,
+   "ok": true,
+   "ms": 540,
+   "tapVia": "touch",
+   "after": {
+    "mode": "world",
+    "panel": "furn",
+    "room": null
+   }
+  },
+  {
+   "name": "Cosy Corner Furniture",
+   "target": "mall:cosy",
+   "approach": "left",
+   "style": "stick",
+   "start": [
+    18,
+    65
+   ],
+   "fired": 1,
+   "ok": true,
+   "ms": 240,
+   "after": {
+    "mode": "world",
+    "panel": "furn",
+    "room": null
+   }
+  },
+  {
+   "name": "Cosy Corner Furniture",
+   "target": "mall:cosy",
+   "approach": "left",
+   "style": "tap",
+   "start": [
+    18,
+    65
+   ],
+   "fired": 1,
+   "ok": true,
+   "ms": 240,
+   "tapVia": "touch",
+   "after": {
+    "mode": "world",
+    "panel": "furn",
+    "room": null
+   }
+  },
+  {
+   "name": "Cosy Corner Furniture",
+   "target": "mall:cosy",
+   "approach": "diag-left",
+   "style": "stick",
+   "start": [
+    18,
+    67
+   ],
+   "fired": 1,
+   "ok": true,
+   "ms": 300,
+   "after": {
+    "mode": "world",
+    "panel": "furn",
+    "room": null
+   }
+  },
+  {
+   "name": "Cosy Corner Furniture",
+   "target": "mall:cosy",
+   "approach": "diag-left",
+   "style": "tap",
+   "start": [
+    18,
+    67
+   ],
+   "fired": 1,
+   "ok": true,
+   "ms": 300,
+   "tapVia": "touch",
+   "after": {
+    "mode": "world",
+    "panel": "furn",
+    "room": null
+   }
+  },
+  {
+   "name": "Cosy Corner Furniture",
+   "target": "mall:cosy",
+   "approach": "wall-left",
+   "style": "stick",
+   "start": [
+    19,
+    66
+   ],
+   "fired": 1,
+   "ok": true,
+   "ms": 240,
+   "after": {
+    "mode": "world",
+    "panel": "furn",
+    "room": null
+   }
+  },
+  {
+   "name": "Cosy Corner Furniture",
+   "target": "mall:cosy",
+   "approach": "right",
+   "style": "stick",
+   "start": [
+    22,
+    65
+   ],
+   "fired": 1,
+   "ok": true,
+   "ms": 240,
+   "after": {
+    "mode": "world",
+    "panel": "furn",
+    "room": null
+   }
+  },
+  {
+   "name": "Cosy Corner Furniture",
+   "target": "mall:cosy",
+   "approach": "right",
+   "style": "tap",
+   "start": [
+    22,
+    65
+   ],
+   "fired": 1,
+   "ok": true,
+   "ms": 240,
+   "tapVia": "touch",
+   "after": {
+    "mode": "world",
+    "panel": "furn",
+    "room": null
+   }
+  },
+  {
+   "name": "Cosy Corner Furniture",
+   "target": "mall:cosy",
+   "approach": "diag-right",
+   "style": "stick",
+   "start": [
+    22,
+    67
+   ],
+   "fired": 1,
+   "ok": true,
+   "ms": 240,
+   "after": {
+    "mode": "world",
+    "panel": "furn",
+    "room": null
+   }
+  },
+  {
+   "name": "Cosy Corner Furniture",
+   "target": "mall:cosy",
+   "approach": "diag-right",
+   "style": "tap",
+   "start": [
+    22,
+    67
+   ],
+   "fired": 1,
+   "ok": true,
+   "ms": 240,
+   "tapVia": "touch",
+   "after": {
+    "mode": "world",
+    "panel": "furn",
+    "room": null
+   }
+  },
+  {
+   "name": "Cosy Corner Furniture",
+   "target": "mall:cosy",
+   "approach": "wall-right",
+   "style": "stick",
+   "start": [
+    21,
+    66
+   ],
+   "fired": 1,
+   "ok": true,
+   "ms": 180,
+   "after": {
+    "mode": "world",
+    "panel": "furn",
+    "room": null
+   }
+  },
+  {
+   "name": "Maison Royale",
+   "target": "mall:royal",
+   "approach": "front",
+   "style": "stick",
+   "start": [
+    58,
+    76
+   ],
+   "fired": 1,
+   "ok": true,
+   "ms": 540,
+   "after": {
+    "mode": "world",
+    "panel": "furn",
+    "room": null
+   }
+  },
+  {
+   "name": "Maison Royale",
+   "target": "mall:royal",
+   "approach": "front",
+   "style": "tap",
+   "start": [
+    58,
+    76
+   ],
+   "fired": 1,
+   "ok": true,
+   "ms": 540,
+   "tapVia": "touch",
+   "after": {
+    "mode": "world",
+    "panel": "furn",
+    "room": null
+   }
+  },
+  {
+   "name": "Maison Royale",
+   "target": "mall:royal",
+   "approach": "left",
+   "style": "stick",
+   "start": [
+    56,
+    74
+   ],
+   "fired": 1,
+   "ok": true,
+   "ms": 240,
+   "after": {
+    "mode": "world",
+    "panel": "furn",
+    "room": null
+   }
+  },
+  {
+   "name": "Maison Royale",
+   "target": "mall:royal",
+   "approach": "left",
+   "style": "tap",
+   "start": [
+    56,
+    74
+   ],
+   "fired": 1,
+   "ok": true,
+   "ms": 240,
+   "tapVia": "touch",
+   "after": {
+    "mode": "world",
+    "panel": "furn",
+    "room": null
+   }
+  },
+  {
+   "name": "Maison Royale",
+   "target": "mall:royal",
+   "approach": "diag-left",
+   "style": "stick",
+   "start": [
+    56,
+    76
+   ],
+   "fired": 1,
+   "ok": true,
+   "ms": 300,
+   "after": {
+    "mode": "world",
+    "panel": "furn",
+    "room": null
+   }
+  },
+  {
+   "name": "Maison Royale",
+   "target": "mall:royal",
+   "approach": "diag-left",
+   "style": "tap",
+   "start": [
+    56,
+    76
+   ],
+   "fired": 1,
+   "ok": true,
+   "ms": 300,
+   "tapVia": "touch",
+   "after": {
+    "mode": "world",
+    "panel": "furn",
+    "room": null
+   }
+  },
+  {
+   "name": "Maison Royale",
+   "target": "mall:royal",
+   "approach": "wall-left",
+   "style": "stick",
+   "start": [
+    57,
+    75
+   ],
+   "fired": 1,
+   "ok": true,
+   "ms": 240,
+   "after": {
+    "mode": "world",
+    "panel": "furn",
+    "room": null
+   }
+  },
+  {
+   "name": "Maison Royale",
+   "target": "mall:royal",
+   "approach": "right",
+   "style": "stick",
+   "start": [
+    60,
+    74
+   ],
+   "fired": 1,
+   "ok": true,
+   "ms": 240,
+   "after": {
+    "mode": "world",
+    "panel": "furn",
+    "room": null
+   }
+  },
+  {
+   "name": "Maison Royale",
+   "target": "mall:royal",
+   "approach": "right",
+   "style": "tap",
+   "start": [
+    60,
+    74
+   ],
+   "fired": 1,
+   "ok": true,
+   "ms": 240,
+   "tapVia": "touch",
+   "after": {
+    "mode": "world",
+    "panel": "furn",
+    "room": null
+   }
+  },
+  {
+   "name": "Maison Royale",
+   "target": "mall:royal",
+   "approach": "diag-right",
+   "style": "stick",
+   "start": [
+    60,
+    76
+   ],
+   "fired": 1,
+   "ok": true,
+   "ms": 300,
+   "after": {
+    "mode": "world",
+    "panel": "furn",
+    "room": null
+   }
+  },
+  {
+   "name": "Maison Royale",
+   "target": "mall:royal",
+   "approach": "diag-right",
+   "style": "tap",
+   "start": [
+    60,
+    76
+   ],
+   "fired": 1,
+   "ok": true,
+   "ms": 300,
+   "tapVia": "touch",
+   "after": {
+    "mode": "world",
+    "panel": "furn",
+    "room": null
+   }
+  },
+  {
+   "name": "Maison Royale",
+   "target": "mall:royal",
+   "approach": "wall-right",
+   "style": "stick",
+   "start": [
+    59,
+    75
+   ],
+   "fired": 1,
+   "ok": true,
+   "ms": 240,
+   "after": {
+    "mode": "world",
+    "panel": "furn",
+    "room": null
+   }
+  },
+  {
+   "name": "Leaderboards Hall",
+   "target": "mall:leaders",
+   "approach": "front",
+   "style": "stick",
+   "start": [
+    21,
+    59
+   ],
+   "fired": 1,
+   "ok": true,
+   "ms": 180,
+   "after": {
+    "mode": "world",
+    "panel": "mall",
+    "room": null
+   }
+  },
+  {
+   "name": "Leaderboards Hall",
+   "target": "mall:leaders",
+   "approach": "front",
+   "style": "tap",
+   "start": [
+    21,
+    59
+   ],
+   "fired": 1,
+   "ok": true,
+   "ms": 240,
+   "tapVia": "touch",
+   "after": {
+    "mode": "world",
+    "panel": "mall",
+    "room": null
+   }
+  },
+  {
+   "name": "Leaderboards Hall",
+   "target": "mall:leaders",
+   "approach": "left",
+   "style": "stick",
+   "start": [
+    19,
+    58
+   ],
+   "fired": 1,
+   "ok": true,
+   "ms": 240,
+   "after": {
+    "mode": "world",
+    "panel": "mall",
+    "room": null
+   }
+  },
+  {
+   "name": "Leaderboards Hall",
+   "target": "mall:leaders",
+   "approach": "left",
+   "style": "tap",
+   "start": [
+    19,
+    58
+   ],
+   "fired": 1,
+   "ok": true,
+   "ms": 240,
+   "tapVia": "touch",
+   "after": {
+    "mode": "world",
+    "panel": "mall",
+    "room": null
+   }
+  },
+  {
+   "name": "Leaderboards Hall",
+   "target": "mall:leaders",
+   "approach": "diag-left",
+   "style": "stick",
+   "start": [
+    20,
+    59
+   ],
+   "fired": 1,
+   "ok": true,
+   "ms": 300,
+   "after": {
+    "mode": "world",
+    "panel": "mall",
+    "room": null
+   }
+  },
+  {
+   "name": "Leaderboards Hall",
+   "target": "mall:leaders",
+   "approach": "diag-left",
+   "style": "tap",
+   "start": [
+    20,
+    59
+   ],
+   "fired": 1,
+   "ok": true,
+   "ms": 300,
+   "tapVia": "touch",
+   "after": {
+    "mode": "world",
+    "panel": "mall",
+    "room": null
+   }
+  },
+  {
+   "name": "Leaderboards Hall",
+   "target": "mall:leaders",
+   "approach": "wall-left",
+   "style": "stick",
+   "start": [
+    20,
+    59
+   ],
+   "fired": 1,
+   "ok": true,
+   "ms": 240,
+   "after": {
+    "mode": "world",
+    "panel": "mall",
+    "room": null
+   }
+  },
+  {
+   "name": "Leaderboards Hall",
+   "target": "mall:leaders",
+   "approach": "right",
+   "style": "stick",
+   "start": [
+    23,
+    58
+   ],
+   "fired": 1,
+   "ok": true,
+   "ms": 240,
+   "after": {
+    "mode": "world",
+    "panel": "mall",
+    "room": null
+   }
+  },
+  {
+   "name": "Leaderboards Hall",
+   "target": "mall:leaders",
+   "approach": "right",
+   "style": "tap",
+   "start": [
+    23,
+    58
+   ],
+   "fired": 1,
+   "ok": true,
+   "ms": 240,
+   "tapVia": "touch",
+   "after": {
+    "mode": "world",
+    "panel": "mall",
+    "room": null
+   }
+  },
+  {
+   "name": "Leaderboards Hall",
+   "target": "mall:leaders",
+   "approach": "diag-right",
+   "style": "stick",
+   "start": [
+    22,
+    59
+   ],
+   "fired": 1,
+   "ok": true,
+   "ms": 300,
+   "after": {
+    "mode": "world",
+    "panel": "mall",
+    "room": null
+   }
+  },
+  {
+   "name": "Leaderboards Hall",
+   "target": "mall:leaders",
+   "approach": "diag-right",
+   "style": "tap",
+   "start": [
+    22,
+    59
+   ],
+   "fired": 1,
+   "ok": true,
+   "ms": 300,
+   "tapVia": "touch",
+   "after": {
+    "mode": "world",
+    "panel": "mall",
+    "room": null
+   }
+  },
+  {
+   "name": "Leaderboards Hall",
+   "target": "mall:leaders",
+   "approach": "wall-right",
+   "style": "stick",
+   "start": [
+    22,
+    59
+   ],
+   "fired": 1,
+   "ok": true,
+   "ms": 180,
+   "after": {
+    "mode": "world",
+    "panel": "mall",
+    "room": null
+   }
+  },
+  {
+   "name": "Your Home",
+   "target": "plot:p2",
+   "approach": "front",
+   "style": "stick",
+   "start": [
+    12,
+    32
+   ],
+   "fired": 1,
+   "ok": true,
+   "ms": 540,
+   "after": {
+    "mode": "build",
+    "panel": null,
+    "room": null
+   }
+  },
+  {
+   "name": "Your Home",
+   "target": "plot:p2",
+   "approach": "front",
+   "style": "tap",
+   "start": [
+    12,
+    32
+   ],
+   "fired": 1,
+   "ok": true,
+   "ms": 540,
+   "tapVia": "touch",
+   "after": {
+    "mode": "build",
+    "panel": null,
+    "room": null
+   }
+  },
+  {
+   "name": "Your Home",
+   "target": "plot:p2",
+   "approach": "left",
+   "style": "stick",
+   "start": [
+    10,
+    30
+   ],
+   "fired": 1,
+   "ok": true,
+   "ms": 240,
+   "after": {
+    "mode": "build",
+    "panel": null,
+    "room": null
+   }
+  },
+  {
+   "name": "Your Home",
+   "target": "plot:p2",
+   "approach": "left",
+   "style": "tap",
+   "start": [
+    10,
+    30
+   ],
+   "fired": 1,
+   "ok": true,
+   "ms": 240,
+   "tapVia": "touch",
+   "after": {
+    "mode": "build",
+    "panel": null,
+    "room": null
+   }
+  },
+  {
+   "name": "Your Home",
+   "target": "plot:p2",
+   "approach": "diag-left",
+   "style": "stick",
+   "start": [
+    10,
+    32
+   ],
+   "fired": 1,
+   "ok": true,
+   "ms": 300,
+   "after": {
+    "mode": "build",
+    "panel": null,
+    "room": null
+   }
+  },
+  {
+   "name": "Your Home",
+   "target": "plot:p2",
+   "approach": "diag-left",
+   "style": "tap",
+   "start": [
+    10,
+    32
+   ],
+   "fired": 1,
+   "ok": true,
+   "ms": 300,
+   "tapVia": "touch",
+   "after": {
+    "mode": "build",
+    "panel": null,
+    "room": null
+   }
+  },
+  {
+   "name": "Your Home",
+   "target": "plot:p2",
+   "approach": "wall-left",
+   "style": "stick",
+   "start": [
+    11,
+    31
+   ],
+   "fired": 1,
+   "ok": true,
+   "ms": 240,
+   "after": {
+    "mode": "build",
+    "panel": null,
+    "room": null
+   }
+  },
+  {
+   "name": "Your Home",
+   "target": "plot:p2",
+   "approach": "right",
+   "style": "stick",
+   "start": [
+    14,
+    30
+   ],
+   "fired": 1,
+   "ok": true,
+   "ms": 240,
+   "after": {
+    "mode": "build",
+    "panel": null,
+    "room": null
+   }
+  },
+  {
+   "name": "Your Home",
+   "target": "plot:p2",
+   "approach": "right",
+   "style": "tap",
+   "start": [
+    14,
+    30
+   ],
+   "fired": 1,
+   "ok": true,
+   "ms": 240,
+   "tapVia": "touch",
+   "after": {
+    "mode": "build",
+    "panel": null,
+    "room": null
+   }
+  },
+  {
+   "name": "Your Home",
+   "target": "plot:p2",
+   "approach": "diag-right",
+   "style": "stick",
+   "start": [
+    14,
+    32
+   ],
+   "fired": 1,
+   "ok": true,
+   "ms": 300,
+   "after": {
+    "mode": "build",
+    "panel": null,
+    "room": null
+   }
+  },
+  {
+   "name": "Your Home",
+   "target": "plot:p2",
+   "approach": "diag-right",
+   "style": "tap",
+   "start": [
+    14,
+    32
+   ],
+   "fired": 1,
+   "ok": true,
+   "ms": 300,
+   "tapVia": "touch",
+   "after": {
+    "mode": "build",
+    "panel": null,
+    "room": null
+   }
+  },
+  {
+   "name": "Your Home",
+   "target": "plot:p2",
+   "approach": "wall-right",
+   "style": "stick",
+   "start": [
+    13,
+    31
+   ],
+   "fired": 1,
+   "ok": true,
+   "ms": 240,
+   "after": {
+    "mode": "build",
+    "panel": null,
+    "room": null
+   }
+  },
+  {
+   "name": "Mochi's Home",
+   "target": "visit:h1",
+   "approach": "front",
+   "style": "stick",
+   "start": [
+    5,
+    42
+   ],
+   "fired": 1,
+   "ok": true,
+   "ms": 540,
+   "after": {
+    "mode": "build",
+    "panel": null,
+    "room": null
+   }
+  },
+  {
+   "name": "Mochi's Home",
+   "target": "visit:h1",
+   "approach": "front",
+   "style": "tap",
+   "start": [
+    5,
+    42
+   ],
+   "fired": 1,
+   "ok": true,
+   "ms": 540,
+   "tapVia": "touch",
+   "after": {
+    "mode": "build",
+    "panel": null,
+    "room": null
+   }
+  },
+  {
+   "name": "Mochi's Home",
+   "target": "visit:h1",
+   "approach": "left",
+   "style": "stick",
+   "start": [
+    4,
+    40
+   ],
+   "fired": 1,
+   "ok": true,
+   "ms": 240,
+   "after": {
+    "mode": "build",
+    "panel": null,
+    "room": null
+   }
+  },
+  {
+   "name": "Mochi's Home",
+   "target": "visit:h1",
+   "approach": "left",
+   "style": "tap",
+   "start": [
+    4,
+    40
+   ],
+   "fired": 1,
+   "ok": true,
+   "ms": 240,
+   "tapVia": "touch",
+   "after": {
+    "mode": "build",
+    "panel": null,
+    "room": null
+   }
+  },
+  {
+   "name": "Mochi's Home",
+   "target": "visit:h1",
+   "approach": "diag-left",
+   "style": "stick",
+   "start": [
+    3,
+    42
+   ],
+   "fired": 1,
+   "ok": true,
+   "ms": 300,
+   "after": {
+    "mode": "build",
+    "panel": null,
+    "room": null
+   }
+  },
+  {
+   "name": "Mochi's Home",
+   "target": "visit:h1",
+   "approach": "diag-left",
+   "style": "tap",
+   "start": [
+    3,
+    42
+   ],
+   "fired": 1,
+   "ok": true,
+   "ms": 300,
+   "tapVia": "touch",
+   "after": {
+    "mode": "build",
+    "panel": null,
+    "room": null
+   }
+  },
+  {
+   "name": "Mochi's Home",
+   "target": "visit:h1",
+   "approach": "wall-left",
+   "style": "stick",
+   "start": [
+    4,
+    41
+   ],
+   "fired": 1,
+   "ok": true,
+   "ms": 240,
+   "after": {
+    "mode": "build",
+    "panel": null,
+    "room": null
+   }
+  },
+  {
+   "name": "Mochi's Home",
+   "target": "visit:h1",
+   "approach": "right",
+   "style": "stick",
+   "skip": "blocked by scenery"
+  },
+  {
+   "name": "Mochi's Home",
+   "target": "visit:h1",
+   "approach": "right",
+   "style": "tap",
+   "skip": "blocked by scenery"
+  },
+  {
+   "name": "Mochi's Home",
+   "target": "visit:h1",
+   "approach": "diag-right",
+   "style": "stick",
+   "start": [
+    7,
+    42
+   ],
+   "fired": 1,
+   "ok": true,
+   "ms": 300,
+   "after": {
+    "mode": "build",
+    "panel": null,
+    "room": null
+   }
+  },
+  {
+   "name": "Mochi's Home",
+   "target": "visit:h1",
+   "approach": "diag-right",
+   "style": "tap",
+   "start": [
+    7,
+    42
+   ],
+   "fired": 1,
+   "ok": true,
+   "ms": 420,
+   "tapVia": "touch",
+   "after": {
+    "mode": "build",
+    "panel": null,
+    "room": null
+   }
+  },
+  {
+   "name": "Mochi's Home",
+   "target": "visit:h1",
+   "approach": "wall-right",
+   "style": "stick",
+   "skip": "blocked by scenery"
+  },
+  {
+   "name": "Kuro's Home",
+   "target": "visit:h2",
+   "approach": "front",
+   "style": "stick",
+   "start": [
+    12,
+    42
+   ],
+   "fired": 1,
+   "ok": true,
+   "ms": 540,
+   "after": {
+    "mode": "build",
+    "panel": null,
+    "room": null
+   }
+  },
+  {
+   "name": "Kuro's Home",
+   "target": "visit:h2",
+   "approach": "front",
+   "style": "tap",
+   "start": [
+    12,
+    42
+   ],
+   "fired": 1,
+   "ok": true,
+   "ms": 540,
+   "tapVia": "touch",
+   "after": {
+    "mode": "build",
+    "panel": null,
+    "room": null
+   }
+  },
+  {
+   "name": "Kuro's Home",
+   "target": "visit:h2",
+   "approach": "left",
+   "style": "stick",
+   "start": [
+    11,
+    40
+   ],
+   "fired": 1,
+   "ok": true,
+   "ms": 240,
+   "after": {
+    "mode": "build",
+    "panel": null,
+    "room": null
+   }
+  },
+  {
+   "name": "Kuro's Home",
+   "target": "visit:h2",
+   "approach": "left",
+   "style": "tap",
+   "start": [
+    11,
+    40
+   ],
+   "fired": 1,
+   "ok": true,
+   "ms": 240,
+   "tapVia": "touch",
+   "after": {
+    "mode": "build",
+    "panel": null,
+    "room": null
+   }
+  },
+  {
+   "name": "Kuro's Home",
+   "target": "visit:h2",
+   "approach": "diag-left",
+   "style": "stick",
+   "start": [
+    10,
+    42
+   ],
+   "fired": 1,
+   "ok": true,
+   "ms": 300,
+   "after": {
+    "mode": "build",
+    "panel": null,
+    "room": null
+   }
+  },
+  {
+   "name": "Kuro's Home",
+   "target": "visit:h2",
+   "approach": "diag-left",
+   "style": "tap",
+   "start": [
+    10,
+    42
+   ],
+   "fired": 1,
+   "ok": true,
+   "ms": 300,
+   "tapVia": "touch",
+   "after": {
+    "mode": "build",
+    "panel": null,
+    "room": null
+   }
+  },
+  {
+   "name": "Kuro's Home",
+   "target": "visit:h2",
+   "approach": "wall-left",
+   "style": "stick",
+   "start": [
+    11,
+    41
+   ],
+   "fired": 1,
+   "ok": true,
+   "ms": 240,
+   "after": {
+    "mode": "build",
+    "panel": null,
+    "room": null
+   }
+  },
+  {
+   "name": "Kuro's Home",
+   "target": "visit:h2",
+   "approach": "right",
+   "style": "stick",
+   "skip": "blocked by scenery"
+  },
+  {
+   "name": "Kuro's Home",
+   "target": "visit:h2",
+   "approach": "right",
+   "style": "tap",
+   "skip": "blocked by scenery"
+  },
+  {
+   "name": "Kuro's Home",
+   "target": "visit:h2",
+   "approach": "diag-right",
+   "style": "stick",
+   "start": [
+    14,
+    42
+   ],
+   "fired": 1,
+   "ok": true,
+   "ms": 300,
+   "after": {
+    "mode": "build",
+    "panel": null,
+    "room": null
+   }
+  },
+  {
+   "name": "Kuro's Home",
+   "target": "visit:h2",
+   "approach": "diag-right",
+   "style": "tap",
+   "start": [
+    14,
+    42
+   ],
+   "fired": 1,
+   "ok": true,
+   "ms": 420,
+   "tapVia": "touch",
+   "after": {
+    "mode": "build",
+    "panel": null,
+    "room": null
+   }
+  },
+  {
+   "name": "Kuro's Home",
+   "target": "visit:h2",
+   "approach": "wall-right",
+   "style": "stick",
+   "skip": "blocked by scenery"
+  },
+  {
+   "name": "Hana's Home",
+   "target": "visit:h3",
+   "approach": "front",
+   "style": "stick",
+   "start": [
+    19,
+    42
+   ],
+   "fired": 1,
+   "ok": true,
+   "ms": 540,
+   "after": {
+    "mode": "build",
+    "panel": null,
+    "room": null
+   }
+  },
+  {
+   "name": "Hana's Home",
+   "target": "visit:h3",
+   "approach": "front",
+   "style": "tap",
+   "start": [
+    19,
+    42
+   ],
+   "fired": 1,
+   "ok": true,
+   "ms": 540,
+   "tapVia": "touch",
+   "after": {
+    "mode": "build",
+    "panel": null,
+    "room": null
+   }
+  },
+  {
+   "name": "Hana's Home",
+   "target": "visit:h3",
+   "approach": "left",
+   "style": "stick",
+   "start": [
+    18,
+    40
+   ],
+   "fired": 1,
+   "ok": true,
+   "ms": 240,
+   "after": {
+    "mode": "build",
+    "panel": null,
+    "room": null
+   }
+  },
+  {
+   "name": "Hana's Home",
+   "target": "visit:h3",
+   "approach": "left",
+   "style": "tap",
+   "start": [
+    18,
+    40
+   ],
+   "fired": 1,
+   "ok": true,
+   "ms": 240,
+   "tapVia": "touch",
+   "after": {
+    "mode": "build",
+    "panel": null,
+    "room": null
+   }
+  },
+  {
+   "name": "Hana's Home",
+   "target": "visit:h3",
+   "approach": "diag-left",
+   "style": "stick",
+   "start": [
+    17,
+    42
+   ],
+   "fired": 1,
+   "ok": true,
+   "ms": 300,
+   "after": {
+    "mode": "build",
+    "panel": null,
+    "room": null
+   }
+  },
+  {
+   "name": "Hana's Home",
+   "target": "visit:h3",
+   "approach": "diag-left",
+   "style": "tap",
+   "start": [
+    17,
+    42
+   ],
+   "fired": 1,
+   "ok": true,
+   "ms": 300,
+   "tapVia": "touch",
+   "after": {
+    "mode": "build",
+    "panel": null,
+    "room": null
+   }
+  },
+  {
+   "name": "Hana's Home",
+   "target": "visit:h3",
+   "approach": "wall-left",
+   "style": "stick",
+   "start": [
+    18,
+    41
+   ],
+   "fired": 1,
+   "ok": true,
+   "ms": 240,
+   "after": {
+    "mode": "build",
+    "panel": null,
+    "room": null
+   }
+  },
+  {
+   "name": "Hana's Home",
+   "target": "visit:h3",
+   "approach": "right",
+   "style": "stick",
+   "skip": "blocked by scenery"
+  },
+  {
+   "name": "Hana's Home",
+   "target": "visit:h3",
+   "approach": "right",
+   "style": "tap",
+   "skip": "blocked by scenery"
+  },
+  {
+   "name": "Hana's Home",
+   "target": "visit:h3",
+   "approach": "diag-right",
+   "style": "stick",
+   "start": [
+    21,
+    42
+   ],
+   "fired": 1,
+   "ok": true,
+   "ms": 300,
+   "after": {
+    "mode": "build",
+    "panel": null,
+    "room": null
+   }
+  },
+  {
+   "name": "Hana's Home",
+   "target": "visit:h3",
+   "approach": "diag-right",
+   "style": "tap",
+   "start": [
+    21,
+    42
+   ],
+   "fired": 1,
+   "ok": true,
+   "ms": 420,
+   "tapVia": "touch",
+   "after": {
+    "mode": "build",
+    "panel": null,
+    "room": null
+   }
+  },
+  {
+   "name": "Hana's Home",
+   "target": "visit:h3",
+   "approach": "wall-right",
+   "style": "stick",
+   "skip": "blocked by scenery"
+  },
+  {
+   "name": "Taro's Home",
+   "target": "visit:h4",
+   "approach": "front",
+   "style": "stick",
+   "start": [
+    26,
+    42
+   ],
+   "fired": 1,
+   "ok": true,
+   "ms": 540,
+   "after": {
+    "mode": "build",
+    "panel": null,
+    "room": null
+   }
+  },
+  {
+   "name": "Taro's Home",
+   "target": "visit:h4",
+   "approach": "front",
+   "style": "tap",
+   "start": [
+    26,
+    42
+   ],
+   "fired": 1,
+   "ok": true,
+   "ms": 540,
+   "tapVia": "touch",
+   "after": {
+    "mode": "build",
+    "panel": null,
+    "room": null
+   }
+  },
+  {
+   "name": "Taro's Home",
+   "target": "visit:h4",
+   "approach": "left",
+   "style": "stick",
+   "start": [
+    25,
+    40
+   ],
+   "fired": 1,
+   "ok": true,
+   "ms": 240,
+   "after": {
+    "mode": "build",
+    "panel": null,
+    "room": null
+   }
+  },
+  {
+   "name": "Taro's Home",
+   "target": "visit:h4",
+   "approach": "left",
+   "style": "tap",
+   "start": [
+    25,
+    40
+   ],
+   "fired": 1,
+   "ok": true,
+   "ms": 240,
+   "tapVia": "touch",
+   "after": {
+    "mode": "build",
+    "panel": null,
+    "room": null
+   }
+  },
+  {
+   "name": "Taro's Home",
+   "target": "visit:h4",
+   "approach": "diag-left",
+   "style": "stick",
+   "start": [
+    24,
+    42
+   ],
+   "fired": 1,
+   "ok": true,
+   "ms": 300,
+   "after": {
+    "mode": "build",
+    "panel": null,
+    "room": null
+   }
+  },
+  {
+   "name": "Taro's Home",
+   "target": "visit:h4",
+   "approach": "diag-left",
+   "style": "tap",
+   "start": [
+    24,
+    42
+   ],
+   "fired": 1,
+   "ok": true,
+   "ms": 300,
+   "tapVia": "touch",
+   "after": {
+    "mode": "build",
+    "panel": null,
+    "room": null
+   }
+  },
+  {
+   "name": "Taro's Home",
+   "target": "visit:h4",
+   "approach": "wall-left",
+   "style": "stick",
+   "start": [
+    25,
+    41
+   ],
+   "fired": 1,
+   "ok": true,
+   "ms": 240,
+   "after": {
+    "mode": "build",
+    "panel": null,
+    "room": null
+   }
+  },
+  {
+   "name": "Taro's Home",
+   "target": "visit:h4",
+   "approach": "right",
+   "style": "stick",
+   "skip": "blocked by scenery"
+  },
+  {
+   "name": "Taro's Home",
+   "target": "visit:h4",
+   "approach": "right",
+   "style": "tap",
+   "skip": "blocked by scenery"
+  },
+  {
+   "name": "Taro's Home",
+   "target": "visit:h4",
+   "approach": "diag-right",
+   "style": "stick",
+   "start": [
+    28,
+    42
+   ],
+   "fired": 1,
+   "ok": true,
+   "ms": 300,
+   "after": {
+    "mode": "build",
+    "panel": null,
+    "room": null
+   }
+  },
+  {
+   "name": "Taro's Home",
+   "target": "visit:h4",
+   "approach": "diag-right",
+   "style": "tap",
+   "start": [
+    28,
+    42
+   ],
+   "fired": 1,
+   "ok": true,
+   "ms": 420,
+   "tapVia": "touch",
+   "after": {
+    "mode": "build",
+    "panel": null,
+    "room": null
+   }
+  },
+  {
+   "name": "Taro's Home",
+   "target": "visit:h4",
+   "approach": "wall-right",
+   "style": "stick",
+   "skip": "blocked by scenery"
+  },
+  {
+   "name": "Pack Clubhouse lot",
+   "target": "clubhouse:clubhouse",
+   "approach": "front",
+   "style": "stick",
+   "start": [
+    51,
+    8
+   ],
+   "fired": 1,
+   "ok": true,
+   "ms": 540,
+   "after": {
+    "mode": "room",
+    "panel": null,
+    "room": "clubhouse"
+   }
+  },
+  {
+   "name": "Pack Clubhouse lot",
+   "target": "clubhouse:clubhouse",
+   "approach": "front",
+   "style": "tap",
+   "start": [
+    51,
+    8
+   ],
+   "fired": 1,
+   "ok": true,
+   "ms": 540,
+   "tapVia": "touch",
+   "after": {
+    "mode": "room",
+    "panel": null,
+    "room": "clubhouse"
+   }
+  },
+  {
+   "name": "Pack Clubhouse lot",
+   "target": "clubhouse:clubhouse",
+   "approach": "left",
+   "style": "stick",
+   "start": [
+    49,
+    6
+   ],
+   "fired": 1,
+   "ok": true,
+   "ms": 240,
+   "after": {
+    "mode": "room",
+    "panel": null,
+    "room": "clubhouse"
+   }
+  },
+  {
+   "name": "Pack Clubhouse lot",
+   "target": "clubhouse:clubhouse",
+   "approach": "left",
+   "style": "tap",
+   "start": [
+    49,
+    6
+   ],
+   "fired": 1,
+   "ok": true,
+   "ms": 240,
+   "tapVia": "touch",
+   "after": {
+    "mode": "room",
+    "panel": null,
+    "room": "clubhouse"
+   }
+  },
+  {
+   "name": "Pack Clubhouse lot",
+   "target": "clubhouse:clubhouse",
+   "approach": "diag-left",
+   "style": "stick",
+   "start": [
+    49,
+    8
+   ],
+   "fired": 1,
+   "ok": true,
+   "ms": 300,
+   "after": {
+    "mode": "room",
+    "panel": null,
+    "room": "clubhouse"
+   }
+  },
+  {
+   "name": "Pack Clubhouse lot",
+   "target": "clubhouse:clubhouse",
+   "approach": "diag-left",
+   "style": "tap",
+   "start": [
+    49,
+    8
+   ],
+   "fired": 1,
+   "ok": true,
+   "ms": 300,
+   "tapVia": "touch",
+   "after": {
+    "mode": "room",
+    "panel": null,
+    "room": "clubhouse"
+   }
+  },
+  {
+   "name": "Pack Clubhouse lot",
+   "target": "clubhouse:clubhouse",
+   "approach": "wall-left",
+   "style": "stick",
+   "start": [
+    50,
+    7
+   ],
+   "fired": 1,
+   "ok": true,
+   "ms": 240,
+   "after": {
+    "mode": "room",
+    "panel": null,
+    "room": "clubhouse"
+   }
+  },
+  {
+   "name": "Pack Clubhouse lot",
+   "target": "clubhouse:clubhouse",
+   "approach": "right",
+   "style": "stick",
+   "start": [
+    53,
+    6
+   ],
+   "fired": 1,
+   "ok": true,
+   "ms": 240,
+   "after": {
+    "mode": "room",
+    "panel": null,
+    "room": "clubhouse"
+   }
+  },
+  {
+   "name": "Pack Clubhouse lot",
+   "target": "clubhouse:clubhouse",
+   "approach": "right",
+   "style": "tap",
+   "start": [
+    53,
+    6
+   ],
+   "fired": 1,
+   "ok": true,
+   "ms": 240,
+   "tapVia": "touch",
+   "after": {
+    "mode": "room",
+    "panel": null,
+    "room": "clubhouse"
+   }
+  },
+  {
+   "name": "Pack Clubhouse lot",
+   "target": "clubhouse:clubhouse",
+   "approach": "diag-right",
+   "style": "stick",
+   "start": [
+    53,
+    8
+   ],
+   "fired": 1,
+   "ok": true,
+   "ms": 300,
+   "after": {
+    "mode": "room",
+    "panel": null,
+    "room": "clubhouse"
+   }
+  },
+  {
+   "name": "Pack Clubhouse lot",
+   "target": "clubhouse:clubhouse",
+   "approach": "diag-right",
+   "style": "tap",
+   "start": [
+    53,
+    8
+   ],
+   "fired": 1,
+   "ok": true,
+   "ms": 300,
+   "tapVia": "touch",
+   "after": {
+    "mode": "room",
+    "panel": null,
+    "room": "clubhouse"
+   }
+  },
+  {
+   "name": "Pack Clubhouse lot",
+   "target": "clubhouse:clubhouse",
+   "approach": "wall-right",
+   "style": "stick",
+   "start": [
+    52,
+    7
+   ],
+   "fired": 1,
+   "ok": true,
+   "ms": 240,
+   "after": {
+    "mode": "room",
+    "panel": null,
+    "room": "clubhouse"
+   }
+  },
+  {
+   "name": "Inu Arcade",
+   "target": "arcade:arcade",
+   "approach": "front",
+   "style": "stick",
+   "start": [
+    59,
+    58
+   ],
+   "fired": 1,
+   "ok": true,
+   "ms": 540,
+   "after": {
+    "mode": "world",
+    "panel": null,
+    "room": null
+   }
+  },
+  {
+   "name": "Inu Arcade",
+   "target": "arcade:arcade",
+   "approach": "front",
+   "style": "tap",
+   "start": [
+    59,
+    58
+   ],
+   "fired": 1,
+   "ok": true,
+   "ms": 540,
+   "tapVia": "touch",
+   "after": {
+    "mode": "world",
+    "panel": null,
+    "room": null
+   }
+  },
+  {
+   "name": "Inu Arcade",
+   "target": "arcade:arcade",
+   "approach": "left",
+   "style": "stick",
+   "start": [
+    57,
+    56
+   ],
+   "fired": 1,
+   "ok": true,
+   "ms": 180,
+   "after": {
+    "mode": "world",
+    "panel": null,
+    "room": null
+   }
+  },
+  {
+   "name": "Inu Arcade",
+   "target": "arcade:arcade",
+   "approach": "left",
+   "style": "tap",
+   "start": [
+    57,
+    56
+   ],
+   "fired": 1,
+   "ok": true,
+   "ms": 240,
+   "tapVia": "touch",
+   "after": {
+    "mode": "world",
+    "panel": null,
+    "room": null
+   }
+  },
+  {
+   "name": "Inu Arcade",
+   "target": "arcade:arcade",
+   "approach": "diag-left",
+   "style": "stick",
+   "start": [
+    57,
+    58
+   ],
+   "fired": 1,
+   "ok": true,
+   "ms": 300,
+   "after": {
+    "mode": "world",
+    "panel": null,
+    "room": null
+   }
+  },
+  {
+   "name": "Inu Arcade",
+   "target": "arcade:arcade",
+   "approach": "diag-left",
+   "style": "tap",
+   "start": [
+    57,
+    58
+   ],
+   "fired": 1,
+   "ok": true,
+   "ms": 300,
+   "tapVia": "touch",
+   "after": {
+    "mode": "world",
+    "panel": null,
+    "room": null
+   }
+  },
+  {
+   "name": "Inu Arcade",
+   "target": "arcade:arcade",
+   "approach": "wall-left",
+   "style": "stick",
+   "start": [
+    58,
+    57
+   ],
+   "fired": 1,
+   "ok": true,
+   "ms": 240,
+   "after": {
+    "mode": "world",
+    "panel": null,
+    "room": null
+   }
+  },
+  {
+   "name": "Inu Arcade",
+   "target": "arcade:arcade",
+   "approach": "right",
+   "style": "stick",
+   "start": [
+    61,
+    56
+   ],
+   "fired": 1,
+   "ok": true,
+   "ms": 240,
+   "after": {
+    "mode": "world",
+    "panel": null,
+    "room": null
+   }
+  },
+  {
+   "name": "Inu Arcade",
+   "target": "arcade:arcade",
+   "approach": "right",
+   "style": "tap",
+   "start": [
+    61,
+    56
+   ],
+   "fired": 1,
+   "ok": true,
+   "ms": 240,
+   "tapVia": "touch",
+   "after": {
+    "mode": "world",
+    "panel": null,
+    "room": null
+   }
+  },
+  {
+   "name": "Inu Arcade",
+   "target": "arcade:arcade",
+   "approach": "diag-right",
+   "style": "stick",
+   "start": [
+    61,
+    58
+   ],
+   "fired": 1,
+   "ok": true,
+   "ms": 300,
+   "after": {
+    "mode": "world",
+    "panel": null,
+    "room": null
+   }
+  },
+  {
+   "name": "Inu Arcade",
+   "target": "arcade:arcade",
+   "approach": "diag-right",
+   "style": "tap",
+   "start": [
+    61,
+    58
+   ],
+   "fired": 1,
+   "ok": true,
+   "ms": 300,
+   "tapVia": "touch",
+   "after": {
+    "mode": "world",
+    "panel": null,
+    "room": null
+   }
+  },
+  {
+   "name": "Inu Arcade",
+   "target": "arcade:arcade",
+   "approach": "wall-right",
+   "style": "stick",
+   "start": [
+    60,
+    57
+   ],
+   "fired": 1,
+   "ok": true,
+   "ms": 240,
+   "after": {
+    "mode": "world",
+    "panel": null,
+    "room": null
+   }
+  },
+  {
+   "name": "Kibble Bank",
+   "target": "bank:bank",
+   "approach": "front",
+   "style": "stick",
+   "skip": "blocked by scenery"
+  },
+  {
+   "name": "Kibble Bank",
+   "target": "bank:bank",
+   "approach": "front",
+   "style": "tap",
+   "skip": "blocked by scenery"
+  },
+  {
+   "name": "Kibble Bank",
+   "target": "bank:bank",
+   "approach": "left",
+   "style": "stick",
+   "start": [
+    40,
+    57
+   ],
+   "fired": 1,
+   "ok": true,
+   "ms": 240,
+   "after": {
+    "mode": "room",
+    "panel": null,
+    "room": "bank"
+   }
+  },
+  {
+   "name": "Kibble Bank",
+   "target": "bank:bank",
+   "approach": "left",
+   "style": "tap",
+   "start": [
+    40,
+    57
+   ],
+   "fired": 1,
+   "ok": true,
+   "ms": 240,
+   "tapVia": "touch",
+   "after": {
+    "mode": "room",
+    "panel": null,
+    "room": "bank"
+   }
+  },
+  {
+   "name": "Kibble Bank",
+   "target": "bank:bank",
+   "approach": "diag-left",
+   "style": "stick",
+   "start": [
+    40,
+    59
+   ],
+   "fired": 1,
+   "ok": true,
+   "ms": 300,
+   "after": {
+    "mode": "room",
+    "panel": null,
+    "room": "bank"
+   }
+  },
+  {
+   "name": "Kibble Bank",
+   "target": "bank:bank",
+   "approach": "diag-left",
+   "style": "tap",
+   "start": [
+    40,
+    59
+   ],
+   "fired": 1,
+   "ok": true,
+   "ms": 420,
+   "tapVia": "touch",
+   "after": {
+    "mode": "room",
+    "panel": null,
+    "room": "bank"
+   }
+  },
+  {
+   "name": "Kibble Bank",
+   "target": "bank:bank",
+   "approach": "wall-left",
+   "style": "stick",
+   "start": [
+    41,
+    58
+   ],
+   "fired": 1,
+   "ok": true,
+   "ms": 240,
+   "after": {
+    "mode": "room",
+    "panel": null,
+    "room": "bank"
+   }
+  },
+  {
+   "name": "Kibble Bank",
+   "target": "bank:bank",
+   "approach": "right",
+   "style": "stick",
+   "start": [
+    44,
+    57
+   ],
+   "fired": 1,
+   "ok": true,
+   "ms": 240,
+   "after": {
+    "mode": "room",
+    "panel": null,
+    "room": "bank"
+   }
+  },
+  {
+   "name": "Kibble Bank",
+   "target": "bank:bank",
+   "approach": "right",
+   "style": "tap",
+   "start": [
+    44,
+    57
+   ],
+   "fired": 1,
+   "ok": true,
+   "ms": 240,
+   "tapVia": "touch",
+   "after": {
+    "mode": "room",
+    "panel": null,
+    "room": "bank"
+   }
+  },
+  {
+   "name": "Kibble Bank",
+   "target": "bank:bank",
+   "approach": "diag-right",
+   "style": "stick",
+   "skip": "blocked by scenery"
+  },
+  {
+   "name": "Kibble Bank",
+   "target": "bank:bank",
+   "approach": "diag-right",
+   "style": "tap",
+   "skip": "blocked by scenery"
+  },
+  {
+   "name": "Kibble Bank",
+   "target": "bank:bank",
+   "approach": "wall-right",
+   "style": "stick",
+   "skip": "blocked by scenery"
+  },
+  {
+   "name": "Rescue Station (Inu Rescue)",
+   "target": "gamedoor:rescue",
+   "approach": "front",
+   "style": "stick",
+   "start": [
+    3,
+    54
+   ],
+   "fired": 1,
+   "ok": true,
+   "ms": 540,
+   "after": {
+    "mode": "world",
+    "panel": null,
+    "room": null
+   }
+  },
+  {
+   "name": "Rescue Station (Inu Rescue)",
+   "target": "gamedoor:rescue",
+   "approach": "front",
+   "style": "tap",
+   "start": [
+    3,
+    54
+   ],
+   "fired": 1,
+   "ok": true,
+   "ms": 540,
+   "tapVia": "touch",
+   "after": {
+    "mode": "world",
+    "panel": null,
+    "room": null
+   }
+  },
+  {
+   "name": "Rescue Station (Inu Rescue)",
+   "target": "gamedoor:rescue",
+   "approach": "left",
+   "style": "stick",
+   "start": [
+    1,
+    52
+   ],
+   "fired": 1,
+   "ok": true,
+   "ms": 240,
+   "after": {
+    "mode": "world",
+    "panel": null,
+    "room": null
+   }
+  },
+  {
+   "name": "Rescue Station (Inu Rescue)",
+   "target": "gamedoor:rescue",
+   "approach": "left",
+   "style": "tap",
+   "start": [
+    1,
+    52
+   ],
+   "fired": 1,
+   "ok": true,
+   "ms": 240,
+   "tapVia": "touch",
+   "after": {
+    "mode": "world",
+    "panel": null,
+    "room": null
+   }
+  },
+  {
+   "name": "Rescue Station (Inu Rescue)",
+   "target": "gamedoor:rescue",
+   "approach": "diag-left",
+   "style": "stick",
+   "start": [
+    1,
+    54
+   ],
+   "fired": 1,
+   "ok": true,
+   "ms": 300,
+   "after": {
+    "mode": "world",
+    "panel": null,
+    "room": null
+   }
+  },
+  {
+   "name": "Rescue Station (Inu Rescue)",
+   "target": "gamedoor:rescue",
+   "approach": "diag-left",
+   "style": "tap",
+   "start": [
+    1,
+    54
+   ],
+   "fired": 1,
+   "ok": true,
+   "ms": 300,
+   "tapVia": "touch",
+   "after": {
+    "mode": "world",
+    "panel": null,
+    "room": null
+   }
+  },
+  {
+   "name": "Rescue Station (Inu Rescue)",
+   "target": "gamedoor:rescue",
+   "approach": "wall-left",
+   "style": "stick",
+   "start": [
+    2,
+    53
+   ],
+   "fired": 1,
+   "ok": true,
+   "ms": 240,
+   "after": {
+    "mode": "world",
+    "panel": null,
+    "room": null
+   }
+  },
+  {
+   "name": "Rescue Station (Inu Rescue)",
+   "target": "gamedoor:rescue",
+   "approach": "right",
+   "style": "stick",
+   "start": [
+    5,
+    52
+   ],
+   "fired": 1,
+   "ok": true,
+   "ms": 240,
+   "after": {
+    "mode": "world",
+    "panel": null,
+    "room": null
+   }
+  },
+  {
+   "name": "Rescue Station (Inu Rescue)",
+   "target": "gamedoor:rescue",
+   "approach": "right",
+   "style": "tap",
+   "start": [
+    5,
+    52
+   ],
+   "fired": 1,
+   "ok": true,
+   "ms": 240,
+   "tapVia": "touch",
+   "after": {
+    "mode": "world",
+    "panel": null,
+    "room": null
+   }
+  },
+  {
+   "name": "Rescue Station (Inu Rescue)",
+   "target": "gamedoor:rescue",
+   "approach": "diag-right",
+   "style": "stick",
+   "start": [
+    5,
+    54
+   ],
+   "fired": 1,
+   "ok": true,
+   "ms": 300,
+   "after": {
+    "mode": "world",
+    "panel": null,
+    "room": null
+   }
+  },
+  {
+   "name": "Rescue Station (Inu Rescue)",
+   "target": "gamedoor:rescue",
+   "approach": "diag-right",
+   "style": "tap",
+   "start": [
+    5,
+    54
+   ],
+   "fired": 1,
+   "ok": true,
+   "ms": 300,
+   "tapVia": "touch",
+   "after": {
+    "mode": "world",
+    "panel": null,
+    "room": null
+   }
+  },
+  {
+   "name": "Rescue Station (Inu Rescue)",
+   "target": "gamedoor:rescue",
+   "approach": "wall-right",
+   "style": "stick",
+   "start": [
+    4,
+    53
+   ],
+   "fired": 1,
+   "ok": true,
+   "ms": 240,
+   "after": {
+    "mode": "world",
+    "panel": null,
+    "room": null
+   }
+  },
+  {
+   "name": "Trainer Gate (Inu Quest)",
+   "target": "gamedoor:quest",
+   "approach": "front",
+   "style": "stick",
+   "start": [
+    3,
+    60
+   ],
+   "fired": 1,
+   "ok": true,
+   "ms": 240,
+   "after": {
+    "mode": "world",
+    "panel": null,
+    "room": null
+   }
+  },
+  {
+   "name": "Trainer Gate (Inu Quest)",
+   "target": "gamedoor:quest",
+   "approach": "front",
+   "style": "tap",
+   "start": [
+    3,
+    60
+   ],
+   "fired": 1,
+   "ok": true,
+   "ms": 240,
+   "tapVia": "touch",
+   "after": {
+    "mode": "world",
+    "panel": null,
+    "room": null
+   }
+  },
+  {
+   "name": "Trainer Gate (Inu Quest)",
+   "target": "gamedoor:quest",
+   "approach": "left",
+   "style": "stick",
+   "start": [
+    1,
+    59
+   ],
+   "fired": 1,
+   "ok": true,
+   "ms": 240,
+   "after": {
+    "mode": "world",
+    "panel": null,
+    "room": null
+   }
+  },
+  {
+   "name": "Trainer Gate (Inu Quest)",
+   "target": "gamedoor:quest",
+   "approach": "left",
+   "style": "tap",
+   "start": [
+    1,
+    59
+   ],
+   "fired": 1,
+   "ok": true,
+   "ms": 240,
+   "tapVia": "touch",
+   "after": {
+    "mode": "world",
+    "panel": null,
+    "room": null
+   }
+  },
+  {
+   "name": "Trainer Gate (Inu Quest)",
+   "target": "gamedoor:quest",
+   "approach": "diag-left",
+   "style": "stick",
+   "start": [
+    1,
+    61
+   ],
+   "fired": 1,
+   "ok": true,
+   "ms": 480,
+   "after": {
+    "mode": "world",
+    "panel": null,
+    "room": null
+   }
+  },
+  {
+   "name": "Trainer Gate (Inu Quest)",
+   "target": "gamedoor:quest",
+   "approach": "diag-left",
+   "style": "tap",
+   "start": [
+    1,
+    61
+   ],
+   "fired": 1,
+   "ok": true,
+   "ms": 420,
+   "tapVia": "touch",
+   "after": {
+    "mode": "world",
+    "panel": null,
+    "room": null
+   }
+  },
+  {
+   "name": "Trainer Gate (Inu Quest)",
+   "target": "gamedoor:quest",
+   "approach": "wall-left",
+   "style": "stick",
+   "start": [
+    2,
+    60
+   ],
+   "fired": 1,
+   "ok": true,
+   "ms": 240,
+   "after": {
+    "mode": "world",
+    "panel": null,
+    "room": null
+   }
+  },
+  {
+   "name": "Trainer Gate (Inu Quest)",
+   "target": "gamedoor:quest",
+   "approach": "right",
+   "style": "stick",
+   "start": [
+    5,
+    59
+   ],
+   "fired": 1,
+   "ok": true,
+   "ms": 240,
+   "after": {
+    "mode": "world",
+    "panel": null,
+    "room": null
+   }
+  },
+  {
+   "name": "Trainer Gate (Inu Quest)",
+   "target": "gamedoor:quest",
+   "approach": "right",
+   "style": "tap",
+   "start": [
+    5,
+    59
+   ],
+   "fired": 1,
+   "ok": true,
+   "ms": 240,
+   "tapVia": "touch",
+   "after": {
+    "mode": "world",
+    "panel": null,
+    "room": null
+   }
+  },
+  {
+   "name": "Trainer Gate (Inu Quest)",
+   "target": "gamedoor:quest",
+   "approach": "diag-right",
+   "style": "stick",
+   "start": [
+    4,
+    60
+   ],
+   "fired": 1,
+   "ok": true,
+   "ms": 300,
+   "after": {
+    "mode": "world",
+    "panel": null,
+    "room": null
+   }
+  },
+  {
+   "name": "Trainer Gate (Inu Quest)",
+   "target": "gamedoor:quest",
+   "approach": "diag-right",
+   "style": "tap",
+   "start": [
+    4,
+    60
+   ],
+   "fired": 1,
+   "ok": true,
+   "ms": 300,
+   "tapVia": "touch",
+   "after": {
+    "mode": "world",
+    "panel": null,
+    "room": null
+   }
+  },
+  {
+   "name": "Trainer Gate (Inu Quest)",
+   "target": "gamedoor:quest",
+   "approach": "wall-right",
+   "style": "stick",
+   "start": [
+    4,
+    60
+   ],
+   "fired": 1,
+   "ok": true,
+   "ms": 240,
+   "after": {
+    "mode": "world",
+    "panel": null,
+    "room": null
+   }
+  },
+  {
+   "name": "Empire Keep (Inu Empires)",
+   "target": "gamedoor:empires",
+   "approach": "front",
+   "style": "stick",
+   "start": [
+    3,
+    66
+   ],
+   "fired": 1,
+   "ok": true,
+   "ms": 240,
+   "after": {
+    "mode": "world",
+    "panel": null,
+    "room": null
+   }
+  },
+  {
+   "name": "Empire Keep (Inu Empires)",
+   "target": "gamedoor:empires",
+   "approach": "front",
+   "style": "tap",
+   "start": [
+    3,
+    66
+   ],
+   "fired": 1,
+   "ok": true,
+   "ms": 240,
+   "tapVia": "touch",
+   "after": {
+    "mode": "world",
+    "panel": null,
+    "room": null
+   }
+  },
+  {
+   "name": "Empire Keep (Inu Empires)",
+   "target": "gamedoor:empires",
+   "approach": "left",
+   "style": "stick",
+   "start": [
+    1,
+    65
+   ],
+   "fired": 1,
+   "ok": true,
+   "ms": 240,
+   "after": {
+    "mode": "world",
+    "panel": null,
+    "room": null
+   }
+  },
+  {
+   "name": "Empire Keep (Inu Empires)",
+   "target": "gamedoor:empires",
+   "approach": "left",
+   "style": "tap",
+   "start": [
+    1,
+    65
+   ],
+   "fired": 1,
+   "ok": true,
+   "ms": 240,
+   "tapVia": "touch",
+   "after": {
+    "mode": "world",
+    "panel": null,
+    "room": null
+   }
+  },
+  {
+   "name": "Empire Keep (Inu Empires)",
+   "target": "gamedoor:empires",
+   "approach": "diag-left",
+   "style": "stick",
+   "start": [
+    1,
+    67
+   ],
+   "fired": 1,
+   "ok": true,
+   "ms": 420,
+   "after": {
+    "mode": "world",
+    "panel": null,
+    "room": null
+   }
+  },
+  {
+   "name": "Empire Keep (Inu Empires)",
+   "target": "gamedoor:empires",
+   "approach": "diag-left",
+   "style": "tap",
+   "start": [
+    1,
+    67
+   ],
+   "fired": 1,
+   "ok": true,
+   "ms": 420,
+   "tapVia": "touch",
+   "after": {
+    "mode": "world",
+    "panel": null,
+    "room": null
+   }
+  },
+  {
+   "name": "Empire Keep (Inu Empires)",
+   "target": "gamedoor:empires",
+   "approach": "wall-left",
+   "style": "stick",
+   "start": [
+    2,
+    66
+   ],
+   "fired": 1,
+   "ok": true,
+   "ms": 240,
+   "after": {
+    "mode": "world",
+    "panel": null,
+    "room": null
+   }
+  },
+  {
+   "name": "Empire Keep (Inu Empires)",
+   "target": "gamedoor:empires",
+   "approach": "right",
+   "style": "stick",
+   "start": [
+    5,
+    65
+   ],
+   "fired": 1,
+   "ok": true,
+   "ms": 240,
+   "after": {
+    "mode": "world",
+    "panel": null,
+    "room": null
+   }
+  },
+  {
+   "name": "Empire Keep (Inu Empires)",
+   "target": "gamedoor:empires",
+   "approach": "right",
+   "style": "tap",
+   "start": [
+    5,
+    65
+   ],
+   "fired": 1,
+   "ok": true,
+   "ms": 240,
+   "tapVia": "touch",
+   "after": {
+    "mode": "world",
+    "panel": null,
+    "room": null
+   }
+  },
+  {
+   "name": "Empire Keep (Inu Empires)",
+   "target": "gamedoor:empires",
+   "approach": "diag-right",
+   "style": "stick",
+   "start": [
+    4,
+    66
+   ],
+   "fired": 1,
+   "ok": true,
+   "ms": 300,
+   "after": {
+    "mode": "world",
+    "panel": null,
+    "room": null
+   }
+  },
+  {
+   "name": "Empire Keep (Inu Empires)",
+   "target": "gamedoor:empires",
+   "approach": "diag-right",
+   "style": "tap",
+   "start": [
+    4,
+    66
+   ],
+   "fired": 1,
+   "ok": true,
+   "ms": 300,
+   "tapVia": "touch",
+   "after": {
+    "mode": "world",
+    "panel": null,
+    "room": null
+   }
+  },
+  {
+   "name": "Empire Keep (Inu Empires)",
+   "target": "gamedoor:empires",
+   "approach": "wall-right",
+   "style": "stick",
+   "start": [
+    4,
+    66
+   ],
+   "fired": 1,
+   "ok": true,
+   "ms": 240,
+   "after": {
+    "mode": "world",
+    "panel": null,
+    "room": null
+   }
+  },
+  {
+   "name": "PepeBallz Dome",
+   "target": "gamedoor:pepeballz",
+   "approach": "front",
+   "style": "stick",
+   "start": [
+    3,
+    72
+   ],
+   "fired": 1,
+   "ok": true,
+   "ms": 240,
+   "after": {
+    "mode": "world",
+    "panel": null,
+    "room": null
+   }
+  },
+  {
+   "name": "PepeBallz Dome",
+   "target": "gamedoor:pepeballz",
+   "approach": "front",
+   "style": "tap",
+   "start": [
+    3,
+    72
+   ],
+   "fired": 1,
+   "ok": true,
+   "ms": 240,
+   "tapVia": "touch",
+   "after": {
+    "mode": "world",
+    "panel": null,
+    "room": null
+   }
+  },
+  {
+   "name": "PepeBallz Dome",
+   "target": "gamedoor:pepeballz",
+   "approach": "left",
+   "style": "stick",
+   "start": [
+    1,
+    71
+   ],
+   "fired": 1,
+   "ok": true,
+   "ms": 240,
+   "after": {
+    "mode": "world",
+    "panel": null,
+    "room": null
+   }
+  },
+  {
+   "name": "PepeBallz Dome",
+   "target": "gamedoor:pepeballz",
+   "approach": "left",
+   "style": "tap",
+   "start": [
+    1,
+    71
+   ],
+   "fired": 1,
+   "ok": true,
+   "ms": 240,
+   "tapVia": "touch",
+   "after": {
+    "mode": "world",
+    "panel": null,
+    "room": null
+   }
+  },
+  {
+   "name": "PepeBallz Dome",
+   "target": "gamedoor:pepeballz",
+   "approach": "diag-left",
+   "style": "stick",
+   "start": [
+    1,
+    73
+   ],
+   "fired": 1,
+   "ok": true,
+   "ms": 480,
+   "after": {
+    "mode": "world",
+    "panel": null,
+    "room": null
+   }
+  },
+  {
+   "name": "PepeBallz Dome",
+   "target": "gamedoor:pepeballz",
+   "approach": "diag-left",
+   "style": "tap",
+   "start": [
+    1,
+    73
+   ],
+   "fired": 1,
+   "ok": true,
+   "ms": 420,
+   "tapVia": "touch",
+   "after": {
+    "mode": "world",
+    "panel": null,
+    "room": null
+   }
+  },
+  {
+   "name": "PepeBallz Dome",
+   "target": "gamedoor:pepeballz",
+   "approach": "wall-left",
+   "style": "stick",
+   "start": [
+    2,
+    72
+   ],
+   "fired": 1,
+   "ok": true,
+   "ms": 240,
+   "after": {
+    "mode": "world",
+    "panel": null,
+    "room": null
+   }
+  },
+  {
+   "name": "PepeBallz Dome",
+   "target": "gamedoor:pepeballz",
+   "approach": "right",
+   "style": "stick",
+   "start": [
+    5,
+    71
+   ],
+   "fired": 1,
+   "ok": true,
+   "ms": 240,
+   "after": {
+    "mode": "world",
+    "panel": null,
+    "room": null
+   }
+  },
+  {
+   "name": "PepeBallz Dome",
+   "target": "gamedoor:pepeballz",
+   "approach": "right",
+   "style": "tap",
+   "start": [
+    5,
+    71
+   ],
+   "fired": 1,
+   "ok": true,
+   "ms": 240,
+   "tapVia": "touch",
+   "after": {
+    "mode": "world",
+    "panel": null,
+    "room": null
+   }
+  },
+  {
+   "name": "PepeBallz Dome",
+   "target": "gamedoor:pepeballz",
+   "approach": "diag-right",
+   "style": "stick",
+   "start": [
+    4,
+    72
+   ],
+   "fired": 1,
+   "ok": true,
+   "ms": 300,
+   "after": {
+    "mode": "world",
+    "panel": null,
+    "room": null
+   }
+  },
+  {
+   "name": "PepeBallz Dome",
+   "target": "gamedoor:pepeballz",
+   "approach": "diag-right",
+   "style": "tap",
+   "start": [
+    4,
+    72
+   ],
+   "fired": 1,
+   "ok": true,
+   "ms": 300,
+   "tapVia": "touch",
+   "after": {
+    "mode": "world",
+    "panel": null,
+    "room": null
+   }
+  },
+  {
+   "name": "PepeBallz Dome",
+   "target": "gamedoor:pepeballz",
+   "approach": "wall-right",
+   "style": "stick",
+   "start": [
+    4,
+    72
+   ],
+   "fired": 1,
+   "ok": true,
+   "ms": 240,
+   "after": {
+    "mode": "world",
+    "panel": null,
+    "room": null
+   }
+  },
+  {
+   "name": "Meme Brawl Arena",
+   "target": "gamedoor:memebrawl",
+   "approach": "front",
+   "style": "stick",
+   "start": [
+    3,
+    79
+   ],
+   "fired": 1,
+   "ok": true,
+   "ms": 540,
+   "after": {
+    "mode": "world",
+    "panel": null,
+    "room": null
+   }
+  },
+  {
+   "name": "Meme Brawl Arena",
+   "target": "gamedoor:memebrawl",
+   "approach": "front",
+   "style": "tap",
+   "start": [
+    3,
+    79
+   ],
+   "fired": 1,
+   "ok": true,
+   "ms": 540,
+   "tapVia": "touch",
+   "after": {
+    "mode": "world",
+    "panel": null,
+    "room": null
+   }
+  },
+  {
+   "name": "Meme Brawl Arena",
+   "target": "gamedoor:memebrawl",
+   "approach": "left",
+   "style": "stick",
+   "start": [
+    1,
+    77
+   ],
+   "fired": 1,
+   "ok": true,
+   "ms": 240,
+   "after": {
+    "mode": "world",
+    "panel": null,
+    "room": null
+   }
+  },
+  {
+   "name": "Meme Brawl Arena",
+   "target": "gamedoor:memebrawl",
+   "approach": "left",
+   "style": "tap",
+   "start": [
+    1,
+    77
+   ],
+   "fired": 1,
+   "ok": true,
+   "ms": 240,
+   "tapVia": "touch",
+   "after": {
+    "mode": "world",
+    "panel": null,
+    "room": null
+   }
+  },
+  {
+   "name": "Meme Brawl Arena",
+   "target": "gamedoor:memebrawl",
+   "approach": "diag-left",
+   "style": "stick",
+   "start": [
+    1,
+    79
+   ],
+   "fired": 1,
+   "ok": true,
+   "ms": 300,
+   "after": {
+    "mode": "world",
+    "panel": null,
+    "room": null
+   }
+  },
+  {
+   "name": "Meme Brawl Arena",
+   "target": "gamedoor:memebrawl",
+   "approach": "diag-left",
+   "style": "tap",
+   "start": [
+    1,
+    79
+   ],
+   "fired": 1,
+   "ok": true,
+   "ms": 300,
+   "tapVia": "touch",
+   "after": {
+    "mode": "world",
+    "panel": null,
+    "room": null
+   }
+  },
+  {
+   "name": "Meme Brawl Arena",
+   "target": "gamedoor:memebrawl",
+   "approach": "wall-left",
+   "style": "stick",
+   "start": [
+    2,
+    78
+   ],
+   "fired": 1,
+   "ok": true,
+   "ms": 240,
+   "after": {
+    "mode": "world",
+    "panel": null,
+    "room": null
+   }
+  },
+  {
+   "name": "Meme Brawl Arena",
+   "target": "gamedoor:memebrawl",
+   "approach": "right",
+   "style": "stick",
+   "start": [
+    5,
+    77
+   ],
+   "fired": 1,
+   "ok": true,
+   "ms": 240,
+   "after": {
+    "mode": "world",
+    "panel": null,
+    "room": null
+   }
+  },
+  {
+   "name": "Meme Brawl Arena",
+   "target": "gamedoor:memebrawl",
+   "approach": "right",
+   "style": "tap",
+   "start": [
+    5,
+    77
+   ],
+   "fired": 1,
+   "ok": true,
+   "ms": 240,
+   "tapVia": "touch",
+   "after": {
+    "mode": "world",
+    "panel": null,
+    "room": null
+   }
+  },
+  {
+   "name": "Meme Brawl Arena",
+   "target": "gamedoor:memebrawl",
+   "approach": "diag-right",
+   "style": "stick",
+   "start": [
+    5,
+    79
+   ],
+   "fired": 1,
+   "ok": true,
+   "ms": 300,
+   "after": {
+    "mode": "world",
+    "panel": null,
+    "room": null
+   }
+  },
+  {
+   "name": "Meme Brawl Arena",
+   "target": "gamedoor:memebrawl",
+   "approach": "diag-right",
+   "style": "tap",
+   "start": [
+    5,
+    79
+   ],
+   "fired": 1,
+   "ok": true,
+   "ms": 300,
+   "tapVia": "touch",
+   "after": {
+    "mode": "world",
+    "panel": null,
+    "room": null
+   }
+  },
+  {
+   "name": "Meme Brawl Arena",
+   "target": "gamedoor:memebrawl",
+   "approach": "wall-right",
+   "style": "stick",
+   "start": [
+    4,
+    78
+   ],
+   "fired": 1,
+   "ok": true,
+   "ms": 240,
+   "after": {
+    "mode": "world",
+    "panel": null,
+    "room": null
+   }
+  },
+  {
+   "name": "Kibble Pay Office",
+   "target": "gamedoor:kibblepay",
+   "approach": "front",
+   "style": "stick",
+   "start": [
+    59,
+    66
+   ],
+   "fired": 1,
+   "ok": true,
+   "ms": 540,
+   "after": {
+    "mode": "world",
+    "panel": null,
+    "room": null
+   }
+  },
+  {
+   "name": "Kibble Pay Office",
+   "target": "gamedoor:kibblepay",
+   "approach": "front",
+   "style": "tap",
+   "start": [
+    59,
+    66
+   ],
+   "fired": 1,
+   "ok": true,
+   "ms": 540,
+   "tapVia": "touch",
+   "after": {
+    "mode": "world",
+    "panel": null,
+    "room": null
+   }
+  },
+  {
+   "name": "Kibble Pay Office",
+   "target": "gamedoor:kibblepay",
+   "approach": "left",
+   "style": "stick",
+   "start": [
+    57,
+    64
+   ],
+   "fired": 1,
+   "ok": true,
+   "ms": 240,
+   "after": {
+    "mode": "world",
+    "panel": null,
+    "room": null
+   }
+  },
+  {
+   "name": "Kibble Pay Office",
+   "target": "gamedoor:kibblepay",
+   "approach": "left",
+   "style": "tap",
+   "start": [
+    57,
+    64
+   ],
+   "fired": 1,
+   "ok": true,
+   "ms": 240,
+   "tapVia": "touch",
+   "after": {
+    "mode": "world",
+    "panel": null,
+    "room": null
+   }
+  },
+  {
+   "name": "Kibble Pay Office",
+   "target": "gamedoor:kibblepay",
+   "approach": "diag-left",
+   "style": "stick",
+   "start": [
+    57,
+    66
+   ],
+   "fired": 1,
+   "ok": true,
+   "ms": 300,
+   "after": {
+    "mode": "world",
+    "panel": null,
+    "room": null
+   }
+  },
+  {
+   "name": "Kibble Pay Office",
+   "target": "gamedoor:kibblepay",
+   "approach": "diag-left",
+   "style": "tap",
+   "start": [
+    57,
+    66
+   ],
+   "fired": 1,
+   "ok": true,
+   "ms": 300,
+   "tapVia": "touch",
+   "after": {
+    "mode": "world",
+    "panel": null,
+    "room": null
+   }
+  },
+  {
+   "name": "Kibble Pay Office",
+   "target": "gamedoor:kibblepay",
+   "approach": "wall-left",
+   "style": "stick",
+   "start": [
+    58,
+    65
+   ],
+   "fired": 1,
+   "ok": true,
+   "ms": 240,
+   "after": {
+    "mode": "world",
+    "panel": null,
+    "room": null
+   }
+  },
+  {
+   "name": "Kibble Pay Office",
+   "target": "gamedoor:kibblepay",
+   "approach": "right",
+   "style": "stick",
+   "start": [
+    61,
+    64
+   ],
+   "fired": 1,
+   "ok": true,
+   "ms": 240,
+   "after": {
+    "mode": "world",
+    "panel": null,
+    "room": null
+   }
+  },
+  {
+   "name": "Kibble Pay Office",
+   "target": "gamedoor:kibblepay",
+   "approach": "right",
+   "style": "tap",
+   "start": [
+    61,
+    64
+   ],
+   "fired": 1,
+   "ok": true,
+   "ms": 240,
+   "tapVia": "touch",
+   "after": {
+    "mode": "world",
+    "panel": null,
+    "room": null
+   }
+  },
+  {
+   "name": "Kibble Pay Office",
+   "target": "gamedoor:kibblepay",
+   "approach": "diag-right",
+   "style": "stick",
+   "start": [
+    61,
+    66
+   ],
+   "fired": 1,
+   "ok": true,
+   "ms": 300,
+   "after": {
+    "mode": "world",
+    "panel": null,
+    "room": null
+   }
+  },
+  {
+   "name": "Kibble Pay Office",
+   "target": "gamedoor:kibblepay",
+   "approach": "diag-right",
+   "style": "tap",
+   "start": [
+    61,
+    66
+   ],
+   "fired": 1,
+   "ok": true,
+   "ms": 300,
+   "tapVia": "touch",
+   "after": {
+    "mode": "world",
+    "panel": null,
+    "room": null
+   }
+  },
+  {
+   "name": "Kibble Pay Office",
+   "target": "gamedoor:kibblepay",
+   "approach": "wall-right",
+   "style": "stick",
+   "start": [
+    60,
+    65
+   ],
+   "fired": 1,
+   "ok": true,
+   "ms": 240,
+   "after": {
+    "mode": "world",
+    "panel": null,
+    "room": null
+   }
+  },
+  {
+   "name": "Kibble Kennel wall",
+   "target": "kibble:kwall",
+   "approach": "front",
+   "style": "stick",
+   "start": [
+    33,
+    49
+   ],
+   "fired": 1,
+   "ok": true,
+   "ms": 540,
+   "after": {
+    "mode": "world",
+    "panel": "kennel",
+    "room": null
+   }
+  },
+  {
+   "name": "Kibble Kennel wall",
+   "target": "kibble:kwall",
+   "approach": "front",
+   "style": "tap",
+   "start": [
+    33,
+    49
+   ],
+   "fired": 1,
+   "ok": true,
+   "ms": 540,
+   "tapVia": "touch",
+   "after": {
+    "mode": "world",
+    "panel": "kennel",
+    "room": null
+   }
+  },
+  {
+   "name": "Kibble Kennel wall",
+   "target": "kibble:kwall",
+   "approach": "left",
+   "style": "stick",
+   "start": [
+    31,
+    47
+   ],
+   "fired": 1,
+   "ok": true,
+   "ms": 240,
+   "after": {
+    "mode": "world",
+    "panel": "kennel",
+    "room": null
+   }
+  },
+  {
+   "name": "Kibble Kennel wall",
+   "target": "kibble:kwall",
+   "approach": "left",
+   "style": "tap",
+   "start": [
+    31,
+    47
+   ],
+   "fired": 1,
+   "ok": true,
+   "ms": 240,
+   "tapVia": "touch",
+   "after": {
+    "mode": "world",
+    "panel": "kennel",
+    "room": null
+   }
+  },
+  {
+   "name": "Kibble Kennel wall",
+   "target": "kibble:kwall",
+   "approach": "diag-left",
+   "style": "stick",
+   "start": [
+    31,
+    49
+   ],
+   "fired": 1,
+   "ok": true,
+   "ms": 300,
+   "after": {
+    "mode": "world",
+    "panel": "kennel",
+    "room": null
+   }
+  },
+  {
+   "name": "Kibble Kennel wall",
+   "target": "kibble:kwall",
+   "approach": "diag-left",
+   "style": "tap",
+   "start": [
+    31,
+    49
+   ],
+   "fired": 1,
+   "ok": true,
+   "ms": 300,
+   "tapVia": "touch",
+   "after": {
+    "mode": "world",
+    "panel": "kennel",
+    "room": null
+   }
+  },
+  {
+   "name": "Kibble Kennel wall",
+   "target": "kibble:kwall",
+   "approach": "wall-left",
+   "style": "stick",
+   "start": [
+    32,
+    48
+   ],
+   "fired": 1,
+   "ok": true,
+   "ms": 240,
+   "after": {
+    "mode": "world",
+    "panel": "kennel",
+    "room": null
+   }
+  },
+  {
+   "name": "Kibble Kennel wall",
+   "target": "kibble:kwall",
+   "approach": "right",
+   "style": "stick",
+   "start": [
+    35,
+    47
+   ],
+   "fired": 1,
+   "ok": true,
+   "ms": 240,
+   "after": {
+    "mode": "world",
+    "panel": "kennel",
+    "room": null
+   }
+  },
+  {
+   "name": "Kibble Kennel wall",
+   "target": "kibble:kwall",
+   "approach": "right",
+   "style": "tap",
+   "start": [
+    35,
+    47
+   ],
+   "fired": 1,
+   "ok": true,
+   "ms": 240,
+   "tapVia": "touch",
+   "after": {
+    "mode": "world",
+    "panel": "kennel",
+    "room": null
+   }
+  },
+  {
+   "name": "Kibble Kennel wall",
+   "target": "kibble:kwall",
+   "approach": "diag-right",
+   "style": "stick",
+   "start": [
+    35,
+    49
+   ],
+   "fired": 1,
+   "ok": true,
+   "ms": 300,
+   "after": {
+    "mode": "world",
+    "panel": "kennel",
+    "room": null
+   }
+  },
+  {
+   "name": "Kibble Kennel wall",
+   "target": "kibble:kwall",
+   "approach": "diag-right",
+   "style": "tap",
+   "start": [
+    35,
+    49
+   ],
+   "fired": 1,
+   "ok": true,
+   "ms": 300,
+   "tapVia": "touch",
+   "after": {
+    "mode": "world",
+    "panel": "kennel",
+    "room": null
+   }
+  },
+  {
+   "name": "Kibble Kennel wall",
+   "target": "kibble:kwall",
+   "approach": "wall-right",
+   "style": "stick",
+   "start": [
+    34,
+    48
+   ],
+   "fired": 1,
+   "ok": true,
+   "ms": 240,
+   "after": {
+    "mode": "world",
+    "panel": "kennel",
+    "room": null
+   }
+  },
+  {
+   "name": "Boss Raid gate (free)",
+   "target": "kibble:raidgate",
+   "approach": "front",
+   "style": "stick",
+   "start": [
+    39,
+    51
+   ],
+   "fired": 1,
+   "ok": true,
+   "ms": 540,
+   "after": {
+    "mode": "world",
+    "panel": "raid",
+    "room": null
+   }
+  },
+  {
+   "name": "Boss Raid gate (free)",
+   "target": "kibble:raidgate",
+   "approach": "front",
+   "style": "tap",
+   "start": [
+    39,
+    51
+   ],
+   "fired": 1,
+   "ok": true,
+   "ms": 540,
+   "tapVia": "touch",
+   "after": {
+    "mode": "world",
+    "panel": "raid",
+    "room": null
+   }
+  },
+  {
+   "name": "Boss Raid gate (free)",
+   "target": "kibble:raidgate",
+   "approach": "left",
+   "style": "stick",
+   "start": [
+    37,
+    49
+   ],
+   "fired": 1,
+   "ok": true,
+   "ms": 240,
+   "after": {
+    "mode": "world",
+    "panel": "raid",
+    "room": null
+   }
+  },
+  {
+   "name": "Boss Raid gate (free)",
+   "target": "kibble:raidgate",
+   "approach": "left",
+   "style": "tap",
+   "start": [
+    37,
+    49
+   ],
+   "fired": 1,
+   "ok": true,
+   "ms": 240,
+   "tapVia": "touch",
+   "after": {
+    "mode": "world",
+    "panel": "raid",
+    "room": null
+   }
+  },
+  {
+   "name": "Boss Raid gate (free)",
+   "target": "kibble:raidgate",
+   "approach": "diag-left",
+   "style": "stick",
+   "skip": "blocked by scenery"
+  },
+  {
+   "name": "Boss Raid gate (free)",
+   "target": "kibble:raidgate",
+   "approach": "diag-left",
+   "style": "tap",
+   "skip": "blocked by scenery"
+  },
+  {
+   "name": "Boss Raid gate (free)",
+   "target": "kibble:raidgate",
+   "approach": "wall-left",
+   "style": "stick",
+   "skip": "blocked by scenery"
+  },
+  {
+   "name": "Boss Raid gate (free)",
+   "target": "kibble:raidgate",
+   "approach": "right",
+   "style": "stick",
+   "start": [
+    41,
+    49
+   ],
+   "fired": 1,
+   "ok": true,
+   "ms": 240,
+   "after": {
+    "mode": "world",
+    "panel": "raid",
+    "room": null
+   }
+  },
+  {
+   "name": "Boss Raid gate (free)",
+   "target": "kibble:raidgate",
+   "approach": "right",
+   "style": "tap",
+   "start": [
+    41,
+    49
+   ],
+   "fired": 1,
+   "ok": true,
+   "ms": 240,
+   "tapVia": "touch",
+   "after": {
+    "mode": "world",
+    "panel": "raid",
+    "room": null
+   }
+  },
+  {
+   "name": "Boss Raid gate (free)",
+   "target": "kibble:raidgate",
+   "approach": "diag-right",
+   "style": "stick",
+   "start": [
+    41,
+    51
+   ],
+   "fired": 1,
+   "ok": true,
+   "ms": 300,
+   "after": {
+    "mode": "world",
+    "panel": "raid",
+    "room": null
+   }
+  },
+  {
+   "name": "Boss Raid gate (free)",
+   "target": "kibble:raidgate",
+   "approach": "diag-right",
+   "style": "tap",
+   "start": [
+    41,
+    51
+   ],
+   "fired": 1,
+   "ok": true,
+   "ms": 300,
+   "tapVia": "touch",
+   "after": {
+    "mode": "world",
+    "panel": "raid",
+    "room": null
+   }
+  },
+  {
+   "name": "Boss Raid gate (free)",
+   "target": "kibble:raidgate",
+   "approach": "wall-right",
+   "style": "stick",
+   "start": [
+    40,
+    50
+   ],
+   "fired": 1,
+   "ok": true,
+   "ms": 240,
+   "after": {
+    "mode": "world",
+    "panel": "raid",
+    "room": null
+   }
+  },
+  {
+   "name": "Park Chapel",
+   "target": "chapel:chapel",
+   "approach": "front",
+   "style": "stick",
+   "start": [
+    24,
+    87
+   ],
+   "fired": 1,
+   "ok": true,
+   "ms": 540,
+   "after": {
+    "mode": "world",
+    "panel": "chapel",
+    "room": null
+   }
+  },
+  {
+   "name": "Park Chapel",
+   "target": "chapel:chapel",
+   "approach": "front",
+   "style": "tap",
+   "start": [
+    24,
+    87
+   ],
+   "fired": 1,
+   "ok": true,
+   "ms": 540,
+   "tapVia": "touch",
+   "after": {
+    "mode": "world",
+    "panel": "chapel",
+    "room": null
+   }
+  },
+  {
+   "name": "Park Chapel",
+   "target": "chapel:chapel",
+   "approach": "left",
+   "style": "stick",
+   "start": [
+    22,
+    85
+   ],
+   "fired": 1,
+   "ok": true,
+   "ms": 240,
+   "after": {
+    "mode": "world",
+    "panel": "chapel",
+    "room": null
+   }
+  },
+  {
+   "name": "Park Chapel",
+   "target": "chapel:chapel",
+   "approach": "left",
+   "style": "tap",
+   "start": [
+    22,
+    85
+   ],
+   "fired": 1,
+   "ok": true,
+   "ms": 240,
+   "tapVia": "touch",
+   "after": {
+    "mode": "world",
+    "panel": "chapel",
+    "room": null
+   }
+  },
+  {
+   "name": "Park Chapel",
+   "target": "chapel:chapel",
+   "approach": "diag-left",
+   "style": "stick",
+   "start": [
+    22,
+    87
+   ],
+   "fired": 1,
+   "ok": true,
+   "ms": 300,
+   "after": {
+    "mode": "world",
+    "panel": "chapel",
+    "room": null
+   }
+  },
+  {
+   "name": "Park Chapel",
+   "target": "chapel:chapel",
+   "approach": "diag-left",
+   "style": "tap",
+   "start": [
+    22,
+    87
+   ],
+   "fired": 1,
+   "ok": true,
+   "ms": 300,
+   "tapVia": "touch",
+   "after": {
+    "mode": "world",
+    "panel": "chapel",
+    "room": null
+   }
+  },
+  {
+   "name": "Park Chapel",
+   "target": "chapel:chapel",
+   "approach": "wall-left",
+   "style": "stick",
+   "start": [
+    23,
+    86
+   ],
+   "fired": 1,
+   "ok": true,
+   "ms": 240,
+   "after": {
+    "mode": "world",
+    "panel": "chapel",
+    "room": null
+   }
+  },
+  {
+   "name": "Park Chapel",
+   "target": "chapel:chapel",
+   "approach": "right",
+   "style": "stick",
+   "start": [
+    26,
+    85
+   ],
+   "fired": 1,
+   "ok": true,
+   "ms": 240,
+   "after": {
+    "mode": "world",
+    "panel": "chapel",
+    "room": null
+   }
+  },
+  {
+   "name": "Park Chapel",
+   "target": "chapel:chapel",
+   "approach": "right",
+   "style": "tap",
+   "start": [
+    26,
+    85
+   ],
+   "fired": 1,
+   "ok": true,
+   "ms": 240,
+   "tapVia": "touch",
+   "after": {
+    "mode": "world",
+    "panel": "chapel",
+    "room": null
+   }
+  },
+  {
+   "name": "Park Chapel",
+   "target": "chapel:chapel",
+   "approach": "diag-right",
+   "style": "stick",
+   "start": [
+    26,
+    87
+   ],
+   "fired": 1,
+   "ok": true,
+   "ms": 300,
+   "after": {
+    "mode": "world",
+    "panel": "chapel",
+    "room": null
+   }
+  },
+  {
+   "name": "Park Chapel",
+   "target": "chapel:chapel",
+   "approach": "diag-right",
+   "style": "tap",
+   "start": [
+    26,
+    87
+   ],
+   "fired": 1,
+   "ok": true,
+   "ms": 300,
+   "tapVia": "touch",
+   "after": {
+    "mode": "world",
+    "panel": "chapel",
+    "room": null
+   }
+  },
+  {
+   "name": "Park Chapel",
+   "target": "chapel:chapel",
+   "approach": "wall-right",
+   "style": "stick",
+   "start": [
+    25,
+    86
+   ],
+   "fired": 1,
+   "ok": true,
+   "ms": 240,
+   "after": {
+    "mode": "world",
+    "panel": "chapel",
+    "room": null
+   }
+  },
+  {
+   "name": "Big Barn (seeds, animals, looks)",
+   "target": "farm:barn",
+   "approach": "front",
+   "style": "stick",
+   "start": [
+    42,
+    94
+   ],
+   "fired": 1,
+   "ok": true,
+   "ms": 540,
+   "after": {
+    "mode": "world",
+    "panel": "farm",
+    "room": null
+   }
+  },
+  {
+   "name": "Big Barn (seeds, animals, looks)",
+   "target": "farm:barn",
+   "approach": "front",
+   "style": "tap",
+   "start": [
+    42,
+    94
+   ],
+   "fired": 1,
+   "ok": true,
+   "ms": 540,
+   "tapVia": "touch",
+   "after": {
+    "mode": "world",
+    "panel": "farm",
+    "room": null
+   }
+  },
+  {
+   "name": "Big Barn (seeds, animals, looks)",
+   "target": "farm:barn",
+   "approach": "left",
+   "style": "stick",
+   "start": [
+    40,
+    92
+   ],
+   "fired": 1,
+   "ok": true,
+   "ms": 240,
+   "after": {
+    "mode": "world",
+    "panel": "farm",
+    "room": null
+   }
+  },
+  {
+   "name": "Big Barn (seeds, animals, looks)",
+   "target": "farm:barn",
+   "approach": "left",
+   "style": "tap",
+   "start": [
+    40,
+    92
+   ],
+   "fired": 1,
+   "ok": true,
+   "ms": 240,
+   "tapVia": "touch",
+   "after": {
+    "mode": "world",
+    "panel": "farm",
+    "room": null
+   }
+  },
+  {
+   "name": "Big Barn (seeds, animals, looks)",
+   "target": "farm:barn",
+   "approach": "diag-left",
+   "style": "stick",
+   "start": [
+    40,
+    94
+   ],
+   "fired": 1,
+   "ok": true,
+   "ms": 300,
+   "after": {
+    "mode": "world",
+    "panel": "farm",
+    "room": null
+   }
+  },
+  {
+   "name": "Big Barn (seeds, animals, looks)",
+   "target": "farm:barn",
+   "approach": "diag-left",
+   "style": "tap",
+   "start": [
+    40,
+    94
+   ],
+   "fired": 1,
+   "ok": true,
+   "ms": 300,
+   "tapVia": "touch",
+   "after": {
+    "mode": "world",
+    "panel": "farm",
+    "room": null
+   }
+  },
+  {
+   "name": "Big Barn (seeds, animals, looks)",
+   "target": "farm:barn",
+   "approach": "wall-left",
+   "style": "stick",
+   "start": [
+    41,
+    93
+   ],
+   "fired": 1,
+   "ok": true,
+   "ms": 240,
+   "after": {
+    "mode": "world",
+    "panel": "farm",
+    "room": null
+   }
+  },
+  {
+   "name": "Big Barn (seeds, animals, looks)",
+   "target": "farm:barn",
+   "approach": "right",
+   "style": "stick",
+   "start": [
+    44,
+    92
+   ],
+   "fired": 1,
+   "ok": true,
+   "ms": 240,
+   "after": {
+    "mode": "world",
+    "panel": "farm",
+    "room": null
+   }
+  },
+  {
+   "name": "Big Barn (seeds, animals, looks)",
+   "target": "farm:barn",
+   "approach": "right",
+   "style": "tap",
+   "start": [
+    44,
+    92
+   ],
+   "fired": 1,
+   "ok": true,
+   "ms": 240,
+   "tapVia": "touch",
+   "after": {
+    "mode": "world",
+    "panel": "farm",
+    "room": null
+   }
+  },
+  {
+   "name": "Big Barn (seeds, animals, looks)",
+   "target": "farm:barn",
+   "approach": "diag-right",
+   "style": "stick",
+   "start": [
+    44,
+    94
+   ],
+   "fired": 1,
+   "ok": true,
+   "ms": 300,
+   "after": {
+    "mode": "world",
+    "panel": "farm",
+    "room": null
+   }
+  },
+  {
+   "name": "Big Barn (seeds, animals, looks)",
+   "target": "farm:barn",
+   "approach": "diag-right",
+   "style": "tap",
+   "start": [
+    44,
+    94
+   ],
+   "fired": 1,
+   "ok": true,
+   "ms": 300,
+   "tapVia": "touch",
+   "after": {
+    "mode": "world",
+    "panel": "farm",
+    "room": null
+   }
+  },
+  {
+   "name": "Big Barn (seeds, animals, looks)",
+   "target": "farm:barn",
+   "approach": "wall-right",
+   "style": "stick",
+   "start": [
+    43,
+    93
+   ],
+   "fired": 1,
+   "ok": true,
+   "ms": 240,
+   "after": {
+    "mode": "world",
+    "panel": "farm",
+    "room": null
+   }
+  }
+ ],
+ "gates": [
+  {
+   "target": "gate:east",
+   "approach": "front",
+   "style": "stick",
+   "start": [
+    60,
+    21
+   ],
+   "fired": 1,
+   "ok": true,
+   "ms": 540,
+   "after": {
+    "mode": "room",
+    "panel": null,
+    "room": "park"
+   }
+  },
+  {
+   "target": "gate:east",
+   "approach": "front",
+   "style": "tap",
+   "start": [
+    60,
+    21
+   ],
+   "fired": 1,
+   "ok": true,
+   "ms": 840,
+   "tapVia": "touch",
+   "after": {
+    "mode": "room",
+    "panel": null,
+    "room": "park"
+   }
+  },
+  {
+   "target": "gate:east",
+   "approach": "left",
+   "style": "stick",
+   "start": [
+    62,
+    19
+   ],
+   "fired": 1,
+   "ok": true,
+   "ms": 240,
+   "after": {
+    "mode": "room",
+    "panel": null,
+    "room": "park"
+   }
+  },
+  {
+   "target": "gate:east",
+   "approach": "left",
+   "style": "tap",
+   "start": [
+    62,
+    19
+   ],
+   "fired": 1,
+   "ok": true,
+   "ms": 840,
+   "tapVia": "touch",
+   "after": {
+    "mode": "room",
+    "panel": null,
+    "room": "park"
+   }
+  },
+  {
+   "target": "gate:east",
+   "approach": "diag-left",
+   "style": "stick",
+   "start": [
+    60,
+    19
+   ],
+   "fired": 1,
+   "ok": true,
+   "ms": 480,
+   "after": {
+    "mode": "room",
+    "panel": null,
+    "room": "park"
+   }
+  },
+  {
+   "target": "gate:east",
+   "approach": "diag-left",
+   "style": "tap",
+   "start": [
+    60,
+    19
+   ],
+   "fired": 1,
+   "ok": true,
+   "ms": 1200,
+   "tapVia": "touch",
+   "after": {
+    "mode": "room",
+    "panel": null,
+    "room": "park"
+   }
+  },
+  {
+   "target": "gate:east",
+   "approach": "wall-left",
+   "style": "stick",
+   "start": [
+    61,
+    20
+   ],
+   "fired": 1,
+   "ok": true,
+   "ms": 240,
+   "after": {
+    "mode": "room",
+    "panel": null,
+    "room": "park"
+   }
+  },
+  {
+   "target": "gate:east",
+   "approach": "right",
+   "style": "stick",
+   "start": [
+    62,
+    23
+   ],
+   "fired": 1,
+   "ok": true,
+   "ms": 240,
+   "after": {
+    "mode": "room",
+    "panel": null,
+    "room": "park"
+   }
+  },
+  {
+   "target": "gate:east",
+   "approach": "right",
+   "style": "tap",
+   "start": [
+    62,
+    23
+   ],
+   "fired": 1,
+   "ok": true,
+   "ms": 840,
+   "tapVia": "touch",
+   "after": {
+    "mode": "room",
+    "panel": null,
+    "room": "park"
+   }
+  },
+  {
+   "target": "gate:east",
+   "approach": "diag-right",
+   "style": "stick",
+   "start": [
+    60,
+    23
+   ],
+   "fired": 1,
+   "ok": true,
+   "ms": 300,
+   "after": {
+    "mode": "room",
+    "panel": null,
+    "room": "park"
+   }
+  },
+  {
+   "target": "gate:east",
+   "approach": "diag-right",
+   "style": "tap",
+   "start": [
+    60,
+    23
+   ],
+   "fired": 1,
+   "ok": true,
+   "ms": 1080,
+   "tapVia": "touch",
+   "after": {
+    "mode": "room",
+    "panel": null,
+    "room": "park"
+   }
+  },
+  {
+   "target": "gate:east",
+   "approach": "wall-right",
+   "style": "stick",
+   "start": [
+    61,
+    22
+   ],
+   "fired": 1,
+   "ok": true,
+   "ms": 240,
+   "after": {
+    "mode": "room",
+    "panel": null,
+    "room": "park"
+   }
+  },
+  {
+   "target": "gate:south",
+   "approach": "front",
+   "style": "stick",
+   "start": [
+    34,
+    102
+   ],
+   "fired": 1,
+   "ok": true,
+   "ms": 540,
+   "after": {
+    "mode": "room",
+    "panel": null,
+    "room": "beach"
+   }
+  },
+  {
+   "target": "gate:south",
+   "approach": "front",
+   "style": "tap",
+   "start": [
+    34,
+    102
+   ],
+   "fired": 1,
+   "ok": true,
+   "ms": 840,
+   "tapVia": "touch",
+   "after": {
+    "mode": "room",
+    "panel": null,
+    "room": "beach"
+   }
+  },
+  {
+   "target": "gate:south",
+   "approach": "left",
+   "style": "stick",
+   "start": [
+    32,
+    104
+   ],
+   "fired": 1,
+   "ok": true,
+   "ms": 240,
+   "after": {
+    "mode": "room",
+    "panel": null,
+    "room": "beach"
+   }
+  },
+  {
+   "target": "gate:south",
+   "approach": "left",
+   "style": "tap",
+   "start": [
+    32,
+    104
+   ],
+   "fired": 1,
+   "ok": true,
+   "ms": 840,
+   "tapVia": "touch",
+   "after": {
+    "mode": "room",
+    "panel": null,
+    "room": "beach"
+   }
+  },
+  {
+   "target": "gate:south",
+   "approach": "diag-left",
+   "style": "stick",
+   "start": [
+    32,
+    102
+   ],
+   "fired": 1,
+   "ok": true,
+   "ms": 300,
+   "after": {
+    "mode": "room",
+    "panel": null,
+    "room": "beach"
+   }
+  },
+  {
+   "target": "gate:south",
+   "approach": "diag-left",
+   "style": "tap",
+   "start": [
+    32,
+    102
+   ],
+   "fired": 1,
+   "ok": true,
+   "ms": 1080,
+   "tapVia": "touch",
+   "after": {
+    "mode": "room",
+    "panel": null,
+    "room": "beach"
+   }
+  },
+  {
+   "target": "gate:south",
+   "approach": "wall-left",
+   "style": "stick",
+   "start": [
+    33,
+    103
+   ],
+   "fired": 1,
+   "ok": true,
+   "ms": 240,
+   "after": {
+    "mode": "room",
+    "panel": null,
+    "room": "beach"
+   }
+  },
+  {
+   "target": "gate:south",
+   "approach": "right",
+   "style": "stick",
+   "start": [
+    36,
+    104
+   ],
+   "fired": 1,
+   "ok": true,
+   "ms": 240,
+   "after": {
+    "mode": "room",
+    "panel": null,
+    "room": "beach"
+   }
+  },
+  {
+   "target": "gate:south",
+   "approach": "right",
+   "style": "tap",
+   "start": [
+    36,
+    104
+   ],
+   "fired": 1,
+   "ok": true,
+   "ms": 840,
+   "tapVia": "touch",
+   "after": {
+    "mode": "room",
+    "panel": null,
+    "room": "beach"
+   }
+  },
+  {
+   "target": "gate:south",
+   "approach": "diag-right",
+   "style": "stick",
+   "start": [
+    36,
+    102
+   ],
+   "fired": 1,
+   "ok": true,
+   "ms": 300,
+   "after": {
+    "mode": "room",
+    "panel": null,
+    "room": "beach"
+   }
+  },
+  {
+   "target": "gate:south",
+   "approach": "diag-right",
+   "style": "tap",
+   "start": [
+    36,
+    102
+   ],
+   "fired": 1,
+   "ok": true,
+   "ms": 1080,
+   "tapVia": "touch",
+   "after": {
+    "mode": "room",
+    "panel": null,
+    "room": "beach"
+   }
+  },
+  {
+   "target": "gate:south",
+   "approach": "wall-right",
+   "style": "stick",
+   "start": [
+    35,
+    103
+   ],
+   "fired": 1,
+   "ok": true,
+   "ms": 240,
+   "after": {
+    "mode": "room",
+    "panel": null,
+    "room": "beach"
+   }
+  }
+ ],
+ "rooms": [
+  {
+   "target": "cafe->hub",
+   "approach": "front",
+   "style": "stick",
+   "start": [
+    7,
+    8
+   ],
+   "fired": 1,
+   "ok": true,
+   "ms": 540,
+   "after": {
+    "mode": "world",
+    "panel": null,
+    "room": null
+   }
+  },
+  {
+   "target": "cafe->hub",
+   "approach": "front",
+   "style": "tap",
+   "start": [
+    7,
+    8
+   ],
+   "fired": 1,
+   "ok": true,
+   "ms": 540,
+   "tapVia": "touch",
+   "after": {
+    "mode": "world",
+    "panel": null,
+    "room": null
+   }
+  },
+  {
+   "target": "cafe->hub",
+   "approach": "left",
+   "style": "stick",
+   "skip": "blocked by scenery"
+  },
+  {
+   "target": "cafe->hub",
+   "approach": "left",
+   "style": "tap",
+   "skip": "blocked by scenery"
+  },
+  {
+   "target": "cafe->hub",
+   "approach": "diag-left",
+   "style": "stick",
+   "start": [
+    5,
+    8
+   ],
+   "fired": 1,
+   "ok": true,
+   "ms": 300,
+   "after": {
+    "mode": "world",
+    "panel": null,
+    "room": null
+   }
+  },
+  {
+   "target": "cafe->hub",
+   "approach": "diag-left",
+   "style": "tap",
+   "start": [
+    5,
+    8
+   ],
+   "fired": 1,
+   "ok": true,
+   "ms": 420,
+   "tapVia": "touch",
+   "after": {
+    "mode": "world",
+    "panel": null,
+    "room": null
+   }
+  },
+  {
+   "target": "cafe->hub",
+   "approach": "wall-left",
+   "style": "stick",
+   "skip": "blocked by scenery"
+  },
+  {
+   "target": "cafe->hub",
+   "approach": "right",
+   "style": "stick",
+   "start": [
+    8,
+    10
+   ],
+   "fired": 1,
+   "ok": true,
+   "ms": 240,
+   "after": {
+    "mode": "world",
+    "panel": null,
+    "room": null
+   }
+  },
+  {
+   "target": "cafe->hub",
+   "approach": "right",
+   "style": "tap",
+   "start": [
+    8,
+    10
+   ],
+   "fired": 1,
+   "ok": true,
+   "ms": 240,
+   "tapVia": "touch",
+   "after": {
+    "mode": "world",
+    "panel": null,
+    "room": null
+   }
+  },
+  {
+   "target": "cafe->hub",
+   "approach": "diag-right",
+   "style": "stick",
+   "start": [
+    9,
+    8
+   ],
+   "fired": 1,
+   "ok": true,
+   "ms": 780,
+   "after": {
+    "mode": "world",
+    "panel": null,
+    "room": null
+   }
+  },
+  {
+   "target": "cafe->hub",
+   "approach": "diag-right",
+   "style": "tap",
+   "start": [
+    9,
+    8
+   ],
+   "fired": 1,
+   "ok": true,
+   "ms": 780,
+   "tapVia": "touch",
+   "after": {
+    "mode": "world",
+    "panel": null,
+    "room": null
+   }
+  },
+  {
+   "target": "cafe->hub",
+   "approach": "wall-right",
+   "style": "stick",
+   "start": [
+    8,
+    9
+   ],
+   "fired": 1,
+   "ok": true,
+   "ms": 240,
+   "after": {
+    "mode": "world",
+    "panel": null,
+    "room": null
+   }
+  },
+  {
+   "target": "shop->hub",
+   "approach": "front",
+   "style": "stick",
+   "start": [
+    8,
+    7
+   ],
+   "fired": 1,
+   "ok": true,
+   "ms": 540,
+   "after": {
+    "mode": "world",
+    "panel": null,
+    "room": null
+   }
+  },
+  {
+   "target": "shop->hub",
+   "approach": "front",
+   "style": "tap",
+   "start": [
+    8,
+    7
+   ],
+   "fired": 1,
+   "ok": true,
+   "ms": 600,
+   "tapVia": "touch",
+   "after": {
+    "mode": "world",
+    "panel": null,
+    "room": null
+   }
+  },
+  {
+   "target": "shop->hub",
+   "approach": "left",
+   "style": "stick",
+   "skip": "blocked by scenery"
+  },
+  {
+   "target": "shop->hub",
+   "approach": "left",
+   "style": "tap",
+   "skip": "blocked by scenery"
+  },
+  {
+   "target": "shop->hub",
+   "approach": "diag-left",
+   "style": "stick",
+   "start": [
+    6,
+    7
+   ],
+   "fired": 1,
+   "ok": true,
+   "ms": 300,
+   "after": {
+    "mode": "world",
+    "panel": null,
+    "room": null
+   }
+  },
+  {
+   "target": "shop->hub",
+   "approach": "diag-left",
+   "style": "tap",
+   "start": [
+    6,
+    7
+   ],
+   "fired": 1,
+   "ok": true,
+   "ms": 420,
+   "tapVia": "touch",
+   "after": {
+    "mode": "world",
+    "panel": null,
+    "room": null
+   }
+  },
+  {
+   "target": "shop->hub",
+   "approach": "wall-left",
+   "style": "stick",
+   "skip": "blocked by scenery"
+  },
+  {
+   "target": "shop->hub",
+   "approach": "right",
+   "style": "stick",
+   "start": [
+    9,
+    9
+   ],
+   "fired": 1,
+   "ok": true,
+   "ms": 240,
+   "after": {
+    "mode": "world",
+    "panel": null,
+    "room": null
+   }
+  },
+  {
+   "target": "shop->hub",
+   "approach": "right",
+   "style": "tap",
+   "start": [
+    9,
+    9
+   ],
+   "fired": 1,
+   "ok": true,
+   "ms": 240,
+   "tapVia": "touch",
+   "after": {
+    "mode": "world",
+    "panel": null,
+    "room": null
+   }
+  },
+  {
+   "target": "shop->hub",
+   "approach": "diag-right",
+   "style": "stick",
+   "start": [
+    10,
+    7
+   ],
+   "fired": 1,
+   "ok": true,
+   "ms": 780,
+   "after": {
+    "mode": "world",
+    "panel": null,
+    "room": null
+   }
+  },
+  {
+   "target": "shop->hub",
+   "approach": "diag-right",
+   "style": "tap",
+   "start": [
+    10,
+    7
+   ],
+   "fired": 1,
+   "ok": true,
+   "ms": 780,
+   "tapVia": "touch",
+   "after": {
+    "mode": "world",
+    "panel": null,
+    "room": null
+   }
+  },
+  {
+   "target": "shop->hub",
+   "approach": "wall-right",
+   "style": "stick",
+   "start": [
+    9,
+    8
+   ],
+   "fired": 1,
+   "ok": true,
+   "ms": 240,
+   "after": {
+    "mode": "world",
+    "panel": null,
+    "room": null
+   }
+  },
+  {
+   "target": "fashion->hub",
+   "approach": "front",
+   "style": "stick",
+   "start": [
+    7,
+    8
+   ],
+   "fired": 1,
+   "ok": true,
+   "ms": 240,
+   "after": {
+    "mode": "world",
+    "panel": null,
+    "room": null
+   }
+  },
+  {
+   "target": "fashion->hub",
+   "approach": "front",
+   "style": "tap",
+   "start": [
+    7,
+    8
+   ],
+   "fired": 1,
+   "ok": true,
+   "ms": 240,
+   "tapVia": "touch",
+   "after": {
+    "mode": "world",
+    "panel": null,
+    "room": null
+   }
+  },
+  {
+   "target": "fashion->hub",
+   "approach": "left",
+   "style": "stick",
+   "skip": "blocked by scenery"
+  },
+  {
+   "target": "fashion->hub",
+   "approach": "left",
+   "style": "tap",
+   "skip": "blocked by scenery"
+  },
+  {
+   "target": "fashion->hub",
+   "approach": "diag-left",
+   "style": "stick",
+   "start": [
+    6,
+    8
+   ],
+   "fired": 1,
+   "ok": true,
+   "ms": 480,
+   "after": {
+    "mode": "world",
+    "panel": null,
+    "room": null
+   }
+  },
+  {
+   "target": "fashion->hub",
+   "approach": "diag-left",
+   "style": "tap",
+   "start": [
+    6,
+    8
+   ],
+   "fired": 1,
+   "ok": true,
+   "ms": 600,
+   "tapVia": "touch",
+   "after": {
+    "mode": "world",
+    "panel": null,
+    "room": null
+   }
+  },
+  {
+   "target": "fashion->hub",
+   "approach": "wall-left",
+   "style": "stick",
+   "skip": "blocked by scenery"
+  },
+  {
+   "target": "fashion->hub",
+   "approach": "right",
+   "style": "stick",
+   "start": [
+    8,
+    9
+   ],
+   "fired": 1,
+   "ok": true,
+   "ms": 240,
+   "after": {
+    "mode": "world",
+    "panel": null,
+    "room": null
+   }
+  },
+  {
+   "target": "fashion->hub",
+   "approach": "right",
+   "style": "tap",
+   "start": [
+    8,
+    9
+   ],
+   "fired": 1,
+   "ok": true,
+   "ms": 240,
+   "tapVia": "touch",
+   "after": {
+    "mode": "world",
+    "panel": null,
+    "room": null
+   }
+  },
+  {
+   "target": "fashion->hub",
+   "approach": "diag-right",
+   "style": "stick",
+   "start": [
+    9,
+    7
+   ],
+   "fired": 1,
+   "ok": true,
+   "ms": 780,
+   "after": {
+    "mode": "world",
+    "panel": null,
+    "room": null
+   }
+  },
+  {
+   "target": "fashion->hub",
+   "approach": "diag-right",
+   "style": "tap",
+   "start": [
+    9,
+    7
+   ],
+   "fired": 1,
+   "ok": true,
+   "ms": 780,
+   "tapVia": "touch",
+   "after": {
+    "mode": "world",
+    "panel": null,
+    "room": null
+   }
+  },
+  {
+   "target": "fashion->hub",
+   "approach": "wall-right",
+   "style": "stick",
+   "start": [
+    8,
+    8
+   ],
+   "fired": 1,
+   "ok": true,
+   "ms": 240,
+   "after": {
+    "mode": "world",
+    "panel": null,
+    "room": null
+   }
+  },
+  {
+   "target": "cars->hub",
+   "approach": "front",
+   "style": "stick",
+   "start": [
+    8,
+    7
+   ],
+   "fired": 1,
+   "ok": true,
+   "ms": 540,
+   "after": {
+    "mode": "world",
+    "panel": null,
+    "room": null
+   }
+  },
+  {
+   "target": "cars->hub",
+   "approach": "front",
+   "style": "tap",
+   "start": [
+    8,
+    7
+   ],
+   "fired": 1,
+   "ok": true,
+   "ms": 540,
+   "tapVia": "touch",
+   "after": {
+    "mode": "world",
+    "panel": null,
+    "room": null
+   }
+  },
+  {
+   "target": "cars->hub",
+   "approach": "left",
+   "style": "stick",
+   "skip": "blocked by scenery"
+  },
+  {
+   "target": "cars->hub",
+   "approach": "left",
+   "style": "tap",
+   "skip": "blocked by scenery"
+  },
+  {
+   "target": "cars->hub",
+   "approach": "diag-left",
+   "style": "stick",
+   "start": [
+    7,
+    8
+   ],
+   "fired": 1,
+   "ok": true,
+   "ms": 480,
+   "after": {
+    "mode": "world",
+    "panel": null,
+    "room": null
+   }
+  },
+  {
+   "target": "cars->hub",
+   "approach": "diag-left",
+   "style": "tap",
+   "start": [
+    7,
+    8
+   ],
+   "fired": 1,
+   "ok": true,
+   "ms": 600,
+   "tapVia": "touch",
+   "after": {
+    "mode": "world",
+    "panel": null,
+    "room": null
+   }
+  },
+  {
+   "target": "cars->hub",
+   "approach": "wall-left",
+   "style": "stick",
+   "skip": "blocked by scenery"
+  },
+  {
+   "target": "cars->hub",
+   "approach": "right",
+   "style": "stick",
+   "start": [
+    9,
+    9
+   ],
+   "fired": 1,
+   "ok": true,
+   "ms": 240,
+   "after": {
+    "mode": "world",
+    "panel": null,
+    "room": null
+   }
+  },
+  {
+   "target": "cars->hub",
+   "approach": "right",
+   "style": "tap",
+   "start": [
+    9,
+    9
+   ],
+   "fired": 1,
+   "ok": true,
+   "ms": 240,
+   "tapVia": "touch",
+   "after": {
+    "mode": "world",
+    "panel": null,
+    "room": null
+   }
+  },
+  {
+   "target": "cars->hub",
+   "approach": "diag-right",
+   "style": "stick",
+   "start": [
+    10,
+    7
+   ],
+   "fired": 1,
+   "ok": true,
+   "ms": 780,
+   "after": {
+    "mode": "world",
+    "panel": null,
+    "room": null
+   }
+  },
+  {
+   "target": "cars->hub",
+   "approach": "diag-right",
+   "style": "tap",
+   "start": [
+    10,
+    7
+   ],
+   "fired": 1,
+   "ok": true,
+   "ms": 780,
+   "tapVia": "touch",
+   "after": {
+    "mode": "world",
+    "panel": null,
+    "room": null
+   }
+  },
+  {
+   "target": "cars->hub",
+   "approach": "wall-right",
+   "style": "stick",
+   "start": [
+    9,
+    8
+   ],
+   "fired": 1,
+   "ok": true,
+   "ms": 240,
+   "after": {
+    "mode": "world",
+    "panel": null,
+    "room": null
+   }
+  },
+  {
+   "target": "bank->hub",
+   "approach": "front",
+   "style": "stick",
+   "start": [
+    7,
+    7
+   ],
+   "fired": 1,
+   "ok": true,
+   "ms": 540,
+   "after": {
+    "mode": "world",
+    "panel": null,
+    "room": null
+   }
+  },
+  {
+   "target": "bank->hub",
+   "approach": "front",
+   "style": "tap",
+   "start": [
+    7,
+    7
+   ],
+   "fired": 1,
+   "ok": true,
+   "ms": 540,
+   "tapVia": "touch",
+   "after": {
+    "mode": "world",
+    "panel": null,
+    "room": null
+   }
+  },
+  {
+   "target": "bank->hub",
+   "approach": "left",
+   "style": "stick",
+   "skip": "blocked by scenery"
+  },
+  {
+   "target": "bank->hub",
+   "approach": "left",
+   "style": "tap",
+   "skip": "blocked by scenery"
+  },
+  {
+   "target": "bank->hub",
+   "approach": "diag-left",
+   "style": "stick",
+   "start": [
+    5,
+    7
+   ],
+   "fired": 1,
+   "ok": true,
+   "ms": 300,
+   "after": {
+    "mode": "world",
+    "panel": null,
+    "room": null
+   }
+  },
+  {
+   "target": "bank->hub",
+   "approach": "diag-left",
+   "style": "tap",
+   "start": [
+    5,
+    7
+   ],
+   "fired": 1,
+   "ok": true,
+   "ms": 420,
+   "tapVia": "touch",
+   "after": {
+    "mode": "world",
+    "panel": null,
+    "room": null
+   }
+  },
+  {
+   "target": "bank->hub",
+   "approach": "wall-left",
+   "style": "stick",
+   "skip": "blocked by scenery"
+  },
+  {
+   "target": "bank->hub",
+   "approach": "right",
+   "style": "stick",
+   "start": [
+    8,
+    9
+   ],
+   "fired": 1,
+   "ok": true,
+   "ms": 240,
+   "after": {
+    "mode": "world",
+    "panel": null,
+    "room": null
+   }
+  },
+  {
+   "target": "bank->hub",
+   "approach": "right",
+   "style": "tap",
+   "start": [
+    8,
+    9
+   ],
+   "fired": 1,
+   "ok": true,
+   "ms": 240,
+   "tapVia": "touch",
+   "after": {
+    "mode": "world",
+    "panel": null,
+    "room": null
+   }
+  },
+  {
+   "target": "bank->hub",
+   "approach": "diag-right",
+   "style": "stick",
+   "start": [
+    9,
+    7
+   ],
+   "fired": 1,
+   "ok": true,
+   "ms": 780,
+   "after": {
+    "mode": "world",
+    "panel": null,
+    "room": null
+   }
+  },
+  {
+   "target": "bank->hub",
+   "approach": "diag-right",
+   "style": "tap",
+   "start": [
+    9,
+    7
+   ],
+   "fired": 1,
+   "ok": true,
+   "ms": 780,
+   "tapVia": "touch",
+   "after": {
+    "mode": "world",
+    "panel": null,
+    "room": null
+   }
+  },
+  {
+   "target": "bank->hub",
+   "approach": "wall-right",
+   "style": "stick",
+   "start": [
+    8,
+    8
+   ],
+   "fired": 1,
+   "ok": true,
+   "ms": 240,
+   "after": {
+    "mode": "world",
+    "panel": null,
+    "room": null
+   }
+  },
+  {
+   "target": "mall->hub",
+   "approach": "front",
+   "style": "stick",
+   "start": [
+    9,
+    7
+   ],
+   "fired": 1,
+   "ok": true,
+   "ms": 540,
+   "after": {
+    "mode": "world",
+    "panel": null,
+    "room": null
+   }
+  },
+  {
+   "target": "mall->hub",
+   "approach": "front",
+   "style": "tap",
+   "start": [
+    9,
+    7
+   ],
+   "fired": 1,
+   "ok": true,
+   "ms": 540,
+   "tapVia": "touch",
+   "after": {
+    "mode": "world",
+    "panel": null,
+    "room": null
+   }
+  },
+  {
+   "target": "mall->hub",
+   "approach": "left",
+   "style": "stick",
+   "skip": "blocked by scenery"
+  },
+  {
+   "target": "mall->hub",
+   "approach": "left",
+   "style": "tap",
+   "skip": "blocked by scenery"
+  },
+  {
+   "target": "mall->hub",
+   "approach": "diag-left",
+   "style": "stick",
+   "start": [
+    7,
+    7
+   ],
+   "fired": 1,
+   "ok": true,
+   "ms": 300,
+   "after": {
+    "mode": "world",
+    "panel": null,
+    "room": null
+   }
+  },
+  {
+   "target": "mall->hub",
+   "approach": "diag-left",
+   "style": "tap",
+   "start": [
+    7,
+    7
+   ],
+   "fired": 1,
+   "ok": true,
+   "ms": 420,
+   "tapVia": "touch",
+   "after": {
+    "mode": "world",
+    "panel": null,
+    "room": null
+   }
+  },
+  {
+   "target": "mall->hub",
+   "approach": "wall-left",
+   "style": "stick",
+   "skip": "blocked by scenery"
+  },
+  {
+   "target": "mall->hub",
+   "approach": "right",
+   "style": "stick",
+   "start": [
+    10,
+    9
+   ],
+   "fired": 1,
+   "ok": true,
+   "ms": 240,
+   "after": {
+    "mode": "world",
+    "panel": null,
+    "room": null
+   }
+  },
+  {
+   "target": "mall->hub",
+   "approach": "right",
+   "style": "tap",
+   "start": [
+    10,
+    9
+   ],
+   "fired": 1,
+   "ok": true,
+   "ms": 240,
+   "tapVia": "touch",
+   "after": {
+    "mode": "world",
+    "panel": null,
+    "room": null
+   }
+  },
+  {
+   "target": "mall->hub",
+   "approach": "diag-right",
+   "style": "stick",
+   "start": [
+    11,
+    7
+   ],
+   "fired": 1,
+   "ok": true,
+   "ms": 780,
+   "after": {
+    "mode": "world",
+    "panel": null,
+    "room": null
+   }
+  },
+  {
+   "target": "mall->hub",
+   "approach": "diag-right",
+   "style": "tap",
+   "start": [
+    11,
+    7
+   ],
+   "fired": 1,
+   "ok": true,
+   "ms": 780,
+   "tapVia": "touch",
+   "after": {
+    "mode": "world",
+    "panel": null,
+    "room": null
+   }
+  },
+  {
+   "target": "mall->hub",
+   "approach": "wall-right",
+   "style": "stick",
+   "start": [
+    10,
+    8
+   ],
+   "fired": 1,
+   "ok": true,
+   "ms": 240,
+   "after": {
+    "mode": "world",
+    "panel": null,
+    "room": null
+   }
+  },
+  {
+   "target": "clubhouse->hub",
+   "approach": "front",
+   "style": "stick",
+   "start": [
+    7,
+    6
+   ],
+   "fired": 1,
+   "ok": true,
+   "ms": 540,
+   "after": {
+    "mode": "world",
+    "panel": null,
+    "room": null
+   }
+  },
+  {
+   "target": "clubhouse->hub",
+   "approach": "front",
+   "style": "tap",
+   "start": [
+    7,
+    6
+   ],
+   "fired": 1,
+   "ok": true,
+   "ms": 600,
+   "tapVia": "touch",
+   "after": {
+    "mode": "world",
+    "panel": null,
+    "room": null
+   }
+  },
+  {
+   "target": "clubhouse->hub",
+   "approach": "left",
+   "style": "stick",
+   "skip": "blocked by scenery"
+  },
+  {
+   "target": "clubhouse->hub",
+   "approach": "left",
+   "style": "tap",
+   "skip": "blocked by scenery"
+  },
+  {
+   "target": "clubhouse->hub",
+   "approach": "diag-left",
+   "style": "stick",
+   "start": [
+    5,
+    6
+   ],
+   "fired": 1,
+   "ok": true,
+   "ms": 300,
+   "after": {
+    "mode": "world",
+    "panel": null,
+    "room": null
+   }
+  },
+  {
+   "target": "clubhouse->hub",
+   "approach": "diag-left",
+   "style": "tap",
+   "start": [
+    5,
+    6
+   ],
+   "fired": 1,
+   "ok": true,
+   "ms": 420,
+   "tapVia": "touch",
+   "after": {
+    "mode": "world",
+    "panel": null,
+    "room": null
+   }
+  },
+  {
+   "target": "clubhouse->hub",
+   "approach": "wall-left",
+   "style": "stick",
+   "skip": "blocked by scenery"
+  },
+  {
+   "target": "clubhouse->hub",
+   "approach": "right",
+   "style": "stick",
+   "start": [
+    8,
+    8
+   ],
+   "fired": 1,
+   "ok": true,
+   "ms": 240,
+   "after": {
+    "mode": "world",
+    "panel": null,
+    "room": null
+   }
+  },
+  {
+   "target": "clubhouse->hub",
+   "approach": "right",
+   "style": "tap",
+   "start": [
+    8,
+    8
+   ],
+   "fired": 1,
+   "ok": true,
+   "ms": 240,
+   "tapVia": "touch",
+   "after": {
+    "mode": "world",
+    "panel": null,
+    "room": null
+   }
+  },
+  {
+   "target": "clubhouse->hub",
+   "approach": "diag-right",
+   "style": "stick",
+   "start": [
+    9,
+    6
+   ],
+   "fired": 1,
+   "ok": true,
+   "ms": 780,
+   "after": {
+    "mode": "world",
+    "panel": null,
+    "room": null
+   }
+  },
+  {
+   "target": "clubhouse->hub",
+   "approach": "diag-right",
+   "style": "tap",
+   "start": [
+    9,
+    6
+   ],
+   "fired": 1,
+   "ok": true,
+   "ms": 780,
+   "tapVia": "touch",
+   "after": {
+    "mode": "world",
+    "panel": null,
+    "room": null
+   }
+  },
+  {
+   "target": "clubhouse->hub",
+   "approach": "wall-right",
+   "style": "stick",
+   "start": [
+    8,
+    7
+   ],
+   "fired": 1,
+   "ok": true,
+   "ms": 240,
+   "after": {
+    "mode": "world",
+    "panel": null,
+    "room": null
+   }
+  },
+  {
+   "target": "park->hub",
+   "approach": "front",
+   "style": "stick",
+   "start": [
+    2,
+    7
+   ],
+   "fired": 1,
+   "ok": true,
+   "ms": 540,
+   "after": {
+    "mode": "world",
+    "panel": null,
+    "room": null
+   }
+  },
+  {
+   "target": "park->hub",
+   "approach": "front",
+   "style": "tap",
+   "start": [
+    2,
+    7
+   ],
+   "fired": 1,
+   "ok": true,
+   "ms": 600,
+   "tapVia": "touch",
+   "after": {
+    "mode": "world",
+    "panel": null,
+    "room": null
+   }
+  },
+  {
+   "target": "park->hub",
+   "approach": "left",
+   "style": "stick",
+   "skip": "blocked by scenery"
+  },
+  {
+   "target": "park->hub",
+   "approach": "left",
+   "style": "tap",
+   "skip": "blocked by scenery"
+  },
+  {
+   "target": "park->hub",
+   "approach": "diag-left",
+   "style": "stick",
+   "start": [
+    2,
+    5
+   ],
+   "fired": 1,
+   "ok": true,
+   "ms": 300,
+   "after": {
+    "mode": "world",
+    "panel": null,
+    "room": null
+   }
+  },
+  {
+   "target": "park->hub",
+   "approach": "diag-left",
+   "style": "tap",
+   "start": [
+    2,
+    5
+   ],
+   "fired": 1,
+   "ok": true,
+   "ms": 420,
+   "tapVia": "canvas-click (HUD covers the spot)",
+   "after": {
+    "mode": "world",
+    "panel": null,
+    "room": null
+   }
+  },
+  {
+   "target": "park->hub",
+   "approach": "wall-left",
+   "style": "stick",
+   "skip": "blocked by scenery"
+  },
+  {
+   "target": "park->hub",
+   "approach": "right",
+   "style": "stick",
+   "skip": "blocked by scenery"
+  },
+  {
+   "target": "park->hub",
+   "approach": "right",
+   "style": "tap",
+   "skip": "blocked by scenery"
+  },
+  {
+   "target": "park->hub",
+   "approach": "diag-right",
+   "style": "stick",
+   "start": [
+    2,
+    9
+   ],
+   "fired": 1,
+   "ok": true,
+   "ms": 300,
+   "after": {
+    "mode": "world",
+    "panel": null,
+    "room": null
+   }
+  },
+  {
+   "target": "park->hub",
+   "approach": "diag-right",
+   "style": "tap",
+   "start": [
+    2,
+    9
+   ],
+   "fired": 1,
+   "ok": true,
+   "ms": 420,
+   "tapVia": "touch",
+   "after": {
+    "mode": "world",
+    "panel": null,
+    "room": null
+   }
+  },
+  {
+   "target": "park->hub",
+   "approach": "wall-right",
+   "style": "stick",
+   "skip": "blocked by scenery"
+  },
+  {
+   "target": "park->beach",
+   "approach": "front",
+   "style": "stick",
+   "start": [
+    25,
+    13
+   ],
+   "fired": 1,
+   "ok": true,
+   "ms": 540,
+   "after": {
+    "mode": "room",
+    "panel": null,
+    "room": "beach"
+   }
+  },
+  {
+   "target": "park->beach",
+   "approach": "front",
+   "style": "tap",
+   "start": [
+    25,
+    13
+   ],
+   "fired": 1,
+   "ok": true,
+   "ms": 540,
+   "tapVia": "touch",
+   "after": {
+    "mode": "room",
+    "panel": null,
+    "room": "beach"
+   }
+  },
+  {
+   "target": "park->beach",
+   "approach": "left",
+   "style": "stick",
+   "skip": "blocked by scenery"
+  },
+  {
+   "target": "park->beach",
+   "approach": "left",
+   "style": "tap",
+   "skip": "blocked by scenery"
+  },
+  {
+   "target": "park->beach",
+   "approach": "diag-left",
+   "style": "stick",
+   "start": [
+    23,
+    13
+   ],
+   "fired": 1,
+   "ok": true,
+   "ms": 300,
+   "after": {
+    "mode": "room",
+    "panel": null,
+    "room": "beach"
+   }
+  },
+  {
+   "target": "park->beach",
+   "approach": "diag-left",
+   "style": "tap",
+   "start": [
+    23,
+    13
+   ],
+   "fired": 1,
+   "ok": true,
+   "ms": 420,
+   "tapVia": "touch",
+   "after": {
+    "mode": "room",
+    "panel": null,
+    "room": "beach"
+   }
+  },
+  {
+   "target": "park->beach",
+   "approach": "wall-left",
+   "style": "stick",
+   "skip": "blocked by scenery"
+  },
+  {
+   "target": "park->beach",
+   "approach": "right",
+   "style": "stick",
+   "skip": "blocked by scenery"
+  },
+  {
+   "target": "park->beach",
+   "approach": "right",
+   "style": "tap",
+   "skip": "blocked by scenery"
+  },
+  {
+   "target": "park->beach",
+   "approach": "diag-right",
+   "style": "stick",
+   "start": [
+    27,
+    13
+   ],
+   "fired": 1,
+   "ok": true,
+   "ms": 300,
+   "after": {
+    "mode": "room",
+    "panel": null,
+    "room": "beach"
+   }
+  },
+  {
+   "target": "park->beach",
+   "approach": "diag-right",
+   "style": "tap",
+   "start": [
+    27,
+    13
+   ],
+   "fired": 1,
+   "ok": true,
+   "ms": 420,
+   "tapVia": "touch",
+   "after": {
+    "mode": "room",
+    "panel": null,
+    "room": "beach"
+   }
+  },
+  {
+   "target": "park->beach",
+   "approach": "wall-right",
+   "style": "stick",
+   "skip": "blocked by scenery"
+  },
+  {
+   "target": "beach->hub",
+   "approach": "front",
+   "style": "stick",
+   "start": [
+    16,
+    2
+   ],
+   "fired": 1,
+   "ok": true,
+   "ms": 540,
+   "after": {
+    "mode": "world",
+    "panel": null,
+    "room": null
+   }
+  },
+  {
+   "target": "beach->hub",
+   "approach": "front",
+   "style": "tap",
+   "start": [
+    16,
+    2
+   ],
+   "fired": 1,
+   "ok": true,
+   "ms": 540,
+   "tapVia": "canvas-click (HUD covers the spot)",
+   "after": {
+    "mode": "world",
+    "panel": null,
+    "room": null
+   }
+  },
+  {
+   "target": "beach->hub",
+   "approach": "left",
+   "style": "stick",
+   "skip": "blocked by scenery"
+  },
+  {
+   "target": "beach->hub",
+   "approach": "left",
+   "style": "tap",
+   "skip": "blocked by scenery"
+  },
+  {
+   "target": "beach->hub",
+   "approach": "diag-left",
+   "style": "stick",
+   "start": [
+    14,
+    2
+   ],
+   "fired": 1,
+   "ok": true,
+   "ms": 300,
+   "after": {
+    "mode": "world",
+    "panel": null,
+    "room": null
+   }
+  },
+  {
+   "target": "beach->hub",
+   "approach": "diag-left",
+   "style": "tap",
+   "start": [
+    14,
+    2
+   ],
+   "fired": 1,
+   "ok": true,
+   "ms": 420,
+   "tapVia": "touch",
+   "after": {
+    "mode": "world",
+    "panel": null,
+    "room": null
+   }
+  },
+  {
+   "target": "beach->hub",
+   "approach": "wall-left",
+   "style": "stick",
+   "skip": "blocked by scenery"
+  },
+  {
+   "target": "beach->hub",
+   "approach": "right",
+   "style": "stick",
+   "skip": "blocked by scenery"
+  },
+  {
+   "target": "beach->hub",
+   "approach": "right",
+   "style": "tap",
+   "skip": "blocked by scenery"
+  },
+  {
+   "target": "beach->hub",
+   "approach": "diag-right",
+   "style": "stick",
+   "start": [
+    18,
+    2
+   ],
+   "fired": 1,
+   "ok": true,
+   "ms": 300,
+   "after": {
+    "mode": "world",
+    "panel": null,
+    "room": null
+   }
+  },
+  {
+   "target": "beach->hub",
+   "approach": "diag-right",
+   "style": "tap",
+   "start": [
+    18,
+    2
+   ],
+   "fired": 1,
+   "ok": true,
+   "ms": 420,
+   "tapVia": "touch",
+   "after": {
+    "mode": "world",
+    "panel": null,
+    "room": null
+   }
+  },
+  {
+   "target": "beach->hub",
+   "approach": "wall-right",
+   "style": "stick",
+   "skip": "blocked by scenery"
+  },
+  {
+   "target": "beach->park",
+   "approach": "front",
+   "style": "stick",
+   "start": [
+    27,
+    4
+   ],
+   "fired": 1,
+   "ok": true,
+   "ms": 540,
+   "after": {
+    "mode": "room",
+    "panel": null,
+    "room": "park"
+   }
+  },
+  {
+   "target": "beach->park",
+   "approach": "front",
+   "style": "tap",
+   "start": [
+    27,
+    4
+   ],
+   "fired": 1,
+   "ok": true,
+   "ms": 600,
+   "tapVia": "touch",
+   "after": {
+    "mode": "room",
+    "panel": null,
+    "room": "park"
+   }
+  },
+  {
+   "target": "beach->park",
+   "approach": "left",
+   "style": "stick",
+   "skip": "blocked by scenery"
+  },
+  {
+   "target": "beach->park",
+   "approach": "left",
+   "style": "tap",
+   "skip": "blocked by scenery"
+  },
+  {
+   "target": "beach->park",
+   "approach": "diag-left",
+   "style": "stick",
+   "start": [
+    27,
+    2
+   ],
+   "fired": 1,
+   "ok": true,
+   "ms": 300,
+   "after": {
+    "mode": "room",
+    "panel": null,
+    "room": "park"
+   }
+  },
+  {
+   "target": "beach->park",
+   "approach": "diag-left",
+   "style": "tap",
+   "start": [
+    27,
+    2
+   ],
+   "fired": 1,
+   "ok": true,
+   "ms": 420,
+   "tapVia": "canvas-click (HUD covers the spot)",
+   "after": {
+    "mode": "room",
+    "panel": null,
+    "room": "park"
+   }
+  },
+  {
+   "target": "beach->park",
+   "approach": "wall-left",
+   "style": "stick",
+   "skip": "blocked by scenery"
+  },
+  {
+   "target": "beach->park",
+   "approach": "right",
+   "style": "stick",
+   "skip": "blocked by scenery"
+  },
+  {
+   "target": "beach->park",
+   "approach": "right",
+   "style": "tap",
+   "skip": "blocked by scenery"
+  },
+  {
+   "target": "beach->park",
+   "approach": "diag-right",
+   "style": "stick",
+   "start": [
+    27,
+    6
+   ],
+   "fired": 1,
+   "ok": true,
+   "ms": 300,
+   "after": {
+    "mode": "room",
+    "panel": null,
+    "room": "park"
+   }
+  },
+  {
+   "target": "beach->park",
+   "approach": "diag-right",
+   "style": "tap",
+   "start": [
+    27,
+    6
+   ],
+   "fired": 1,
+   "ok": true,
+   "ms": 420,
+   "tapVia": "touch",
+   "after": {
+    "mode": "room",
+    "panel": null,
+    "room": "park"
+   }
+  },
+  {
+   "target": "beach->park",
+   "approach": "wall-right",
+   "style": "stick",
+   "skip": "blocked by scenery"
+  },
+  {
+   "target": "beach->spot:ferry",
+   "approach": "front",
+   "style": "stick",
+   "start": [
+    14,
+    6
+   ],
+   "fired": 1,
+   "ok": true,
+   "ms": 540,
+   "after": {
+    "mode": "room",
+    "panel": null,
+    "room": "shrine"
+   }
+  },
+  {
+   "target": "beach->spot:ferry",
+   "approach": "front",
+   "style": "tap",
+   "start": [
+    14,
+    6
+   ],
+   "fired": 1,
+   "ok": true,
+   "ms": 600,
+   "tapVia": "touch",
+   "after": {
+    "mode": "room",
+    "panel": null,
+    "room": "shrine"
+   }
+  },
+  {
+   "target": "beach->spot:ferry",
+   "approach": "left",
+   "style": "stick",
+   "start": [
+    13,
+    8
+   ],
+   "fired": 1,
+   "ok": true,
+   "ms": 240,
+   "after": {
+    "mode": "room",
+    "panel": null,
+    "room": "shrine"
+   }
+  },
+  {
+   "target": "beach->spot:ferry",
+   "approach": "left",
+   "style": "tap",
+   "start": [
+    13,
+    8
+   ],
+   "fired": 1,
+   "ok": true,
+   "ms": 660,
+   "tapVia": "touch",
+   "after": {
+    "mode": "room",
+    "panel": null,
+    "room": "shrine"
+   }
+  },
+  {
+   "target": "beach->spot:ferry",
+   "approach": "diag-left",
+   "style": "stick",
+   "start": [
+    12,
+    6
+   ],
+   "fired": 1,
+   "ok": true,
+   "ms": 300,
+   "after": {
+    "mode": "room",
+    "panel": null,
+    "room": "shrine"
+   }
+  },
+  {
+   "target": "beach->spot:ferry",
+   "approach": "diag-left",
+   "style": "tap",
+   "start": [
+    12,
+    6
+   ],
+   "fired": 1,
+   "ok": true,
+   "ms": 300,
+   "tapVia": "touch",
+   "after": {
+    "mode": "room",
+    "panel": null,
+    "room": "shrine"
+   }
+  },
+  {
+   "target": "beach->spot:ferry",
+   "approach": "wall-left",
+   "style": "stick",
+   "start": [
+    13,
+    7
+   ],
+   "fired": 1,
+   "ok": true,
+   "ms": 240,
+   "after": {
+    "mode": "room",
+    "panel": null,
+    "room": "shrine"
+   }
+  },
+  {
+   "target": "beach->spot:ferry",
+   "approach": "right",
+   "style": "stick",
+   "start": [
+    16,
+    8
+   ],
+   "fired": 1,
+   "ok": true,
+   "ms": 240,
+   "after": {
+    "mode": "room",
+    "panel": null,
+    "room": "shrine"
+   }
+  },
+  {
+   "target": "beach->spot:ferry",
+   "approach": "right",
+   "style": "tap",
+   "start": [
+    16,
+    8
+   ],
+   "fired": 1,
+   "ok": true,
+   "ms": 240,
+   "tapVia": "touch",
+   "after": {
+    "mode": "room",
+    "panel": null,
+    "room": "shrine"
+   }
+  },
+  {
+   "target": "beach->spot:ferry",
+   "approach": "diag-right",
+   "style": "stick",
+   "start": [
+    16,
+    6
+   ],
+   "fired": 1,
+   "ok": true,
+   "ms": 300,
+   "after": {
+    "mode": "room",
+    "panel": null,
+    "room": "shrine"
+   }
+  },
+  {
+   "target": "beach->spot:ferry",
+   "approach": "diag-right",
+   "style": "tap",
+   "start": [
+    16,
+    6
+   ],
+   "fired": 1,
+   "ok": true,
+   "ms": 300,
+   "tapVia": "touch",
+   "after": {
+    "mode": "room",
+    "panel": null,
+    "room": "shrine"
+   }
+  },
+  {
+   "target": "beach->spot:ferry",
+   "approach": "wall-right",
+   "style": "stick",
+   "start": [
+    15,
+    7
+   ],
+   "fired": 1,
+   "ok": true,
+   "ms": 240,
+   "after": {
+    "mode": "room",
+    "panel": null,
+    "room": "shrine"
+   }
+  },
+  {
+   "target": "shrine->spot:ferry",
+   "approach": "front",
+   "style": "stick",
+   "start": [
+    12,
+    9
+   ],
+   "fired": 1,
+   "ok": true,
+   "ms": 540,
+   "after": {
+    "mode": "room",
+    "panel": null,
+    "room": "beach"
+   }
+  },
+  {
+   "target": "shrine->spot:ferry",
+   "approach": "front",
+   "style": "tap",
+   "start": [
+    12,
+    9
+   ],
+   "fired": 1,
+   "ok": true,
+   "ms": 600,
+   "tapVia": "touch",
+   "after": {
+    "mode": "room",
+    "panel": null,
+    "room": "beach"
+   }
+  },
+  {
+   "target": "shrine->spot:ferry",
+   "approach": "left",
+   "style": "stick",
+   "start": [
+    10,
+    11
+   ],
+   "fired": 1,
+   "ok": true,
+   "ms": 240,
+   "after": {
+    "mode": "room",
+    "panel": null,
+    "room": "beach"
+   }
+  },
+  {
+   "target": "shrine->spot:ferry",
+   "approach": "left",
+   "style": "tap",
+   "start": [
+    10,
+    11
+   ],
+   "fired": 1,
+   "ok": true,
+   "ms": 240,
+   "tapVia": "touch",
+   "after": {
+    "mode": "room",
+    "panel": null,
+    "room": "beach"
+   }
+  },
+  {
+   "target": "shrine->spot:ferry",
+   "approach": "diag-left",
+   "style": "stick",
+   "start": [
+    10,
+    9
+   ],
+   "fired": 1,
+   "ok": true,
+   "ms": 300,
+   "after": {
+    "mode": "room",
+    "panel": null,
+    "room": "beach"
+   }
+  },
+  {
+   "target": "shrine->spot:ferry",
+   "approach": "diag-left",
+   "style": "tap",
+   "start": [
+    10,
+    9
+   ],
+   "fired": 1,
+   "ok": true,
+   "ms": 300,
+   "tapVia": "touch",
+   "after": {
+    "mode": "room",
+    "panel": null,
+    "room": "beach"
+   }
+  },
+  {
+   "target": "shrine->spot:ferry",
+   "approach": "wall-left",
+   "style": "stick",
+   "start": [
+    11,
+    10
+   ],
+   "fired": 1,
+   "ok": true,
+   "ms": 240,
+   "after": {
+    "mode": "room",
+    "panel": null,
+    "room": "beach"
+   }
+  },
+  {
+   "target": "shrine->spot:ferry",
+   "approach": "right",
+   "style": "stick",
+   "start": [
+    14,
+    11
+   ],
+   "fired": 1,
+   "ok": true,
+   "ms": 240,
+   "after": {
+    "mode": "room",
+    "panel": null,
+    "room": "beach"
+   }
+  },
+  {
+   "target": "shrine->spot:ferry",
+   "approach": "right",
+   "style": "tap",
+   "start": [
+    14,
+    11
+   ],
+   "fired": 1,
+   "ok": true,
+   "ms": 240,
+   "tapVia": "touch",
+   "after": {
+    "mode": "room",
+    "panel": null,
+    "room": "beach"
+   }
+  },
+  {
+   "target": "shrine->spot:ferry",
+   "approach": "diag-right",
+   "style": "stick",
+   "start": [
+    14,
+    9
+   ],
+   "fired": 1,
+   "ok": true,
+   "ms": 300,
+   "after": {
+    "mode": "room",
+    "panel": null,
+    "room": "beach"
+   }
+  },
+  {
+   "target": "shrine->spot:ferry",
+   "approach": "diag-right",
+   "style": "tap",
+   "start": [
+    14,
+    9
+   ],
+   "fired": 1,
+   "ok": true,
+   "ms": 300,
+   "tapVia": "touch",
+   "after": {
+    "mode": "room",
+    "panel": null,
+    "room": "beach"
+   }
+  },
+  {
+   "target": "shrine->spot:ferry",
+   "approach": "wall-right",
+   "style": "stick",
+   "start": [
+    13,
+    10
+   ],
+   "fired": 1,
+   "ok": true,
+   "ms": 240,
+   "after": {
+    "mode": "room",
+    "panel": null,
+    "room": "beach"
+   }
+  }
+ ],
+ "outward": [
+  {
+   "target": "building:cafe",
+   "v": [
+    0,
+    1
+   ],
+   "style": "stick",
+   "fired": 0,
+   "ok": true
+  },
+  {
+   "target": "building:cafe",
+   "v": [
+    1,
+    1
+   ],
+   "style": "stick",
+   "fired": 0,
+   "ok": true
+  },
+  {
+   "target": "building:cafe",
+   "v": [
+    -1,
+    1
+   ],
+   "style": "stick",
+   "fired": 0,
+   "ok": true
+  },
+  {
+   "target": "building:shop",
+   "v": [
+    0,
+    1
+   ],
+   "style": "stick",
+   "fired": 0,
+   "ok": true
+  },
+  {
+   "target": "building:shop",
+   "v": [
+    1,
+    1
+   ],
+   "style": "stick",
+   "fired": 0,
+   "ok": true
+  },
+  {
+   "target": "building:shop",
+   "v": [
+    -1,
+    1
+   ],
+   "style": "stick",
+   "fired": 0,
+   "ok": true
+  },
+  {
+   "target": "building:fashion",
+   "v": [
+    1,
+    0
+   ],
+   "style": "stick",
+   "fired": 0,
+   "ok": true
+  },
+  {
+   "target": "building:fashion",
+   "v": [
+    1,
+    1
+   ],
+   "style": "stick",
+   "fired": 0,
+   "ok": true
+  },
+  {
+   "target": "building:fashion",
+   "v": [
+    1,
+    -1
+   ],
+   "style": "stick",
+   "fired": 0,
+   "ok": true
+  },
+  {
+   "target": "building:launch",
+   "v": [
+    0,
+    1
+   ],
+   "style": "stick",
+   "fired": 0,
+   "ok": true
+  },
+  {
+   "target": "building:launch",
+   "v": [
+    1,
+    1
+   ],
+   "style": "stick",
+   "fired": 0,
+   "ok": true
+  },
+  {
+   "target": "building:launch",
+   "v": [
+    -1,
+    1
+   ],
+   "style": "stick",
+   "fired": 0,
+   "ok": true
+  },
+  {
+   "target": "building:cars",
+   "v": [
+    0,
+    1
+   ],
+   "style": "stick",
+   "fired": 0,
+   "ok": true
+  },
+  {
+   "target": "building:cars",
+   "v": [
+    1,
+    1
+   ],
+   "style": "stick",
+   "fired": 0,
+   "ok": true
+  },
+  {
+   "target": "building:cars",
+   "v": [
+    -1,
+    1
+   ],
+   "style": "stick",
+   "fired": 0,
+   "ok": true
+  },
+  {
+   "target": "mall:mall",
+   "v": [
+    0,
+    1
+   ],
+   "style": "stick",
+   "fired": 0,
+   "ok": true
+  },
+  {
+   "target": "mall:mall",
+   "v": [
+    1,
+    1
+   ],
+   "style": "stick",
+   "fired": 0,
+   "ok": true
+  },
+  {
+   "target": "mall:mall",
+   "v": [
+    -1,
+    1
+   ],
+   "style": "stick",
+   "fired": 0,
+   "ok": true
+  },
+  {
+   "target": "mall:jewel",
+   "v": [
+    -1,
+    0
+   ],
+   "style": "stick",
+   "fired": 0,
+   "ok": true
+  },
+  {
+   "target": "mall:jewel",
+   "v": [
+    -1,
+    1
+   ],
+   "style": "stick",
+   "fired": 0,
+   "ok": true
+  },
+  {
+   "target": "mall:jewel",
+   "v": [
+    -1,
+    -1
+   ],
+   "style": "stick",
+   "fired": 0,
+   "ok": true
+  },
+  {
+   "target": "mall:designer",
+   "v": [
+    0,
+    1
+   ],
+   "style": "stick",
+   "fired": 0,
+   "ok": true
+  },
+  {
+   "target": "mall:designer",
+   "v": [
+    1,
+    1
+   ],
+   "style": "stick",
+   "fired": 0,
+   "ok": true
+  },
+  {
+   "target": "mall:designer",
+   "v": [
+    -1,
+    1
+   ],
+   "style": "stick",
+   "fired": 0,
+   "ok": true
+  },
+  {
+   "target": "mall:goldden",
+   "v": [
+    1,
+    0
+   ],
+   "style": "stick",
+   "fired": 1,
+   "entered": "mall:cosy",
+   "ok": true
+  },
+  {
+   "target": "mall:goldden",
+   "v": [
+    1,
+    1
+   ],
+   "style": "stick",
+   "fired": 0,
+   "ok": true
+  },
+  {
+   "target": "mall:goldden",
+   "v": [
+    1,
+    -1
+   ],
+   "style": "stick",
+   "fired": 1,
+   "entered": "mall:cosy",
+   "ok": true
+  },
+  {
+   "target": "mall:luxauto",
+   "v": [
+    0,
+    1
+   ],
+   "style": "stick",
+   "fired": 0,
+   "ok": true
+  },
+  {
+   "target": "mall:luxauto",
+   "v": [
+    1,
+    1
+   ],
+   "style": "stick",
+   "fired": 0,
+   "ok": true
+  },
+  {
+   "target": "mall:luxauto",
+   "v": [
+    -1,
+    1
+   ],
+   "style": "stick",
+   "fired": 0,
+   "ok": true
+  },
+  {
+   "target": "mall:office",
+   "v": [
+    0,
+    1
+   ],
+   "style": "stick",
+   "fired": 0,
+   "ok": true
+  },
+  {
+   "target": "mall:office",
+   "v": [
+    1,
+    1
+   ],
+   "style": "stick",
+   "fired": 0,
+   "ok": true
+  },
+  {
+   "target": "mall:office",
+   "v": [
+    -1,
+    1
+   ],
+   "style": "stick",
+   "fired": 0,
+   "ok": true
+  },
+  {
+   "target": "mall:petshop",
+   "v": [
+    0,
+    1
+   ],
+   "style": "stick",
+   "fired": 0,
+   "ok": true
+  },
+  {
+   "target": "mall:petshop",
+   "v": [
+    1,
+    1
+   ],
+   "style": "stick",
+   "fired": 0,
+   "ok": true
+  },
+  {
+   "target": "mall:petshop",
+   "v": [
+    -1,
+    1
+   ],
+   "style": "stick",
+   "fired": 0,
+   "ok": true
+  },
+  {
+   "target": "mall:cosy",
+   "v": [
+    0,
+    1
+   ],
+   "style": "stick",
+   "fired": 0,
+   "ok": true
+  },
+  {
+   "target": "mall:cosy",
+   "v": [
+    1,
+    1
+   ],
+   "style": "stick",
+   "fired": 0,
+   "ok": true
+  },
+  {
+   "target": "mall:cosy",
+   "v": [
+    -1,
+    1
+   ],
+   "style": "stick",
+   "fired": 0,
+   "ok": true
+  },
+  {
+   "target": "mall:royal",
+   "v": [
+    0,
+    1
+   ],
+   "style": "stick",
+   "fired": 0,
+   "ok": true
+  },
+  {
+   "target": "mall:royal",
+   "v": [
+    1,
+    1
+   ],
+   "style": "stick",
+   "fired": 0,
+   "ok": true
+  },
+  {
+   "target": "mall:royal",
+   "v": [
+    -1,
+    1
+   ],
+   "style": "stick",
+   "fired": 0,
+   "ok": true
+  },
+  {
+   "target": "mall:leaders",
+   "v": [
+    0,
+    1
+   ],
+   "style": "stick",
+   "fired": 0,
+   "ok": true
+  },
+  {
+   "target": "mall:leaders",
+   "v": [
+    1,
+    1
+   ],
+   "style": "stick",
+   "fired": 0,
+   "ok": true
+  },
+  {
+   "target": "mall:leaders",
+   "v": [
+    -1,
+    1
+   ],
+   "style": "stick",
+   "fired": 0,
+   "ok": true
+  },
+  {
+   "target": "plot:p2",
+   "v": [
+    0,
+    1
+   ],
+   "style": "stick",
+   "fired": 0,
+   "ok": true
+  },
+  {
+   "target": "plot:p2",
+   "v": [
+    1,
+    1
+   ],
+   "style": "stick",
+   "fired": 0,
+   "ok": true
+  },
+  {
+   "target": "plot:p2",
+   "v": [
+    -1,
+    1
+   ],
+   "style": "stick",
+   "fired": 0,
+   "ok": true
+  },
+  {
+   "target": "visit:h1",
+   "v": [
+    0,
+    1
+   ],
+   "style": "stick",
+   "fired": 0,
+   "ok": true
+  },
+  {
+   "target": "visit:h1",
+   "v": [
+    1,
+    1
+   ],
+   "style": "stick",
+   "fired": 0,
+   "ok": true
+  },
+  {
+   "target": "visit:h1",
+   "v": [
+    -1,
+    1
+   ],
+   "style": "stick",
+   "fired": 0,
+   "ok": true
+  },
+  {
+   "target": "visit:h2",
+   "v": [
+    0,
+    1
+   ],
+   "style": "stick",
+   "fired": 0,
+   "ok": true
+  },
+  {
+   "target": "visit:h2",
+   "v": [
+    1,
+    1
+   ],
+   "style": "stick",
+   "fired": 0,
+   "ok": true
+  },
+  {
+   "target": "visit:h2",
+   "v": [
+    -1,
+    1
+   ],
+   "style": "stick",
+   "fired": 0,
+   "ok": true
+  },
+  {
+   "target": "visit:h3",
+   "v": [
+    0,
+    1
+   ],
+   "style": "stick",
+   "fired": 0,
+   "ok": true
+  },
+  {
+   "target": "visit:h3",
+   "v": [
+    1,
+    1
+   ],
+   "style": "stick",
+   "fired": 0,
+   "ok": true
+  },
+  {
+   "target": "visit:h3",
+   "v": [
+    -1,
+    1
+   ],
+   "style": "stick",
+   "fired": 0,
+   "ok": true
+  },
+  {
+   "target": "visit:h4",
+   "v": [
+    0,
+    1
+   ],
+   "style": "stick",
+   "fired": 0,
+   "ok": true
+  },
+  {
+   "target": "visit:h4",
+   "v": [
+    1,
+    1
+   ],
+   "style": "stick",
+   "fired": 0,
+   "ok": true
+  },
+  {
+   "target": "visit:h4",
+   "v": [
+    -1,
+    1
+   ],
+   "style": "stick",
+   "fired": 0,
+   "ok": true
+  },
+  {
+   "target": "clubhouse:clubhouse",
+   "v": [
+    0,
+    1
+   ],
+   "style": "stick",
+   "fired": 0,
+   "ok": true
+  },
+  {
+   "target": "clubhouse:clubhouse",
+   "v": [
+    1,
+    1
+   ],
+   "style": "stick",
+   "fired": 0,
+   "ok": true
+  },
+  {
+   "target": "clubhouse:clubhouse",
+   "v": [
+    -1,
+    1
+   ],
+   "style": "stick",
+   "fired": 0,
+   "ok": true
+  },
+  {
+   "target": "arcade:arcade",
+   "v": [
+    0,
+    1
+   ],
+   "style": "stick",
+   "fired": 0,
+   "ok": true
+  },
+  {
+   "target": "arcade:arcade",
+   "v": [
+    1,
+    1
+   ],
+   "style": "stick",
+   "fired": 0,
+   "ok": true
+  },
+  {
+   "target": "arcade:arcade",
+   "v": [
+    -1,
+    1
+   ],
+   "style": "stick",
+   "fired": 0,
+   "ok": true
+  },
+  {
+   "target": "bank:bank",
+   "v": [
+    0,
+    1
+   ],
+   "style": "stick",
+   "fired": 0,
+   "ok": true
+  },
+  {
+   "target": "bank:bank",
+   "v": [
+    1,
+    1
+   ],
+   "style": "stick",
+   "fired": 0,
+   "ok": true
+  },
+  {
+   "target": "bank:bank",
+   "v": [
+    -1,
+    1
+   ],
+   "style": "stick",
+   "fired": 0,
+   "ok": true
+  },
+  {
+   "target": "gamedoor:rescue",
+   "v": [
+    0,
+    1
+   ],
+   "style": "stick",
+   "fired": 0,
+   "ok": true
+  },
+  {
+   "target": "gamedoor:rescue",
+   "v": [
+    1,
+    1
+   ],
+   "style": "stick",
+   "fired": 0,
+   "ok": true
+  },
+  {
+   "target": "gamedoor:rescue",
+   "v": [
+    -1,
+    1
+   ],
+   "style": "stick",
+   "fired": 0,
+   "ok": true
+  },
+  {
+   "target": "gamedoor:quest",
+   "v": [
+    0,
+    1
+   ],
+   "style": "stick",
+   "fired": 0,
+   "ok": true
+  },
+  {
+   "target": "gamedoor:quest",
+   "v": [
+    1,
+    1
+   ],
+   "style": "stick",
+   "fired": 0,
+   "ok": true
+  },
+  {
+   "target": "gamedoor:quest",
+   "v": [
+    -1,
+    1
+   ],
+   "style": "stick",
+   "fired": 0,
+   "ok": true
+  },
+  {
+   "target": "gamedoor:empires",
+   "v": [
+    0,
+    1
+   ],
+   "style": "stick",
+   "fired": 0,
+   "ok": true
+  },
+  {
+   "target": "gamedoor:empires",
+   "v": [
+    1,
+    1
+   ],
+   "style": "stick",
+   "fired": 0,
+   "ok": true
+  },
+  {
+   "target": "gamedoor:empires",
+   "v": [
+    -1,
+    1
+   ],
+   "style": "stick",
+   "fired": 0,
+   "ok": true
+  },
+  {
+   "target": "gamedoor:pepeballz",
+   "v": [
+    0,
+    1
+   ],
+   "style": "stick",
+   "fired": 0,
+   "ok": true
+  },
+  {
+   "target": "gamedoor:pepeballz",
+   "v": [
+    1,
+    1
+   ],
+   "style": "stick",
+   "fired": 0,
+   "ok": true
+  },
+  {
+   "target": "gamedoor:pepeballz",
+   "v": [
+    -1,
+    1
+   ],
+   "style": "stick",
+   "fired": 0,
+   "ok": true
+  },
+  {
+   "target": "gamedoor:memebrawl",
+   "v": [
+    0,
+    1
+   ],
+   "style": "stick",
+   "fired": 0,
+   "ok": true
+  },
+  {
+   "target": "gamedoor:memebrawl",
+   "v": [
+    1,
+    1
+   ],
+   "style": "stick",
+   "fired": 0,
+   "ok": true
+  },
+  {
+   "target": "gamedoor:memebrawl",
+   "v": [
+    -1,
+    1
+   ],
+   "style": "stick",
+   "fired": 0,
+   "ok": true
+  },
+  {
+   "target": "gamedoor:kibblepay",
+   "v": [
+    0,
+    1
+   ],
+   "style": "stick",
+   "fired": 0,
+   "ok": true
+  },
+  {
+   "target": "gamedoor:kibblepay",
+   "v": [
+    1,
+    1
+   ],
+   "style": "stick",
+   "fired": 0,
+   "ok": true
+  },
+  {
+   "target": "gamedoor:kibblepay",
+   "v": [
+    -1,
+    1
+   ],
+   "style": "stick",
+   "fired": 0,
+   "ok": true
+  },
+  {
+   "target": "kibble:kwall",
+   "v": [
+    0,
+    1
+   ],
+   "style": "stick",
+   "fired": 0,
+   "ok": true
+  },
+  {
+   "target": "kibble:kwall",
+   "v": [
+    1,
+    1
+   ],
+   "style": "stick",
+   "fired": 0,
+   "ok": true
+  },
+  {
+   "target": "kibble:kwall",
+   "v": [
+    -1,
+    1
+   ],
+   "style": "stick",
+   "fired": 0,
+   "ok": true
+  },
+  {
+   "target": "kibble:raidgate",
+   "v": [
+    0,
+    1
+   ],
+   "style": "stick",
+   "fired": 0,
+   "ok": true
+  },
+  {
+   "target": "kibble:raidgate",
+   "v": [
+    1,
+    1
+   ],
+   "style": "stick",
+   "fired": 0,
+   "ok": true
+  },
+  {
+   "target": "kibble:raidgate",
+   "v": [
+    -1,
+    1
+   ],
+   "style": "stick",
+   "fired": 0,
+   "ok": true
+  },
+  {
+   "target": "chapel:chapel",
+   "v": [
+    0,
+    1
+   ],
+   "style": "stick",
+   "fired": 0,
+   "ok": true
+  },
+  {
+   "target": "chapel:chapel",
+   "v": [
+    1,
+    1
+   ],
+   "style": "stick",
+   "fired": 0,
+   "ok": true
+  },
+  {
+   "target": "chapel:chapel",
+   "v": [
+    -1,
+    1
+   ],
+   "style": "stick",
+   "fired": 0,
+   "ok": true
+  },
+  {
+   "target": "farm:barn",
+   "v": [
+    0,
+    1
+   ],
+   "style": "stick",
+   "fired": 0,
+   "ok": true
+  },
+  {
+   "target": "farm:barn",
+   "v": [
+    1,
+    1
+   ],
+   "style": "stick",
+   "fired": 0,
+   "ok": true
+  },
+  {
+   "target": "farm:barn",
+   "v": [
+    -1,
+    1
+   ],
+   "style": "stick",
+   "fired": 0,
+   "ok": true
+  }
+ ],
+ "summary": {
+  "trials": 503,
+  "ok": 503,
+  "failed": [],
+  "skipped": 73,
+  "outward": {
+   "trials": 99,
+   "ok": 99,
+   "failed": []
+  },
+  "errors": []
+ }
+}
