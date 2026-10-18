@@ -15,7 +15,8 @@ import { DAY_MS } from './economy.js';
 import { medStep, freshMed, MED_ACTIONS } from './medical.js';
 import { fireStep, freshFire, FIRE_ACTIONS } from './fire.js';
 export const LIMITS = Object.freeze({ maxBody: 24000, maxEntries: 40, keepHeads: 50, maxLength: 50000, pidEverySec: 2, ipEverySec: 1, futureMs: 120000, maxData: 300, altsPerIpDay: 4 });
-export const K = Object.freeze({ anchor: (pid) => `sim:anchor:${pid}`, lock: (pid) => `sim:lock:${pid}`, pidRate: (pid) => `sim:rl:${pid}`, ipRate: (h) => `sim:rlip:${h}`, alt: (h, day, n) => `sim:alt:${h}:${day}:${n}` });
+export const K = Object.freeze({ anchor: (pid) => `sim:anchor:${pid}`, lock: (pid) => `sim:lock:${pid}`, pidRate: (pid) => `sim:rl:${pid}`, ipRate: (h) => `sim:rlip:${h}`, alt: (h, day, n) => `sim:alt:${h}:${day}:${n}`,
+  ibHead: () => 'sim:ib:head', ibEntry: (n) => `sim:ib:e:${n}`, ibLock: () => 'sim:ib:lock' }); // ib* = the item book (itembook.js)
 export const PLAYER_ACTIONS = Object.freeze(['wallet.join', 'wallet.leave', 'pm.wage', 'pm.fine', 'pm.bail', 'police.cite', 'police.detain', 'police.release', 'court.verdict', 'pm.refund', ...MED_ACTIONS, ...FIRE_ACTIONS]);
 const MEDDED = new Set([...MED_ACTIONS, ...FIRE_ACTIONS]); // Phase 5: medStep checks the parties of every medical entry itself
 const COURTED = new Set(['court.verdict', 'pm.refund']);

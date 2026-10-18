@@ -6,6 +6,7 @@ import { createSim, optedIn, STAT_KEYS } from './engine.js';
 import { verifyChain, GENESIS } from './ledger.js';
 import { FirewallError, guardUrl, guardedFetch, readOnly, guardNoWallet, RED_TEAM as RT, ECON_KEYS } from './firewall.js';
 import { PLAYER_ACTIONS, PID } from './anchor.js';
+import { offerItems, createItemBook } from './itembook.js';
 const [BK, KK] = ECON_KEYS; // the two main-economy keys, by reference (the static scan forbids writing them literally)
 import * as PM from './pawmarks.js';
 import { WATCHDOGS } from './roster.js';
@@ -215,7 +216,7 @@ function c8(S) { const s = sandbox(), ev = [];
   ev.push(`random paid reward refused: ${paidChance}`, `gambling-shaped actions refused ${names.length}/5`, `static gambling hits in sim: ${S.gambling.length}`, `main game random-paid-reward scan: ${S.context.randomPaid.length ? S.context.randomPaid.join(', ') : 'none found'}`);
   return { pass: paidChance && names.length === 5 && empty(S.gambling), ev }; }
 
-async function c9() { const ev = [], stats = { grit: 5, wits: 5, heart: 5, pace: 5 };
+async function c9(S) { const ev = [], stats = { grit: 5, wits: 5, heart: 5, pace: 5 };
   // two identical sims; in one, the pup wears the priciest $KIBBLE cosmetics (and tries to smuggle stats in through its look)
   const A = sandbox(), B = sandbox(); A.register({ id: 'sim:x', name: 'Plain', group: 'fire', stats });
   const fancy = B.register({ id: 'sim:x', name: 'Fancy', group: 'fire', stats, look: { hat: 'crown', neck: 'diamond_chain', top: 'gold_suit', eyes: 'plat_shades', kennel: 'alpha', stats: { grit: 10, wits: 10 } } });
@@ -250,7 +251,26 @@ async function c9() { const ev = [], stats = { grit: 5, wits: 5, heart: 5, pace:
   const fw = async (extra) => { const F = await fireRig(); const r = F.attend(); void extra; return { paid: r.wage?.value.amount ?? 0, quote: F.w.quote('wage').amount }; };
   const fp = await fw(null), fr = await fw({ outfit: rich.outfit, kibble: 1e6 }); const fireSame = fSame === 200 && sSame === 120 && JSON.stringify(fp) === JSON.stringify(fr) && fp.paid > 0;
   ev.push(`firehouse: 200 fire mini-tasks graded identically for a plain pup and one in the priciest $KIBBLE cosmetics: ${fSame === 200} (${fDone} done); 120 seeded scenes identical (${sSame === 120}); the same call-out pays the same fire wage (${fp.paid}): ${fireSame}`);
-  return { pass: same === 200 && onlyStats && pSame === 200 && pHits > 20 && viewOnly && vSame === 200 && vDismissed > 10 && vUpheld > 10 && medSame && gDone > 20 && gDone < 200 && fireSame && fDone > 20 && fDone < 200, ev }; }
+  // Round 3: player item trades are items for items. Red-team offers through the Bureau's gate (the trade desk's only gate),
+  // then the item book itself: money in an entry, a wallet as a party and a tampered entry must all be caught.
+  const tradeRT = [{ a: ['w:top_hat'], b: ['w:shades'], [BK]: 50 }, { a: ['w:top_hat'], b: ['w:shades'], [KK]: 1 }, { a: ['w:top_hat'], b: ['w:shades'], pawmarks: 3 }, { a: ['w:top_hat'], b: 100 },
+    { a: ['w:top_hat'], b: ['BONES'] }, { a: ['w:top_hat'], b: ['$KIBBLE'] }, { a: ['w:top_hat'], b: ['PAWMARK'] }, { a: ['w:top_hat', 5], b: ['w:shades'] }, { a: ['w:top_hat'], b: [{ id: 'w:shades', amount: 2 }] },
+    { a: ['w:top_hat'], b: ['f:pawmarks'] }, { a: ['w:top_hat'], b: ['w:kibble_bag'] }, { a: ['w:top_hat'], b: ['f:bone_pile'] }, { a: ['w:top_hat'], b: ['w:shades'], price: 9 }, { a: ['w:top_hat'], b: ['w:shades'], unit: 'PAWMARK' }];
+  const tRefused = tradeRT.filter((o) => throwsFw(() => offerItems(o), 'economy')).length, gifts = throwsFw(() => offerItems({ a: ['w:top_hat'], b: [] }), 'shape');
+  const honest = JSON.stringify(offerItems({ a: ['w:top_hat'], b: ['f:chair', 'f:lamp'] })) === '{"a":["w:top_hat"],"b":["f:chair","f:lamp"]}';
+  const IB = createItemBook(memoryStore(() => 1.8e12), { now: () => 1.8e12, sleep: async () => {} }), deal = 'ab'.repeat(12), who = 'player:t' + '1'.repeat(16);
+  await IB.append({ actor: who, action: 'item.offer', deal, data: { ver: 1, a: ['w:top_hat'], b: ['f:chair'] } }); await IB.append({ actor: who, action: 'item.confirm', deal, data: { ver: 1, side: 'a' } });
+  await IB.append({ actor: 'sim:bureau', action: 'item.done', deal, data: { ver: 1, a: ['w:top_hat'], b: ['f:chair'] } });
+  const rej = async (fn, kind) => { try { await fn(); return false; } catch (e) { return e instanceof FirewallError && e.kind === kind; } };
+  const moneyIn = await rej(() => IB.append({ actor: 'sim:bureau', action: 'item.done', deal, data: { [BK]: 5 } }), 'economy') && await rej(() => IB.append({ actor: 'sim:bureau', action: 'item.done', deal, data: { u: '$KIBBLE' } }), 'economy');
+  const walletIn = await rej(() => IB.append({ actor: 'player:' + RT.address, action: 'item.offer', deal }), 'wallet') && await rej(() => IB.append({ actor: who, action: 'item.offer', deal, data: { note: RT.address } }), 'wallet');
+  const okBook = (await IB.verify()).ok && (await IB.read(0, 10)).every((e) => e.value.amount === 0);
+  const forged = await IB.read(0, 10); forged[2].data.b = ['w:crown']; const tamper = !verifyChain(forged).ok;
+  const desk = S.outside.filter((o) => o.file === 'api/_lib/trades.js').every((o) => o.imports.every((i) => /sim\/itembook\.js$/.test(i)));
+  ev.push(`player item trades: ${tRefused}/${tradeRT.length} currency-carrying offers refused (Bones, $KIBBLE, ${CURRENCY.name} as fields, units, amounts, bare numbers, currency-named items), item-for-nothing gifts refused (${gifts}), an honest item-for-item offer passes (${honest})`,
+    `item book: every step is a hash-chained entry moving 0 (${okBook}); money in an entry refused (${moneyIn}), a wallet address as a party or in data refused (${walletIn}), an edited entry is caught (${tamper}); the trade desk reaches the sim only through the item book (${desk})`);
+  const tradeOk = tRefused === tradeRT.length && gifts && honest && moneyIn && walletIn && okBook && tamper && desk;
+  return { pass: same === 200 && onlyStats && pSame === 200 && pHits > 20 && viewOnly && vSame === 200 && vDismissed > 10 && vUpheld > 10 && medSame && gDone > 20 && gDone < 200 && fireSame && fDone > 20 && fDone < 200 && tradeOk, ev }; }
 
 // Phase 6: a joined player with town events on, waited (rig time) until an ordinary seeded call-out is open
 export async function fireRig({ wages = 0, events = true } = {}) { const PR = await policeRig({ wages }), { R, w } = PR; if (events) w.eventsOn();

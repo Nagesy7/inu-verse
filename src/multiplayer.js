@@ -22,12 +22,12 @@ export async function resolveRealtimeUrl({ search = globalThis.location?.search 
   try { const r = await f('/api/config', { cache: 'no-store' }); if (r.ok) { const j = await r.json(); if (ok(j?.realtimeUrl)) return ok(j.realtimeUrl); } } catch {}
   return ok(fallback) || null; }
 
-export function createMultiplayer({ getLocal, toast = () => {}, now = () => performance.now() / 1000, WS = globalThis.WebSocket, doc = globalThis.document, clock = () => Date.now(), coarse = !!globalThis.matchMedia?.('(pointer: coarse)').matches, onActions = null, onVisit = null } = {}) {
+export function createMultiplayer({ getLocal, toast = () => {}, now = () => performance.now() / 1000, WS = globalThis.WebSocket, doc = globalThis.document, clock = () => Date.now(), coarse = !!globalThis.matchMedia?.('(pointer: coarse)').matches, onActions = null, onVisit = null, onTrade = null } = {}) {
   const S = { url: null, ws: null, status: 'off', room: null, inst: 0, id: null, me: null, remotes: new Map(), backoff: 2000, retryAt: 0, lastSend: 0, lastSent: null, lastEmote: null, lastAct: null, lastLookKey: '', lastLookAt: 0, leaveAt: 0, hiddenAt: 0, lastChatAt: -9, pingAt: 0, drawCap: coarse ? 12 : 24, anchors: new Map() };
   S.muted = new Set((() => { try { return JSON.parse(lsGet(K_MUTE) || '[]'); } catch { return []; } })());
   S.optOut = lsGet(K_OFF) === '1';
   let guest = lsGet(K_GUEST); if (!/^Pup\d{4}$/.test(guest || '')) { guest = guestName(); lsSet(K_GUEST, guest); }
-  const ui = makeUi(doc, S, { say: (t) => api.chat(t), mute: (n) => api.toggleMute(n), toggle: () => api.setOptOut(!S.optOut), actions: onActions, visit: onVisit });
+  const ui = makeUi(doc, S, { say: (t) => api.chat(t), mute: (n) => api.toggleMute(n), toggle: () => api.setOptOut(!S.optOut), actions: onActions, visit: onVisit, trade: onTrade });
   const send = (o) => { if (S.ws?.readyState !== 1) return false; try { S.ws.send(JSON.stringify(o)); return true; } catch { return false; } };
   const lookOf = (L) => cleanLook(L?.look);
   function drop(reason) { const ws = S.ws; S.ws = null; S.id = null; S.remotes.clear(); S.anchors.clear(); if (ws) { ws.onopen = ws.onmessage = ws.onclose = ws.onerror = null; try { ws.close(); } catch {} } if (reason) S.status = reason; ui.update(); }
@@ -118,7 +118,7 @@ function makeUi(doc, S, h) {
     pop.innerHTML = `<div class="row" style="justify-content:space-between"><b id="mp-status">Multiplayer</b><button id="mp-x" aria-label="Close">×</button></div>
 <div class="row"><input id="mp-say" maxlength="${MP.CHAT_MAX}" placeholder="Say something nice… (/ to chat)" autocomplete="off" enterkeyhint="send"><button id="mp-send">Say</button></div>
 <small>Be kind. Links, wallet addresses and seed phrases are blocked. Never share your seed phrase.</small><ul id="mp-list"></ul>
-<div class="row"><button id="mp-act" title="G">Actions (sit, dance…)</button><button id="mp-opt"></button></div>`;
+<div class="row"><button id="mp-act" title="G">Actions (sit, dance…)</button><button id="mp-trade" title="Item-for-item trades">Trades</button><button id="mp-opt"></button></div>`;
     doc.body.appendChild(pop);
     const input = pop.querySelector('#mp-say'), go = () => { if (h.say(input.value)) { input.value = ''; input.blur(); } };
     chip.onclick = (e) => { e.stopPropagation(); pop.hidden = !pop.hidden; update(); };
@@ -126,7 +126,8 @@ function makeUi(doc, S, h) {
     pop.querySelector('#mp-send').onclick = go; input.onkeydown = (e) => { e.stopPropagation(); if (e.key === 'Enter') go(); if (e.key === 'Escape') { input.blur(); pop.hidden = true; } };
     pop.querySelector('#mp-opt').onclick = () => h.toggle();
     pop.querySelector('#mp-act').onclick = () => { pop.hidden = true; h.actions?.(); }; pop.querySelector('#mp-act').hidden = !h.actions;
-    pop.querySelector('#mp-list').onclick = (e) => { const v = e.target.closest('[data-visit]'); if (v) { pop.hidden = true; h.visit?.(v.dataset.visit, v.dataset.vname, v.dataset.vkind || 'home'); return; } const b = e.target.closest('[data-mute]'); if (b) h.mute(b.dataset.mute); };
+    pop.querySelector('#mp-trade').onclick = () => { pop.hidden = true; h.trade?.(null, null); }; pop.querySelector('#mp-trade').hidden = !h.trade;
+    pop.querySelector('#mp-list').onclick = (e) => { const tr = e.target.closest('[data-trade]'); if (tr) { pop.hidden = true; h.trade?.(tr.dataset.trade, tr.dataset.tname); return; } const v = e.target.closest('[data-visit]'); if (v) { pop.hidden = true; h.visit?.(v.dataset.visit, v.dataset.vname, v.dataset.vkind || 'home'); return; } const b = e.target.closest('[data-mute]'); if (b) h.mute(b.dataset.mute); };
     doc.addEventListener('keydown', (e) => { if (e.key !== '/' || /INPUT|TEXTAREA/.test(e.target?.tagName || '') || chip.hidden || S.status !== 'online') return; e.preventDefault(); pop.hidden = false; update(); input.focus(); }, true); }
   const esc = (s) => String(s).replace(/[&<>"']/g, (c) => `&#${c.charCodeAt(0)};`);
   function update() { if (!built) return; const n = S.remotes.size + (S.status === 'online' ? 1 : 0), on = S.status === 'online';
@@ -135,5 +136,5 @@ function makeUi(doc, S, h) {
     pop.querySelector('#mp-status').textContent = S.optOut ? 'Multiplayer off (solo)' : on ? `${S.room === 'city' ? 'City' : S.roomName || S.room}${S.inst > 1 ? ' · instance ' + S.inst : ''} · ${n} here` : S.status === 'connecting' ? 'Connecting…' : 'Offline: playing solo';
     pop.querySelector('#mp-opt').textContent = S.optOut ? 'Turn multiplayer on' : 'Play solo (hide others)';
     pop.querySelector('#mp-say').disabled = !on; pop.querySelector('#mp-send').disabled = !on;
-    const ps = [...S.remotes.values()]; pop.querySelector('#mp-list').innerHTML = (on ? `<li><span>${esc(S.me || 'You')} <small>(you)</small></span></li>` : '') + ps.slice(0, 60).map((r) => `<li><span>${esc(r.name)}${r.w ? ` <small>${esc(r.w)}</small>` : ''}</span><span>${r.h && h.visit ? `<button data-visit="${esc(r.h)}" data-vname="${esc(r.name)}" title="Visit ${esc(r.name)}'s home and sign the guestbook">Visit home</button> <button data-visit="${esc(r.h)}" data-vname="${esc(r.name)}" data-vkind="shop" title="See how ${esc(r.name)} arranged their shop">Visit shop</button> ` : ''}<button data-mute="${esc(r.name)}">${S.muted.has(r.name) ? 'Unmute' : 'Mute'}</button></span></li>`).join(''); }
+    const ps = [...S.remotes.values()]; pop.querySelector('#mp-list').innerHTML = (on ? `<li><span>${esc(S.me || 'You')} <small>(you)</small></span></li>` : '') + ps.slice(0, 60).map((r) => `<li><span>${esc(r.name)}${r.w ? ` <small>${esc(r.w)}</small>` : ''}</span><span>${r.h && h.visit ? `<button data-visit="${esc(r.h)}" data-vname="${esc(r.name)}" title="Visit ${esc(r.name)}'s home and sign the guestbook">Visit home</button> <button data-visit="${esc(r.h)}" data-vname="${esc(r.name)}" data-vkind="shop" title="See how ${esc(r.name)} arranged their shop">Visit shop</button> ` : ''}${r.w && h.trade ? `<button data-trade="${esc(r.w)}" data-tname="${esc(r.name)}" title="Offer ${esc(r.name)} an item-for-item trade">Trade</button> ` : ''}<button data-mute="${esc(r.name)}">${S.muted.has(r.name) ? 'Unmute' : 'Mute'}</button></span></li>`).join(''); }
   return { show(v) { if (v) build(); if (chip) chip.hidden = !v; }, update }; }

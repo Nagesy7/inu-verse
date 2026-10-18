@@ -23,6 +23,7 @@ export const STATIC = {
   "src/sim/fireui.js",
   "src/sim/firewall.js",
   "src/sim/force.js",
+  "src/sim/itembook.js",
   "src/sim/ledger.js",
   "src/sim/medical.js",
   "src/sim/patrol.js",
@@ -79,16 +80,23 @@ export const STATIC = {
    "imports": [
     "./sim/place.js"
    ]
+  },
+  {
+   "file": "api/_lib/trades.js",
+   "imports": [
+    "../../src/sim/itembook.js"
+   ]
   }
  ],
  "allowedOutside": [
   "src/main.js",
-  "src/world.js"
+  "src/world.js",
+  "api/_lib/trades.js"
  ],
  "context": {
   "presidentTip": true,
   "bonesSwap": true,
   "randomPaid": []
  },
- "fingerprint": "f0a719f009db1bb8"
+ "fingerprint": "76581d10d7eada59"
 };

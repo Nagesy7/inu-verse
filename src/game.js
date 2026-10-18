@@ -1,6 +1,7 @@
 import { PLOTS, PLOT_COST, TILE } from './world.js';
 import { ensurePacks } from './packs.js';
 import { FURNITURE, WALLS, FLOORS, canPlace } from './furniture.js';
+import { markBought, canSellFurniture, afterFurnitureSold } from './trade.js';
 
 export const START_BONES = 500, START_KIBBLE = 200000, BONES_PER_KIBBLE = 0.0025, SELL_BACK = 0.5;
 // The six starter Shiba coats (only avatar choices at character creation).
@@ -43,13 +44,14 @@ export function buyFurniture(s, id, qty = 1) {
   if (!d) return fail('Unknown item');
   if (s.bones < d.price * qty) return fail('Not enough bones');
   s.bones -= d.price * qty;
-  s.inventory[id] = (s.inventory[id] || 0) + qty;
+  s.inventory[id] = (s.inventory[id] || 0) + qty; markBought(s, 'f:' + id, qty); // Bones-bought copies are tradeable (src/trade.js)
   return ok();
 }
 
 export function sellFromInventory(s, id) {
   if (!s.inventory[id]) return fail('None in inventory');
-  s.inventory[id]--; if (!s.inventory[id]) delete s.inventory[id];
+  if (!canSellFurniture(s, id)) return fail("Got it in a trade, so it can't be sold for Bones");
+  s.inventory[id]--; if (!s.inventory[id]) delete s.inventory[id]; afterFurnitureSold(s, id);
   const refund = Math.floor(FURNITURE[id].price * SELL_BACK);
   s.bones += refund; return ok({ refund });
 }
@@ -80,6 +82,7 @@ export function storeFurniture(s, plotId, uid) {
 export function sellPlaced(s, plotId, uid) {
   const home = s.plots[plotId]; const it = home?.items.find((x) => x.uid === uid);
   if (!it) return fail('Missing');
+  if (!canSellFurniture(s, it.id)) return fail("Got it in a trade, so it can't be sold for Bones");
   const r = storeFurniture(s, plotId, uid); if (!r.ok) return r;
   return sellFromInventory(s, it.id);
 }

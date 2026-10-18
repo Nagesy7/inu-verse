@@ -1,4 +1,5 @@
 // Fetch Fashion: clothing catalog + wardrobe logic (headless, no DOM).
+import { markBought } from './trade.js';
 export const SLOTS = ['hat', 'eyes', 'neck', 'top', 'bottom', 'feet'];
 export const SLOT_NAMES = { hat: 'Hat', eyes: 'Eyewear', neck: 'Neck', top: 'Top', bottom: 'Bottoms', feet: 'Shoes' };
 // look: drawing hints consumed by src/sprite.js
@@ -65,7 +66,7 @@ export function buyOutfit(s, id) {
   const w = ensureWardrobe(s);
   if (w.owned.includes(id)) return fail('Already owned');
   if (s.bones < d.price) return fail('Not enough bones');
-  s.bones -= d.price; w.owned.push(id); return { ok: true };
+  s.bones -= d.price; w.owned.push(id); markBought(s, 'w:' + id); return { ok: true }; // Bones-bought copies are tradeable (src/trade.js)
 }
 export function equipOutfit(s, id) {
   const d = OUTFITS[id]; if (!d) return fail('Unknown item');

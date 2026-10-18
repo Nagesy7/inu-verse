@@ -90,6 +90,7 @@ import { buildDrawer, drawerOpen } from './hudmenu.js';
 import { makeDoorState, doorStep, doorExit, outsideOf } from './doors.js';
 import { isDoor, doorList, doorDir, COMMUNITY } from './world.js';
 import { createMultiplayer } from './multiplayer.js';
+import { createTrading, renderTrade, TRADE_CSS } from './tradeui.js';
 import { createJoystick, joyPref, JOY_KEY } from './joystick.js';
 import * as PAB from './sim/bureau.js'; // Paw Audit Bureau (Phase 1 sim layer): desk + Watchdogs + report panel
 import { ensureShare, myHomePlot, layoutOf, layoutKey, homeApi, cleanLayout, cleanEntry, validHomeId, GB } from './homeshare.js';
@@ -868,6 +869,10 @@ function openPanel(kind, opts = {}) {
   if (kind === 'fasttravel') return renderFastTravel(opts.from);
   if (kind === 'companions') return renderCompanions(body, { state, getProfile: () => CMP.prof, status: CMP.status, signedIn: !DEMO && !!K.kp?.session, persist, toast, onChange: () => { const c = myCompanion(); if (c) IQC.resetFollower(CMP.F, state.player, c); else CMP.F.c = null; } });
   if (kind === 'bureau') return PAB.renderBureau(body, { drawShiba }, opts);
+  if (kind === 'trade') { if (!document.getElementById('trade-css')) { const st = document.createElement('style'); st.id = 'trade-css'; st.textContent = TRADE_CSS; document.head.appendChild(st); }
+    TRD.S.view = opts.view || { mode: 'home' }; TRD.S.err = null; renderTradePanel();
+    TRD.refresh({ quiet: false }).then(() => { if (opts.short && panel?.kind === 'trade') { const p = TRD.S.board.find((x) => x.short === opts.short); if (p) TRD.S.view = { mode: 'compose', to: p.tid, give: [], get: [] }; else TRD.S.err = `${opts.name || 'That player'} hasn't opened the Trading Post yet. Ask them to tap Trades in the players list.`; }
+      if (panel?.kind === 'trade') renderTradePanel(); }); return; }
   if (kind === 'kibblemood') { body.innerHTML = MWd.moodCardHtml(MOOD.current, esc); body.querySelectorAll('[data-copy]').forEach((b) => b.onclick = () => copyText(b.dataset.copy)); body.querySelector('[data-npcrules]').onclick = () => openPanel('npcrules'); return; }
   if (kind === 'dailybone') { body.innerHTML = MWd.dailyBoneHtml(MWd.MW.mood) + '<div class="row" style="justify-content:flex-start"><button class="btn ghost tiny" data-npcrules>How the town talks</button></div>'; body.querySelector('[data-npcrules]').onclick = () => openPanel('npcrules'); return; }
   if (kind === 'kennel') { const draw = () => { if (panel?.kind !== 'kennel') return; body.innerHTML = KN.wallHtml({ wall: KEN.wall, me: KEN.real, wallet: KEN.wallet, override: KEN.override, overrideFlair: KEN.flair, show: KEN.show, peek: KEN.peeking });
@@ -1496,7 +1501,7 @@ function frame(now) {
   requestAnimationFrame(frame);
 }
 // Live multiplayer: other players in the same room ('city' while walking the world). Off unless /api/config has a realtimeUrl.
-const MPL = createMultiplayer({ toast, onActions: () => wheel.open(), onVisit: (id, name, kind) => (kind === 'shop' ? visitShop(id, name) : visitShared(id, name)), now: () => time, getLocal: () => state && { h: sharedHomeId(), room: mode === 'world' ? 'city' : mode === 'room' && RP.id ? 'r-' + RP.id : null, roomName: mode === 'room' ? RP.sc?.name : null,
+const MPL = createMultiplayer({ toast, onActions: () => wheel.open(), onTrade: (w, name) => openPanel('trade', { short: w, name }), onVisit: (id, name, kind) => (kind === 'shop' ? visitShop(id, name) : visitShared(id, name)), now: () => time, getLocal: () => state && { h: sharedHomeId(), room: mode === 'world' ? 'city' : mode === 'room' && RP.id ? 'r-' + RP.id : null, roomName: mode === 'room' ? RP.sc?.name : null,
   x: mode === 'room' ? RP.R.p.x : state.player.x, y: mode === 'room' ? RP.R.p.y : state.player.y, f: player.face, m: player.moving, r: player.running, d: !!drive, emote: player.emote, act: ACT.act, p: poseCodeOf(ACT),
   name: state.player.name, token: K.kp?.session || null, look: { coat: state.player.coat, eq: state.wardrobe.equipped, pl: cpLook(mpProfile()) }, cp: CMP.F.c && mode === 'world' && !drive ? IQC.wireOffset(CMP.F, state.player) : null } });
 // companion id + form ride in the look's pl.look (cpi/cpf); remote clients strip them before reading the Shiba look
@@ -1518,6 +1523,13 @@ async function refreshKennel(force) { const w = K.kp?.signedIn ? K.kp.address : 
   KEN.wallet = w; KEN.at = Date.now(); const [me, wall] = await Promise.all([w ? KN.fetchKennel(w) : Promise.resolve(null), KN.fetchWall()]); KEN.real = me; KEN.wall = wall; }
 refreshKennel().then(raidAuto); setInterval(() => refreshKennel().then(raidAuto), 60_000); addEventListener('kibble:wallet', () => refreshKennel(true).then(raidAuto));
 // ---- Boss Raids (free for all; Kennel tier or an Inu cosmetic auto-enters you each hour; see inu-shared/boss-raids.md) ----
+// Trading Post (Round 3): item-for-item trades, signed messages only, swapped atomically by /api/home op "trade"
+const TRD = createTrading({ kp: () => (DEMO ? null : K.kp), getState: () => state, persist: () => persist(), toast, demo: DEMO, nearby: () => MPL.players().map((p) => p.w).filter(Boolean),
+  onChange: () => { if (panel?.kind === 'trade') renderTradePanel(); } });
+function renderTradePanel() { renderTrade($('#panel-body'), TRD, { open: () => { if (panel?.kind === 'trade') renderTradePanel(); } }); }
+setInterval(() => { if (state && !DEMO && K.kp?.session && panel?.kind === 'trade' && !TRD.S.signing && !TRD.S.busy) TRD.refresh(); }, 1500);
+setInterval(() => { if (state && !DEMO && K.kp?.session && state.trades?.watch && panel?.kind !== 'trade') TRD.refresh(); }, 45000); // finished trades land even with the panel shut
+globalThis.__trade = TRD; // dev/proof hook
 const RAPI = RD.raidApi({ session: () => K.kp?.session }), RAID = { entry: null, ev: null };
 async function raidAuto() { if (!state || DEMO) return; const ev = raidEventAt(Date.now()); if (RAID.ev !== ev.eventId) { RAID.ev = ev.eventId; RAID.entry = null; }
   try { const r = await RD.autoEnter({ api: RAPI, signedIn: !!K.kp?.session, kennelTier: KEN.real?.tier || null, state }); if (r.entered) { RAID.entry = r.entry || (r.why === 'kennel' ? 'auto:kennel' : 'auto:cosmetic'); if (!r.already) toast(`Auto-entered this hour's Boss Raid: ${ev.bossName}. Free, skill only.`, 'good'); } } catch {} }

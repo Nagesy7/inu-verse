@@ -5,7 +5,7 @@ import { readFileSync, readdirSync, statSync, existsSync } from 'node:fs';
 import { join, relative, dirname, resolve, posix } from 'node:path';
 import { createHash } from 'node:crypto';
 export const SNAPSHOT = 'src/sim/audit-static.js';
-export const ALLOWED_OUTSIDE = ['src/main.js', 'src/world.js'];
+export const ALLOWED_OUTSIDE = ['src/main.js', 'src/world.js', 'api/_lib/trades.js']; // + the trade desk, which may use only the item book (src/sim/itembook.js)
 export const API_LIBS = ['api/_lib/kv.js']; // api/sim* may also use the generic Upstash client (keys are still built only by src/sim/anchor.js K.*)
 export const STORE_KEYS = ['STORE_KEY', 'OPT_IN_KEY']; // the only localStorage keys sim code may write ('inu.sim.*') // the two hooks: world.js places the desk, main.js draws it and opens the panel
 export const PATTERNS = {
@@ -41,7 +41,7 @@ export function scan(root = process.cwd()) {
     for (const m of src.matchAll(/^\s*export\s*\{([^}]*)\}/gm)) for (const n of m[1].split(',').map((x) => x.split(/\s+as\s+/).pop().trim()).filter(Boolean)) if (CONVERSION_NAME.test(n)) out.conversion.push({ file: f, name: n });
     if (f.startsWith('api/')) out.routes.push({ file: f, writes: /req\.method\s*===?\s*['"](POST|PUT|PATCH|DELETE)|req\.body|\.set\(|setNX|upstashKv/.test(src), via: [...new Set(importsOf(src))].sort() });
   }
-  // who outside the sim imports it (only the two hooks may, and never the currency, engine or ledger)
+  // who outside the sim imports it (only the two hooks and the trade desk may, and never the currency, engine or ledger)
   for (const f of [...walk(join(root, 'src')), ...walk(join(root, 'api'))].map((p) => relative(root, p).split('\\').join('/')).filter((p) => /\.m?js$/.test(p) && !p.startsWith('src/sim/') && !/^api\/sim/.test(p) && !p.startsWith('src/vendor/'))) {
     const src = readFileSync(join(root, f), 'utf8'), im = importsOf(src).filter((s) => /(^|\/)sim\//.test(s)); if (im.length) out.outside.push({ file: f, imports: im }); }
   // main-game context the Bureau reports on (not violations: the main game may touch its own economy)

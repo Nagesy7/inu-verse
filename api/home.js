@@ -13,24 +13,30 @@
 //                                              else the first publish claims it. Strict validation (known props for that theme
 //                                              only, on the grid, no overlaps, door clear, prop cap from Bigger Shelves level,
 //                                              <= 2 KB layout / 4 KB body), rate limits: one save per shop per 3 s, one per IP per 1 s.
-// No tokens, wallets or payments here: a home is furniture the player already owns, copied for others to look at.
+// POST { op:"trade", act, ... }  Authorization: Bearer <kibble-pay session>. Player item trading (Round 3), see api/_lib/trades.js:
+//   act list {name?, shelf?} | offer {to, give:{a,b}} | edit {id, ver, give} | confirm {id, ver, sig} | cancel {id} |
+//   block/unblock {tid} | report {id|tid, reason} | book {id}. Items only, sign-message only, every step in the Bureau item book.
+// No tokens or payments here: a home is furniture the player already owns, copied for others to look at; a trade swaps items
+// (never Bones, Pawmarks or $KIBBLE) and the wallet is only used to check who is signing.
 import { createHash, randomBytes } from "node:crypto";
 import { upstashKv, memoryKv } from "./_lib/kv.js";
 import { validHomeId, cleanLayout, cleanEntry, homeOwnerName, GB } from "../src/homeshare.js";
 import { SHOP_RE, homeIdOf, cleanShopPayload, toWire } from "../src/interiors.js";
+import { makeTrades } from "./_lib/trades.js";
 
 export const TTL_S = 90 * 86400, SIGN_GAP_S = 15, SIGN_HOME_GAP_S = 60, PUBLISH_GAP_S = 2, SHOP_GAP_S = 3, SHOP_IP_GAP_S = 1, SHOP_BODY_MAX = 4096;
 const sha = (s) => createHash("sha256").update(String(s)).digest("hex");
 const ipOf = (req) => String(req.headers?.["x-forwarded-for"] || req.socket?.remoteAddress || "?").split(",")[0].trim();
 let MEM = null;
-export function makeHandler({ env = process.env, kv, now = () => Date.now(), sleep = (ms) => new Promise((r) => setTimeout(r, ms)) } = {}) {
+export function makeHandler({ env = process.env, kv, now = () => Date.now(), sleep = (ms) => new Promise((r) => setTimeout(r, ms)), sessionWallet, verify } = {}) {
   const store = kv !== undefined ? kv : (upstashKv(env) || (MEM ||= memoryKv()));
   const salt = env.HOME_IP_SALT || "inu-verse-home";
   const getJ = async (k, d) => { const raw = await store.get(k); try { return JSON.parse(raw || "null") ?? d; } catch { return d; } }; // store errors propagate (500), bad JSON -> default
   async function locked(id, fn) { const L = "home:lock:" + id; for (let i = 0; i < 20; i++) { if (await store.setNX(L, "1", 5)) { try { return await fn(); } finally { try { await store.del(L); } catch {} } } await sleep(100); } throw Object.assign(new Error("busy, try again"), { status: 503 }); }
+  const trade = makeTrades({ store, now, env, sleep, ...(sessionWallet ? { sessionWallet } : {}), ...(verify ? { verify } : {}) });
   const owner = async (id, key) => { const h = await getJ("home:v1:" + id, null); return h && typeof key === "string" && key.length >= 16 && h.kh === sha(key) ? h : null; };
   return async function handler(req, res) {
-    res.setHeader("access-control-allow-origin", "*"); res.setHeader("access-control-allow-headers", "content-type"); res.setHeader("content-type", "application/json"); res.setHeader("cache-control", "no-store");
+    res.setHeader("access-control-allow-origin", "*"); res.setHeader("access-control-allow-headers", "content-type, authorization"); res.setHeader("content-type", "application/json"); res.setHeader("cache-control", "no-store");
     const send = (code, o) => { res.statusCode = code; res.end(JSON.stringify(o)); };
     if (req.method === "OPTIONS") { res.statusCode = 204; return res.end(); }
     try {
@@ -44,6 +50,9 @@ export function makeHandler({ env = process.env, kv, now = () => Date.now(), sle
       if (req.method !== "POST") return send(405, { error: "GET or POST" });
       const rawLen = typeof req.body === "string" ? req.body.length : JSON.stringify(req.body || {}).length; if (rawLen > SHOP_BODY_MAX * 4) return send(413, { error: "too big" });
       const b = typeof req.body === "string" ? JSON.parse(req.body || "{}") : req.body || {};
+      if (b.op === "trade") { if (rawLen > SHOP_BODY_MAX) return send(413, { error: "too big" });
+        const token = String(req.headers?.authorization || "").replace(/^Bearer\s+/i, ""), ipHash = sha(salt + "|" + ipOf(req)).slice(0, 24);
+        try { return send(200, await trade(b, { token, ipHash })); } catch (e) { if (!e.status) throw e; return send(e.status, { error: e.message, ...(e.extra || {}) }); } }
       if (b.op === "shop") { if (rawLen > SHOP_BODY_MAX) return send(413, { error: `layout too big (max ${SHOP_BODY_MAX} bytes)` });
         const sid = String(b.id || ""), hid = homeIdOf(sid); if (!hid) return send(400, { error: "bad shop id" });
         if (typeof b.key !== "string" || !/^[0-9a-f]{32}$/.test(b.key)) return send(400, { error: "bad key" });

@@ -24,7 +24,7 @@ test('main-economy firewall (runtime): units, keys, read-only state', () => { co
   for (const u of F.ECON_UNITS) fw(() => s.act('sim:a', 'pm.sink', PM.SINK, { amount: 1, unit: u }), 'economy');
   for (const k of ['bones', 'Bones', 'kibble', '$KIBBLE', 'pools', 'payout', 'inuScore']) fw(() => F.guardKey(k), 'economy');
   const game = { bones: 10, kibble: 5, player: { x: 1 } }, v = s.view(game); assert.equal(v.bones, 10); fw(() => { v.player.x = 2; }); fw(() => { v.bones = 0; }, 'economy'); assert.deepEqual(game, { bones: 10, kibble: 5, player: { x: 1 } }); });
-test('only the sim/main hooks import sim code, and never the currency, engine or ledger', () => { assert.deepEqual(S.outside.map((o) => o.file).sort(), ['src/main.js', 'src/world.js']);
-  for (const o of S.outside) assert.ok(o.imports.every((i) => /sim\/(bureau|place)\.js$/.test(i)), o.imports.join()); });
+test('only the sim/main hooks (and the trade desk, item book only) import sim code, and never the currency, engine or ledger', () => { assert.deepEqual(S.outside.map((o) => o.file).sort(), ['api/_lib/trades.js', 'src/main.js', 'src/world.js']);
+  for (const o of S.outside) assert.ok(o.imports.every((i) => (o.file === 'api/_lib/trades.js' ? /sim\/itembook\.js$/ : /sim\/(bureau|place)\.js$/).test(i)), o.imports.join()); });
 test('no conversion path: no conversion-shaped export, the only sim API route is read-only, Pawmarks unknown outside the sim', () => { assert.deepEqual(S.conversion, []); assert.deepEqual(S.routes.map((r) => [r.file, r.writes]), [['api/sim-audit.js', false], ['api/sim-log.js', true]]); assert.deepEqual(S.kvKeys, []); assert.deepEqual(S.storage, []);
   for (const f of ['src/game.js', 'src/mall.js', 'src/wallet.js', 'src/save.js', 'src/main.js']) assert.ok(!/pawmark/i.test(readFileSync(root + f, 'utf8')), f); });

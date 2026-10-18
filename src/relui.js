@@ -4,6 +4,7 @@ import { GOODS } from './farm.js';
 import { FURNITURE, FURN_STORES, FURN_CATS, storeItems } from './furniture.js';
 import { wallet, kibText } from './wallet.js';
 import { toU, FEE_LABEL } from './mall.js';
+import { markBought } from './trade.js';
 const esc = (s) => String(s).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
 const btn = (act, label, cls = 'green') => `<button class="btn ${cls}" data-act="${act}">${label}</button>`;
 const heartsRow = (h) => `<span style="font-size:18px;letter-spacing:1px">${'<span style="color:#ff5a7a">♥</span>'.repeat(h)}${'<span style="color:#55607a">♥</span>'.repeat(10 - h)}</span>`;
@@ -51,4 +52,4 @@ export function renderFurnStore(ctx, store) { const S = FURN_STORES[store], s = 
   ctx.preview(document.getElementById('furnprev'), items.map(([id]) => id));
   wire(ctx, { set: (k) => { ctx.panel.set = k; }, preview: () => {}, gift: (k) => R.buyGift(s, k),
     buy: (id) => { const d = FURNITURE[id]; if (kib) { const r = wallet().purchaseSync({ state: s, itemId: 'furn-' + id, priceU: toU(d.kibble) }); if (!r.ok) return r; } else { if (s.bones < d.price) return { ok: false, reason: `Need ${d.price} bones` }; s.bones -= d.price; }
-      s.inventory[id] = (s.inventory[id] || 0) + 1; ctx.toast(`Bought ${d.name} — place it from build mode at home`, 'good'); return { ok: true }; } }); }
+      s.inventory[id] = (s.inventory[id] || 0) + 1; if (!kib) markBought(s, 'f:' + id); ctx.toast(`Bought ${d.name} — place it from build mode at home`, 'good'); return { ok: true }; } }); }
