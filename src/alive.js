@@ -4,7 +4,9 @@
 // at 3x, and prefers-reduced-motion turns off sway/particles/fly-overs (static scenery stays).
 import { TILE, MAP_W, MAP_H, MAP, T } from './world.js';
 export const CAPS = { leaves: 36, canopyBirds: 8, flockBirds: 7, kites: 3, clouds: 8, butterflies: 12, squirrels: 6, visibleDecor: 220 };
-export const reducedMotion = () => !!(globalThis.__reducedMotion ?? globalThis.matchMedia?.('(prefers-reduced-motion: reduce)')?.matches);
+// one cached MediaQueryList (matchMedia() per call used to run for every visible tree every frame)
+let MQ; const mq = () => (MQ === undefined ? (MQ = globalThis.matchMedia?.('(prefers-reduced-motion: reduce)') || null) : MQ);
+export const reducedMotion = () => !!(globalThis.__reducedMotion ?? mq()?.matches);
 export const inView = (x, y, v, m = 0) => x > v.x0 - m && x < v.x1 + m && y > v.y0 - m && y < v.y1 + m;
 export function capPush(arr, item, cap) { if (arr.length >= cap) return false; arr.push(item); return true; }
 const hash = (x, y, s = 0) => { let h = (x * 374761393 + y * 668265263 + s * 2246822519) ^ 0x5bd1e995; h = Math.imul(h ^ (h >>> 13), 1274126177); return ((h ^ (h >>> 16)) >>> 0) / 4294967296; };
@@ -44,7 +46,20 @@ function deco(kind) { const k = 'd' + kind; if (SPR[k]) return SPR[k]; const P =
   else { const col = { fR: '#ff6f8a', fY: '#ffd84a', fW: '#f6efe0', fB: '#8ab8ff' }[kind]; for (const [x, y] of [[2, 5], [6, 3], [9, 6]]) { P(c, x, y + 1, '#2f7a34', 1, 3); P(c, x - 1, y, col, 3, 1); P(c, x, y - 1, col); P(c, x, y + 1, col); P(c, x, y, '#ffe9a0'); } }
   return (SPR[k] = cv); }
 // ---------------- state ----------------
-export const ALIVE = { t: 0, wind: 1, trees: [], decor: [], leaves: [], cbirds: [], flock: null, fly: null, flyT: 40, clouds: [], kites: [], bfly: [], squirrels: [], ducks: [] };
+// ---------------- wind (shared by trees, awnings and flags) ----------------
+// The global breeze (ALIVE.wind, a slow wander) plus gusts that roll west -> east across the map, so a row of trees,
+// shop awnings and flags lean one after another instead of in lock-step. Pure: x in world px, t in seconds.
+export function windAt(x, t = ALIVE.t, w = ALIVE.wind) { return w * (0.7 + 0.45 * Math.max(0, Math.sin(t * 0.55 - x * 0.0035))); }
+// horizontal sway (world px, or a fraction when amp is a fraction) for something at world x with its own phase; 0 under reduced motion
+export function swayAt(x, ph, amp, freq = 1.6, t = ALIVE.t, rm = ALIVE.rm) { return rm ? 0 : Math.sin(t * freq + ph) * windAt(x, t) * amp; }
+// fluttering awning valance: a row of scalloped tabs hanging under an awning's bottom edge (x,y), alternating colA/colB every
+// `stripe` px. Each tab drifts and lifts with the wind at its own phase; at rest (or reduced motion) it is the classic scallop row.
+export function drawAwningFlap(c, x, y, w, stripe, colA, colB, seed = 0) { const rm = ALIVE.rm;
+  for (let i = 0, k = 0; i < w; i += stripe, k++) { const s = rm ? 0 : swayAt(x + i, seed + k * 0.7, 1.4, 3.1), dx = Math.round(s), lift = Math.max(0, Math.round(s * 0.8)), tw = Math.min(stripe - 2, w - i - 1);
+    if (tw <= 0) break; c.fillStyle = k % 2 ? colB : colA; c.fillRect(x + i + 1 + dx, y, tw, 3 - Math.min(1, lift)); c.fillStyle = INK; c.fillRect(x + i + 2 + dx, y + 3 - Math.min(1, lift), Math.max(1, tw - 2), 1); } }
+// pennant cloth offset for a flag whose pole is at world x: returns [dx at the tip, dy at the tip]
+export function flagWave(x, t = ALIVE.t) { if (ALIVE.rm) return [0, 0]; const w = windAt(x, t); return [Math.round(Math.sin(t * 4.2 + x * 0.05) * w * 1.5), Math.round(Math.sin(t * 3.1 + x * 0.03) * w * 1.6)]; }
+export const ALIVE = { t: 0, wind: 1, rm: false, trees: [], decor: [], leaves: [], cbirds: [], flock: null, fly: null, flyT: 40, clouds: [], kites: [], bfly: [], squirrels: [], ducks: [] };
 export function makeAlive(seed = 3) { const A = ALIVE; A.trees = []; A.decor = [];
   for (let y = 0; y < MAP_H; y++) for (let x = 0; x < MAP_W; x++) { const v = MAP[y][x];
     if (v === T.TREE) A.trees.push({ x, y, kind: treeSpecies(x, y), ph: hash(x, y, 21) * 6.28, amp: 0.6 + hash(x, y, 22) * 0.6 });
@@ -57,7 +72,7 @@ export function makeAlive(seed = 3) { const A = ALIVE; A.trees = []; A.decor = [
   A.leaves.length = 0; A.cbirds.length = 0; A.bfly.length = 0; A.squirrels.length = 0; A.flock = null; A.fly = null; return A; }
 const visTrees = (A, v) => A.trees.filter((t) => inView((t.x + 0.5) * TILE, (t.y + 1) * TILE, v, 60));
 // ---------------- step ----------------
-export function stepAlive(A, dt, v, rng = Math.random) { A.t += dt; const RM = reducedMotion(); A.wind = 0.8 + Math.sin(A.t * 0.13) * 0.35 + Math.sin(A.t * 0.71) * 0.15;
+export function stepAlive(A, dt, v, rng = Math.random, sprint = null) { A.t += dt; const RM = (A.rm = reducedMotion()); A.wind = 0.8 + Math.sin(A.t * 0.13) * 0.35 + Math.sin(A.t * 0.71) * 0.15;
   for (const c of A.clouds) { c.x += (RM ? 2 : 10) * A.wind * dt; if (c.x > MAP_W * TILE + 300) c.x = -300; }
   for (const d of A.ducks) d.a += d.s * dt * (RM ? 0.3 : 1);
   if (RM) { A.leaves.length = 0; A.cbirds.length = 0; A.flock = null; A.fly = null; A.bfly.length = 0; A.squirrels.length = 0; return A; }
@@ -71,6 +86,9 @@ export function stepAlive(A, dt, v, rng = Math.random) { A.t += dt; const RM = r
   if (vt.length > 1 && rng() < dt * 0.8) { const a = vt[(rng() * vt.length) | 0]; if (a.kind !== 'palm') capPush(A.cbirds, { tree: a, st: 'perch', t: 1.5 + rng() * 3, x: (a.x + 0.5) * TILE + (rng() - 0.5) * 30, y: (a.y + 1) * TILE - 118, col: ['#7a5a3a', '#4a5a7a', '#c86a4a', '#e0c040'][(rng() * 4) | 0] }, CAPS.canopyBirds); }
   for (const b of A.cbirds) { b.t -= dt; if (b.st === 'perch' && b.t < 0) { const to = vt[(rng() * vt.length) | 0] || b.tree; b.st = 'fly'; b.fx = b.x; b.fy = b.y; b.tx = (to.x + 0.5) * TILE; b.ty = (to.y + 1) * TILE - 110; b.k = 0; }
     if (b.st === 'fly') { b.k += dt / Math.max(0.6, Math.hypot(b.tx - b.fx, b.ty - b.fy) / 160); const k = Math.min(1, b.k); b.x = b.fx + (b.tx - b.fx) * k; b.y = b.fy + (b.ty - b.fy) * k - Math.sin(k * Math.PI) * 40; if (k >= 1) { b.st = 'in'; b.t = 0.3; } } }
+  if (sprint) for (const b of A.cbirds) if (b.st === 'perch' && Math.hypot(b.x - sprint.x, b.y + 90 - sprint.y) < 170) { // sprinting under a tree startles its birds: they fly off away from you to another tree
+    const away = vt.filter((t) => Math.sign((t.x + 0.5) * TILE - sprint.x) === Math.sign(b.x - sprint.x || 1) && Math.hypot((t.x + 0.5) * TILE - sprint.x, (t.y + 1) * TILE - sprint.y) > 200), to = away[(rng() * away.length) | 0];
+    b.st = 'fly'; b.fx = b.x; b.fy = b.y; b.k = 0; b.spooked = true; if (to) { b.tx = (to.x + 0.5) * TILE; b.ty = (to.y + 1) * TILE - 110; } else { b.tx = b.x + Math.sign(b.x - sprint.x || 1) * 260; b.ty = b.y - 120; } }
   A.cbirds = A.cbirds.filter((b) => !(b.st === 'in' && b.t < 0) && inView(b.x, b.y, v, 200));
   // squirrels scurry between visible trees (and up the trunk)
   if (vt.length > 1 && rng() < dt * 0.3) { const a = vt[(rng() * vt.length) | 0], b = vt[(rng() * vt.length) | 0]; if (a !== b && Math.hypot(a.x - b.x, a.y - b.y) < 6) capPush(A.squirrels, { fx: (a.x + 0.5) * TILE, fy: (a.y + 1) * TILE + 4, tx: (b.x + 0.5) * TILE, ty: (b.y + 1) * TILE + 4, k: 0, climb: 0 }, CAPS.squirrels); }
@@ -91,7 +109,7 @@ const R = (c, x, y, w, h, col) => { c.fillStyle = col; c.fillRect(Math.round(x),
 export function treeProp(x, y) { const t = ALIVE.trees.find((q) => q.x === x && q.y === y) || { x, y, kind: treeSpecies(x, y), ph: hash(x, y, 21) * 6.28, amp: 0.6 + hash(x, y, 22) * 0.6 };
   return { y: (y + 1) * TILE - 4, tree: t, d: (c) => { const S = treeSprites(t.kind), X = x * TILE + 16 - 48, Y = (y + 1) * TILE - 132 + 3;
     c.drawImage(S.trunk, X, Y, 96, 132);
-    const sway = reducedMotion() ? 0 : Math.sin(ALIVE.t * (t.kind === 'palm' ? 1.1 : 1.6) + t.ph) * ALIVE.wind * t.amp * (t.kind === 'pine' ? 0.025 : 0.04);
+    const sway = swayAt(x * TILE, t.ph, t.amp * (t.kind === 'pine' ? 0.025 : 0.04), t.kind === 'palm' ? 1.1 : 1.6);
     if (!sway) { c.drawImage(S.canopy, X, Y, 96, 102); return; }
     const W = S.canopy.width, H = S.canopy.height, k = H / 102, dx = sway * 96; for (const [a, b, f] of [[0, 34, 1], [34, 68, 0.55], [68, 102, 0]]) c.drawImage(S.canopy, 0, Math.round(a * k), W, Math.round((b - a) * k), X + Math.round(dx * f), Y + a, 96, b - a); } }; }
 // extra palms on grass right at the water's edge (visual only, not solid)

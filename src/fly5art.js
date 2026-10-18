@@ -1,6 +1,7 @@
 // Original pixel art for Item 5 town-square props: pools monument, burn festival monument, quest board.
 import { TILE, SQUARE } from './world.js';
 import * as PB from './poolboard.js';
+const boardMemo = { raw: undefined, fp: undefined, bp: undefined, B: null };
 import { ensureFarm } from './farm.js'; import { ensureBiz } from './biz.js';
 import { poolsMonument, burnStage, BURN_STAGES, ensureFly5, BURN_GOAL_U, questProgress } from './fly5.js';
 const INK = '#141a2e';
@@ -23,7 +24,8 @@ export function squareProps(state, t, week = 0) {
     } }); }
   // 9b. Weekly Pool Board: walk-up plaza board left of the monument (live figures from poolboard.js; "n/a" when a board has no pool figure)
   { const x = SQUARE.pools.x * TILE - 100, y = SQUARE.pools.y * TILE - 26, raw = PB.cached();
-    const B = PB.buildBoard(raw, { farmPool: ensureFarm(state).pool, bizPool: ensureBiz(state).pool });
+    const fp = ensureFarm(state).pool, bp = ensureBiz(state).pool, M = boardMemo; if (M.raw !== raw || M.fp !== fp || M.bp !== bp || !M.B) Object.assign(M, { raw, fp, bp, B: PB.buildBoard(raw, { farmPool: fp, bizPool: bp }) }); // rebuilt only when its inputs change (was every frame)
+    const B = M.B;
     out.push({ y: y + 58, d: (c) => {
       R(c, x + 4, y + 40, 4, 18, INK); R(c, x + 56, y + 40, 4, 18, INK); R(c, x + 5, y + 40, 2, 18, '#7a5a3a'); R(c, x + 57, y + 40, 2, 18, '#7a5a3a');
       R(c, x - 2, y - 26, 68, 70, INK); R(c, x - 1, y - 25, 66, 68, '#c8a46a'); R(c, x + 1, y - 23, 62, 64, '#1e2a4e');

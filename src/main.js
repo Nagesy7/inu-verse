@@ -12,9 +12,9 @@ import { spawnNpcs, updateNpc, NPC_OUTFITS } from './npc.js';
 import { npcHome } from './homes.js';
 import { drawShiba, drawFurniture, drawRoom, drawMenuIcon, drawBoneIcon, drawEmblem, GOLD } from './art.js';
 import { ART, artReady, artKey } from './art.js';
-import { carProps } from './ambient.js';
+import { carProps, catProps, dogWalkActors, leashProps, drawBreadBasket } from './ambient.js';
 import { drawCar } from './cars.js';
-import { makeAlive, stepAlive, drawAliveGround, drawAliveSky, ALIVE } from './alive.js';
+import { makeAlive, stepAlive, drawAliveGround, drawAliveSky, ALIVE, reducedMotion } from './alive.js';
 import { makeAmbient, stepAmbient, throwBall, dayPhase, timeForHour, drawGroundLife, drawSkyLife, drawAtmosphere, drawEmote, lightsFor, addMail, unreadMail, EMOTES, DAY_LEN } from './ambient.js';
 import { initAudio, setMusicActive, setMuted, isMuted, footstep, chirp, bork, blip, uiClick, uiOpen, uiClose, textBlip, rustle, fanfare, cafeChime, munch, sip, clink, crierBell } from './audio.js';
 import * as VF from './verified.js'; // Verified Launch badge (opt-in) + town crier news
@@ -63,7 +63,7 @@ import { createGuide } from './guideui.js';
 import { isRealWallet } from './guide.js';
 import * as PAIR from './pairing.js';
 import { ensureFly, featuredOf, statusGlow, poolsOf, FEATURED_SLOTS, claimPresDrop } from './flywheels.js';
-import { makeTown, townHour, lineFor, playerDid, friendsOf, rivalsOf } from './townai.js';
+import { makeTown, townHour, lineFor, playerDid, friendsOf, rivalsOf, breadRound, sydneyMinutes } from './townai.js';
 import { mountCreator, drawPreview, profileOfChoices } from './creatorui.js';
 import { startTitleFx } from './titlefx.js';
 import { applyCreation, defaultChoices, restyle, SALON_PRICE, HOMES as HOMES_, PATHS as PATHS_, STARTER_OUTFITS as OUTFITS_ } from './creator.js';
@@ -102,6 +102,10 @@ const cam = { x: 0, y: 0 };
 let drive = null; const petF = { x: 0, y: 0, dir: 1, phase: 0, moving: false }; let honkT = 0; // driving state (runtime) + pet follower
 const pres = makePresident(7); // President Inu's seeded visit schedule
 const PRES_Q = new URLSearchParams(location.search).get('president'); let presForced = false;
+// ambient life pass: Sydney clock for Taro's bread round (?sydney=HH:MM pins it for proof shots; cosmetic only), refreshed once a second
+const SYD_Q = /^(\d{1,2}):(\d{2})$/.exec(new URLSearchParams(location.search).get('sydney') || ''); let sydMin = 0, sydAt = -1;
+const sydneyNow = () => (globalThis.__sydneyMin ?? (SYD_Q ? +SYD_Q[1] * 60 + +SYD_Q[2] : sydneyMinutes()));
+const walkNow = () => (globalThis.__walkClock ?? Date.now()); // dog walks follow the shared wall clock (same place on every client)
 let vignette = null, miniBase = null;
 const keys = new Set();
 const touch = { x: 0, y: 0, id: null };
@@ -503,15 +507,16 @@ function updateWorld(dt) {
   stepScene(dt); stepConfetti(dt); stepPups(dt);
   { const h = Math.floor(dayPhase(time + dayOffset).hour), pOn = pres.on && pres.stage !== 'away', replan = pOn !== presWas; presWas = pOn; if (state.town && (h !== townH || replan)) { const fresh = h !== townH; townH = h; for (const e of townHour(state.town, { rng, hour: h, day: gameDay(), president: pOn ? pres : null, replan: !fresh })) {
       if (e.kind === 'shopClosed' || e.kind === 'shopOpened' || e.kind === 'job' || e.kind === 'friends' || e.kind === 'rivals') toast(state.town.log[0]?.text || '', ''); } } }
-  for (const n of npcs) { const tf = state.town?.folk[n.name]; if (state.spouse?.name === n.name && !scene) { const H = state.spouse.helps === 'biz' && state.biz?.mine ? LOTS_POS[state.biz.mine.lot] : [17.5, 92.6]; if (H && Math.hypot(n.x - H[0] * TILE, n.y - H[1] * TILE) > 64) { n.x = H[0] * TILE; n.y = H[1] * TILE; n.path = []; } n.wait = Math.max(n.wait || 0, 1); }
+  if (time - sydAt > 1 || time < sydAt) { sydAt = time; sydMin = sydneyNow(); }
+  for (const n of npcs) { const tf = state.town?.folk[n.name], round = n.name === 'Taro' ? breadRound(sydMin) : null; if (tf) tf.round = round; n.bread = !!round?.carrying; if (state.spouse?.name === n.name && !scene) { const H = state.spouse.helps === 'biz' && state.biz?.mine ? LOTS_POS[state.biz.mine.lot] : [17.5, 92.6]; if (H && Math.hypot(n.x - H[0] * TILE, n.y - H[1] * TILE) > 64) { n.x = H[0] * TILE; n.y = H[1] * TILE; n.path = []; } n.wait = Math.max(n.wait || 0, 1); }
     if (n.held > 0) { n.held -= dt; n.moving = false; continue; } // tapped by the player: wait for them to walk up
-    if (amb.ball?.dog === n && amb.ball.state !== 'air') continue; if (n.wag > 0) { n.wag -= dt; n.moving = true; n.phase += dt * 20; continue; } if (n.emote) { n.emote.t -= dt; if (n.emote.t <= 0) n.emote = null; } const arr = updateNpc(n, dt, rng, scene || state.spouse?.name === n.name ? null : (MWd.huddleGoal(MWd.MW.mood, npcs.indexOf(n)) || tf?.goal)); if (tf) { if (arr && !tf.arrived && tf.act !== 'nap' && rng() < 0.3) n.emote = { kind: tf.mood === 'grumpy' ? 'angry' : tf.mood === 'happy' ? 'happy' : 'note', t: 1.6 }; tf.arrived = arr; } }
+    if (amb.ball?.dog === n && amb.ball.state !== 'air') continue; if (n.wag > 0) { n.wag -= dt; n.moving = true; n.phase += dt * 20; continue; } if (n.emote) { n.emote.t -= dt; if (n.emote.t <= 0) n.emote = null; } const arr = updateNpc(n, dt, rng, scene || state.spouse?.name === n.name ? null : (MWd.huddleGoal(MWd.MW.mood, npcs.indexOf(n)) || round?.goal || tf?.goal)); if (tf) { if (arr && !tf.arrived && tf.act !== 'nap' && rng() < 0.3) n.emote = { kind: tf.mood === 'grumpy' ? 'angry' : tf.mood === 'happy' ? 'happy' : 'note', t: 1.6 }; tf.arrived = arr; } }
   { const pet = activePet(state); if (pet && !drive) { if (!petF.id || petF.id !== pet.id) Object.assign(petF, { id: pet.id, x: p.x - 20, y: p.y + 4 }); followStep(petF, p.x - player.dir * 22, p.y + 2, dt); if (petF.love > 0) petF.love -= dt; } else if (drive) Object.assign(petF, { x: p.x, y: p.y }); }
   if (honkT > 0) honkT -= dt;
   if (player.emote) { player.emote.t -= dt; if (player.emote.kind === 'zoomies') { const a = player.emote.t * 5; moveBody(p, Math.cos(a) * 150 * dt, Math.sin(a) * 150 * dt); player.moving = true; player.phase += dt * 20; player.face = Math.cos(a + 1.57) > 0 ? 'right' : 'left'; } if (player.emote.t <= 0) player.emote = null; }
   stepActor(ACT, dt, time, { moving: player.moving || !!drive, busy: !!panel || !!scene });
-  { const vw = innerWidth / ZOOM, vh = innerHeight / ZOOM; stepAlive(ALIVE, dt, { x0: cam.x - vw / 2, y0: cam.y - vh / 2, x1: cam.x + vw / 2, y1: cam.y + vh / 2 }); }
-  for (const e of stepAmbient(amb, dt, p, npcs)) { if (e.kind === 'flush') chirp(); if (e.kind === 'fetched') toast(`${e.who} brought the ball back!`, 'good'); }
+  { const vw = innerWidth / ZOOM, vh = innerHeight / ZOOM; stepAlive(ALIVE, dt, { x0: cam.x - vw / 2, y0: cam.y - vh / 2, x1: cam.x + vw / 2, y1: cam.y + vh / 2 }, Math.random, player.running && !drive ? p : null); }
+  for (const e of stepAmbient(amb, dt, p, npcs, { running: player.running && !drive, hour: dayPhase(time + dayOffset).hour, dark: dayPhase(time + dayOffset).dark })) { if (e.kind === 'flush') chirp(); if (e.kind === 'fetched') toast(`${e.who} brought the ball back!`, 'good'); }
   if (rng() < dt * 0.08) chirp();
   if (player.moving) { stepAcc += dt; if (stepAcc > 0.26) { stepAcc = 0; const tt = MAP[Math.floor(p.y / TILE)]?.[Math.floor(p.x / TILE)]; if (tt === T.GRASS || tt === T.FLOWER) { feel.rustle(p.x, p.y + 10); rustle(); } else { feel.dust(p.x, p.y + 11); footstep(); } } }
   feel.step(dt); document.body.classList.toggle('driving', !!drive); moodTick(dt);
@@ -563,14 +568,15 @@ function renderWorld() {
   const dyn = [...HUB_GATES.map((g) => hubGateProp(g, time)), ...dynamicProps(state, time, myPack(state)), ...presidentProps(pres, time), ...doorProps(time), ...carWorldProps(), ...crewProps(), ...adProps(trend, adRot, adIdx, !!globalThis.__inuNight, time, featuredMap()), ...confettiProps(), ...squareProps(state, time, Math.floor(gameDay() / 7)), ...arcadeProps(time, arcadeTop), ...MWd.statueProps(time, { drawShiba, artLoaded: () => !!ART['shiba-golden'] }), ...MWd.newsProps(time), ...KN.wallProps(KIBBLE_PLAZA.wall, KEN.wall, time, TILE), ...RD.gateProps(KIBBLE_PLAZA.raid, time, TILE), ...MWd.firepitProps(time), ...MWd.plazaSkyProps(time), ...PAB.bureauProps(time, { drawShiba }, state.player)];
   for (const d of dyn) if (d.flat) d.d(ctx);
   const view = { x0: -ox, y0: -oy, x1: -ox + vw, y1: -oy + vh };
-  drawGroundLife(ctx, amb, phase); drawAliveGround(ctx, ALIVE, view, phase); feel.drawGround(ctx);
+  drawGroundLife(ctx, amb, phase, view); drawAliveGround(ctx, ALIVE, view, phase); feel.drawGround(ctx);
   if (player.clickMark && player.pw.pts.length) drawMark(ctx, player.clickMark, time);
-  const actors = [MWd.crierActor(time, artKey), ...npcs.map((n, i) => ({ ...n, npc: true, idx: i, badge: badgeOf(packOfName(state, n.name)) })), ...(drive ? [] : [{ x: state.player.x, y: state.player.y, coat: state.player.coat, outfit: state.wardrobe.equipped, face: player.face, phase: player.phase, moving: player.moving, name: state.player.name, me: true, badge: badgeOf(myPack(state)), emote: player.emote, act: ACT.act, art: artKey(state.player.coat, state.wardrobe.equipped), profile: hasCustomLook(state) ? myProfile() : null }]), ...streetPups(), ...presActors(), ...petActors(), ...crewActors(), ...pupActors(), ...MPL.actors(view, state.player)];
+  const actors = [MWd.crierActor(time, artKey), ...npcs.map((n, i) => ({ ...n, npc: true, idx: i, badge: badgeOf(packOfName(state, n.name)) })), ...(drive ? [] : [{ x: state.player.x, y: state.player.y, coat: state.player.coat, outfit: state.wardrobe.equipped, face: player.face, phase: player.phase, moving: player.moving, name: state.player.name, me: true, badge: badgeOf(myPack(state)), emote: player.emote, act: ACT.act, art: artKey(state.player.coat, state.wardrobe.equipped), profile: hasCustomLook(state) ? myProfile() : null }]), ...streetPups(), ...presActors(), ...petActors(), ...crewActors(), ...pupActors(), ...MPL.actors(view, state.player), ...dogWalkActors(view, walkNow(), artKey)];
   // one depth-sorted list: static props (culled), dynamic props and actors, by ground y
   const L = -ox - 200, Rt = -ox + vw + 200, Tp = -oy - 60, Bt = -oy + vh + 400, list = [];
   for (const p of mapImg.props) if (p.y > Tp && p.y < Bt) list.push(p);
   for (const p of dyn) if (!p.flat) list.push(p);
   for (const p of carProps(amb)) list.push(p);
+  for (const p of catProps(amb, view)) list.push(p); for (const p of leashProps(view, walkNow())) list.push(p);
   for (const a of actors) if (a.x > L && a.x < Rt && a.y > Tp && a.y < Bt) list.push({ y: a.y + 6, a });
   list.sort((p, q) => p.y - q.y);
   for (const it of list) {
@@ -591,19 +597,20 @@ function renderWorld() {
     if (pz) drawPoseFx(ctx, pz, 0, 0, 1.5, time, pz.face);
     KENNEL_TAG.cur = null; if (a.me && LS.wornPin(state) != null) drawWornPin(ctx, LS.wornPin(state), time);
     if (a.worker) { drawVest(ctx, a.face); drawTool(ctx, a.worker); }
+    if (a.bread) drawBreadBasket(ctx, a.face);
     if (mm?.umbrella) MWd.drawUmbrella(ctx, time, a.idx || 0); else if (mm?.zz && !a.emote) MWd.drawZz(ctx, time + (a.idx || 0)); if (a.crier) MWd.drawBell(ctx, time, crierRing > 0);
     if (a.emote) drawEmote(ctx, 0, a.name ? -14 : 0, a.emote.kind, time); ctx.restore();
   }
   feel.drawAir(ctx);
   drawChat(ctx, (id) => { if (id === MWd.CRIER_NAME) { const ca = MWd.crierActor(time, artKey); return { x: ca.x, y: ca.y - 62 }; } if (id === 'me') return drive ? null : { x: state.player.x, y: state.player.y - 60 }; const n = npcs.find((q) => q.name === id); return n ? { x: n.x, y: n.y - (n.pupScale ? 40 * n.pupScale + 10 : 60) - (n.badge || packOfName(state, n.name) ? 8 : 0) } : MPL.anchor(id); }, time);
-  drawSkyLife(ctx, amb, phase); drawAliveSky(ctx, ALIVE, view, phase);
+  drawSkyLife(ctx, amb, phase, view); drawAliveSky(ctx, ALIVE, view, phase);
   const it = !panel && nearestInteractable(state, state.player.x, state.player.y); if (it) feel.bubble(ctx, (it.tx + 0.5) * TILE, (it.ty) * TILE - 6, time);
   guide.drawWorld(ctx, time, state.player);
   ctx.restore();
-  drawAtmosphere(ctx, amb, phase, { x: vw / 2 - ox, y: vh / 2 - oy }, vw, vh, lightsFor(state, phase, homeId()));
+  drawAtmosphere(ctx, amb, phase, { x: vw / 2 - ox, y: vh / 2 - oy }, vw, vh, () => lightsFor(state, phase, homeId()));
   $('#clock').textContent = `${String(Math.floor(phase.hour)).padStart(2, '0')}:${String(Math.floor((phase.hour % 1) * 60)).padStart(2, '0')} ${amb.rain > 0.3 ? 'rain' : phase.label} · ${seasonOf(gameDay())}`;
   if (!vignette || vignette.width !== SW || vignette.height !== SH) { vignette = document.createElement('canvas'); vignette.width = SW; vignette.height = SH; const v = vignette.getContext('2d'), g = v.createRadialGradient(SW / 2, SH / 2, SH * 0.45, SW / 2, SH / 2, SH * 1.05); g.addColorStop(0, 'rgba(18,26,54,0)'); g.addColorStop(1, 'rgba(12,16,34,0.38)'); v.fillStyle = g; v.fillRect(0, 0, SW, SH); }
-  ctx.setTransform(dpr, 0, 0, dpr, 0, 0); MWd.drawWeather(ctx, time, SW, SH, { reduced: matchMedia('(prefers-reduced-motion: reduce)').matches }); ctx.drawImage(vignette, 0, 0);
+  ctx.setTransform(dpr, 0, 0, dpr, 0, 0); MWd.drawWeather(ctx, time, SW, SH, { reduced: reducedMotion() }); ctx.drawImage(vignette, 0, 0);
   minimap(-ox, -oy, vw, vh);
   guide.drawScreen(ctx, ox, oy, ZOOM, time, PAB.signRects()); // the off-screen pointer label steers clear of the sim buildings' signs
 }

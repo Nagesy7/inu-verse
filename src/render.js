@@ -1,4 +1,4 @@
-import { treeProp, extraTreeProps, ALIVE } from './alive.js';
+import { treeProp, extraTreeProps, ALIVE, flagWave } from './alive.js';
 // Pixel-art world rendering: chunky gold-trimmed buildings, navy/gold palette.
 import { DOORS } from './world.js';
 import { TILE, MAP_W, MAP_H, MAP, T, BUILDINGS, PLOTS, NPC_HOMES, STALL_SLOTS, CLUBHOUSE, MALL_BUILDINGS, LEADERS, BRIDGES, DECOR } from './world.js';
@@ -29,10 +29,10 @@ function pixelText(c, text, cx, cy, maxW, size, col, shadowCol = INK) {
   c.fillStyle = col; c.fillText(text, Math.round(cx), Math.round(cy)); return s;
 }
 
-function flag(c, x, y) { // pole base at (x,y)
+function flag(c, x, y) { // pole base at (x,y); the cloth ripples with the shared wind (alive.js), the tip moving most
   R(c, x - 1, y - 30, 3, 30, GOLD_D); R(c, x - 1, y - 30, 1, 30, GOLD_L); R(c, x - 3, y - 34, 6, 5, GOLD_L);
-  R(c, x + 2, y - 30, 20, 12, GOLD); R(c, x + 18, y - 27, 6, 6, GOLD); R(c, x + 2, y - 19, 20, 2, GOLD_D);
-  paw(c, x + 7, y - 28, 1.6, NAVY);
+  const [wx, wy] = flagWave(x); for (let k = 0; k < 4; k++) { const f = (k + 1) / 4, ox = Math.round(wx * f * 0.5), oy = Math.round(wy * f); R(c, x + 2 + k * 5 + ox, y - 30 + oy, 5, 12, GOLD); R(c, x + 2 + k * 5 + ox, y - 19 + oy, 5, 2, GOLD_D); }
+  R(c, x + 18 + wx, y - 27 + wy, 6, 6, GOLD); paw(c, x + 7, y - 28 + Math.round(wy * 0.25), 1.6, NAVY);
 }
 function pottedTree(c, x, y, s = 1) { // base centre
   R(c, x - 6 * s, y - 8 * s, 12 * s, 8 * s, GOLD_D); R(c, x - 6 * s, y - 8 * s, 12 * s, 2 * s, GOLD); R(c, x - 5 * s, y - 6 * s, 10 * s, 5 * s, '#3a2a1e');
@@ -171,7 +171,11 @@ function drawBuildingArt(c, id, fx, fy, fw, fh) {
 const sampleCv = {};
 function artPixel(id, ix, iy) { const im = BIMG[id]; if (!sampleCv[id]) { const [cv, x] = mk(im.width, im.height); x.drawImage(im, 0, 0); sampleCv[id] = x; } const d = sampleCv[id].getImageData(Math.max(0, Math.min(im.width - 1, ix | 0)), Math.max(0, Math.min(im.height - 1, iy | 0)), 1, 1).data; return `rgb(${d[0]},${d[1]},${d[2]})`; }
 // most common colour along the patch's outer edge (top strip + both side columns) = the wall colour around the old door
-function wallColour(id, ix0, ix1, iy0, iy1) { artPixel(id, 0, 0); const x = sampleCv[id], im = BIMG[id], cnt = new Map(); let best = null, bn = 0;
+// memoised: the door patch's wall colour never changes for a given art image, but sampling it costs ~180 getImageData
+// reads, and drawDoors runs for every on-screen building every frame (was ~13% of a street frame)
+const wallMemo = new Map();
+function wallColour(id, ix0, ix1, iy0, iy1) { const key = `${id}|${BIMG[id]?.src}|${ix0}|${ix1}|${iy0}|${iy1}`; let v = wallMemo.get(key); if (v === undefined) { v = wallColourRaw(id, ix0, ix1, iy0, iy1); wallMemo.set(key, v); } return v; }
+function wallColourRaw(id, ix0, ix1, iy0, iy1) { artPixel(id, 0, 0); const x = sampleCv[id], im = BIMG[id], cnt = new Map(); let best = null, bn = 0;
   const add = (px, py) => { const d = x.getImageData(Math.max(0, Math.min(im.width - 1, px | 0)), Math.max(0, Math.min(im.height - 1, py | 0)), 1, 1).data, k = (d[0] >> 3) + ',' + (d[1] >> 3) + ',' + (d[2] >> 3), e = cnt.get(k) || { n: 0, c: `rgb(${d[0]},${d[1]},${d[2]})` }; e.n++; cnt.set(k, e); if (e.n > bn) { bn = e.n; best = e.c; } };
   for (let px = ix0; px <= ix1; px++) { add(px, iy0 - 1); add(px, iy0 - 3); } for (let py = iy0; py < iy1; py++) { add(ix0 - 2, py); add(ix1 + 2, py); } return best; }
 function doorFace(c, dcx, base, accent) { // front double door with striped awning + steps (world px)
@@ -181,8 +185,9 @@ function doorFace(c, dcx, base, accent) { // front double door with striped awni
 function shopWindow(c, cx, base, wall) { R(c, cx - 26, base - 70, 52, 66, wall); for (let y = base - 70, r = 0; y < base - 4; y += 8, r++) { R(c, cx - 26, y + 7, 52, 1, 'rgba(0,0,0,.16)'); for (let x = cx - 26 + (r % 2 ? 8 : 0); x < cx + 26; x += 16) R(c, x, y, 1, 8, 'rgba(0,0,0,.12)'); } // brick courses R(c, cx - 26, base - 4, 52, 4, '#b8b0a2');
   R(c, cx - 21, base - 58, 42, 40, INK); R(c, cx - 19, base - 56, 38, 36, GOLD_D); R(c, cx - 17, base - 54, 34, 32, '#cfeefa'); R(c, cx - 15, base - 52, 4, 12, '#ffffff');
   R(c, cx - 10, base - 34, 8, 10, '#c8323c'); R(c, cx + 2, base - 38, 10, 14, GOLD); R(c, cx + 4, base - 35, 6, 2, '#fff6ea'); R(c, cx - 19, base - 22, 38, 3, GOLD); R(c, cx - 21, base - 18, 42, 8, '#5e3c22'); for (let x = cx - 18; x < cx + 18; x += 5) R(c, x, base - 21, 3, 3, x % 2 ? '#ff7080' : '#ffd84a'); }
+const porchMemo = new Map(), porchWall = (id, x, y) => { const k = `${id}|${BIMG[id]?.src}|${x}|${y}`; let v = porchMemo.get(k); if (v === undefined) porchMemo.set(k, (v = artPixel(id, x, y))); return v; };
 function sidePorch(c, b, side) { const base = (b.y + b.h) * TILE, x = side === 'left' ? b.x * TILE - 30 : (b.x + b.w) * TILE + 2, im = BIMG[b.id];
-  const wall = im ? artPixel(b.id, side === 'left' ? 6 : im.width - 7, im.height - 40) : '#c8a878', th = THEMES[b.id] || THEMES.shop;
+  const wall = im ? porchWall(b.id, side === 'left' ? 6 : im.width - 7, im.height - 40) : '#c8a878', th = THEMES[b.id] || THEMES.shop;
   R(c, x - 2, base - 58, 32, 56, INK); R(c, x, base - 56, 28, 52, wall); R(c, x, base - 56, 28, 3, 'rgba(255,255,255,.25)');
   R(c, x - 5, base - 66, 38, 10, INK); R(c, x - 4, base - 65, 36, 8, th.roof || '#5a2a1a'); R(c, x - 4, base - 58, 36, 2, GOLD);
   R(c, x + 6, base - 46, 16, 40, INK); R(c, x + 7, base - 45, 14, 38, '#8a5a30'); R(c, x + 9, base - 43, 10, 12, '#fff3c0'); R(c, x + (side === 'left' ? 9 : 17), base - 26, 2, 5, GOLD_L);

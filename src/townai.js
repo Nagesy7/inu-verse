@@ -94,6 +94,18 @@ function dayEnd(town, ev, rng) { for (const f of Object.values(town.folk)) {
     // unhappy at work for a while -> change job (shop owners keep theirs)
     if (!f.shop && f.needs.fun < 0.25 && f.needs.money > 0.4 && rng() < 0.5) { const opts = Object.keys(JOB_SPOTS).filter((j) => j !== f.job && !['florist', 'baker'].includes(j)); const nj = opts[Math.floor(rng() * opts.length)]; note(town, `${f.name} quit being a ${f.job} and became a ${nj}!`, f.name); ev.push({ kind: 'job', who: f.name, from: f.job, to: nj }); f.job = nj; }
     f.workedToday = 0; } }
+// ---- Taro's morning bread round (Sydney time) ----
+// Taro, who owns Taro Bakes on lot L3, walks the same delivery round every morning by the real Australia/Sydney clock:
+// loads up at the bakery at 06:00, then drops fresh bread at the café, the market, the plaza and the mall, half an hour
+// per stop, and is back at the bakery with an empty basket at 08:30. Purely cosmetic: it only steers where he walks.
+export const BREAD_ROUND = Object.freeze({ who: 'Taro', from: 6 * 60, slot: 30, stops: Object.freeze(['L3', 'cafe', 'market', 'plaza', 'mall', 'L3']) });
+const SYD = typeof Intl !== 'undefined' ? new Intl.DateTimeFormat('en-GB', { timeZone: 'Australia/Sydney', hour: '2-digit', minute: '2-digit', hourCycle: 'h23' }) : null;
+// minutes since midnight in Australia/Sydney (DST-aware) for an epoch ms
+export function sydneyMinutes(now = Date.now()) { const p = SYD.formatToParts(new Date(now)), h = +p.find((x) => x.type === 'hour').value, m = +p.find((x) => x.type === 'minute').value; return (h % 24) * 60 + m; }
+// where Taro's round has him at a Sydney minute: null outside the round, else { stop, idx, goal [tx,ty], carrying }
+export function breadRound(min) { const R = BREAD_ROUND, k = Math.floor((min - R.from) / R.slot); if (min < R.from || k >= R.stops.length) return null;
+  const stop = R.stops[k]; return { stop, idx: k, goal: PLACES[stop], carrying: k < R.stops.length - 1 }; }
+const STOP_NAME = { L3: 'the bakery', cafe: 'the café', market: 'the market', plaza: 'the plaza', mall: 'the mall' };
 // things the player did, so townsfolk can talk about them
 export function playerDid(town, text) { note(town, text, 'you'); }
 const ACT_LINE = { work: (f) => `On shift as a ${f.job}.`, eat: () => 'Grabbing a bite at the café.', shop: () => 'Window shopping at the mall!', fish: () => 'Fishing by the pond. Shh.', visit: (f) => (f.visiting ? `Off to see ${f.visiting}.` : 'Just visiting friends.'), nap: () => 'Zzz... so sleepy.', event: () => 'The plaza party is on!', president: () => 'President Inu is here!!' };
@@ -102,4 +114,5 @@ const MOOD_OPEN = { happy: ['What a day!', 'Feeling great!'], ok: ['Hey there.',
 export function lineFor(town, name, rng = Math.random) { const f = town.folk[name]; if (!f) return null; const open = MOOD_OPEN[f.mood][Math.floor(rng() * 2)];
   const mine = town.log.find((l) => l.about === 'you'), gossip = town.log.find((l) => l.about !== 'you' && !l.text.startsWith(name));
   const tail = mine && rng() < 0.6 ? (f.mood === 'grumpy' ? `I heard ${mine.text.replace(/^You /, 'you ')} Big deal.` : `I heard ${mine.text.replace(/^You /, 'you ')} Nice!`) : gossip ? `Did you hear? ${gossip.text}` : rivalsOf(town, name).length ? `Don't get me started on ${rivalsOf(town, name)[0]}.` : '';
-  return `${open} ${ACT_LINE[f.act](f)} ${tail}`.trim(); }
+  const doing = f.round ? (f.round.carrying ? (f.round.idx === 0 ? 'Loading up the morning bread!' : `Fresh bread for ${STOP_NAME[f.round.stop]}!`) : 'Bread round done. Back to the ovens.') : ACT_LINE[f.act](f);
+  return `${open} ${doing} ${tail}`.trim(); }

@@ -3,6 +3,7 @@
 // Slots are world-space rects; tapping one opens that coin in Launch Hall.
 import { TILE, BUILDINGS, MALL_BUILDINGS } from './world.js';
 import { price } from './curve.js';
+import { flagWave } from './alive.js';
 import { drawSeal } from './verified.js'; // Verified Launch seal: only on coins whose creator opted in AND all four checks passed
 const T = TILE;
 export const WINDOW = 30; // history points used for % change
@@ -48,7 +49,7 @@ export function drawAd(c, s, trend, rot, crewIdx, night, t, featured) {
   else if (s.kind === 'banner') { c.fillStyle = '#c9a23a'; c.fillRect(s.x - 2, s.y - 2, s.w + 4, 3); glowOn(c, night, coin.color); c.fillStyle = coin.color; c.fillRect(s.x, s.y, s.w, s.h - 6); c.shadowBlur = 0;
     c.beginPath(); c.moveTo(s.x, s.y + s.h - 6); c.lineTo(s.x + s.w / 2, s.y + s.h); c.lineTo(s.x + s.w, s.y + s.h - 6); c.fill(); drawLogo(c, s.x + s.w / 2, s.y + 9, 6, coin);
     c.fillStyle = '#fff'; c.font = '5px Silkscreen, monospace'; c.fillText(coin.ticker.slice(0, 4), s.x + s.w / 2, s.y + 24); c.fillStyle = '#141a2e'; c.fillRect(s.x + 1, s.y + 27, s.w - 2, 7); c.fillStyle = pc; c.font = '4px Silkscreen, monospace'; c.fillText(pctTxt(coin.pct), s.x + s.w / 2, s.y + 32.5); if (coin.verified) drawSeal(c, s.x + s.w, s.y + 2, 3.5); }
-  else if (s.kind === 'flag') { c.fillStyle = '#9c7424'; c.fillRect(s.x - 2, s.y - 2, 2, s.h + 6); const wv = Math.sin(t * 3 + s.x) * 1.5; glowOn(c, night, coin.color);
+  else if (s.kind === 'flag') { c.fillStyle = '#9c7424'; c.fillRect(s.x - 2, s.y - 2, 2, s.h + 6); const wv = flagWave(s.x)[1]; glowOn(c, night, coin.color);
     c.fillStyle = coin.color; c.beginPath(); c.moveTo(s.x, s.y); c.lineTo(s.x + s.w, s.y + wv); c.lineTo(s.x + s.w, s.y + s.h + wv); c.lineTo(s.x, s.y + s.h); c.fill(); c.shadowBlur = 0; c.fillStyle = '#fff'; c.font = '5px Silkscreen, monospace'; c.fillText(coin.ticker.slice(0, 5), s.x + s.w / 2, s.y + 7 + wv / 2); c.fillStyle = pc; c.font = '4px Silkscreen, monospace'; c.fillText(pctTxt(coin.pct), s.x + s.w / 2, s.y + 13 + wv / 2); if (coin.verified) drawSeal(c, s.x + s.w, s.y + wv, 3); }
   else if (s.list) { // Launch Hall trending sign + mall facade LED ticker: top 3 side by side
     glowOn(c, night, '#ffcf3a'); c.fillStyle = '#141a2e'; c.fillRect(s.x - 2, s.y - 2, s.w + 4, s.h + 4); c.shadowBlur = 0; c.fillStyle = '#c9a23a'; c.fillRect(s.x - 2, s.y - 2, s.w + 4, 1); c.fillRect(s.x - 2, s.y + s.h + 1, s.w + 4, 1);

@@ -6,6 +6,7 @@ import { ensureBiz, TYPES, rivalAt, PREMIUM_LOOKS } from './biz.js';
 import { sponsorOf } from './fly5.js';
 import { windowShows, interiorOf } from './interiors.js';
 import { windowMini } from './interiorart.js';
+import { drawAwningFlap } from './alive.js';
 const N = 16, INK = '#141a2e';
 const R = (c, x, y, w, h, col) => { c.fillStyle = col; c.fillRect(Math.round(x), Math.round(y), w, h); };
 function txt(c, s, x, y, size = 7, col = '#fff', align = 'center') { c.font = `${size}px Silkscreen, monospace`; c.textAlign = align; c.fillStyle = INK; c.fillText(s, x, y + 1); c.fillStyle = col; c.fillText(s, x, y); }
@@ -27,7 +28,7 @@ function stall(c, b, label, awn) { const x = b.x * TILE, y = b.y * TILE, w = b.w
   R(c, x + 4, y + 8, 5, h - 8, INK); R(c, x + w - 9, y + 8, 5, h - 8, INK); R(c, x + 5, y + 8, 3, h - 8, '#8a5a2a'); R(c, x + w - 8, y + 8, 3, h - 8, '#8a5a2a'); // posts
   R(c, x + 10, y + 34, w - 20, 20, '#3a2a1e'); R(c, x + 10, y + 34, w - 20, 2, '#2a1a10'); for (let i = 0; i < w - 20; i += 22) R(c, x + 12 + i, y + 38, 18, 12, ['#6a8a3a', '#8a5a2a', '#6a4a7a'][(i / 22) % 3 | 0]); // back shelves
   R(c, x - 2, y + 2, w + 4, 10, INK); R(c, x, y + 4, w, 6, '#6a4422'); R(c, x, y + 4, w, 1, '#a8723a'); // roof beam
-  for (let i = 0; i < w; i += 16) { R(c, x + i, y + 10, 8, 18, awn); R(c, x + i + 8, y + 10, 8, 18, '#f4ead2'); R(c, x + i, y + 10, 16, 2, '#ffffff40'); R(c, x + i + 1, y + 28, 6, 3, awn); R(c, x + i + 9, y + 28, 6, 3, '#f4ead2'); R(c, x + i + 2, y + 31, 4, 1, INK); R(c, x + i + 10, y + 31, 4, 1, INK); } // scalloped awning
+  for (let i = 0; i < w; i += 16) { R(c, x + i, y + 10, 8, 18, awn); R(c, x + i + 8, y + 10, 8, 18, '#f4ead2'); R(c, x + i, y + 10, 16, 2, '#ffffff40'); } drawAwningFlap(c, x, y + 28, w, 8, awn, '#f4ead2', b.x); // striped awning + its scalloped valance, which flutters in the wind
   R(c, x, y + 26, w, 2, 'rgba(0,0,0,.25)');
   const cy = y + h - 36; R(c, x + 2, cy - 2, w - 4, 38, INK); R(c, x + 4, cy, w - 8, 34, '#b07a44'); R(c, x + 4, cy, w - 8, 4, '#d8a060'); for (let k = cy + 10; k < cy + 34; k += 8) R(c, x + 4, k, w - 8, 1, '#8a5a2a'); R(c, x + 4, cy + 30, w - 8, 4, '#7a4e22'); // planked counter
   R(c, x + w / 2 - 44, y - 16, 88, 20, INK); R(c, x + w / 2 - 42, y - 14, 84, 16, n ? '#fff6dc' : '#fff1d0'); R(c, x + w / 2 - 42, y - 14, 84, 2, '#ffffff'); txt(c, label, x + w / 2, y - 3, 7, '#6a3a10'); // sign
@@ -113,7 +114,7 @@ function fruitTree(c, x, y, fruit, ready, i) { R(c, x + 6, y + 4, 22, 5, 'rgba(0
 function storefront(c, L, m, rival, t, sponsor = null) { const x = L.x * TILE, y = L.y * TILE, w = L.w * TILE, h = L.h * TILE; const type = m ? m.type : rival?.type, T = TYPES[type], col = T ? T.color : '#9aa0b0', look = m?.look;
   R(c, x - 4, y - 8, w + 8, 18, INK); R(c, x - 2, y - 6, w + 4, 14, look === 'gold' ? '#c9a23a' : look === 'marble' ? '#e8e4dc' : '#5a4a6a');
   R(c, x, y + 8, w, h - 8, look === 'marble' ? '#f2efe8' : look === 'gold' ? '#2a2440' : look === 'sakura' ? '#ffd6e4' : '#e8dcc4'); for (let r = y + 16; r < y + h; r += 8) R(c, x, r, w, 1, 'rgba(0,0,0,.08)');
-  if (T) { for (let i = 0; i < w; i += 16) { R(c, x + i, y + 36, 8, 14, col); R(c, x + i + 8, y + 36, 8, 14, '#fff'); } R(c, x, y + 50, w, 3, INK); }
+  if (T) { for (let i = 0; i < w; i += 16) { R(c, x + i, y + 36, 8, 14, col); R(c, x + i + 8, y + 36, 8, 14, '#fff'); } R(c, x, y + 50, w, 3, INK); drawAwningFlap(c, x, y + 53, w, 8, col, '#fff', L.x); }
   R(c, x - 2, y + 8, 2, h - 8, INK); R(c, x + w, y + 8, 2, h - 8, INK); R(c, x - 2, y + h - 6, w + 4, 6, '#b8ac98'); R(c, x - 2, y + h - 1, w + 4, 1, INK); R(c, x, y + 8, w, 3, '#00000030'); // outline, plinth, cornice shade
   R(c, x + 8, y + 54, 64, h - 58, INK); R(c, x + 9, y + 55, 62, h - 60, '#f4ead2'); R(c, x + 10, y + 56, 60, h - 62, T ? (NIGHT() ? '#ffd890' : '#bfe6ff') : '#6a7080'); R(c, x + 10, y + 56, 60, 3, '#fff'); if (m && windowShows(m) && globalThis.document) { try { const sm = c.imageSmoothingEnabled; c.imageSmoothingEnabled = false; c.drawImage(windowMini(m.type, interiorOf(m.type, m), 120, (h - 62) * 2, m.interior?.rev | 0), x + 10, y + 56, 60, h - 62); c.imageSmoothingEnabled = sm; c.fillStyle = 'rgba(191,230,255,.25)'; c.fillRect(x + 10, y + 56, 60, h - 62); } catch {} } R(c, x + 39, y + 56, 2, h - 62, '#f4ead2'); R(c, x + 6, y + h - 8, 68, 3, '#c8b490'); R(c, x + w - 56, y + 56, 44, h - 62, INK); R(c, x + w - 54, y + 58, 40, h - 64, T ? '#7a4a2a' : '#4a5060'); R(c, x + w - 50, y + 62, 32, 12, T ? (NIGHT() ? '#ffd890' : '#a8d4f4') : '#3a4050'); if (T) { lantern(c, x + w - 62, y + 66); lantern(c, x + w - 6, y + 66); } R(c, x + w - 22, y + 84, 4, 4, '#ffd23a');
   if (T) for (let k = 0; k < 4; k++) R(c, x + 16 + k * 13, y + h - 20 - (k % 2) * 6, 8, 8, ['#ffd86a', '#e87aa8', '#9fd8c0', '#c08a4a'][k]);
