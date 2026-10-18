@@ -1,0 +1,136 @@
+{
+  "url": "http://localhost:8711/",
+  "tag": "after",
+  "when": "2026-10-18T15:09:04.531Z",
+  "method": "rAF frames counted over 3 s, median of 3 runs, in-game 11:00, no rain, camera locked on area",
+  "results": {
+    "844x390 street @1x": {
+      "median": 60.1,
+      "runs": [
+        60.1,
+        60.1,
+        60.2
+      ]
+    },
+    "844x390 sakuralane @1x": {
+      "median": 60.1,
+      "runs": [
+        59.4,
+        60.1,
+        60.2
+      ]
+    },
+    "844x390 bakery @1x": {
+      "median": 60.2,
+      "runs": [
+        60.1,
+        60.2,
+        60.2
+      ]
+    },
+    "844x390 park @1x": {
+      "median": 60.1,
+      "runs": [
+        60.1,
+        60.1,
+        60.2
+      ]
+    },
+    "844x390 street @4x": {
+      "median": 30.5,
+      "runs": [
+        29.5,
+        30.5,
+        31.4
+      ]
+    },
+    "844x390 sakuralane @4x": {
+      "median": 22.9,
+      "runs": [
+        21.9,
+        22.9,
+        29.1
+      ]
+    },
+    "844x390 bakery @4x": {
+      "median": 24.2,
+      "runs": [
+        22.6,
+        24.2,
+        24.5
+      ]
+    },
+    "844x390 park @4x": {
+      "median": 29.3,
+      "runs": [
+        29.1,
+        29.3,
+        30
+      ]
+    },
+    "667x375 street @1x": {
+      "median": 60.1,
+      "runs": [
+        60.1,
+        60.1,
+        60.2
+      ]
+    },
+    "667x375 sakuralane @1x": {
+      "median": 60.1,
+      "runs": [
+        60.1,
+        60.1,
+        60.1
+      ]
+    },
+    "667x375 bakery @1x": {
+      "median": 60.1,
+      "runs": [
+        60.1,
+        60.1,
+        60.2
+      ]
+    },
+    "667x375 park @1x": {
+      "median": 60.1,
+      "runs": [
+        60,
+        60.1,
+        60.2
+      ]
+    },
+    "667x375 street @4x": {
+      "median": 31.5,
+      "runs": [
+        24.5,
+        31.5,
+        32.9
+      ]
+    },
+    "667x375 sakuralane @4x": {
+      "median": 31.1,
+      "runs": [
+        30.5,
+        31.1,
+        33.7
+      ]
+    },
+    "667x375 bakery @4x": {
+      "median": 29.4,
+      "runs": [
+        24.4,
+        29.4,
+        31.1
+      ]
+    },
+    "667x375 park @4x": {
+      "median": 32.3,
+      "runs": [
+        28.2,
+        32.3,
+        32.8
+      ]
+    }
+  }
+}

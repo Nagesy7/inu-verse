@@ -1,0 +1,22 @@
+Ambient life pass - FPS before/after (LOCAL dev server, python http.server, headless Chromium, DPR 2, touch, phone landscape)
+NOT live: no deploy was made (deploys batched later). before = origin/master e8e0c66 (incl. Sim Phase 6), after = ambient commit on top.
+Method: rAF frames over 3 s, median of 3 runs (recheck: 5 runs), in-game 11:00, no rain, camera locked. 1x results all ~60 (vsync cap).
+
+area @4x CPU throttle            before  after
+844x390 street @4x                21.7   30.5
+844x390 sakuralane @4x            29.5   22.9
+844x390 bakery @4x                23.6   24.2
+844x390 park @4x                  29.5   29.3
+667x375 street @4x                22.2   31.5
+667x375 sakuralane @4x            32.4   31.1
+667x375 bakery @4x                33.9   29.4
+667x375 park @4x                  31.1   32.3
+
+recheck (5 runs, noisy areas)
+844x390 sakuralane @4x            27.5   34.6
+844x390 bakery @4x                28.1   31.8
+667x375 sakuralane @4x            35.4     41
+667x375 bakery @4x                31.3   35.6
+
+Cheap render wins in this pass: memoised door-patch wall colour in render.js (was ~13% of a street frame in getImageData), Weekly Pool Board rebuilt only when inputs change, night light list built lazily, one cached reduced-motion MediaQueryList (was matchMedia per tree per frame), ground/sky life culled to the view.
+Headless numbers are noisy run to run (+/-5 fps); treat single-area swings under that as noise.

@@ -1,0 +1,88 @@
+{
+  "url": "http://localhost:8712/",
+  "tag": "after",
+  "when": "2026-10-18T15:12:13.324Z",
+  "method": "rAF frames counted over 3 s, median of 5 runs, in-game 11:00, no rain, camera locked on area",
+  "results": {
+    "844x390 sakuralane @1x": {
+      "median": 60.1,
+      "runs": [
+        59.1,
+        60.1,
+        60.1,
+        60.1,
+        60.2
+      ]
+    },
+    "844x390 bakery @1x": {
+      "median": 60.1,
+      "runs": [
+        59.9,
+        60.1,
+        60.1,
+        60.1,
+        60.1
+      ]
+    },
+    "844x390 sakuralane @4x": {
+      "median": 27.5,
+      "runs": [
+        24.6,
+        24.9,
+        27.5,
+        27.9,
+        28.4
+      ]
+    },
+    "844x390 bakery @4x": {
+      "median": 28.1,
+      "runs": [
+        25.5,
+        27.2,
+        28.1,
+        29,
+        29.6
+      ]
+    },
+    "667x375 sakuralane @1x": {
+      "median": 60.1,
+      "runs": [
+        59.7,
+        60.1,
+        60.1,
+        60.1,
+        60.2
+      ]
+    },
+    "667x375 bakery @1x": {
+      "median": 60.1,
+      "runs": [
+        60.1,
+        60.1,
+        60.1,
+        60.1,
+        60.1
+      ]
+    },
+    "667x375 sakuralane @4x": {
+      "median": 35.4,
+      "runs": [
+        29.5,
+        35.2,
+        35.4,
+        39,
+        40.2
+      ]
+    },
+    "667x375 bakery @4x": {
+      "median": 31.3,
+      "runs": [
+        30.4,
+        31.2,
+        31.3,
+        32.9,
+        34.8
+      ]
+    }
+  }
+}

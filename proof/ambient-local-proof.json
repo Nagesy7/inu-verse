@@ -1,0 +1,93 @@
+{
+  "url": "http://localhost:8711/",
+  "label": "local",
+  "when": "2026-10-18T15:17:32.539Z",
+  "shots": [
+    {
+      "file": "proof/ambient-local-cat-morning-bakery-844x390.png",
+      "note": "Miso naps at the sunny east end of the Taro Bakes awning (in-game 08:00); awning valance flutters"
+    },
+    {
+      "file": "proof/ambient-local-cat-afternoon-bakery-844x390.png",
+      "note": "in-game 17:00: Miso has padded to the west end"
+    },
+    {
+      "file": "proof/ambient-local-cat-market-844x390.png",
+      "note": "Kinako on the market stall roof, striped valance in the wind"
+    },
+    {
+      "file": "proof/ambient-local-dogwalk-844x390.png",
+      "note": "seeded wall-clock dog walk: Sumi walking Pip (same position on every client at the same moment)"
+    },
+    {
+      "file": "proof/ambient-local-taro-bread-round-844x390.png",
+      "note": "Taro on his 06:40 Sydney-time bread drop at the cafe, basket in paw"
+    },
+    {
+      "file": "proof/ambient-local-birds-before-sprint-844x390.png",
+      "note": "ground bird on its patch before the sprint"
+    },
+    {
+      "file": "proof/ambient-local-birds-scatter-844x390.png",
+      "note": "sprinting past: the birds scatter away from you"
+    },
+    {
+      "file": "proof/ambient-local-birds-returned-844x390.png",
+      "note": "a few seconds later they have glided back to their patch"
+    },
+    {
+      "file": "proof/ambient-local-reduced-motion-bakery-844x390.png",
+      "note": "prefers-reduced-motion: no sway, static scallops, no fly-overs"
+    },
+    {
+      "file": "proof/ambient-local-cat-morning-bakery-667x375.png",
+      "note": "Miso naps at the sunny east end of the Taro Bakes awning (in-game 08:00); awning valance flutters"
+    },
+    {
+      "file": "proof/ambient-local-cat-afternoon-bakery-667x375.png",
+      "note": "in-game 17:00: Miso has padded to the west end"
+    },
+    {
+      "file": "proof/ambient-local-cat-market-667x375.png",
+      "note": "Kinako on the market stall roof, striped valance in the wind"
+    },
+    {
+      "file": "proof/ambient-local-dogwalk-667x375.png",
+      "note": "seeded wall-clock dog walk: Sumi walking Pip (same position on every client at the same moment)"
+    },
+    {
+      "file": "proof/ambient-local-taro-bread-round-667x375.png",
+      "note": "Taro on his 06:40 Sydney-time bread drop at the cafe, basket in paw"
+    },
+    {
+      "file": "proof/ambient-local-birds-before-sprint-667x375.png",
+      "note": "ground bird on its patch before the sprint"
+    },
+    {
+      "file": "proof/ambient-local-birds-scatter-667x375.png",
+      "note": "sprinting past: the birds scatter away from you"
+    },
+    {
+      "file": "proof/ambient-local-birds-returned-667x375.png",
+      "note": "a few seconds later they have glided back to their patch"
+    },
+    {
+      "file": "proof/ambient-local-reduced-motion-bakery-667x375.png",
+      "note": "prefers-reduced-motion: no sway, static scallops, no fly-overs"
+    }
+  ],
+  "errors": [],
+  "taro": {
+    "stop": "cafe",
+    "idx": 1,
+    "goal": [
+      6,
+      19
+    ],
+    "carrying": true
+  },
+  "birds-844x390": "fly,ground,ground,ground,ground,ground,ground,ground,ground,ground",
+  "birds-later-844x390": "ground,ground,ground,ground,ground,ground,ground,ground,ground,ground",
+  "birds-667x375": "fly,ground,ground,ground,ground,ground,ground,ground,ground,ground",
+  "birds-later-667x375": "ground,ground,ground,ground,ground,ground,ground,ground,ground,ground"
+}
