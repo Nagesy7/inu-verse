@@ -1,0 +1,102 @@
+{
+ "url": "https://inu-verse-tawny.vercel.app/",
+ "inventory": {
+  "sofa": 1,
+  "rug": 1,
+  "lamp": 1,
+  "plant": 1,
+  "table": 1,
+  "tv": 1
+ },
+ "claim": {
+  "ok": true
+ },
+ "layoutA": [
+  [
+   "rug",
+   3,
+   3,
+   0
+  ],
+  [
+   "sofa",
+   3,
+   1,
+   0
+  ],
+  [
+   "table",
+   4,
+   3,
+   0
+  ],
+  [
+   "lamp",
+   8,
+   1,
+   0
+  ],
+  [
+   "plant",
+   0,
+   6,
+   0
+  ],
+  [
+   "tv",
+   7,
+   5,
+   1
+  ]
+ ],
+ "buildbarA": {
+  "bar": [
+   538,
+   58,
+   838,
+   384
+  ],
+  "roomRight": 457,
+  "roomBottom": 378,
+  "cell": 38,
+  "side": true
+ },
+ "homeId": "hlmn8dooxxj84",
+ "B_list": [
+  {
+   "name": "Pup4101",
+   "h": "hlmn8dooxxj84"
+  }
+ ],
+ "B_visiting": {
+  "shared": "Biscuit",
+  "items": 6
+ },
+ "B_linkRefused": [
+  "Links are not allowed in the guestbook."
+ ],
+ "B_signed": {
+  "i": "1e2c2cc0b09b",
+  "name": "Mochi",
+  "text": "Love the rug and the cosy lamp! Woof from Mochi",
+  "at": "2026-10-18T08:25:00.284Z"
+ },
+ "B_rateLimited": [
+  "You just signed this guestbook. Try again in a minute."
+ ],
+ "api_after_sign": {
+  "name": "Biscuit",
+  "items": 6,
+  "book": [
+   [
+    "Mochi",
+    "Love the rug and the cosy lamp! Woof from Mochi"
+   ]
+  ]
+ },
+ "A_book": [
+  "Mochi Oct 18 DeleteLove the rug and the cosy lamp! Woof from Mochi"
+ ],
+ "api_after_delete": 0,
+ "errors": []
+}
