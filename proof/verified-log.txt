@@ -1,0 +1,42 @@
+saved proof/verified-optin-register-844x390.png
+[844x390] register opt-in checkbox present=true checked=false
+saved proof/verified-optin-create-844x390.png
+[844x390] create-flow opt-in checkbox present=true
+[844x390] live registry: {"coins":0,"optedIn":0}
+[844x390] live GET /api/coins?verified=<$KIBBLE, not opted in>: {"status":200,"body":{"verified":{"4VE9sy4fEMJdZ6i7MkYPbnqDJd2oqzJQmg44WJ3opump":null},"ttlMs":900000,"snipeSlots":5}}
+[844x390] live GET /api/coins?news=1: {"status":200,"body":{"news":[],"gapS":600}}
+[844x390] crier announced: ["TestFixtureVerifiedPass11111111111111111111:fixture"] banner="Crier Barkley · THE DAILY BONE · TEST FIXTURE EXTRA! $TESTPUP (Fixture Pup) earns the Verified Launch badge: all four checks passed! $TESTPUP on pump.fun ↗"
+saved proof/verified-crier-headline-844x390.png
+saved proof/verified-ad-launchhall-sign-844x390.png
+saved proof/verified-ad-billboard-844x390.png
+[844x390] billboard showing verified coin: true
+[844x390] tap billboard -> panel={"kind":"launch","coin":"TestFixtureVerifiedPass11111111111111111111","vfOpen":true}
+saved proof/verified-card-breakdown-844x390.png
+saved proof/verified-card-breakdown-sources-844x390.png
+[844x390] card badge text: Verified Launch: checks passed at 18 Oct, 11:51 pm AEDT
+saved proof/verified-newspaper-card-844x390.png
+saved proof/verified-board-844x390.png
+[844x390] board rows: ["$TESTPUP => Verified Launch: checks passed at 18 Oct, 11:51 pm AEDT","$TESTREV => Verified Launch revoked at 18 Oct, 11:38 pm AEDT","$TESTNON => (nothing shown)"]
+saved proof/verified-revoked-fixture-844x390.png
+[844x390] revoked: Revoked at 18 Oct, 11:38 pm AEDT: Top 10 holders each under 1% of supply: 1 of the top 10 holders has 1% or more (largest: Fixt…ale1 with 3.4%) · first verified 18 Oct, 10:18 pm AEDT
+saved proof/verified-optin-register-667x375.png
+[667x375] register opt-in checkbox present=true checked=false
+saved proof/verified-optin-create-667x375.png
+[667x375] create-flow opt-in checkbox present=true
+[667x375] live registry: {"coins":0,"optedIn":0}
+[667x375] live GET /api/coins?verified=<$KIBBLE, not opted in>: {"status":200,"body":{"verified":{"4VE9sy4fEMJdZ6i7MkYPbnqDJd2oqzJQmg44WJ3opump":null},"ttlMs":900000,"snipeSlots":5}}
+[667x375] live GET /api/coins?news=1: {"status":200,"body":{"news":[],"gapS":600}}
+[667x375] crier announced: ["TestFixtureVerifiedPass11111111111111111111:fixture"] banner="Crier Barkley · THE DAILY BONE · TEST FIXTURE EXTRA! $TESTPUP (Fixture Pup) earns the Verified Launch badge: all four checks passed! $TESTPUP on pump.fun ↗"
+saved proof/verified-crier-headline-667x375.png
+saved proof/verified-ad-launchhall-sign-667x375.png
+saved proof/verified-ad-billboard-667x375.png
+[667x375] billboard showing verified coin: true
+[667x375] tap billboard -> panel={"kind":"launch","coin":"TestFixtureVerifiedPass11111111111111111111","vfOpen":true}
+saved proof/verified-card-breakdown-667x375.png
+saved proof/verified-card-breakdown-sources-667x375.png
+[667x375] card badge text: Verified Launch: checks passed at 18 Oct, 11:52 pm AEDT
+saved proof/verified-newspaper-card-667x375.png
+saved proof/verified-board-667x375.png
+[667x375] board rows: ["$TESTPUP => Verified Launch: checks passed at 18 Oct, 11:52 pm AEDT","$TESTREV => Verified Launch revoked at 18 Oct, 11:39 pm AEDT","$TESTNON => (nothing shown)"]
+saved proof/verified-revoked-fixture-667x375.png
+[667x375] revoked: Revoked at 18 Oct, 11:39 pm AEDT: Top 10 holders each under 1% of supply: 1 of the top 10 holders has 1% or more (largest: Fixt…ale1 with 3.4%) · first verified 18 Oct, 10:19 pm AEDT

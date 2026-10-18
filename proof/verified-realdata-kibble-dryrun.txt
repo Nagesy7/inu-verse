@@ -1,0 +1,25 @@
+# Real-data dry run of api/_lib/verified.js verifiedChecks() against $KIBBLE (4VE9…pump) via the PUBLIC mainnet RPC, 2026-10-18 23:56 AEDT.
+# $KIBBLE is NOT opted in, so the game shows nothing for it; this only demonstrates the checks on real chain data.
+# The public RPC refuses getTokenLargestAccounts for this mint, so top10 is honestly 'unknown' (couldn't check).
+{
+ "verdict": "fail",
+ "creator": "Akk3DdxeRRLZABfpkFKYoDBk6Zim5wNLRYemNFjv56fn",
+ "checks": {
+  "authorities": {
+   "status": "pass",
+   "note": "Mint authority and freeze authority are both renounced"
+  },
+  "feeSplit": {
+   "status": "fail",
+   "note": "No creator fee split published (no pump.fun fee-sharing config on-chain)"
+  },
+  "snipes": {
+   "status": "pass",
+   "note": "Only the creator picked up tokens in slots 457209987–457209991 (1 transaction read)"
+  },
+  "top10": {
+   "status": "unknown",
+   "note": "Couldn't check: holder list unavailable from RPC right now"
+  }
+ }
+}
