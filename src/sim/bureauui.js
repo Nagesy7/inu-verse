@@ -4,7 +4,9 @@ import { buildReport, SEVERITY } from './report.js';
 import { STATIC } from './audit-static.js';
 import { sandbox } from './checks.js';
 import { verifyChain, hashOf } from './ledger.js';
-import { createPawWallet } from './pawbook.js';
+import { pawWallet, syncSoon, syncNow } from './simstate.js';
+import { renderForce } from './patrolui.js';
+export { pawWallet };
 import { CURRENCY, pm } from './currency.js';
 import { FLOWS } from './economy.js';
 import { guardedFetch } from './firewall.js';
@@ -31,10 +33,6 @@ function demoLog() { const s = sandbox(); s.act(ISSUER, 'pm.issue', 'sim:cop-rex
   s.act('sim:pup-miso', 'pm.sink', SINK, { amount: 3, data: { why: 'parking fine' } }); s.act('sim:judge-oaks', 'evidence.file', 'sim:pup-kiki', { data: { key: 'demo-1', item: 'muddy paw print' } });
   s.act(WATCHDOGS[5].id, 'audit.read', 'sim:cop-rex'); try { s.act('sim:cop-rex', 'pm.pay', WATCHDOGS[6].id, { amount: 5 }); } catch (e) { s.act(WATCHDOGS[6].id, 'audit.note', 'sim:cop-rex', { data: { blocked: e.kind } }); } return s; }
 
-let W = null, lastSync = 0;
-export const pawWallet = () => (W ||= createPawWallet());
-const syncSoon = (then, tries = 2) => { const now = Date.now(); if (now - lastSync < 2500) return; lastSync = now; // a 429 (server rate limit) retries a little later, at most twice
-  pawWallet().sync().then((st) => { then?.(); if (st?.server === 'busy' && tries > 0) setTimeout(() => { lastSync = 0; syncSoon(then, tries - 1); }, 2600); }).catch(() => {}); };
 const readout = () => { const s = pawWallet().state(); return s.joined ? `<b>${pm(s.balance)}</b>` : 'not joined'; };
 // Small readout for the Kibble Bank (wallet view). Clearly separate from real money: sim-only, can't move here.
 export function simReadout(body) { try { const el = document.createElement('div'); el.className = 'card'; el.dataset.pabReadout = '1'; el.style.cssText = 'margin-top:8px;border-color:#7B4FD6;text-align:left';
@@ -43,6 +41,7 @@ export function simReadout(body) { try { const el = document.createElement('div'
 
 export function renderBureau(body, deps, { tab = 'report' } = {}) {
   if (!document.getElementById('pab-style')) { const st = document.createElement('style'); st.id = 'pab-style'; st.textContent = CSS; document.head.appendChild(st); }
+  if (tab === 'precinct' || tab === 'rangers') return renderForce(body, deps, tab); // Phase 3: Barkley Precinct kiosk / Greenpaw Rangers station
   const chief = WATCHDOGS.find((w) => w.role === 'chief'); let report = null, S = null;
   body.innerHTML = `<div class="pab"><div class="pab-head"><span id="pab-badge"></span><div style="flex:1"><h2>Paw Audit Bureau</h2><div class="pab-sub">"The Watchdogs" · independent auditors · no wallet, no balance, no income · reports go to Zachary Nagle, signed by ${esc(chief.title)} ${esc(chief.name)}</div></div><span class="pab-chip" id="pab-mine" title="Your ${esc(CURRENCY.name)}">${esc(CURRENCY.name)}: ${readout()}</span></div>
     <div class="pab-tabs">${[['report', 'Audit report'], ['wallet', CURRENCY.name], ['team', 'The Watchdogs'], ['log', 'Action log']].map(([k, l]) => `<button class="btn ghost ${k === tab ? 'on' : ''}" data-pab="${k}">${esc(l)}</button>`).join('')}</div><div id="pab-body"></div></div>`;
@@ -72,8 +71,8 @@ export function renderBureau(body, deps, { tab = 'report' } = {}) {
       ${st.note ? `<div class="small">${esc(st.note)}</div>` : ''}
       <div class="small">${esc(CURRENCY.name)} are sim-only: wages, fines, bail and fees inside the simulation. One-way: never Bones, never $KIBBLE, never prizes, never cashed out, never tied to a crypto wallet. Joining is optional and you can leave any time; nothing in the sim fines or holds you in this phase.</div>`;
     const j = pane.querySelector('[data-join]'), l = pane.querySelector('[data-leave]'), sh = pane.querySelector('[data-shift]');
-    if (j) j.onclick = () => { w.join(); mine(); wallet(); lastSync = 0; syncSoon(() => { mine(); wallet(); }); };
-    if (l) l.onclick = () => { w.leave(); mine(); wallet(); lastSync = 0; syncSoon(() => { mine(); wallet(); }); };
+    if (j) j.onclick = () => { w.join(); mine(); wallet(); syncNow(() => { mine(); wallet(); }); };
+    if (l) l.onclick = () => { w.leave(); mine(); wallet(); syncNow(() => { mine(); wallet(); }); };
     if (sh) sh.onclick = () => shift(pane.querySelector('#pab-shift'));
   }
   function shift(el) { // five log rows; one was edited after hashing. Its stored hash no longer matches the recomputed one.
@@ -82,7 +81,7 @@ export function renderBureau(body, deps, { tab = 'report' } = {}) {
     el.innerHTML = `<table><tr><th>#</th><th>action</th><th>target</th><th>${esc(CURRENCY.short)}</th><th>stored</th><th>recomputed</th></tr>${rows.map((e, i) => `<tr class="pab-pick" data-i="${i}"><td>${e.seq}</td><td>${esc(e.action)}</td><td>${esc(e.target.replace('sim:', ''))}</td><td>${e.value.amount || ''}</td><td><code>${e.hash.slice(0, 6)}</code></td><td><code>${hashOf(e).slice(0, 6)}</code></td></tr>`).join('')}</table><div class="small" style="margin:2px 0">Tap the row whose two hashes differ.</div>`;
     el.querySelectorAll('[data-i]').forEach((tr) => tr.onclick = () => { if (+tr.dataset.i !== bad) { tr.style.opacity = '.4'; return; }
       try { const e = pawWallet().payWage('desk shift'); el.innerHTML = `<span class="pab-ok">Caught it! +${pm(e.value.amount)}</span>`; } catch (x) { el.innerHTML = `<span class="small">${esc(x.message)}</span>`; }
-      mine(); lastSync = 0; syncSoon(() => { mine(); if (cur === 'wallet') wallet(); }); setTimeout(() => { if (cur === 'wallet') wallet(); }, 1400); }); }
+      mine(); syncNow(() => { mine(); if (cur === 'wallet') wallet(); }); setTimeout(() => { if (cur === 'wallet') wallet(); }, 1400); }); }
   function team() {
     pane.innerHTML = `<div class="pab-grid">${WATCHDOGS.map((m, i) => `<div class="pab-card"><span data-por="${i}"></span><b>${esc(m.name)}</b><div>${esc(m.title)}</div><div class="small" style="margin:2px 0">Checks ${m.owns.join(', ')}</div><div style="font-size:10px;color:#d8d2bc">"${esc(m.line)}"</div></div>`).join('')}</div>
       <div class="small">Find them at the violet desk west of the President's Office. They read every group's actions but cannot be investigated, tried or bribed by sim agents.</div>`;

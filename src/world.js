@@ -73,7 +73,7 @@ export const BANK = { id: 'bank', name: 'Kibble Bank', x: 40, y: 53, w: 5, h: 4,
 export const SQUARE = { pools: { x: 19, y: 81 }, burn: { x: 28.5, y: 81 }, quest: { x: 10.5, y: 80 } }; // Item 5 monuments + quest board
 export { LOTS } from './biz.js';
 import { LOTS as BIZ_LOTS } from './biz.js';
-import { BUREAU, BUREAU_SPOT } from './sim/place.js'; // Paw Audit Bureau desk (src/sim/**)
+import { SIM_SOLIDS, SIM_SPOTS } from './sim/place.js'; // Paw Audit Bureau desk, Barkley Precinct kiosk, Greenpaw Rangers station (src/sim/**)
 export function buildMap() {
   const g = Array.from({ length: MAP_H }, () => new Array(MAP_W).fill(T.GRASS));
   const fill = (x0, y0, w, h, t) => { for (let y = y0; y < y0 + h; y++) for (let x = x0; x < x0 + w; x++) if (g[y] && g[y][x] !== undefined) g[y][x] = t; };
@@ -104,7 +104,7 @@ export function buildMap() {
   for (const f of FIELDS) fill(f.x, f.y, f.w, f.h, T.GRASS);
   fill(POND.x, POND.y, POND.w, POND.h, T.WATER);
   fill(CHAPEL.x, CHAPEL.y, CHAPEL.w, CHAPEL.h, T.BUILDING);
-  fill(BUREAU.x, BUREAU.y, BUREAU.w, BUREAU.h, T.BUILDING); fill(Math.floor(BUREAU.flag.x), Math.floor(BUREAU.flag.y), 1, 1, T.BUILDING); // Paw Audit Bureau desk + banner pole (solid)
+  for (const r of SIM_SOLIDS) fill(r.x, r.y, r.w, r.h, T.BUILDING); // sim layer: Bureau desk + banner pole, precinct kiosk, ranger station (solid)
   for (const b of [BARN, MARKET, CRAFT]) fill(b.x, b.y, b.w, b.h, T.BUILDING);
   for (const l of BIZ_LOTS) { fill(l.x, l.y, l.w, l.h, T.BUILDING); if (!l.prime) fill(l.x - 1, l.y + l.h, l.w + 2, 1, T.WALK); }
   // trees: border + some park trees
@@ -149,7 +149,7 @@ export function interactables(state) {
   for (const h of NPC_HOMES) list.push({ kind: 'visit', id: h.id, name: `${h.owner}'s Home`, tx: h.x + 3, ty: h.y + h.h });
   list.push({ kind: 'clubhouse', id: CLUBHOUSE.id, name: state?.packs?.joined ? 'Pack Clubhouse' : 'Pack Clubhouse lot', tx: CLUBHOUSE.x + 4, ty: CLUBHOUSE.y + CLUBHOUSE.h });
   for (const f of FIELDS) list.push({ kind: 'field', id: f.id, i: f.i, name: `Field ${f.i + 1}`, tx: f.x + 3, ty: f.y + f.h });
-  list.push({ ...BUREAU_SPOT });
+  for (const s of SIM_SPOTS) list.push({ ...s });
   list.push({ kind: 'chapel', id: 'chapel', name: 'Park Chapel', tx: CHAPEL.x + 3, ty: CHAPEL.y + CHAPEL.h });
   list.push({ kind: 'farm', id: 'barn', name: 'Big Barn (seeds, animals, looks)', tx: BARN.x + 4, ty: BARN.y + BARN.h });
   list.push({ kind: 'farm', id: 'market', name: 'Farmers Market', tx: MARKET.x + 3, ty: MARKET.y + MARKET.h });

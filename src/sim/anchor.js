@@ -9,17 +9,20 @@ import { applyFlow } from './economy.js';
 import { ISSUER, SINK, balances } from './pawmarks.js';
 import { FirewallError, guardNoWallet, guardKey, SIM_UNIT } from './firewall.js';
 import { CURRENCY } from './currency.js';
-export const LIMITS = Object.freeze({ maxBody: 24000, maxEntries: 40, keepHeads: 50, maxLength: 50000, pidEverySec: 2, ipEverySec: 1, futureMs: 120000, maxData: 300 });
-export const K = Object.freeze({ anchor: (pid) => `sim:anchor:${pid}`, lock: (pid) => `sim:lock:${pid}`, pidRate: (pid) => `sim:rl:${pid}`, ipRate: (h) => `sim:rlip:${h}` });
-export const PLAYER_ACTIONS = Object.freeze(['wallet.join', 'wallet.leave', 'pm.wage', 'pm.fine', 'pm.bail']);
+import { policeStep, freshPolice } from './police.js';
+import { DAY_MS } from './economy.js';
+export const LIMITS = Object.freeze({ maxBody: 24000, maxEntries: 40, keepHeads: 50, maxLength: 50000, pidEverySec: 2, ipEverySec: 1, futureMs: 120000, maxData: 300, altsPerIpDay: 4 });
+export const K = Object.freeze({ anchor: (pid) => `sim:anchor:${pid}`, lock: (pid) => `sim:lock:${pid}`, pidRate: (pid) => `sim:rl:${pid}`, ipRate: (h) => `sim:rlip:${h}`, alt: (h, day, n) => `sim:alt:${h}:${day}:${n}` });
+export const PLAYER_ACTIONS = Object.freeze(['wallet.join', 'wallet.leave', 'pm.wage', 'pm.fine', 'pm.bail', 'police.cite', 'police.detain', 'police.release']);
+const POLICED = new Set(['police.cite', 'police.detain']);
 export const PID = /^p[0-9a-f]{16}$/, TOKEN = /^[0-9a-f]{48}$/;
 export const tokenHash = (t) => sha256('pab-anchor|' + t);
-export const freshCheckpoint = () => ({ seq: 0, head: GENESIS, ts: 0, balance: 0, joined: false, flows: {} });
-const pub = (a) => a && { pid: a.pid, seq: a.seq, head: a.head, ts: a.ts, balance: a.balance, joined: a.joined, flows: a.flows, heads: a.heads, updatedAt: a.updatedAt };
+export const freshCheckpoint = () => ({ seq: 0, head: GENESIS, ts: 0, balance: 0, joined: false, flows: {}, police: freshPolice() });
+const pub = (a) => a && { pid: a.pid, seq: a.seq, head: a.head, ts: a.ts, balance: a.balance, joined: a.joined, flows: a.flows, police: a.police || freshPolice(), heads: a.heads, updatedAt: a.updatedAt };
 
 // Replays entries on top of a checkpoint with every rule the server enforces. Throws on the first bad entry. Shared with the client.
 export function advance(cp, entries, acct, { now = Infinity } = {}) {
-  let { seq, head, ts, balance, joined, flows } = cp;
+  let { seq, head, ts, balance, joined, flows } = cp, police = cp.police || freshPolice();
   for (const e of entries) {
     if (!e || typeof e !== 'object') throw new FirewallError('chain', 'not an entry');
     if (e.seq !== seq) throw new FirewallError('chain', `expected seq ${seq}, got ${e.seq}`);
@@ -28,18 +31,22 @@ export function advance(cp, entries, acct, { now = Infinity } = {}) {
     if (!(e.ts >= ts) || e.ts > now) throw new FirewallError('chain', `entry ${e.seq} timestamp out of order or in the future`);
     if (e.group !== 'sim' || e.value?.unit !== SIM_UNIT || !Number.isInteger(e.value?.amount) || e.value.amount < 0) throw new FirewallError('economy', `entry ${e.seq}: ${CURRENCY.one} units only`);
     if (!PLAYER_ACTIONS.includes(e.action)) throw new FirewallError('economy', `entry ${e.seq}: ${e.action} is not a player wallet action`);
-    const join = e.action.startsWith('wallet.'), wage = e.action === 'pm.wage';
-    if (join ? (e.actor !== acct || e.target !== acct || e.value.amount !== 0) : wage ? (e.actor !== ISSUER || e.target !== acct) : (e.actor !== acct || e.target !== SINK)) throw new FirewallError('economy', `entry ${e.seq}: wrong parties for ${e.action}`);
+    const join = e.action.startsWith('wallet.') || e.action === 'police.release', wage = e.action === 'pm.wage', policed = POLICED.has(e.action);
+    if (join ? (e.actor !== acct || e.target !== acct || e.value.amount !== 0) : wage ? (e.actor !== ISSUER || e.target !== acct) : policed ? (e.target !== acct || e.actor === acct) : (e.actor !== acct || e.target !== SINK)) throw new FirewallError('economy', `entry ${e.seq}: wrong parties for ${e.action}`);
     if (e.data != null) { guardNoWallet(e.data, 'data'); if (typeof e.data === 'object') for (const k of Object.keys(e.data)) guardKey(k); if (JSON.stringify(e.data).length > LIMITS.maxData) throw new FirewallError('size', 'data too big'); }
     if (wage && !joined) throw new FirewallError('optin', 'wages only after joining the side economy');
+    police = policeStep(police, e, acct, { joined, balance }); // citations, detentions (<= 60 s, opt-in only), fines, bail, releases
     flows = applyFlow(flows, e);
     balance = balances([e], { [acct]: balance }).get(acct) || 0; if (balance < 0) throw new FirewallError('economy', `entry ${e.seq}: not enough ${CURRENCY.short}`);
     if (e.action === 'wallet.join') joined = true; if (e.action === 'wallet.leave') joined = false;
     seq++; head = e.hash; ts = e.ts;
   }
-  return { seq, head, ts, balance, joined, flows };
+  return { seq, head, ts, balance, joined, flows, police };
 }
 
+const getA = async (kv, pid) => { const r = await kv.get(K.anchor(pid)); return r ? JSON.parse(r) : null; };
+async function altSlot(kv, ipHash, pid, day) { for (let n = 0; n < LIMITS.altsPerIpDay; n++) { const v = await kv.get(K.alt(ipHash, day, n));
+    if (v === pid) return true; if (!v && (await kv.setNX(K.alt(ipHash, day, n), pid, 2 * 86400))) return true; if ((await kv.get(K.alt(ipHash, day, n))) === pid) return true; } return false; }
 export async function anchorGet(kv, pid) {
   if (!PID.test(String(pid))) return { status: 400, json: { error: 'bad pid' } };
   const raw = await kv.get(K.anchor(pid)); return { status: 200, json: { anchor: raw ? pub(JSON.parse(raw)) : null } };
@@ -52,6 +59,8 @@ export async function anchorPost(kv, body, { now = Date.now(), ipHash = 'none', 
   if (!Array.isArray(entries) || !entries.length || entries.length > LIMITS.maxEntries) return { status: 400, json: { error: `1..${LIMITS.maxEntries} entries` } };
   if (!(await kv.setNX(K.ipRate(ipHash), '1', LIMITS.ipEverySec)) || !(await kv.setNX(K.pidRate(pid), '1', LIMITS.pidEverySec))) return { status: 429, json: { error: 'slow down' } };
   if (!(await kv.setNX(K.lock(pid), '1', 5))) return { status: 429, json: { error: 'busy' } };
+  // alts: wallets that EARN (wages) from one network per day are limited; the same device is the same network (no fingerprinting)
+  if (entries.some((e) => e?.action === 'pm.wage') && !(await altSlot(kv, ipHash, pid, Math.floor(now / DAY_MS)))) { await kv.del(K.lock(pid)); return { status: 422, json: { error: `at most ${LIMITS.altsPerIpDay} ${CURRENCY.name} wallets can earn wages from one network per day`, kind: 'alts', anchor: pub(await getA(kv, pid)) } }; }
   try {
     const raw = await kv.get(K.anchor(pid)), a = raw ? JSON.parse(raw) : { pid, tokenHash: tokenHash(token), ...freshCheckpoint(), heads: [] };
     if (a.tokenHash !== tokenHash(token)) return { status: 403, json: { error: 'not your wallet' } };

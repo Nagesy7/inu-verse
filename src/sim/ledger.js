@@ -3,7 +3,7 @@
 // Entries are frozen; the log hands out copies; verifyChain() catches any edit, reorder, insert or deletion.
 import { sha256 } from './sha256.js';
 export const GENESIS = '0'.repeat(64);
-export const GROUPS = ['watchdogs', 'investigations', 'courts', 'medical', 'fire', 'sim']; // PAB + the four Phase 2+ groups + 'sim' (system events)
+export const GROUPS = ['watchdogs', 'investigations', 'police', 'rangers', 'courts', 'medical', 'fire', 'sim']; // PAB + the four Phase 2+ groups + 'sim' (system events)
 export function canonical(v) { if (v === undefined) return 'null'; if (v === null || typeof v !== 'object') return JSON.stringify(v);
   if (Array.isArray(v)) return '[' + v.map(canonical).join(',') + ']';
   return '{' + Object.keys(v).sort().filter((k) => v[k] !== undefined).map((k) => JSON.stringify(k) + ':' + canonical(v[k])).join(',') + '}'; }

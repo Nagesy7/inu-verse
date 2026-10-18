@@ -8,6 +8,7 @@ import { quote } from './economy.js';
 import { ISSUER, SINK } from './pawmarks.js';
 import { guardedFetch, SIM_UNIT, FirewallError } from './firewall.js';
 import { OPT_IN_KEY } from './engine.js';
+import { POLICE, fineFor, heldNow, canPolice } from './police.js';
 export const STORE_KEY = 'inu.sim.pm.v1', MAX_UNSYNCED = 200;
 const hex = (bytes) => { const a = new Uint8Array(bytes); globalThis.crypto.getRandomValues(a); return Array.from(a, (b) => b.toString(16).padStart(2, '0')).join(''); };
 
@@ -26,14 +27,21 @@ export function createPawWallet({ store = globalThis.localStorage, now = () => D
     advance(c, [e], acct()); st.entries.push(e); save(); return e; };
   const w = {
     get pid() { return st.pid; }, account: acct,
-    state: () => { const c = cur(); return { balance: c.balance, joined: c.joined, seq: c.seq, head: c.head, unsynced: st.entries.length, anchoredSeq: st.base.seq, server: status.server, note: status.note }; },
+    state: () => { const c = cur(), ps = c.police || {}; return { balance: c.balance, joined: c.joined, seq: c.seq, head: c.head, unsynced: st.entries.length, anchoredSeq: st.base.seq, server: status.server, note: status.note,
+      held: heldNow(ps, now()) ? { ...ps.held, leftMs: ps.held.ts + ps.held.sec * 1000 - now() } : null, heldRecord: ps.held || null, owed: { ...(ps.owed || {}) }, citesToday: ps.day === Math.floor(now() / 864e5) ? ps.cites : 0 }; },
     joined: () => cur().joined, balance: () => cur().balance, entries: () => st.entries.map((e) => ({ ...e })),
     join() { if (cur().joined) return null; try { store?.setItem(OPT_IN_KEY, 'yes'); } catch {} return append('wallet.join', acct(), acct()); },
     leave() { if (!cur().joined) return null; try { store?.removeItem(OPT_IN_KEY); } catch {} return append('wallet.leave', acct(), acct()); },
     quote: (kind = 'wage') => quote(cur().flows, acct(), kind, now()),
     payWage(why = 'desk shift') { if (!cur().joined) throw new FirewallError('optin', 'join the side economy first'); const q = w.quote('wage'); if (!q.ok) throw new FirewallError(q.reason === 'cooldown' ? 'cooldown' : 'cap', q.reason); return append('pm.wage', acct(), ISSUER, q.amount, { why }); },
-    payFine(amount, why) { return append('pm.fine', SINK, acct(), amount, { why: String(why || '').slice(0, 60) }); }, // primitives: nothing fines players in Phase 2
-    payBail(amount, why) { return append('pm.bail', SINK, acct(), amount, { why: String(why || '').slice(0, 60) }); },
+    // Phase 3 policing. Every rule is the server's (police.js); a real player is only policed after joining.
+    canPolice: (kind = 'cite') => cur().joined && canPolice(cur().police, now(), kind),
+    cite(by, offense, tx, ty) { const c = cur(); if (!c.joined) throw new FirewallError('optin', 'not in the side economy'); const fine = fineFor(c.police, now(), c.balance);
+      const e = append('police.cite', acct(), by, 0, { offense, tx, ty, fine }); const paid = fine ? append('pm.fine', SINK, acct(), fine, { for: e.seq }) : null; return { cite: e, fine, paid }; },
+    detain(by, offense, tx, ty, sec = POLICE.detainSec) { if (!cur().joined) throw new FirewallError('optin', 'not in the side economy'); return append('police.detain', acct(), by, 0, { offense, tx, ty, sec }); },
+    release(reason) { return cur().police?.held ? append('police.release', acct(), acct(), 0, { reason }) : null; },
+    payFine(forSeq) { const owed = cur().police?.owed?.[forSeq]; if (!owed) throw new FirewallError('economy', 'no such unpaid citation'); return append('pm.fine', SINK, acct(), owed, { for: Number(forSeq) }); },
+    payBail() { const h = cur().police?.held; if (!h || !heldNow(cur().police, now())) throw new FirewallError('economy', 'not detained'); return append('pm.bail', SINK, acct(), POLICE.bail, { for: h.seq }); },
     // push unsynced entries to the anchor; on a fork the server checkpoint wins (it is the record)
     async sync() {
       try {
@@ -48,4 +56,4 @@ export function createPawWallet({ store = globalThis.localStorage, now = () => D
   };
   return w;
 }
-const cpOf = (a) => ({ seq: a.seq, head: a.head, ts: a.ts, balance: a.balance, joined: a.joined, flows: a.flows || {} });
+const cpOf = (a) => ({ seq: a.seq, head: a.head, ts: a.ts, balance: a.balance, joined: a.joined, flows: a.flows || {}, police: a.police || freshCheckpoint().police });

@@ -5,7 +5,7 @@ import { WATCHDOGS, COLORS } from './roster.js';
 import { PAWMARK } from './pawmarks.js';
 import { CURRENCY } from './currency.js';
 export const SEVERITY = ['critical', 'high', 'medium', 'low', 'info'];
-export const PHASE = 'Phase 2: side economy (Paw Audit Bureau re-run)';
+export const PHASE = 'Phase 3: police and rangers (Paw Audit Bureau re-run)';
 
 // Standing findings: the Bureau's own reading of the code. `when` decides from the static scan whether it still applies.
 export const STANDING = [
@@ -29,25 +29,36 @@ export const STANDING = [
     detail: 'In Phase 1 a URL like //other-host/api/sim-audit skipped the host test. Nothing left the site, because only the bare path was ever fetched, but the guard was wrong.',
     repro: ['guardUrl("//evil.example/api/sim-log") in Phase 1 code: no throw.'], fix: 'The guard now requires the same origin for every URL; the Red-Team probe list includes protocol-relative and absolute same-path URLs.', status: 'fixed (Phase 2)' },
   { id: 'PAB-009', severity: 'low', check: 3, title: 'The desk-shift puzzle is solved in the browser',
-    detail: `The server cannot prove a shift was really worked, only that it obeys the rules. A scripted client could earn at most the daily wage cap (${60} ${CURRENCY.short}/day, diminishing from ${10} per shift, ${3}-minute cooldown). ${CURRENCY.name} have no value outside the sim, so the worst case is a full sim wallet.`,
+    detail: `The server cannot prove a desk or ranger shift was really worked, only that it obeys the rules. A scripted client could earn at most the daily wage cap (${60} ${CURRENCY.short}/day, diminishing from ${10} per shift, ${3}-minute cooldown). ${CURRENCY.name} have no value outside the sim, so the worst case is a full sim wallet.`,
     repro: ['Post wage entries straight to /api/sim-log with correct hashes.', 'They are accepted only up to the cooldown, diminishing amount and daily cap.'],
-    fix: 'Server-side caps, cooldowns and diminishing returns (economy.js, shared by client and server). Later phases can move shifts to server-issued tasks if wages ever buy anything that matters.', status: 'mitigated' },
+    fix: 'Server-side caps, cooldowns and diminishing returns (economy.js, shared by client and server). Later phases can move shifts to server-issued tasks if wages ever buy anything that matters.', status: 'mitigated (kept as is, optional: President Inu)' },
   { id: 'PAB-010', severity: 'low', check: 5, title: `A ${CURRENCY.name} wallet lives on one device`,
     detail: 'The wallet id and its owner token are random and stored only in this browser. Clearing site data or switching device starts a new, empty wallet; the old one stays anchored but nobody can write to it.',
     repro: ['Join and earn at the desk.', 'Clear site data and reload.', 'A new wallet with 0 starts.'],
-    fix: 'By design for now: linking to a crypto wallet would break the "never tied to a wallet" rule. Cross-device restore needs a non-wallet account, which is Zachary\'s call.', status: 'open: needs Zachary\'s decision' },
-  { id: 'PAB-005', severity: 'info', check: 6, title: 'Corrupt-cop, trial and arrest branches are not built yet',
-    detail: 'Checks 6, 7 and 11 run against the framework guards those branches will use (rate limits, diminishing returns, pair flow caps, once-only verdicts, opt-in, time caps, a way out). Bribes exist only as a ledger primitive between sim agents.',
-    repro: ['Run the Bureau checks: checks 6, 7 and 11 show scope "guarded".'], fix: 'Re-audit when the corrupt-cop branch (Phase 7) and the trial/arrest systems land, before anything ships.', status: 'deferred' },
+    fix: 'By design for now: linking to a crypto wallet would break the "never tied to a wallet" rule. Cross-device restore needs a non-wallet account.', status: 'kept as is (optional: President Inu)' },
+  { id: 'PAB-012', severity: 'low', check: 11, title: 'Police see what the browser reports',
+    detail: 'Spotting an offence runs in the player\'s browser (the server never sees positions). A modified client could dodge citations, which only helps itself, or invent citations against itself, which only hurts itself. It cannot cite anyone else: every entry is scoped to its own wallet id and token.',
+    repro: ['Post a forged police.cite for your own wallet to /api/sim-log.', 'Accepted only within the daily caps, cooldown and fine rules; another wallet id is refused (403/400).'],
+    fix: 'Server-side caps, cooldowns, 60 s detention cap and the opt-in rule (police.js, shared by client and server).', status: 'mitigated' },
+  { id: 'PAB-013', severity: 'low', check: 11, title: 'Shared networks share the alt limit',
+    detail: `At most ${4} ${CURRENCY.name} wallets can earn wages from one network per day (per hashed IP; the same device is the same network, and there is no fingerprinting). A busy household, school or phone-carrier NAT could hit it. Only wages are limited: policing, bail and leaving still work.`,
+    repro: ['Join and finish a shift in 5 fresh browsers on one network on one day.', 'The 5th wallet\'s wage is refused (422, kind "alts").'],
+    fix: 'Raise or lower anchor.js LIMITS.altsPerIpDay if real players hit it.', status: 'open: tune if needed' },
+  { id: 'PAB-005', severity: 'info', check: 6, title: 'Corrupt-cop and trial branches are not built yet',
+    detail: 'Phase 3 built police, rangers, citations and detentions, so check 11 is now enforced against the real thing. Checks 6 and 7 still run against the framework guards the corrupt-cop branch and trials will use (rate limits, diminishing returns, pair flow caps, once-only verdicts). Bribes exist only as a ledger primitive between sim agents.',
+    repro: ['Run the Bureau checks: checks 6 and 7 show scope "guarded", check 11 "enforced".'], fix: 'Re-audit when the corrupt-cop branch (Phase 7) and trials land, before anything ships.', status: 'deferred' },
   { id: 'PAB-006', severity: 'info', check: 11, title: 'Opt-in is per device and off by default',
-    detail: 'Joining the side economy is an explicit switch at the Bureau desk; leaving stops wages at once and the server refuses wages for anyone not joined. Nothing in Phase 2 fines, holds or bails a real player.',
-    repro: ['Open the desk: the wallet says "not joined" until you join.'], fix: 'Keep it explicit; later phases must ask again before any arrest-type action involves a player.', status: 'by design' },
+    detail: 'Joining the side economy is an explicit switch at the Bureau desk; leaving stops wages at once and the server refuses wages for anyone not joined. Phase 3 police and rangers act only on joined players; leaving ends any detention and clears unpaid citations at once.',
+    repro: ['Open the desk: the wallet says "not joined" until you join.'], fix: 'Keep it explicit.', status: 'by design' },
   { id: 'PAB-011', severity: 'info', check: 12, title: 'Hiding Connect Wallet behind open panels relies on CSS :has()',
     detail: 'On phones the Connect Wallet button now hides while a panel is open and comes back when it closes. Browsers without :has() (Safari before 15.4) keep the old overlap.',
-    repro: ['Open any panel at 667x375.'], fix: 'Accepted: the button still works everywhere; only very old browsers see the overlap.', status: 'accepted' },
+    repro: ['Open any panel at 667x375.'], fix: 'Accepted: the button still works everywhere; only very old browsers see the overlap.', status: 'accepted (President Inu)' },
+  { id: 'PAB-014', severity: 'info', check: 11, title: 'Walking away ends a detention',
+    detail: 'A detained player keeps full control: moving more than 8 tiles from the spot, entering any door or game, or a gap in play ends it with no charge (logged as "left the scene"). Detention is a sim status, never a cage.',
+    repro: ['Get detained (3 citations in 10 min), then walk off.'], fix: 'By design: the brief requires that a detained player can always leave the scene.', status: 'by design' },
   { id: 'PAB-007', severity: 'info', check: 12, title: 'Report delivery to Zachary is manual',
     detail: 'The Bureau has no outbox. The report is published in-game and as JSON; President Inu\'s agent sends it to Zachary.',
-    repro: ['Open /api/sim-audit.'], fix: 'Keep it manual: a human-approved send before any major ship.', status: 'open (process)' },
+    repro: ['Open /api/sim-audit.'], fix: 'Keep it manual: President Inu relays each report to Zachary. Ship holds stay advisory.', status: 'by design (process)' },
 ];
 const failFinding = (c) => ({ id: `PAB-F${String(c.n).padStart(2, '0')}`, severity: [2, 3, 4, 5, 10].includes(c.n) ? 'critical' : 'high', check: c.n, title: `Check ${c.n} (${c.name}) is failing`,
   detail: c.evidence.join('; '), repro: ['Run `node --test tests/` or open the Bureau desk.'], fix: 'Hold any ship touching prizes or the main economy until this passes.', status: 'open: ship hold' });

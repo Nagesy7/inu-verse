@@ -12,13 +12,19 @@ export const STATIC = {
   "src/sim/economy.js",
   "src/sim/engine.js",
   "src/sim/firewall.js",
+  "src/sim/force.js",
   "src/sim/ledger.js",
+  "src/sim/patrol.js",
+  "src/sim/patrolart.js",
+  "src/sim/patrolui.js",
   "src/sim/pawbook.js",
   "src/sim/pawmarks.js",
   "src/sim/place.js",
+  "src/sim/police.js",
   "src/sim/report.js",
   "src/sim/roster.js",
-  "src/sim/sha256.js"
+  "src/sim/sha256.js",
+  "src/sim/simstate.js"
  ],
  "imports": {
   "violations": []
@@ -73,5 +79,5 @@ export const STATIC = {
   "bonesSwap": true,
   "randomPaid": []
  },
- "fingerprint": "ce092f7ad3de654d"
+ "fingerprint": "e63dc1274e7f5baa"
 };

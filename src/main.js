@@ -498,6 +498,7 @@ function updateWorld(dt) {
     const d = doorStep(doorSt, { x: p.x, y: p.y, face: player.face, moving: player.moving, push: drive ? null : player.push }, ds, time, doorsNow); if (d) enterDoor(d);
     else if (!player.pw.pts.length) { const g = portalStep(gateSt, null, { x: p.x, y: p.y, face: player.face, moving: player.moving, push: player.push }, time, GATE_EXITS); if (g) enterGate(g.gate); } }
   { const vw = innerWidth / ZOOM, vh = innerHeight / ZOOM; stepChat({ now: time, player: p, npcs, hour: dayPhase(time + dayOffset).hour, rain: amb.rain > 0.3, rng, moodLine: (n) => rng() < 0.5 ? MWd.moodLine(n.name, rng) : null, inView: (x, y) => Math.abs(x - cam.x) < vw / 2 - 20 && Math.abs(y - cam.y) < vh / 2 - 30, placeOf: chatPlace }); }
+  PAB.simTick(dt, time, { x: p.x, y: p.y, driving: !!drive, busy: !!panel }, (tx, ty) => (isSolid(tx, ty) ? -1 : MAP[ty][tx]), T); // sim police/rangers: reads a copy of the position only, never blocks play
   mailAcc += dt; if (mailAcc > 45) { mailAcc = 0; if (rng() < 0.6 && addMail(state, rng)) { toast('New note in your mailbox!', 'good'); persist(); } }
   // smooth camera
   const k = 1 - Math.pow(0.004, dt), lead = player.moving ? 10 : 0, fx = { left: -1, right: 1 }[player.face] || 0, fy = { up: -1, down: 1 }[player.face] || 0;
@@ -757,7 +758,7 @@ function interact(it, viaDoor = false) { if (!viaDoor && isWalkDoor(it)) { toast
   else if (it.kind === 'mall' && it.cat === 'pets') openPanel('pets');
   else if (it.kind === 'mall' && it.cat?.startsWith('furn_')) openPanel('furn', { store: it.cat.slice(5) });
   else if (it.kind === 'chapel') openPanel('chapel');
-  else if (it.kind === 'bureau') openPanel('bureau');
+  else if (it.kind === 'bureau') openPanel('bureau', { tab: it.tab });
   else if (it.kind === 'mall') openPanel('mall', { cat: it.cat, store: it.id });
   else if (it.kind === 'field') openPanel('field', { i: it.i });
   else if (it.kind === 'farm') openPanel('farm', { id: it.id });

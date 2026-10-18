@@ -49,6 +49,7 @@ export function createSim({ seed = 1, now = null, players = [], limits = LIMITS 
     if (sys && d.moves !== 'issue') throw new Error('issuer can only issue');
     const actor = sys ? { group: 'sim' } : agents.get(actorId);
     if (d.groups && !d.groups.includes(actor.group)) throw new FirewallError('permission', `${actor.group} may not ${name}`);
+    if ((d.investigative || d.hold) && actorId === targetId) throw new FirewallError('collusion', `nobody can ${name} themselves`);
     if (isWatchdog(targetId) && actor.group !== 'watchdogs' && (d.investigative || d.hold)) throw new FirewallError('independence', 'the Watchdogs cannot be investigated, held or tried by sim agents');
     if (amount > 0 && (isWatchdog(actorId) || isWatchdog(targetId))) throw new FirewallError('independence', 'the Watchdogs have no balance, no wages and cannot be bribed');
     if (data != null) { guardNoWallet(data, 'data'); if (typeof data === 'object') for (const k of Object.keys(data)) guardKey(k); }
@@ -92,7 +93,9 @@ export function createSim({ seed = 1, now = null, players = [], limits = LIMITS 
   defineAction('pm.issue', { moves: 'issue' }); defineAction('pm.pay', { moves: 'pay' }); defineAction('pm.sink', { moves: 'sink' });
   defineAction('audit.read', { groups: ['watchdogs'] }); defineAction('audit.note', { groups: ['watchdogs'] });
   defineAction('pm.wage', { moves: 'issue' }); defineAction('pm.fine', { moves: 'sink' }); defineAction('pm.bail', { moves: 'sink' }); defineAction('pm.bribe', { moves: 'pay' });
-  defineAction('evidence.file', { once: true, investigative: true }); defineAction('hold', { hold: { maxSec: L.holdMaxSec }, investigative: true });
+  defineAction('evidence.file', { once: true, investigative: true });
+  // Phase 3: police + rangers. Citations are evidence; detentions are holds capped at 60 s (players: opt-in only, canTarget).
+  defineAction('police.cite', { investigative: true, groups: ['police', 'rangers'] }); defineAction('police.detain', { hold: { maxSec: 60 }, investigative: true, groups: ['police', 'rangers'] }); defineAction('hold', { hold: { maxSec: L.holdMaxSec }, investigative: true });
   return { log, register, defineAction, act, release, step, resolve, on, view: readOnly, fetch: guardedFetch, limits: L,
     get clock() { return clock; }, agents: () => [...agents.values()], holds: () => new Map(holds), isOptedIn: (id) => optIn.has(id),
     quote: (acct, kind) => quote(flows, acct, kind, tsNow()),
