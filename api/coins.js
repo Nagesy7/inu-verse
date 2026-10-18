@@ -18,6 +18,7 @@
 import crypto from "node:crypto";
 import { evaluatePairs, PAIR_CANDIDATES } from "./_lib/pairs.js";
 import { rpcUrl, redact } from "./_lib/rpc.js";
+import { cleanChecks, makeRpc } from "./_lib/clean.js";
 
 export const KIBBLE_MINT = "4VE9sy4fEMJdZ6i7MkYPbnqDJd2oqzJQmg44WJ3opump";
 export const OWNER_WALLET = "BzLYTFAfUsjzQ5x8bx5BbPK4DFtaHrLCuferkvkxTNGJ";
@@ -79,6 +80,27 @@ export async function dexInfo(mint, f = fetch) { try { const r = await f(`https:
   const p = a.find((x) => x.baseToken?.address === mint) || a[0]; const allow = [KIBBLE_MINT, ...PAIR_CANDIDATES.map((c) => c.mint)], qp = a.find((x) => x.baseToken?.address === mint && allow.includes(x.quoteToken?.address));
   return { quoteMint: qp?.quoteToken?.address || p.quoteToken?.address || "", name: p.baseToken?.name || "", symbol: p.baseToken?.symbol || "", pairedWithKibble: a.some((x) => x.quoteToken?.address === KIBBLE_MINT || (x.baseToken?.address === KIBBLE_MINT && x.quoteToken?.address === mint)), quote: p.quoteToken?.symbol || "" }; } catch { return null; } }
 
+// ---- Clean Launch proof (GET /api/coins?clean=<mint>[,<mint>...]) ----
+// Real on-chain checks through the server RPC (api/_lib/clean.js), cached per coin in Upstash (launchhall:clean:<mint>) for
+// CLEAN_TTL so the Helius free tier is only hit about twice an hour per coin; stale results are served while one request
+// recomputes (lock launchhall:cleanlock:<mint>). At most CLEAN_PER_REQ coins are computed per request; the rest say pending.
+export const CLEAN_TTL_MS = 30 * 60_000, CLEAN_MAX_AGE_MS = 24 * 3600_000, CLEAN_PER_REQ = 2, CLEAN_MAX = 12;
+export async function dexLiquidity(mint, f = fetch) { try { const r = await f(`https://api.dexscreener.com/tokens/v1/solana/${mint}`); if (!r.ok) return null; const a = (await r.json() || []).filter((p) => p.baseToken?.address === mint);
+  return a.length ? a.reduce((s, p) => s + Number(p.liquidity?.usd || 0), 0) : null; } catch { return null; } }
+export async function solUsd(f = fetch) { try { const r = await f("https://api.coinbase.com/v2/prices/SOL-USD/spot"); if (!r.ok) return null; const v = Number((await r.json())?.data?.amount); return v > 0 ? v : null; } catch { return null; } }
+async function cleanFor(store, mints, D) { const out = {}; let budget = CLEAN_PER_REQ;
+  for (const m of mints) { let hit = null; try { hit = JSON.parse((await store.get("clean:" + m)) || "null"); } catch {}
+    const age = hit ? D.now() - hit.checkedAt : Infinity;
+    if (hit && age < CLEAN_TTL_MS) { out[m] = { ...hit, cached: true }; continue; }
+    if (m !== KIBBLE_MINT) { const c = await store.get("coin:" + m); if (!c || JSON.parse(c).removed) { out[m] = { mint: m, overall: "unknown", error: "not on the Launch Hall board" }; continue; } }
+    let mine = budget > 0; if (mine) mine = await store.setNX("cleanlock:" + m, String(D.now())).catch(() => false); if (mine) { try { await store.expire("cleanlock:" + m, 120); } catch {} }
+    if (!mine) { out[m] = hit && age < CLEAN_MAX_AGE_MS ? { ...hit, cached: true, stale: true } : { mint: m, overall: "unknown", pending: true }; continue; }
+    budget--; let creatorHint = null; try { creatorHint = m === KIBBLE_MINT ? null : JSON.parse((await store.get("coin:" + m)) || "{}").creator || null; } catch {}
+    try { const r = await D.clean(m, creatorHint); await store.set("clean:" + m, JSON.stringify(r)); out[m] = r; }
+    catch (e) { out[m] = hit ? { ...hit, cached: true, stale: true } : { mint: m, overall: "unknown", error: "checks unavailable right now" }; }
+    try { await store.del("cleanlock:" + m); } catch {} }
+  return out; }
+
 const json = (res, code, o) => { res.statusCode = code; res.setHeader("content-type", "application/json"); res.setHeader("cache-control", code === 200 ? "public, max-age=15" : "no-store"); res.end(redact(JSON.stringify(o), json.env || process.env)); }; // never leak the RPC URL/key
 const clean = (s, n) => String(s || "").replace(/[<>\u0000-\u001f]/g, "").slice(0, n);
 async function listCoins(store, all) { const ids = await store.smembers("coins"); const out = [];
@@ -91,7 +113,7 @@ const bearer = (req) => (req.headers.authorization || "").replace(/^Bearer /, ""
 export function makeHandler({ env = process.env, store = upstashStore(env), deps = {} } = {}) {
   json.env = env;
   const RPC = rpcUrl(env);
-  const D = { sessionWallet: (t) => sessionWallet(t), pumpCreator: (m) => pumpCreator(m, { rpc: RPC }), launchTx: (s) => launchTx(s, { rpc: RPC }), now: () => Date.now(), dexInfo: (m) => dexInfo(m), pairs: () => evaluatePairs(), ...deps };
+  const D = { sessionWallet: (t) => sessionWallet(t), pumpCreator: (m) => pumpCreator(m, { rpc: RPC }), launchTx: (s) => launchTx(s, { rpc: RPC }), now: () => Date.now(), dexInfo: (m) => dexInfo(m), pairs: () => evaluatePairs(), clean: (m, creatorHint) => cleanChecks(m, { rpc: makeRpc(RPC, fetch, env), creatorHint, dexLiquidityUsd: (x) => dexLiquidity(x), solUsd: () => solUsd() }), ...deps };
   return async function handler(req, res) {
     if (req.method === "OPTIONS") { res.statusCode = 204; return res.end(); }
     if (req.method === "GET" && /[?&]pairs=1/.test(req.url || "")) return json(res, 200, await D.pairs());
@@ -99,6 +121,8 @@ export function makeHandler({ env = process.env, store = upstashStore(env), deps
     try {
       const q = req.query || Object.fromEntries(new URL(req.url, "http://x").searchParams);
       if (req.method === "GET" && q.pairs === "1") return json(res, 200, await D.pairs());
+      if (req.method === "GET" && q.clean) { const mints = [...new Set(String(q.clean).split(",").map((x) => x.trim()).filter((x) => B58.test(x)))].slice(0, CLEAN_MAX);
+        if (!mints.length) return json(res, 400, { error: "clean=<mint>[,<mint>...]" }); return json(res, 200, { clean: await cleanFor(store, mints, D), ttlMs: CLEAN_TTL_MS }); }
       if (req.method === "GET") { const all = q.all === "1"; if (all && !(await isAdmin(req, env, D))) return json(res, 403, { error: "admin only" });
         return json(res, 200, { coins: await listCoins(store, all), reportsToHide: REPORTS_TO_HIDE, kibble: KIBBLE_MINT, verification: "pump.fun bonding-curve creator == signed-in wallet" }); }
       if (req.method !== "POST") return json(res, 405, { error: "GET or POST" });

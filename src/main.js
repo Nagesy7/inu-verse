@@ -28,6 +28,7 @@ import { makeCrew, stepCrew, takeGig, drawVest, drawTool, drawCones } from './wo
 import { trending, adProps, adAt } from './coinads.js';
 import * as MOB from './mobility.js';
 import * as RC from './realcoins.js';
+import * as CL from './cleanlaunch.js';
 import { ensureFarm, tickFarm, seasonOf, marketHour, rollFarmWeek, catchUp, fishCatch, WEEK_DAYS } from './farm.js';
 import { ensureBiz, bizHour, bizDay, rollBizWeek } from './biz.js';
 import { renderField, renderFarm, renderLot, renderBizBoard } from './farmui.js';
@@ -862,7 +863,7 @@ function renderLaunch() {
   const K0 = RC.KIBBLE, link = (u, l, cls = 'btn') => `<a class="${cls}" href="${u}" target="_blank" rel="noopener noreferrer">${l}</a>`;
   if (tab === 'kibble') body.innerHTML = `${head}<div class="card rcoin" style="text-align:left"><h3 style="margin:0">$KIBBLE <span class="small">official · Solana ${K0.program} · mint authority renounced</span></h3>
      <div class="small">Contract address (only this one is real):</div><div class="ca"><code id="kib-ca">${K0.mint}</code><button class="btn alt" data-copy="${K0.mint}">Copy</button></div>
-     ${statBox(K0.mint)}<div class="small" id="kib-src">Live from DexScreener, refreshed every minute. Shows "unavailable" if the feed is down.</div>
+     ${statBox(K0.mint)}${cleanSlot(K0.mint)}<div class="small" id="kib-src">Live from DexScreener, refreshed every minute. Shows "unavailable" if the feed is down.</div>
      <div class="row" style="justify-content:flex-start">${link(RC.PUMP_COIN(K0.mint), 'View on pump.fun', 'btn green')}${link(RC.DEX_URL(K0.mint), 'DexScreener chart', 'btn ghost')}</div></div>${NFA}`;
   else if (tab === 'launch') body.innerHTML = `${head}<div id="noext" class="noext"><div class="small">Loading launcher…</div></div><details class="card" style="text-align:left"><summary><b>Prefer pump.fun's own page (any pair)? Step-by-step guide</b></summary>
      <p class="small">Inu Verse never creates, holds or signs tokens. You launch on pump.fun with your own wallet; pump.fun shows you every fee and step before you sign.</p>
@@ -899,7 +900,7 @@ function renderLaunch() {
     el.innerHTML = r.pairs.map((p) => `<div class="pairrow ${p.featured ? 'feat' : ''}"><b>${p.featured ? '★ ' : ''}$${esc(p.symbol)}</b><span class="small">${esc(p.name)}${p.mcap != null && !p.featured ? ' · MC ' + RC.fmtUsd(p.mcap) + ' · liq ' + RC.fmtUsd(p.liquidity) : ''}</span><code>${RC.short(p.mint)}</code><button class="btn tiny ghost" data-copy="${p.mint}">Copy CA</button>${p.featured ? `<div class="small kibnote">${p.mcap != null ? 'MC ' + RC.fmtUsd(p.mcap) + ' · liq ' + RC.fmtUsd(p.liquidity) + ' · ' : ''}${esc(p.note || "If $KIBBLE doesn't appear under Custom Pairs when you paste the CA, it isn't available as a pair yet.")}</div>` : ''}</div>`).join('')
       + `<div class="small">${r.rules ? `Inu/Doge pairs shown only while market cap ≥ ${RC.fmtUsd(r.rules.minMcapUsd)}, liquidity ≥ ${RC.fmtUsd(r.rules.minLiquidityUsd)} and RugCheck shows no danger (checked live). $KIBBLE is always featured (no thresholds), but pump.fun decides whether it can be picked yet.` : 'Pair checks unavailable right now: only $KIBBLE shown.'}</div>`;
     el.querySelectorAll('[data-copy]').forEach((b) => b.onclick = () => copyText(b.dataset.copy)); });
-  if (tab === 'board') { renderRegBoard(); refreshRegistry(true); } else if (tab === 'kibble') refreshRealStats();
+  if (tab === 'board') { renderRegBoard(); refreshRegistry(true); } else if (tab === 'kibble') { refreshRealStats(); loadClean([RC.KIBBLE.mint]); }
 }
 async function copyText(t) { try { await navigator.clipboard.writeText(t); toast('Copied contract address', 'good'); } catch { const i = document.createElement('textarea'); i.value = t; document.body.appendChild(i); i.select(); try { document.execCommand('copy'); toast('Copied', 'good'); } catch { toast(t); } i.remove(); } }
 async function registerCoin() {
@@ -917,12 +918,21 @@ function renderRegBoard() { const el = $('#regboard'); if (!el) return;
   if (!REG.coins.length) { el.innerHTML = '<p class="small">No player coins registered yet. Be the first: launch on pump.fun, then register it here.</p>'; return; }
   el.innerHTML = REG.coins.map((c) => { const st = RC.statsOf(c.mint); return `<div class="regcoin" data-mint="${c.mint}"><div><b>$${esc(st?.symbol || c.symbol || '???')}</b> ${esc(st?.name || c.name || '')} ${c.pairedWithKibble ? '<span class="chip">paired with $KIBBLE</span>' : c.quote && c.quote !== 'SOL' ? `<span class="chip">paired with $${esc(c.quote)}</span>` : ''}
      <div class="small">CA <code>${RC.short(c.mint)}</code> · creator ${RC.short(c.creator)} (verified)</div>
-     <div class="small">Price ${RC.fmtUsd(st?.priceUsd)} · MC ${RC.fmtUsd(st?.mcap)} · 24h ${RC.fmtPct(st?.change24)}</div></div>
+     <div class="small">Price ${RC.fmtUsd(st?.priceUsd)} · MC ${RC.fmtUsd(st?.mcap)} · 24h ${RC.fmtPct(st?.change24)}</div>${cleanSlot(c.mint)}</div>
      <div class="row"><a class="btn tiny green" href="${RC.PUMP_COIN(c.mint)}" target="_blank" rel="noopener noreferrer">pump.fun</a><button class="btn tiny ghost" data-copy="${c.mint}">Copy CA</button><button class="btn tiny red" data-report="${c.mint}">Report</button></div></div>`; }).join('');
   el.querySelectorAll('[data-copy]').forEach((b) => b.onclick = () => copyText(b.dataset.copy));
+  loadClean(REG.coins.map((c) => c.mint));
   el.querySelectorAll('[data-report]').forEach((b) => b.onclick = async () => { if (!confirm('Report this coin as a scam, impersonation or offensive? Coins with several reports are hidden until reviewed.')) return;
     const r = await RC.postCoins({ action: 'report', mint: b.dataset.report, reason: 'player report' }); toast(r.ok ? (r.hidden ? 'Reported. Hidden pending review.' : 'Reported. Thanks!') : r.reason, r.ok ? 'good' : 'bad'); refreshRegistry(true); });
 }
+// Clean Launch badges: slots render from cache instantly, then refresh from /api/coins?clean= (server-cached on-chain checks).
+const cleanSlot = (mint) => `<div class="clslot" data-cleanslot="${mint}">${CL.badgeHtml(mint)}</div>`;
+const CLEAN_SEEN = new Map();
+async function loadClean(mints, force, tries = 0) { const want = mints.filter((m) => force || !(Date.now() - (CLEAN_SEEN.get(m) || 0) < 5 * 60_000) || CL.pending(CL.cleanOf(m))); if (!want.length) return;
+  want.forEach((m) => CLEAN_SEEN.set(m, Date.now())); await CL.fetchClean(want);
+  document.querySelectorAll('[data-cleanslot]').forEach((el) => { const m = el.dataset.cleanslot; if (!want.includes(m)) return; const open = !!el.querySelector('details[open]'); el.innerHTML = CL.badgeHtml(m, { open }); });
+  if (want.some((m) => CL.pending(CL.cleanOf(m)))) { if (tries < 6) setTimeout(() => loadClean(want.filter((m) => CL.pending(CL.cleanOf(m))), true, tries + 1), 8000); } }
+globalThis.__clean = (m) => CL.cleanOf(m);
 function launchRealUi() { document.querySelectorAll('[data-stats]').forEach((el) => { el.outerHTML = statBox(el.dataset.stats); }); renderRegBoard(); }
 // Owner moderation from the console: __launchAdmin('hide'|'show'|'delete', mint, adminToken?) (wallet session for the owner wallet also works).
 globalThis.__launchAdmin = async (op, mint, admin) => { const r = await RC.postCoins({ action: 'moderate', op, mint }, { session: K.kp?.session, admin }); refreshRegistry(true); return r; };

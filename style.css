@@ -277,3 +277,13 @@ body.short.landscape .launch.rboard{grid-template-columns:1fr 1.2fr}body.short .
 .kmood-head{display:flex;align-items:center;gap:8px;font-size:14px}.kmood-dot{width:14px;height:14px;display:inline-block;border:2px solid #0c1022;box-shadow:0 0 8px currentColor}
 .dailybone .db-head{font-size:18px;margin:6px 0;letter-spacing:1px;border-bottom:3px double #8a6a2a;padding-bottom:6px}
 @media (max-height:420px){#crier-banner{top:calc(max(6px,env(safe-area-inset-top)) + 44px);padding:5px 12px}#crier-banner span{font-size:10px}.dailybone .db-head{font-size:15px}}
+/* ---- Clean Launch badge ---- */
+.cl{margin:4px 0;border:2px solid #0c1022;background:#1b2346;font-size:10px}.cl summary{list-style:none;cursor:pointer;display:flex;flex-wrap:wrap;align-items:center;gap:4px;padding:3px 4px;min-height:28px}.cl summary::-webkit-details-marker{display:none}
+.cl-badge{display:inline-flex;align-items:center;gap:4px;padding:2px 6px;font:9px Silkscreen,monospace;color:#0c1022;background:#9aa3b8;border:2px solid #0c1022}.cl-badge i{font-style:normal;font-weight:bold}
+.cl-pass .cl-badge{background:#7ed957}.cl-warn .cl-badge{background:#ffd84a}.cl-fail .cl-badge{background:#ff6b6b}
+.cl-flag{padding:1px 5px;border:1px solid #0c1022;font:9px Silkscreen,monospace;background:#2a3358;color:#fff6e0}.cl-flag.cl-pass{border-color:#7ed957}.cl-flag.cl-warn{background:#5a4a12;border-color:#ffd84a;color:#ffe08a}.cl-flag.cl-fail{background:#5a1a1a;border-color:#ff6b6b;color:#ffd0d0}
+.cl-more{margin-left:auto;opacity:.7;font-size:9px}.cl[open] .cl-more{display:none}.cl-body{padding:4px 6px 6px;border-top:1px solid #2a3358}
+.cl-list{list-style:none;margin:0 0 4px;padding:0}.cl-list li{display:flex;gap:6px;padding:3px 0;border-bottom:1px dashed #2a3358;line-height:1.35}.cl-list li>b{min-width:58px;font:9px Silkscreen,monospace}
+.cl-list li.cl-pass>b{color:#7ed957}.cl-list li.cl-warn>b{color:#ffd84a}.cl-list li.cl-fail>b{color:#ff6b6b}.cl-list li.cl-unknown>b{color:#9aa3b8}
+body:has(#panel:not([hidden])) #crier-banner{display:none}
+.cl-t{font:9px Silkscreen,monospace;color:#f2cc68;margin-right:2px}
