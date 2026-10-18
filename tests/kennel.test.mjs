@@ -46,3 +46,11 @@ test('wall: 404 -> opens soon; Top Dogs listed when the API has them; cosmetics-
   assert.match(html, /Akk3…56fn/); assert.doesNotMatch(html, /id="kn-show" checked/);
   for (const f of ['src/kennel.js']) assert.deepEqual(bannedIn(fs.readFileSync(f, 'utf8').replace(/^\s*\/\/.*$/gm, '').replace(/\/\/ [^\n]*/g, '')), [], f);
   assert.deepEqual(bannedIn(soon.replace(/<[^>]+>/g, ' ')), []); });
+test('wall (kibble-pay ?wall=1 live shape): empty state, Top Dogs + verified members, names filtered', async () => {
+  const empty = await KN.fetchWall({ f: res(200, { wall: [], topDogs: [], count: 0, empty: 'No Top Dogs yet', updatedAt: 'x' }) });
+  const h0 = KN.wallHtml({ wall: empty, me: null, wallet: null, show: true }); assert.match(h0, /No Top Dogs yet/); assert.doesNotMatch(h0, /<ol/);
+  const W2 = 'Bkk3n7UUeb8TWZn5w8y6uWvd2iGyEqpH4tWqf9Q56fn';
+  const full = await KN.fetchWall({ f: res(200, { wall: [{ wallet: W, name: 'Shiba Queen', tier: 'top', lockedAmount: 60000000, since: '2026-10-18T06:00:00Z' }, { wallet: W2, name: 'fuck', tier: 'guard', lockedAmount: 2000000 }], topDogs: [{ wallet: W, name: 'Shiba Queen', lockedAmount: 60000000 }], empty: null }) });
+  assert.equal(full.topDogs[0].label, 'Shiba Queen'); assert.equal(full.wall[1].label, 'Bkk3…56fn', 'profane name -> short address');
+  const h = KN.wallHtml({ wall: full, me: null, wallet: null, show: true }); assert.match(h, /Shiba Queen/); assert.match(h, /60,000,000 \$KIBBLE locked/); assert.match(h, /Kennel members/); assert.match(h, /Guard Dog/);
+  assert.equal(KN.wallHtml({ wall: { status: 'unknown', topDogs: [], wall: [], reason: 'unreachable' } }).includes('No Top Dogs yet'), false, 'unknown is not presented as empty'); });

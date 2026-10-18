@@ -1,6 +1,7 @@
 // Kibble Kennel mirror (cosmetics only): reads the shared tier API (contract: /workspace/inu-shared/kennel-api.md) and
 // draws a tier name tag, aura and golden name on the pup. Inu Verse never holds or moves tokens and never asks for a lock:
 // the lock flow + tier reader belong to the Inu Empires keeper (kibble-pay /api/kennel). 404 / errors -> unknown -> nothing shown.
+import { cleanName } from './mpshared.js';
 export const API = 'https://kibble-pay.vercel.app/api/kennel';
 export const TIERS = {
   pup: { id: 'pup', name: 'Pup', amount: 100_000, minDays: 7, tag: '#b87333', ink: '#2a1606', aura: null, gold: false },
@@ -23,10 +24,16 @@ export async function fetchKennel(wallet, { f = globalThis.fetch, now = Date.now
       else { const t = tierId(j.tier); v = { status: 'ok', tier: t, tierName: t ? TIERS[t].name : null, unlockDate: j.unlockDate || null, tierUntil: j.tierUntil || null, lockedAmount: Number(j.lockedAmount) || 0, nextTier: j.nextTier || null, stale: !!j.stale, source: j.source || null }; } } }
   catch { v = { status: 'unknown', tier: null, reason: 'kennel API unreachable' }; }
   cache.set(wallet, { at: now, v }); return v; }
+// GET /api/kennel?wall=1 (kibble-pay): only wallets whose tier the server verified from chain. Names go through our own
+// name filter (profanity/addresses -> short address). -> { status, topDogs:[...], wall:[...all verified tiers...], empty }
+const entry = (d) => { if (typeof d?.wallet !== 'string') return null; const short = shortW(d.wallet), nm = typeof d.name === 'string' ? cleanName(d.name, short) : short;
+  return { wallet: d.wallet, label: nm || short, tier: tierId(d.tier) || 'top', lockedAmount: Number(d.lockedAmount) || 0, since: d.since || null }; };
 export async function fetchWall({ f = globalThis.fetch, api = API } = {}) {
-  try { const r = await f(`${api}?wall=1`); if (!r.ok) return { status: 'unknown', topDogs: [], reason: r.status === 404 || r.status === 400 ? 'Top Dog list not published by the Kennel API yet' : 'error ' + r.status };
-    const j = await r.json(); return Array.isArray(j?.topDogs) ? { status: 'ok', topDogs: j.topDogs.filter((d) => typeof d?.wallet === 'string').slice(0, 40), updatedAt: j.updatedAt || null } : { status: 'unknown', topDogs: [], reason: 'unexpected response' }; }
-  catch { return { status: 'unknown', topDogs: [], reason: 'unreachable' }; } }
+  try { const r = await f(`${api}?wall=1`); if (!r.ok) return { status: 'unknown', topDogs: [], wall: [], reason: r.status === 404 || r.status === 400 ? 'Top Dog list not published by the Kennel API yet' : 'error ' + r.status };
+    const j = await r.json(); if (!Array.isArray(j?.topDogs)) return { status: 'unknown', topDogs: [], wall: [], reason: 'unexpected response' };
+    const wall = (Array.isArray(j.wall) ? j.wall : j.topDogs).map(entry).filter(Boolean).slice(0, 40);
+    return { status: 'ok', topDogs: j.topDogs.map((d) => entry({ ...d, tier: 'top' })).filter(Boolean).slice(0, 40), wall, empty: j.empty || null, updatedAt: j.updatedAt || null }; }
+  catch { return { status: 'unknown', topDogs: [], wall: [], reason: 'unreachable' }; } }
 export function overrideTier(search = (typeof location !== 'undefined' ? location.search : '')) { try { return tierId(new URLSearchParams(search).get('kennel')); } catch { return null; } }
 export const SHOW_KEY = 'inuverse.kennel.show';
 export const showMine = (store = globalThis.localStorage) => { try { return store?.getItem(SHOW_KEY) !== '0'; } catch { return true; } };
@@ -55,7 +62,10 @@ const shortW = (w) => w ? w.slice(0, 4) + '…' + w.slice(-4) : '?';
 const fmt = (n) => Number(n).toLocaleString('en-US');
 export function wallHtml({ wall, me, wallet, override, show }) {
   const tiers = TIER_IDS.map((id) => { const T = TIERS[id]; return `<li><span class="kn-chip" style="background:${T.tag};color:${T.ink}">${T.name}</span> lock ${fmt(T.amount)} $KIBBLE for ${T.minDays}+ days · ${id === 'top' ? 'gold aura, golden name, a spot on this wall' : id === 'alpha' ? 'paw-print aura + tag' : 'name tag'}</li>`; }).join('');
-  const dogs = wall?.status === 'ok' ? (wall.topDogs.length ? `<ol class="kn-wall">${wall.topDogs.map((d) => `<li><b>★ ${esc(shortW(d.wallet))}</b>${d.since ? ` <span class="small">since ${esc(String(d.since).slice(0, 10))}</span>` : ''}</li>`).join('')}</ol>` : '<p class="small">No Top Dogs yet.</p>')
+  const row = (d) => `<li><b>${d.tier === 'top' ? '★ ' : ''}${esc(d.label)}</b> <span class="kn-chip" style="background:${TIERS[d.tier].tag};color:${TIERS[d.tier].ink}">${TIERS[d.tier].name}</span>${d.lockedAmount ? ` <span class="small">${fmt(Math.floor(d.lockedAmount))} $KIBBLE locked</span>` : ''}${d.since ? ` <span class="small">since ${esc(String(d.since).slice(0, 10))}</span>` : ''}</li>`;
+  const others = wall?.status === 'ok' ? (wall.wall || []).filter((d) => d.tier !== 'top') : [];
+  const dogs = wall?.status === 'ok' ? (wall.topDogs.length ? `<ol class="kn-wall">${wall.topDogs.map(row).join('')}</ol>` : `<p class="small kn-empty">${esc(wall.empty || 'No Top Dogs yet')}. The first verified Top Dog lock shows up here.</p>`)
+      + (others.length ? `<p class="small" style="margin:8px 0 2px"><b>Kennel members</b> (verified tiers)</p><ol class="kn-wall">${others.slice(0, 20).map(row).join('')}</ol>` : '')
     : `<p class="small kn-soon">Top Dogs will be listed here once the Kibble Kennel publishes its Top Dog list${wall?.reason ? ` (${esc(wall.reason)})` : ''}. Nobody is shown until it does.</p>`;
   const mine = override ? `Previewing <b>${esc(TIERS[override].name)}</b> (preview only, not a real tier).` : !wallet ? 'Connect your wallet to show your Kennel tier on your pup.'
     : me?.status === 'ok' ? (me.tier ? `Your tier: <b>${esc(TIERS[me.tier].name)}</b>${me.unlockDate ? ` · earliest unlock ${esc(String(me.unlockDate).slice(0, 10))}` : ''}${me.stale ? ' (cached)' : ''}` : 'No Kennel tier on this wallet yet.')
@@ -78,7 +88,7 @@ export function wallProps(spot, wall, t, TILE = 32) { if (!spot) return []; cons
     const dogs = wall?.status === 'ok' ? wall.topDogs.slice(0, 6) : [];
     for (let i = 0; i < 6; i++) { const px = x + 10 + (i % 3) * ((w - 20) / 3), py = top + 24 + Math.floor(i / 3) * 22, pw = (w - 20) / 3 - 6, d = dogs[i];
       R(c, px - 1, py - 1, pw + 2, 18, INK); R(c, px, py, pw, 16, d ? GOLD : STONE_D); R(c, px, py, pw, 2, d ? GOLD_L : STONE);
-      c.font = '5px Silkscreen, monospace'; c.fillStyle = d ? '#3a2a06' : STONE_L; c.fillText(d ? '★ ' + d.wallet.slice(0, 4) + '…' + d.wallet.slice(-3) : '· · ·', px + pw / 2, py + 9); }
-    if (wall?.status !== 'ok' || !dogs.length) { const sw = 70, sx = x + w / 2 - sw / 2, sy = top + 34; R(c, sx - 1, sy - 1, sw + 2, 13, INK); R(c, sx, sy, sw, 11, CREAM); c.font = '5px Silkscreen, monospace'; c.fillStyle = INK; c.fillText(wall?.status === 'ok' ? 'FIRST TOP DOG HERE' : 'OPENS SOON', x + w / 2, sy + 6); }
+      c.font = '5px Silkscreen, monospace'; c.fillStyle = d ? '#3a2a06' : STONE_L; c.fillText(d ? '★ ' + String(d.label || shortW(d.wallet)).slice(0, 11) : '· · ·', px + pw / 2, py + 9); }
+    if (wall?.status !== 'ok' || !dogs.length) { const sw = 70, sx = x + w / 2 - sw / 2, sy = top + 34; R(c, sx - 1, sy - 1, sw + 2, 13, INK); R(c, sx, sy, sw, 11, CREAM); c.font = '5px Silkscreen, monospace'; c.fillStyle = INK; c.fillText(wall?.status === 'ok' ? 'NO TOP DOGS YET' : 'OPENS SOON', x + w / 2, sy + 6); }
     const s = 0.5 + 0.5 * Math.sin(t * 2); c.fillStyle = `rgba(255,226,122,${0.25 + 0.3 * s})`; c.fillRect(Math.round(x + w / 2 - 3), Math.round(top - 8), 6, 6); // little gold lamp
   } }]; }
