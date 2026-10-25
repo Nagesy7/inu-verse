@@ -1127,26 +1127,51 @@ function renderCafe() {
   for (const m of MENU) { const i = new Image(); i.src = CAFE_ICON_URL(m.id, 40); const j = new Image(); j.src = CAFE_ICON_URL(m.id, 22); }
   const body = $('#panel-body');
   body.innerHTML = `<h2>Shiba Sips Café — Floor shift</h2>
-   <p class="sub">Diner Dash: seat pups, cook with food icons at <b>Drink / Grill / Prep</b>, then <b>drag the plate onto the customer</b> (or tap). Drag a menu item onto its station to cook. Clear dirty tables — dirt taxes patience. VIPs + specials pay more. ${SHIFT_LEN}s · ${TABLES_START}→${NUM_TABLES} tables as waves ramp.</p>
+   <p class="sub">Diner Dash floor: seat from the <b>line</b>, cook at the <b>kitchen strip</b> (icons), <b>drag plates from the pass onto tables</b> (or tap). Clear dirty tables — dirt taxes patience. VIPs + specials pay more. ${SHIFT_LEN}s · ${TABLES_START}→${NUM_TABLES} tables as waves ramp.</p>
    <div class="cafe dash">
-     <div class="dash-main">
-       <div class="dash-queue" id="cqueue"><span class="small">Line — tap guest, then an empty table</span></div>
-       <div class="dash-tables" id="ctables"></div>
-       <div class="dash-stations" id="cstations"></div>
-       <div class="dash-tickets" id="orders"></div>
-     </div>
-     <div class="dash-side">
-       <div class="tray"><b>Tray</b> <button class="btn ghost" id="cleartray" style="float:right;padding:2px 8px">clear</button><div id="tray" style="margin-top:8px;min-height:40px"></div>
-         <div class="row" style="margin-top:8px;gap:6px;flex-wrap:wrap">
-           <button class="btn alt" id="ccook" style="flex:1">Plate matching ticket</button>
-         </div>
+     <header class="dash-hud">
+       <div class="dash-hud-stats">
+         <span>Time <b id="ctime">${SHIFT_LEN}</b>s</span>
+         <span>Wave <b id="cwave">1</b></span>
+         <span>★ <b id="cstars">0</b></span>
+         <span>Served <b id="cserved">0</b></span>
+         <span>Walkouts <b id="cfail">0</b></span>
+         <span>Combo <b id="ccombo">0</b></span>
+         <span class="dash-hud-earn">Earned <b class="big-num" id="cearned">0</b></span>
        </div>
-       <p>Time <b id="ctime">${SHIFT_LEN}</b>s · Wave <b id="cwave">1</b> · ★ <b id="cstars">0</b><br>Served <b id="cserved">0</b> · Walkouts <b id="cfail">0</b> · Combo <b id="ccombo">0</b></p>
-       <div>Earned</div><div class="big-num" id="cearned">0</div>
-       <div id="cevents" class="dash-events small"></div>
-       <div id="cpops" class="dash-pops" aria-live="polite"></div>
-       <div class="row" style="justify-content:flex-start"><button class="btn green" id="cstart">Start floor shift</button></div>
+       <button class="btn green" id="cstart">Start floor shift</button>
+     </header>
+     <section class="dash-zone dash-zone-line" aria-label="Waiting line">
+       <div class="dash-zone-label">Waiting line <span class="small">— tap guest, then an empty table (or drag)</span></div>
+       <div class="dash-queue" id="cqueue"><span class="small">Line empty until the shift starts</span></div>
+     </section>
+     <div class="dash-mid">
+       <section class="dash-zone dash-zone-floor" aria-label="Dining floor">
+         <div class="dash-zone-label">Dining floor</div>
+         <div class="dash-tables" id="ctables"></div>
+       </section>
+       <aside class="dash-zone dash-zone-rail" aria-label="Tickets">
+         <div class="dash-zone-label">Tickets</div>
+         <div class="dash-tickets" id="orders"></div>
+         <div id="cevents" class="dash-events small"></div>
+         <div id="cpops" class="dash-pops" aria-live="polite"></div>
+       </aside>
      </div>
+     <section class="dash-zone dash-zone-kitchen" aria-label="Kitchen">
+       <div class="dash-zone-label">Kitchen stations <span class="small">— tap or drag a dish onto its station</span></div>
+       <div class="dash-stations" id="cstations"></div>
+     </section>
+     <section class="dash-zone dash-zone-pass" aria-label="Service pass">
+       <div class="tray">
+         <div class="tray-head">
+           <b>Pass / tray</b>
+           <span class="small">drag chips onto the matching table</span>
+           <button class="btn ghost" id="cleartray">clear</button>
+           <button class="btn alt" id="ccook">Plate matching ticket</button>
+         </div>
+         <div id="tray" class="tray-body"></div>
+       </div>
+     </section>
    </div>
    <h3>Mini-game shifts</h3><p class="small">Skill pays: score, streak bonus and a daily first-shift bonus. No paid boosts.</p><div class="grid">${['cafe', 'delivery'].map((k) => { const J = ensureJobs(state)[k]; return `<div class="card"><b>${JOB_DEFS[k].name}</b><small>${rankOf(J.xp).title} · best ${J.best}</small><button class="btn green" data-job="${k}">Play</button></div>`; }).join('')}</div>
    <h3>Your job ranks</h3><table class="lb"><tr><th>Job</th><th>Rank</th><th>Best</th><th>Runs</th></tr>${Object.entries(ensureJobs(state)).map(([k, J]) => `<tr><td>${JOB_DEFS[k].name}</td><td>${rankOf(J.xp).title}</td><td>${J.best}</td><td>${J.runs}</td></tr>`).join('')}</table>`;
@@ -1381,8 +1406,8 @@ function cafeUi() {
     const qsig = s.queue.map((o) => o.id + ':' + Math.floor(o.patience) + (o.vip ? 'V' : '') + (s.selectedQueueId === o.id ? '*' : '')).join() + `|sel:${s.selectedQueueId}`;
     if (qEl.dataset.sig !== qsig) {
       qEl.dataset.sig = qsig;
-      qEl.innerHTML = `<span class="small">Line (${s.queue.length})${s.selectedQueueId ? ' · tap a table' : ' · tap a guest'}</span>` + (s.queue.map((o) =>
-        `<button class="btn ghost dash-q${s.selectedQueueId === o.id ? ' sel' : ''}${o.vip ? ' vip' : ''}" data-seat-q="${o.id}">${o.vip ? '★ ' : ''}${o.customer}${o.special ? ' · special' : ''}<i class="pat"><i style="width:${100 * o.patience / o.max}%"></i></i></button>`).join('') || '<span class="small">—</span>');
+      qEl.innerHTML = (s.queue.map((o) =>
+        `<button class="btn ghost dash-q${s.selectedQueueId === o.id ? ' sel' : ''}${o.vip ? ' vip' : ''}" data-seat-q="${o.id}"><span class="dash-q-name">${o.vip ? '★ ' : ''}${o.customer}${o.special ? ' · special' : ''}</span><i class="pat"><i style="width:${100 * o.patience / o.max}%"></i></i></button>`).join('') || '<span class="small">Nobody waiting</span>');
     } else s.queue.forEach((o) => { const el = qEl.querySelector(`[data-seat-q="${o.id}"] .pat i`); if (el) el.style.width = (100 * o.patience / o.max) + '%'; });
   }
 
@@ -1393,25 +1418,25 @@ function cafeUi() {
     if (tEl.dataset.sig !== tsig) {
       tEl.dataset.sig = tsig;
       tEl.innerHTML = s.tables.map((t) => {
-        if (!t.open) return `<div class="dash-table locked" data-table="${t.id}"><b>T${t.id}</b><span class="small">unlocks later</span></div>`;
+        if (!t.open) return `<div class="dash-table locked" data-table="${t.id}"><div class="dash-table-num">T${t.id}</div><span class="small">unlocks later</span></div>`;
         const o = s.orders.find((x) => x.id === t.orderId);
         if (!o) {
           const seatHint = s.selectedQueueId || s.queue.length ? (s.selectedQueueId ? 'Tap to seat' : 'Empty') : 'Empty';
-          return `<div class="dash-table empty${t.dirty ? ' phase-dirty' : ''}${s.selectedQueueId ? ' seat-target' : ''}" data-table="${t.id}"><b>T${t.id}</b><span class="small">${t.dirty ? 'DIRTY' : seatHint}</span></div>`;
+          return `<div class="dash-table empty${t.dirty ? ' phase-dirty' : ''}${s.selectedQueueId ? ' seat-target' : ''}" data-table="${t.id}"><div class="dash-table-num">T${t.id}</div><span class="small">${t.dirty ? 'DIRTY — tap clear' : seatHint}</span></div>`;
         }
         const pct = o.phase === 'cook' && o.cookMax ? 100 * (1 - o.cookT / o.cookMax) : 100 * o.patience / o.max;
         const barCol = o.phase === 'cook' ? '#5fd3ff' : o.phase === 'ready' ? '#ffe66a' : o.phase === 'dirty' ? '#c4a882' : (o.patience / o.max < 0.3 ? '#d9534f' : '#3fa66a');
         return `<div class="dash-table phase-${o.phase}${o.vip ? ' vip' : ''}" data-table="${t.id}" data-order="${o.id}">
-          <canvas width="52" height="40" data-face="${o.id}"></canvas>
-          <b>${o.vip ? '★ ' : ''}${o.customer}</b><span class="small">T${t.id} · ${phaseLabel[o.phase] || o.phase}</span>
-          <div class="order-foods">${o.phase === 'seat' ? '' : o.items.map((id) => cafeFoodHtml(id, 22)).join('')}</div>
+          <div class="dash-table-top"><canvas width="56" height="44" data-face="${o.id}"></canvas><div class="dash-table-meta"><b>${o.vip ? '★ ' : ''}${o.customer}</b><span class="small">T${t.id}</span></div></div>
+          <div class="dash-table-phase small">${phaseLabel[o.phase] || o.phase}</div>
+          <div class="order-foods">${o.phase === 'seat' ? '' : o.items.map((id) => cafeFoodHtml(id, 26)).join('')}</div>
           <div class="small items">${o.phase === 'seat' ? '…' : o.items.map(name).join(' + ')}${o.special ? ' · SPECIAL' : ''}</div>
-          <div class="pat"><i style="width:${pct}%;background:${barCol}"></i></div>
+          <div class="pat" title="Patience"><i style="width:${pct}%;background:${barCol}"></i></div>
         </div>`;
       }).join('');
       tEl.querySelectorAll('canvas[data-face]').forEach((c) => {
         const id = +c.dataset.face; const o = s.orders.find((x) => x.id === id); if (!o) return;
-        drawShiba(c.getContext('2d'), 26, 26, { coat: Object.keys(COATS)[o.id % 6], outfit: NPC_OUTFITS[o.id % NPC_OUTFITS.length], scale: 0.45, shadow: false });
+        drawShiba(c.getContext('2d'), 28, 28, { coat: Object.keys(COATS)[o.id % 6], outfit: NPC_OUTFITS[o.id % NPC_OUTFITS.length], scale: 0.48, shadow: false });
       });
     } else {
       s.tables.forEach((t) => {
@@ -1431,7 +1456,7 @@ function cafeUi() {
     $('#orders').dataset.sig = sig;
     if (s.over) $('#orders').innerHTML = '';
     else {
-      $('#orders').innerHTML = tickets.map((o) => `<div class="order phase-${o.phase}${o.vip?' vip':''}" data-order="${o.id}" data-items="${o.items.join(',')}"><b>#${o.id} ${o.vip?'★ ':''}${o.customer}</b><div class="order-foods">${o.items.map((id) => cafeFoodHtml(id, 22)).join('')}</div><div class="small">${o.items.map(name).join(' + ')}</div><div class="small">${phaseLabel[o.phase]}</div><div class="pat"><i></i></div></div>`).join('') || '<p class="small">No open tickets — seat guests from the line.</p>';
+      $('#orders').innerHTML = tickets.map((o) => `<div class="order phase-${o.phase}${o.vip?' vip':''}" data-order="${o.id}" data-items="${o.items.join(',')}"><b>#${o.id} ${o.vip?'★ ':''}${o.customer}</b><div class="order-foods">${o.items.map((id) => cafeFoodHtml(id, 24)).join('')}</div><div class="small">${o.items.map(name).join(' + ')}</div><div class="small">${phaseLabel[o.phase]}</div><div class="pat"><i></i></div></div>`).join('') || '<p class="small">No open tickets — seat guests from the line.</p>';
     }
   }
   tickets.forEach((o) => { const el = $(`.order[data-order="${o.id}"] .pat i`); if (el) { el.style.width = (100 * o.patience / o.max) + '%'; el.style.background = o.patience / o.max < 0.3 ? '#d9534f' : '#3fa66a'; } });

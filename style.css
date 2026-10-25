@@ -44,6 +44,7 @@ canvas#game{display:block;width:100vw;height:100vh;cursor:pointer}
 /* Phones: the kibble-pay Connect Wallet pill (#inu-wallet-btn, z 10001) sat on top of every panel header. Hide just the pill while a panel/full-screen overlay is open; it is back (and working) the moment it closes. Its pop-ups are untouched. */
 @media (pointer:coarse),(max-height:500px){body:has(#panel:not([hidden])) #inu-wallet-btn,body:has(#places:not([hidden])) #inu-wallet-btn,body:has(#mapfull:not([hidden])) #inu-wallet-btn{visibility:hidden;pointer-events:none}}
 .panel-card{position:relative;background:var(--navy);border:4px solid var(--gold);box-shadow:0 0 0 4px var(--ink),inset 0 0 0 3px var(--goldd),0 20px 50px #000a;padding:20px 22px;width:min(940px,95vw);max-height:92vh;overflow:auto}
+.panel-card:has(.cafe.dash){width:min(1120px,98vw);padding:16px 18px}
 .close{position:absolute;right:10px;top:10px;border:3px solid var(--gold);background:var(--navy3);color:var(--goldl);width:34px;height:34px;font:inherit;font-size:18px;cursor:pointer}
 .panel-card h2{margin:0 0 6px;color:var(--goldl);font-weight:normal;font-size:22px;text-transform:uppercase;text-shadow:2px 2px 0 var(--ink)}.panel-card h3{color:var(--goldl);font-weight:normal}.sub{margin:0 0 12px;color:#cfc6a4;font-size:12px;line-height:1.5}
 .panel-card b{color:var(--goldl);font-weight:normal}
@@ -61,41 +62,65 @@ canvas#game{display:block;width:100vw;height:100vh;cursor:pointer}
 .menu button:hover{border-color:var(--goldl)}
 .tray{background:var(--navy2);border:3px solid var(--goldd);padding:10px;min-height:80px}
 
-/* Diner Dash floor-shift layout */
-.cafe.dash{display:grid;grid-template-columns:1fr 280px;gap:14px;align-items:start}
-.dash-main{display:flex;flex-direction:column;gap:10px;min-width:0}
-.dash-side{display:flex;flex-direction:column;gap:8px;position:relative}
-.dash-queue{display:flex;flex-wrap:wrap;gap:6px;align-items:center;min-height:40px;padding:6px;background:var(--navy2);border:2px dashed var(--goldd);touch-action:none}
-.dash-q{position:relative;padding:4px 8px 10px!important;font-size:11px}
+/* Diner Dash floor-shift layout — clear zones (line → floor → kitchen → pass) */
+.cafe.dash{display:flex;flex-direction:column;gap:10px;min-width:0}
+.dash-hud{display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:10px;padding:8px 10px;background:var(--navy2);border:3px solid var(--goldd)}
+.dash-hud-stats{display:flex;flex-wrap:wrap;gap:8px 14px;align-items:baseline;font-size:12px;color:#c9d2ef}
+.dash-hud-stats b{color:var(--cream)}
+.dash-hud-earn .big-num{display:inline;font-size:20px;margin-left:4px;vertical-align:baseline}
+.dash-zone{background:var(--navy2);border:3px solid var(--goldd);padding:8px 10px;min-width:0}
+.dash-zone-label{font-size:11px;color:var(--goldl);text-transform:uppercase;letter-spacing:.4px;margin:0 0 6px}
+.dash-zone-label .small{text-transform:none;letter-spacing:0;color:#b9b08e;margin-left:4px}
+.dash-zone-line{border-style:dashed;background:#182246}
+.dash-queue{display:flex;flex-wrap:wrap;gap:8px;align-items:stretch;min-height:52px;padding:2px;touch-action:none}
+.dash-q{position:relative;padding:8px 12px 14px!important;font-size:12px;min-width:88px;min-height:44px}
+.dash-q-name{display:block}
 .dash-q.sel{border-color:#ffe66a!important;box-shadow:0 0 0 2px rgba(255,230,106,.45);background:#2a3358}
 .dash-q.vip{border-color:#d4a640!important;color:#ffe6a0}
-.dash-q .pat{position:absolute;left:4px;right:4px;bottom:3px;height:4px;background:var(--ink);overflow:hidden}
+.dash-q .pat{position:absolute;left:6px;right:6px;bottom:4px;height:5px;background:var(--ink);overflow:hidden;border-radius:1px}
 .dash-q .pat i{display:block;height:100%;background:#3fa66a}
-.dash-tables{display:grid;grid-template-columns:repeat(auto-fill,minmax(120px,1fr));gap:8px}
-.dash-table{background:var(--navy2);border:3px solid var(--goldd);padding:6px;text-align:center;cursor:pointer;font-size:11px;min-height:110px}
-.dash-table.empty{opacity:.7;border-style:dashed}
+.dash-mid{display:grid;grid-template-columns:minmax(0,1fr) minmax(200px,240px);gap:10px;align-items:stretch}
+.dash-zone-floor{background:linear-gradient(180deg,#1a2748 0%,#152040 100%);min-height:280px}
+.dash-tables{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px}
+.dash-table{background:var(--navy3);border:3px solid var(--goldd);padding:8px;text-align:center;cursor:pointer;font-size:11px;min-height:148px;display:flex;flex-direction:column;align-items:center;gap:3px;touch-action:none}
+.dash-table-num{font-size:14px;color:var(--goldl);font-weight:normal}
+.dash-table-top{display:flex;align-items:center;gap:6px;justify-content:center;width:100%}
+.dash-table-meta{text-align:left;min-width:0}
+.dash-table-meta b{display:block;font-size:12px;color:var(--cream);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:110px}
+.dash-table-phase{color:#c9d2ef;min-height:1.2em}
+.dash-table.empty{opacity:.85;border-style:dashed;justify-content:center}
 .dash-table.empty.seat-target{opacity:1;border-color:#ffe66a;border-style:solid;animation:dash-pulse 1.1s ease-in-out infinite}
-.dash-table.locked{opacity:.35;border-style:dotted;cursor:not-allowed;filter:grayscale(.4)}
+.dash-table.locked{opacity:.35;border-style:dotted;cursor:not-allowed;filter:grayscale(.4);justify-content:center}
 .dash-table.phase-ready{border-color:#ffe66a;box-shadow:0 0 0 2px rgba(255,230,106,.35)}
 .dash-table.phase-dirty{border-color:#c4a882;background:#3a3228}
 .dash-table.phase-cook{border-color:#5fd3ff}
 .dash-table.vip{box-shadow:0 0 0 2px rgba(212,166,64,.45)}
-.dash-table .pat{height:6px;background:var(--ink);margin-top:4px;overflow:hidden}
+.dash-table .pat{height:10px;width:100%;background:var(--ink);margin-top:auto;overflow:hidden;border:1px solid #0c1022;flex-shrink:0}
 .dash-table .pat i{display:block;height:100%;background:#3fa66a}
-.dash-table canvas{background:var(--navy3);margin:0 auto 2px;display:block}
-.dash-stations{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
-.dash-station{background:var(--navy2);border:3px solid var(--goldd);padding:8px;font-size:11px}
-.dash-station .st-head{display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;gap:4px}
-.dash-station .st-busy{color:#8fa0c8}.dash-station .st-busy.on{color:#5fd3ff;font-weight:bold}
-.dash-station .st-items{display:flex;flex-direction:column;gap:4px;margin-bottom:6px}
-.dash-station .st-item{width:100%;text-align:left;padding:4px 6px!important;font-size:10px}
-.dash-station .st-auto{width:100%;padding:4px 6px!important;font-size:10px}
-.dash-tickets{display:flex;gap:8px;flex-wrap:wrap;min-height:70px}
-.dash-tickets .order{width:130px}
+.dash-table canvas{background:var(--navy2);display:block;border:2px solid var(--ink);flex-shrink:0}
+.dash-zone-rail{display:flex;flex-direction:column;gap:8px;position:relative;background:#182246}
+.dash-tickets{display:flex;flex-direction:column;gap:8px;min-height:120px;flex:1;overflow:auto;max-height:340px}
+.dash-tickets .order{width:100%;box-sizing:border-box}
+.dash-tickets .order .order-foods{display:flex;justify-content:center;gap:3px;flex-wrap:wrap;margin:4px 0;min-height:24px}
+.dash-tickets .order .pat{height:8px}
 .order.phase-ready{border-color:#ffe66a}
 .order.phase-cook{border-color:#5fd3ff}
 .order.vip{border-color:#d4a640}
-.dash-events{min-height:2.8em;color:#c9d2ef}
+.dash-zone-kitchen{background:#1a223f;border-color:#6a5420}
+.dash-stations{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px}
+.dash-station{background:var(--navy3);border:3px solid var(--goldd);padding:10px;font-size:11px;min-height:140px;display:flex;flex-direction:column;touch-action:none}
+.dash-station .st-head{display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;gap:4px}
+.dash-station .st-busy{color:#8fa0c8}.dash-station .st-busy.on{color:#5fd3ff;font-weight:bold}
+.dash-station .st-items{display:flex;flex-direction:column;gap:6px;margin-bottom:8px;flex:1}
+.dash-station .st-item{width:100%;text-align:left;padding:6px 8px!important;font-size:11px;min-height:40px}
+.dash-station .st-auto{width:100%;padding:6px 8px!important;font-size:11px;margin-top:auto}
+.dash-zone-pass{background:#24305c;border-color:#ffe66a;border-width:3px}
+.dash-zone-pass .tray{background:transparent;border:none;padding:0;min-height:0}
+.tray-head{display:flex;flex-wrap:wrap;align-items:center;gap:8px;margin-bottom:8px}
+.tray-head b{color:var(--goldl);margin-right:4px}
+.tray-head .small{flex:1;min-width:120px}
+.tray-body{min-height:56px;display:flex;flex-wrap:wrap;align-items:center;gap:6px}
+.dash-events{min-height:2.4em;color:#c9d2ef;font-size:11px}
 .dash-events .ev-walkout{color:#ff8a8a}
 .dash-events .ev-serve{color:#5df07a}
 .dash-events .ev-cook,.dash-events .ev-station{color:#5fd3ff}
@@ -117,15 +142,15 @@ canvas#game{display:block;width:100vw;height:100vh;cursor:pointer}
 .st-item{display:flex!important;align-items:center;gap:6px;touch-action:none}
 .st-item .cafe-food-icon{width:28px;height:28px}
 .tray{touch-action:none}
-.tray-chip{display:inline-flex;align-items:center;justify-content:center;gap:2px;padding:4px;margin:2px;background:var(--navy3);border:2px solid var(--goldd);border-radius:8px;cursor:grab;touch-action:none;user-select:none;-webkit-user-select:none}
+.tray-chip{display:inline-flex;align-items:center;justify-content:center;gap:2px;padding:6px;margin:0;background:var(--navy2);border:2px solid var(--goldd);border-radius:8px;cursor:grab;touch-action:none;user-select:none;-webkit-user-select:none;min-width:48px;min-height:48px}
 .tray-chip:active,.tray-chip.dragging{cursor:grabbing;opacity:.85}
 .tray-chip .cafe-food-icon{width:40px;height:40px}
-.tray-ready{display:flex;flex-wrap:wrap;gap:6px;margin-top:8px}
-.tray-ready-chip{display:inline-flex;align-items:center;gap:4px;padding:4px 8px 4px 4px;background:#2a3358;border:2px solid #ffe66a;border-radius:10px;cursor:grab;touch-action:none;user-select:none;font-size:11px;color:#ffe6a0}
-.tray-ready-chip .cafe-food-icon{width:28px;height:28px}
+.tray-ready{display:flex;flex-wrap:wrap;gap:8px;width:100%;margin-top:4px}
+.tray-ready-chip{display:inline-flex;align-items:center;gap:6px;padding:6px 10px 6px 6px;background:#2a3358;border:2px solid #ffe66a;border-radius:10px;cursor:grab;touch-action:none;user-select:none;font-size:12px;color:#ffe6a0;min-height:44px}
+.tray-ready-chip .cafe-food-icon{width:32px;height:32px}
 .tray-ready-chip:active,.tray-ready-chip.dragging{cursor:grabbing}
-.dash-table .order-foods{display:flex;justify-content:center;gap:2px;flex-wrap:wrap;margin:2px 0;min-height:20px}
-.dash-table .order-foods .cafe-food-icon{width:22px;height:22px}
+.dash-table .order-foods{display:flex;justify-content:center;gap:3px;flex-wrap:wrap;margin:2px 0;min-height:26px}
+.dash-table .order-foods .cafe-food-icon{width:26px;height:26px}
 .dash-table.drop-target,.dash-station.drop-target{border-color:#5df07a!important;box-shadow:0 0 0 3px rgba(93,240,122,.45)!important;animation:dash-pulse 0.9s ease-in-out infinite}
 .dash-tickets .order{touch-action:none;cursor:pointer}
 .dash-tickets .order.phase-ready{cursor:grab;touch-action:none}
@@ -134,7 +159,28 @@ canvas#game{display:block;width:100vw;height:100vh;cursor:pointer}
 .cafe-drag-ghost .cafe-food-icon{width:36px;height:36px}
 .cafe.dash.dragging-food{cursor:grabbing}
 .cafe.dash.dragging-food .dash-table,.cafe.dash.dragging-food .dash-station{transition:border-color .1s,box-shadow .1s}
-@media(max-width:700px){.cafe.dash{grid-template-columns:1fr}.dash-tables{grid-template-columns:repeat(2,1fr)}.dash-stations{grid-template-columns:1fr}}
+/* Mobile: stack zones; keep drag targets separated and tappable */
+@media(max-width:820px){
+  .panel-card:has(.cafe.dash){width:min(980px,98vw);padding:12px}
+  .dash-mid{grid-template-columns:1fr}
+  .dash-tables{grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}
+  .dash-table{min-height:132px}
+  .dash-tickets{flex-direction:row;flex-wrap:wrap;max-height:none}
+  .dash-tickets .order{width:calc(50% - 4px);min-width:140px}
+  .dash-stations{grid-template-columns:repeat(3,minmax(0,1fr));gap:8px}
+  .dash-station{min-height:120px;padding:8px}
+  .dash-station .st-item{padding:8px!important;min-height:44px}
+  .tray-chip,.tray-ready-chip{min-height:48px}
+}
+@media(max-width:560px){
+  .dash-tables{grid-template-columns:repeat(2,minmax(0,1fr))}
+  .dash-stations{grid-template-columns:1fr;gap:10px}
+  .dash-station{min-height:auto}
+  .dash-hud-stats{font-size:11px;gap:6px 10px}
+  .dash-tickets .order{width:100%}
+  .tray-head{gap:6px}
+  .tray-head .btn{flex:1 1 auto}
+}
 
 .big-num{font-size:28px;color:#6fd394}
 .launch{display:grid;grid-template-columns:260px 1fr;gap:14px}
