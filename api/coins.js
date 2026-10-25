@@ -23,6 +23,7 @@ import { checkDeclaration } from "./_lib/declaration.js";
 import { TREASURY_WALLET, KIBBLE_SPLIT } from "../src/wallets.js";
 import { DECL_MAX_AGE_MS } from "../src/declaration.js";
 import { verifiedChecks, nextRecord, publicRecord, queueAnnouncement, releaseNews, VKEY, SNIPE_KEY, VLOCK, VERIFIED_TTL_MS, VERIFY_PER_REQ, SNIPE_SLOTS, ANNOUNCE_GAP_S } from "./_lib/verified.js";
+import { applyCors } from "./_lib/cors.js";
 
 export const KIBBLE_MINT = "4VE9sy4fEMJdZ6i7MkYPbnqDJd2oqzJQmg44WJ3opump";
 export const OWNER_WALLET = TREASURY_WALLET; // President's Vault (src/wallets.js)
@@ -153,6 +154,7 @@ export function makeHandler({ env = process.env, store = upstashStore(env), deps
   const D = { sessionWallet: (t) => sessionWallet(t), pumpCreator: (m) => pumpCreator(m, { rpc: RPC }), launchTx: (s) => launchTx(s, { rpc: RPC }), now: () => Date.now(), dexInfo: (m) => dexInfo(m), pairs: () => evaluatePairs(), clean: (m, creatorHint) => cleanChecks(m, { rpc: makeRpc(RPC, fetch, env), creatorHint, dexLiquidityUsd: (x) => dexLiquidity(x), solUsd: () => solUsd() }),
     verify: (m, creatorHint, snipeCache, declaration) => verifiedChecks(m, { rpc: makeRpc(RPC, fetch, env), creatorHint, snipeCache, declaration }), ...deps };
   return async function handler(req, res) {
+    if (applyCors(req, res)) return; // hub Launch Hall (no Verse SIWS)
     if (req.method === "OPTIONS") { res.statusCode = 204; return res.end(); }
     if (req.method === "GET" && /[?&]pairs=1/.test(req.url || "")) return json(res, 200, await D.pairs());
     if (!store) return json(res, 503, { error: "coin registry storage is not configured yet", storage: false });

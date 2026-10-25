@@ -249,7 +249,7 @@ function startGame(s) { loadProfile(s).catch(() => {}); IQC.ensureChoice(s); loa
   { const r = DIS.parseReturn(location.search); if (r) { const g = DIS.HUB_GATE; Object.assign(state.player, { x: (g.out[0] + 0.5) * TILE, y: (g.out[1] + 0.5) * TILE }); globalThis.__districtReturn = r;
       setTimeout(() => { if (mode === 'world') enterRoom('districts', r.spawn || 'd-' + r.district); if (r.cabinet) setTimeout(() => toast(`Welcome back from ${DIS.cabTitle(r.cabinet)}!`, 'good'), 400); }, 60); } }
   cam.x = state.player.x; cam.y = state.player.y; hud(); persist(); wayUi(true);
-  // Hub / deep-links: ?open=launch opens Launch Hall (guide + panel). ?kibblesign=1 opens creator signing card.
+  // Hub deep-link ?open=launch is redirected to /hall.html (wallet-only) in index.html. In-world panel still opens here; ?kibblesign=1 opens creator signing card.
   { const open = (new URLSearchParams(location.search).get('open') || '').toLowerCase().replace(/[_\s-]/g, '');
     if (open === 'launch' || open === 'launchhall') setTimeout(() => { const p = placeById(state, 'launch'); if (p) { guide.setGuide(p); guide.walk(); } openPanel('launch'); }, 700);
     else if (open === 'academy' || open === 'goodboy' || open === 'school') setTimeout(() => { const p = placeById(state, 'academy'); if (p) { guide.setGuide(p); guide.walk(); } openPanel('academy'); }, 700);
