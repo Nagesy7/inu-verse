@@ -86,6 +86,7 @@ import { N, SCALE, drawWater } from './tiles.js';
 import { feel } from './feel.js';
 import { faceTalk, faceReact } from './face.js';
 import { stepChat, drawChat, emoteBubble, say as chatSay } from './chat.js';
+import { renderAcademy } from './academyui.js';
 import { makeRoomPlay } from './roomplay.js';
 import { sceneForDoor, HUB_GATES, resolveExit, makePortalState, portalStep, SCENES, scene as sceneOf, walkInExits, solidAt as sceneSolid, ST as ROOM_ST } from './scenes.js';
 import { hubGateProp } from './sceneart.js';
@@ -250,6 +251,7 @@ function startGame(s) { loadProfile(s).catch(() => {}); IQC.ensureChoice(s); loa
   // Hub / deep-links: ?open=launch opens Launch Hall (guide + panel). ?kibblesign=1 opens creator signing card.
   { const open = (new URLSearchParams(location.search).get('open') || '').toLowerCase().replace(/[_\s-]/g, '');
     if (open === 'launch' || open === 'launchhall') setTimeout(() => { const p = placeById(state, 'launch'); if (p) { guide.setGuide(p); guide.walk(); } openPanel('launch'); }, 700);
+    else if (open === 'academy' || open === 'goodboy' || open === 'school') setTimeout(() => { const p = placeById(state, 'academy'); if (p) { guide.setGuide(p); guide.walk(); } openPanel('academy'); }, 700);
     else if (/[?&]kibblesign=1/.test(location.search)) setTimeout(() => openPanel('launch', { tab: 'kibble', sign: true }), 900);
     else setTimeout(tourCheck, 1400); }
 }
@@ -946,7 +948,8 @@ function openPanel(kind, opts = {}) {
       if (r.ok) { state.town && playerDid(state.town, 'You moved into a new home on Bone Street.'); toast(reg.already ? 'Welcome back — your plot is ready.' : 'Plot claimed! Your new home is ready.', 'good'); hud(); persist(); closePanel(); enterHomeWalk(p.id, false); }
       else { toast(r.reason, 'bad'); btn.disabled = false; }
     };
-  } else if (kind === 'shop') renderShop();
+  } else if (kind === 'academy') return renderAcademy({ state, body, toast, hud, persist, tab: opts.tab, open: (tab) => openPanel('academy', { tab }) });
+  else if (kind === 'shop') renderShop();
   else if (kind === 'cafe') renderCafe();
   else if (kind === 'diner') renderDiner();
   else if (kind === 'launch') renderLaunch();

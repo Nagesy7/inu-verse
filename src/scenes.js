@@ -128,6 +128,26 @@ export const SCENES = {
     spawns: { door: [7, 7, 'up'] }, exits: [{ tiles: [[7, 8], [8, 8]], face: 'down', to: 'hub', door: 'clubhouse' }],
     spots: [{ id: 'packboard', tx: 6, ty: 3, face: 'up', name: 'Pack board', act: { panel: 'packs' }, label: 'Packs' }, { id: 'decor', tx: 12, ty: 3, face: 'up', name: 'Decorate', act: { build: 'clubhouse' }, label: 'Decorate clubhouse' }],
     npcs: [{ name: 'Captain Kuma', coat: 'golden', x: 9, y: 3, face: 'down', staff: true, lines: ['Packs that play together, stay together!', 'Check the pack board for the Kibble Cup.'] }] }),
+  academy: S({ name: 'Good Boy Academy', kind: 'interior', floor: 'wood', wall: '#3a6a4a', legend: IN, map: [
+    '##################',
+    '#WW#NNNNNN#WW#QQ##',
+    '#P..............P#',
+    '#..hTh..CCC..hTh.#',
+    '#................#',
+    '#..hTh.......hTh.#',
+    '#................#',
+    '#P.....,,.......L#',
+    '########EE########'],
+    spawns: { door: [8, 7, 'up'] }, exits: [{ tiles: [[8, 8], [9, 8]], face: 'down', to: 'hub', door: 'academy' }],
+    spots: [{ id: 'desk', tx: 9, ty: 4, face: 'up', name: "Dean Barkley's desk", act: { panel: 'academy' }, label: 'Academy board' },
+      { id: 'board', tx: 8, ty: 2, face: 'up', name: 'Chalkboard', act: { panel: 'academy', opts: { tab: 'lesson' } }, label: 'Lesson of the Day' }],
+    npcs: [{ name: 'Dean Barkley', coat: 'golden', x: 9, y: 2, face: 'down', staff: true, lines: [
+      'Welcome to Good Boy Academy — trading vocab, not financial advice!',
+      'Tap the desk for Lesson, Quiz, Practice stub and your Pup Report Card.',
+      'Three strikes and you are done for the Sydney day. Bones for first lesson clears.',
+      'Educational game fiction only. Not investment advice.'] },
+      { name: 'Pupil Pip', coat: 'cream', x: 3, y: 5, wander: true, lines: ['Is a bonding curve a snack?', 'I got two quiz strikes already…'] },
+      { name: 'Study Sesame', coat: 'dark', x: 13, y: 5, wander: true, lines: ['Mint authority renounced — check!', 'Practice Launch is coming next, Dean said.'] }] }),
   // ---- outdoor zones ----
   park: S({ name: 'Hanami Park', kind: 'zone', legend: OUT, map: [
     'TTTTTTTTTTTTTTTTTTTTTTTTTTTTTT',
@@ -201,7 +221,7 @@ export const SCENES = {
   districts: S({ ...DISTRICTS_SCENE, legend: { ...OUT, ...DISTRICTS_SCENE.legend } }), // Arcade Districts (districts.js): Arcade Row + five districts
 };
 // door ids on the hub that now lead into a walkable interior (Launch Hall + mall stores + game doors keep their old entry)
-export const DOOR_SCENES = { 'building:cafe': 'cafe', 'building:shop': 'shop', 'building:fashion': 'fashion', 'building:cars': 'cars', 'bank:bank': 'bank', 'mall:mall': 'mall', 'clubhouse:clubhouse': 'clubhouse' };
+export const DOOR_SCENES = { 'building:cafe': 'cafe', 'building:shop': 'shop', 'building:fashion': 'fashion', 'building:cars': 'cars', 'building:academy': 'academy', 'bank:bank': 'bank', 'mall:mall': 'mall', 'clubhouse:clubhouse': 'clubhouse' };
 export const sceneForDoor = (d) => DOOR_SCENES[d.kind + ':' + d.id] || null;
 // hub gates (walk into them to change zone). tx,ty = hub stand tile; face = walking direction.
 export const HUB_GATES = [
