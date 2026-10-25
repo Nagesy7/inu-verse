@@ -356,3 +356,25 @@ body.short .title-card>.row{position:sticky;bottom:-4px;z-index:3;background:#1b
 
 /* districts: arcade score toasts must sit above the open arcade overlay */
 body:has(#arcade-ov:not([hidden])) #toast { z-index: 9100; top: 52px; }
+
+
+/* Verse quest onboarding */
+#obcard{position:fixed;left:50%;transform:translateX(-50%);bottom:max(16px,env(safe-area-inset-bottom));width:min(560px,calc(100vw - 24px));z-index:21;display:flex;gap:10px;align-items:flex-start;background:var(--navy);border:3px solid #4cf08a;box-shadow:0 0 0 3px var(--ink);padding:8px 10px;color:var(--cream);animation:toastIn .3s cubic-bezier(.2,1.4,.4,1)}
+#obcard[hidden]{display:none}
+#ob-npc{width:72px;height:72px;image-rendering:pixelated;flex:none;background:#1a3a2a;border:2px solid var(--ink)}
+#obcard .ob-body{flex:1;min-width:0}#obcard .ob-name{font-size:9px;color:#9ff0c0;text-transform:uppercase}
+#obcard .ob-title{display:block;font-size:14px;color:#fff6e0;margin:1px 0 3px}
+#obcard .ob-text{font-size:11px;line-height:16px}#obcard .ob-row{display:flex;gap:6px;align-items:center;margin-top:6px}
+#obcard .ob-sp{flex:1}#obcard .ob-reward{font-size:10px;color:#ffd84a}#obcard .ob-note{font-size:8px;color:#8a9ab8;margin-top:4px}
+#obcard .btn{font-size:11px;padding:5px 10px}
+.ob-progress{background:#1a2438;border:2px solid var(--ink);padding:8px 10px;margin:8px 0;color:#ffd84a}
+.ob-grid{display:grid;grid-template-columns:1fr 1fr;gap:6px;margin:8px 0}
+.ob-item{text-align:left;background:#24305c;border:2px solid var(--ink);color:var(--cream);padding:8px;cursor:pointer;font:inherit}
+.ob-item b{display:block;font-size:12px;color:#fff6e0}.ob-item small{font-size:10px;color:#c9d6e8}
+.ob-item.done{border-color:#4cf08a;background:#1a3a2a}
+.ob-miles{font-size:11px;line-height:1.6;color:var(--cream)}.ob-miles .done{color:#9ff0c0}
+@media (pointer:coarse) and (orientation:landscape){
+ #obcard{left:calc(max(8px,env(safe-area-inset-left)) + 150px);right:calc(max(8px,env(safe-area-inset-right)) + 172px);width:auto;transform:none;bottom:max(8px,env(safe-area-inset-bottom));padding:5px 6px;gap:6px}
+ #ob-npc{width:48px;height:48px}#obcard .ob-text{font-size:10px;line-height:13px}#obcard .ob-title{font-size:12px}
+}
+@media (pointer:coarse) and (orientation:portrait){#obcard{left:8px;right:8px;width:auto;transform:none;bottom:auto;top:calc(max(8px,env(safe-area-inset-top)) + 54px)}}

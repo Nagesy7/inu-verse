@@ -61,6 +61,9 @@ import { ARCADE, GAME_DOORS } from './world.js';
 import { doorProps } from './doorart.js';
 import { createGuide } from './guideui.js';
 import { isRealWallet } from './guide.js';
+import * as OB from './onboard.js';
+import { createOnboardUi } from './onboardui.js';
+import { mascotActors, drawMascotTag } from './onboardart.js';
 import * as PAIR from './pairing.js';
 import { ensureFly, featuredOf, statusGlow, poolsOf, FEATURED_SLOTS, claimPresDrop } from './flywheels.js';
 import * as IQC from './companions.js';
@@ -229,7 +232,7 @@ function titleScreen() {
   requestAnimationFrame(loop);
 }
 
-function startGame(s) { loadProfile(s).catch(() => {}); IQC.ensureChoice(s); loadCompanionProfile(); ENG.ensureEngage(s); ENG.addSeasonXp(s, 'login', Math.floor((s.clockSec || 0) / DAY_LEN)); F5.ensureFly5(s); F5.holderCheck(s); s.town ||= makeTown(rng); townH = -1; seedTokens(s, rng); REL.ensureRel(s); ensureFarm(s); ensureBiz(s); s.clockSec ??= 0; catchUp(s, Date.now(), { season: seasonOf(Math.floor(s.clockSec / DAY_LEN)), rain: false }); hourIdx = Math.floor(s.clockSec / (DAY_LEN / 24));
+function startGame(s) { loadProfile(s).catch(() => {}); IQC.ensureChoice(s); loadCompanionProfile(); ENG.ensureEngage(s); ENG.addSeasonXp(s, 'login', Math.floor((s.clockSec || 0) / DAY_LEN)); F5.ensureFly5(s); F5.holderCheck(s); OB.ensureOnboard(s); s.town ||= makeTown(rng); townH = -1; seedTokens(s, rng); REL.ensureRel(s); ensureFarm(s); ensureBiz(s); s.clockSec ??= 0; catchUp(s, Date.now(), { season: seasonOf(Math.floor(s.clockSec / DAY_LEN)), rain: false }); hourIdx = Math.floor(s.clockSec / (DAY_LEN / 24));
   state = s; state.kibble ??= DEMO ? 20 : 0; if (!DEMO) state.kibble = 0; ensureWardrobe(state); ensurePacks(state); ensureMall(state); state.clockSec ??= 0; lastEarned = state.stats.bonesEarned; mode = 'world'; LS.ensureStreak(state); setTimeout(() => syncStreak(), 0);
   buildDrawer(document, { joystick: joyApi, bork: () => { initAudio(); bork(); player.emote = { kind: 'bork', t: 1.2 }; emoteBubble('me', 'bork', time); } }); $('#title').hidden = true; $('#hud').hidden = false; $('#minimap-wrap').hidden = false; document.body.classList.add('inworld');
   makeAlive(); mapImg = prerenderMap(); npcs = spawnNpcs(rng, 6); npcs.forEach((n) => { n.art = artKey(n.coat); }); amb = makeAmbient(42);
@@ -402,13 +405,21 @@ function openArcade() { const url = arcadeUrl(), touch = matchMedia('(pointer: c
 function gameDoorUrl(id) { const g = GAME_DOORS.find((d) => d.id === id), w = state?.walletAddr, q = new URLSearchParams();
   if (/^[1-9A-HJ-NP-Za-km-z]{32,44}$/.test(w || '')) q.set('wallet', w); if (DEMO) q.set('demo', '1'); q.set('from', 'inu-verse'); q.set('spawn', id); return g.url + '?' + q.toString(); }
 function openGameDoor(id) { const url = gameDoorUrl(id), g = GAME_DOORS.find((d) => d.id === id); keys.clear(); const w = window.open(url, '_blank', 'noopener');
-  toast(w ? `${g.name} opened in a new tab${/wallet=/.test(url) ? ' with your wallet' : ''}` : 'Allow pop-ups to open ' + g.name, w ? 'good' : 'bad'); }
+  toast(w ? `${g.name} opened in a new tab${/wallet=/.test(url) ? ' with your wallet' : ''}` : 'Allow pop-ups to open ' + g.name, w ? 'good' : 'bad');
+  if (id === 'rescue' || id === 'quest') maybeOfferOnboard(id, { id }); }
 globalThis.__doors = { url: gameDoorUrl, open: openGameDoor };
 // ---- onboarding tour + wayfinding (src/guide.js, src/guideui.js) ----
 const guide = createGuide({ state: () => state, mode: () => mode, toast: (m, k) => toast(m, k), panelOpen: () => !!panel, persist: () => persist(), miniBase: () => miniBase,
   wallet: () => state?.walletAddr, saveProfile: () => { if (state && hasCustomLook(state)) saveProfile(state); },
-  walk: (path) => { Object.assign(player.pw, { pts: path.slice(), goal: path[path.length - 1] || null, run: false, stuckT: 0, lastD: Infinity, replans: 0 }); player.path = player.pw.pts; player.target = null; player.npcT = null; player.clickMark = null; }, stopWalk: () => stopWalk() });
+  walk: (path) => { Object.assign(player.pw, { pts: path.slice(), goal: path[path.length - 1] || null, run: false, stuckT: 0, lastD: Infinity, replans: 0 }); player.path = player.pw.pts; player.target = null; player.npcT = null; player.clickMark = null; }, stopWalk: () => stopWalk(),
+  openQuests: () => openPanel('onboard') });
 globalThis.__guide = guide;
+const onboardUi = createOnboardUi({
+  state: () => state, toast: (msg, k) => toast(msg, k), persist: () => persist(), hud: () => hud(),
+  saveProfile: () => { if (state && hasCustomLook(state)) saveProfile(state); },
+  setGuide: (p) => guide.setGuide(p), closePanel: () => closePanel(),
+});
+globalThis.__onboard = onboardUi;
 function wayUi(on) { const w = document.getElementById('wayctl'); if (w) w.hidden = !on; }
 async function tourCheck() { if (!state || mode !== 'world') return; const w = state.walletAddr; const prof = isRealWallet(w) ? await profileStore().get(w).catch(() => null) : null; guide.maybeStartTour(prof); }
 // ---- Kibble Bank: read-only view of the wallet (kibble-pay). No deposits, lending or yield. ----
@@ -485,6 +496,7 @@ $('#btn-phantom').onclick = async () => { initAudio(); if (DEMO) return toast('D
   try { const a = await wallet().connect(); if (state) { state.walletAddr = a; if (hasCustomLook(state)) await saveProfile(state); persist(); hud(); tourCheck(); } toast(`Signed in ${a.slice(0, 4)}…${a.slice(-4)}${K.mode === 'live' ? '' : ' · ' + SOON}`, 'good'); } catch (e) { toast(e.message || 'Phantom sign-in failed', 'bad'); } };
 $('#btn-help').onclick = () => openPanel('help');
 $('#btn-guide').onclick = () => guide?.startTour(true);
+$('#btn-quests').onclick = () => { initAudio(); uiClick?.(); openPanel('onboard'); };
 $('#btn-pack').onclick = () => { if (mode === 'world') openPanel('packs'); };
 $('#btn-wardrobe').onclick = () => { if (mode === 'world') openPanel('wardrobe'); };
 $('#btn-garage').onclick = () => { if (mode === 'world') openPanel('garage'); };
@@ -572,7 +584,7 @@ function updateWorld(dt) {
   mailAcc += dt; if (mailAcc > 45) { mailAcc = 0; if (rng() < 0.6 && addMail(state, rng)) { toast('New note in your mailbox!', 'good'); persist(); } }
   // smooth camera
   const k = 1 - Math.pow(0.004, dt), lead = player.moving ? 10 : 0, fx = { left: -1, right: 1 }[player.face] || 0, fy = { up: -1, down: 1 }[player.face] || 0;
-  guide.update(dt); const tc = guide.camTarget(), kk = tc ? 1 - Math.pow(0.02, dt) : k;
+  guide.update(dt); onboardUi.drawNpc(dt); const tc = guide.camTarget(), kk = tc ? 1 - Math.pow(0.02, dt) : k;
   cam.x += ((tc ? tc.x : p.x + fx * lead) - cam.x) * kk; cam.y += ((tc ? tc.y : p.y + fy * lead * 0.6) - cam.y) * kk;
   Object.assign(cam, clampCam(cam.x, cam.y, innerWidth / ZOOM, innerHeight / ZOOM, MAP_W * TILE, MAP_H * TILE));
   if (globalThis.__camLock) { cam.x = __camLock.x; cam.y = __camLock.y; } // debug/screenshot camera lock
@@ -613,7 +625,7 @@ function renderWorld() {
   const view = { x0: -ox, y0: -oy, x1: -ox + vw, y1: -oy + vh };
   drawGroundLife(ctx, amb, phase, view); drawAliveGround(ctx, ALIVE, view, phase); feel.drawGround(ctx);
   if (player.clickMark && player.pw.pts.length) drawMark(ctx, player.clickMark, time);
-  const actors = [MWd.crierActor(time, artKey), ...npcs.map((n, i) => ({ ...n, npc: true, idx: i, badge: badgeOf(packOfName(state, n.name)) })), ...(drive ? [] : [{ x: state.player.x, y: state.player.y, coat: state.player.coat, outfit: state.wardrobe.equipped, face: player.face, phase: player.phase, moving: player.moving, name: state.player.name, me: true, badge: badgeOf(myPack(state)), emote: player.emote, act: ACT.act, art: artKey(state.player.coat, state.wardrobe.equipped), profile: hasCustomLook(state) ? myProfile() : null }]), ...streetPups(), ...presActors(), ...petActors(), ...crewActors(), ...pupActors(), ...MPL.actors(view, state.player), ...dogWalkActors(view, walkNow(), artKey)];
+  const actors = [MWd.crierActor(time, artKey), ...npcs.map((n, i) => ({ ...n, npc: true, idx: i, badge: badgeOf(packOfName(state, n.name)) })), ...(drive ? [] : [{ x: state.player.x, y: state.player.y, coat: state.player.coat, outfit: state.wardrobe.equipped, face: player.face, phase: player.phase, moving: player.moving, name: state.player.name, me: true, badge: badgeOf(myPack(state)), emote: player.emote, act: ACT.act, art: artKey(state.player.coat, state.wardrobe.equipped), profile: hasCustomLook(state) ? myProfile() : null }]), ...streetPups(), ...presActors(), ...petActors(), ...crewActors(), ...pupActors(), ...MPL.actors(view, state.player), ...dogWalkActors(view, walkNow(), artKey), ...mascotActors(state, time)];
   // one depth-sorted list: static props (culled), dynamic props and actors, by ground y
   const L = -ox - 200, Rt = -ox + vw + 200, Tp = -oy - 60, Bt = -oy + vh + 400, list = [];
   for (const p of mapImg.props) if (p.y > Tp && p.y < Bt) list.push(p);
@@ -640,6 +652,7 @@ function renderWorld() {
     const pz = poseFor(a);
     if (a.profile) { drawProfileShiba(ctx, 0, 0, a.profile, { face: a.face, phase: a.phase, moving: a.moving, name: a.name, scale: 1.5, badge: a.badge, fid: a.me ? 'me' : a.name, emote: a.emote?.kind, pose: pz }); if (a.emote) drawEmote(ctx, 0, -110, a.emote.kind, time); }
     else drawShiba(ctx, 0, 0, { coat: a.coat, outfit: a.outfit, face: a.face, phase: a.phase, moving: a.moving, name: a.name, scale: 1.5, badge: a.badge, art: a.art, emote: a.emote?.kind, fid: a.me ? 'me' : a.name || a.id, wag: a.wag || (mm?.wag ? 1 : 0), pose: pz });
+    if (a.onboardMascot) drawMascotTag(ctx, a);
     if (pz) drawPoseFx(ctx, pz, 0, 0, 1.5, time, pz.face);
     KENNEL_TAG.cur = null; if (a.me && LS.wornPin(state) != null) drawWornPin(ctx, LS.wornPin(state), time);
     if (a.worker) { drawVest(ctx, a.face); drawTool(ctx, a.worker); }
@@ -828,6 +841,7 @@ function enterExternal(d) { const url = d.kind === 'arcade' ? arcadeUrl() : game
   entering = setTimeout(() => { entering = null; globalThis.__lastNav = url; if (!globalThis.__noNav) location.assign(url); else ov.hidden = true; }, 800);
   ov.querySelector('#enter-cancel').onclick = () => { clearTimeout(entering); entering = null; ov.hidden = true; doorExit(doorSt, time); }; }
 function interact(it, viaDoor = false) { if (!viaDoor && isWalkDoor(it)) { toast(`Walk into the door to enter ${it.name}`, ''); return; } faceReact('me', it.kind === 'building' || it.kind === 'mall' ? 'wow' : 'curious', 1.2);
+  { const obPlace = OB.placeFromInteract(it); if (obPlace) setTimeout(() => onboardUi.offer(obPlace), 320); }
   if (it.kind === 'building') openPanel(it.id);
   else if (it.kind === 'plot') { if (state.plots[it.id]) enterBuild(it.id, false); else openPanel('plot', { plotId: it.id }); }
   else if (it.kind === 'visit') enterBuild(it.id, true);
@@ -854,9 +868,14 @@ function interact(it, viaDoor = false) { if (!viaDoor && isWalkDoor(it)) { toast
   else if (it.kind === 'community') { const w = window.open(COMMUNITY.url, '_blank', 'noopener'); toast(w ? 'Community board: Telegram opened in a new tab' : 'Allow pop-ups to open the Telegram link', w ? 'good' : 'bad'); }
 }
 
+function maybeOfferOnboard(kind, opts = {}) {
+  const place = OB.placeFromPanel(kind, opts) || OB.placeFromInteract({ kind, id: opts.id || kind }) || (kind === 'rescue' || kind === 'quest' ? kind : null);
+  if (place) setTimeout(() => onboardUi.offer(place), 280);
+}
 function openPanel(kind, opts = {}) {
   if (!panel) { feel.fade(); uiOpen(); } panel = { kind, ...opts }; $('#panel').hidden = false; $('#prompt').hidden = true; keys.clear();
   const body = $('#panel-body'); body.onclick = null; const dg = $('#dialog'); if (dg) { dg.style.pointerEvents = 'none'; dg.style.visibility = 'hidden'; }
+  if (kind !== 'onboard') maybeOfferOnboard(kind, opts);
   if (kind === 'field') return renderField(farmCtx(), opts.i);
   if (kind === 'farm') return renderFarm(farmCtx(), opts.id);
   if (kind === 'lot') return renderLot(farmCtx(), opts.id);
@@ -864,6 +883,7 @@ function openPanel(kind, opts = {}) {
   if (kind === 'friend') return renderFriend(relCtx(), opts.name);
   if (kind === 'chapel') return renderChapel(relCtx());
   if (kind === 'salon') return renderSalon();
+  if (kind === 'onboard') return onboardUi.renderPanel(body);
   if (kind === 'engage') return renderEngage({ ...farmCtx(), tab: opts.tab, day: gameDay(), open: (t) => openPanel('engage', { tab: t }) });
   if (kind === 'bank') return renderBank();
   if (kind === 'cabinet') return renderCabinet(opts.id);
@@ -903,7 +923,7 @@ function openPanel(kind, opts = {}) {
   else if (kind === 'dealer') renderDealer();
   else if (kind === 'pets') renderPets();
   else if (kind === 'garage') renderGarage();
-  else if (kind === 'help') body.innerHTML = `<h2>How to play</h2><ul><li>Walk with <b>WASD</b>/<b>arrows</b> or <b>click</b> anywhere.</li><li>Press <b>E</b> near doors and signs.</li><li>Earn <b>bones</b> serving orders at the Shiba Sips Café.</li><li>Claim a plot (${PLOT_COST} bones), buy furniture at Paws & Pillows, decorate (R to rotate).</li><li>Buy clothes at <b>Fetch Fashion</b> and dress up in your <b>Wardrobe</b> (HUD button).</li><li>Launch Hall: create and trade <b>simulated</b> tokens paired with demo <b>$KIBBLE</b>. Nothing here is real money or on any blockchain.</li><li><b>Packs</b>: found or join a Pack (HUD button), chip in bones to the treasury, decorate the shared clubhouse north of Market Row and climb the Kibble Cup. Packs are simulated locally for now.</li><li>Visit Mochi, Kuro, Hana and Taro's homes on Sakura Lane.</li></ul><button class="btn red" id="reset">Reset save</button>`;
+  else if (kind === 'help') body.innerHTML = `<h2>How to play</h2><ul><li>Walk with <b>WASD</b>/<b>arrows</b> or <b>click</b> anywhere.</li><li>Press <b>E</b> near doors and signs.</li><li>Earn <b>bones</b> serving orders at the Shiba Sips Café, or tap <b>Quests</b> to visit places, learn what they do and earn Bones (optional inventory-only cosmetics).</li><li>Claim a plot (${PLOT_COST} bones), buy furniture at Paws & Pillows, decorate (R to rotate).</li><li>Buy clothes at <b>Fetch Fashion</b> and dress up in your <b>Wardrobe</b> (HUD button).</li><li>Launch Hall: create and trade <b>simulated</b> tokens paired with demo <b>$KIBBLE</b>. Nothing here is real money or on any blockchain.</li><li><b>Packs</b>: found or join a Pack (HUD button), chip in bones to the treasury, decorate the shared clubhouse north of Market Row and climb the Kibble Cup. Packs are simulated locally for now.</li><li>Visit Mochi, Kuro, Hana and Taro's homes on Sakura Lane.</li></ul><button class="btn red" id="reset">Reset save</button>`;
   if (kind === 'help') $('#reset').onclick = () => { if (confirm('Delete your local save?')) { localStorage.clear(); location.reload(); } };
 }
 // ---------- Car dealers, pet shop, garage ----------

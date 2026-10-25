@@ -47,6 +47,10 @@ export const OUTFITS = {
   sneakers_red: { slot: 'feet', name: 'Red Sneakers', price: 80, look: { c: '#b3202c', sole: '#f4f1ea' } },
   sneakers_gold:{ slot: 'feet', name: 'Black & Gold Sneakers', price: 120, look: { c: '#18181e', sole: '#e3b341' } },
   loafers:      { slot: 'feet', name: 'Shiny Loafers', price: 70, look: { c: '#141418', sole: '#3a3a44' } },
+  // Verse quest onboarding rewards (inventory-only, never sold — champion / quest rules)
+  ob_apron_pin:     { slot: 'neck', name: 'Café Apron Pin', price: 0, quest: true, look: { kind: 'pin', c: '#f4efe6', d: '#c8282e' } },
+  ob_scout_bandana: { slot: 'neck', name: 'Verse Scout Bandana', price: 0, quest: true, look: { kind: 'scarf', c: '#2a9a5a', d: '#1a6a3a', accent: '#e3b341' } },
+  ob_verse_pin:     { slot: 'neck', name: 'Verse Graduate Pin', price: 0, quest: true, look: { kind: 'pin', c: '#e3b341', d: '#9c7424' } },
 };
 
 const fail = (reason) => ({ ok: false, reason });
@@ -63,6 +67,7 @@ export function buyOutfit(s, id) {
   const d = OUTFITS[id]; if (!d) return fail('Unknown item');
   if (d.mall) return fail('Sold at Kibble Mall');
   if (d.drop) return fail('Free drop from President Inu visits - not for sale');
+  if (d.quest) return fail('Quest reward — inventory only, never sold');
   const w = ensureWardrobe(s);
   if (w.owned.includes(id)) return fail('Already owned');
   if (s.bones < d.price) return fail('Not enough bones');

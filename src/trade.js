@@ -13,7 +13,7 @@ export const TRADE = Object.freeze({ maxSide: 4, ttlMs: 30 * 60e3, lockMs: 3000,
 export function tradeInfo(id) {
   const m = /^([wf]):([a-z0-9_]{2,40})$/.exec(String(id || '')); if (!m) return null;
   if (m[1] === 'w') { const d = OUTFITS[m[2]]; if (!d) return null;
-    const why = d.mall ? 'bought with $KIBBLE' : d.drop ? 'a President Inu visit drop' : !(d.price > 0) ? 'not a shop item' : null;
+    const why = d.mall ? 'bought with $KIBBLE' : d.drop ? 'a President Inu visit drop' : d.quest ? 'a quest reward (inventory-only)' : !(d.price > 0) ? 'not a shop item' : null;
     return { id, kind: 'wardrobe', key: m[2], name: d.name, slot: d.slot, tradeable: !why, why, unique: true }; }
   const d = FURNITURE[m[2]]; if (!d) return null;
   const why = d.mall || d.kibble || d.store === 'royal' ? 'bought with $KIBBLE' : !(d.price > 0) ? 'not a shop item' : null;
