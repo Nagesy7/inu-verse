@@ -62,7 +62,7 @@ export const GAME_DOORS = [
   { id: 'rescue', name: 'Rescue Station (Inu Rescue)', x: 2, y: 48, w: 4, h: 4, door: { tx: 3, ty: 52 }, url: 'https://inu-rescue.vercel.app/' },
   { id: 'quest', name: 'Trainer Gate (Inu Quest)', x: 2, y: 55, w: 4, h: 4, door: { tx: 3, ty: 59 }, url: 'https://inu-quest.vercel.app/' },
   { id: 'empires', name: 'Empire Keep (Inu Empires)', x: 2, y: 61, w: 4, h: 4, door: { tx: 3, ty: 65 }, url: 'https://aoe2-ashen.vercel.app/' },
-  { id: 'pepeballz', name: 'PepeBallz Dome', x: 2, y: 67, w: 4, h: 4, door: { tx: 3, ty: 71 }, url: 'https://pepeballz.vercel.app/' },
+  { id: 'pepeballz', name: 'Ribbit Nugs Dome', x: 2, y: 67, w: 4, h: 4, door: { tx: 3, ty: 71 }, url: 'https://pepeballz.vercel.app/' },
   { id: 'memebrawl', name: 'Meme Brawl Arena', x: 2, y: 73, w: 4, h: 4, door: { tx: 3, ty: 77 }, url: 'https://meme-brawl.vercel.app/' },
   { id: 'kibblepay', name: 'Kibble Pay Office', x: 58, y: 60, w: 4, h: 4, door: { tx: 59, ty: 64 }, url: 'https://kibble-pay.vercel.app/' },
 ];

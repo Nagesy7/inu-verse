@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import { TILE, GAME_DOORS, ARCADE, COMMUNITY, MAP, T, NETWORK, isSolid, findPath, interactables, doorList, doorDir } from '../src/world.js';
 import { makeDoorState, doorStep, doorExit, outsideOf, DOOR_COOLDOWN } from '../src/doors.js';
 import { places } from '../src/guide.js';
-const GAMES = { 'Inu Quest': 'https://inu-quest.vercel.app/', 'Inu Rescue': 'https://inu-rescue.vercel.app/', 'Inu Empires': 'https://aoe2-ashen.vercel.app/', PepeBallz: 'https://pepeballz.vercel.app/', 'Meme Brawl': 'https://meme-brawl.vercel.app/', 'Kibble Pay': 'https://kibble-pay.vercel.app/', 'Inu Arcade': 'https://inu-arcade.vercel.app/' };
+const GAMES = { 'Inu Quest': 'https://inu-quest.vercel.app/', 'Inu Rescue': 'https://inu-rescue.vercel.app/', 'Inu Empires': 'https://aoe2-ashen.vercel.app/', 'Ribbit Nugs': 'https://pepeballz.vercel.app/', 'Meme Brawl': 'https://meme-brawl.vercel.app/', 'Kibble Pay': 'https://kibble-pay.vercel.app/', 'Inu Arcade': 'https://inu-arcade.vercel.app/' };
 test('every game has a building with a reachable door, a Places entry and a correct link', () => {
   const all = [...GAME_DOORS, ARCADE], ids = new Set(places(null).map((p) => p.id));
   for (const [name, url] of Object.entries(GAMES)) { const g = all.find((b) => b.url === url); assert.ok(g, name + ' has no building');

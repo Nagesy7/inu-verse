@@ -80,7 +80,7 @@ export const TOUR = [
   { place: 'shuttle', title: 'Arcade Districts', text: 'Just east of the Arcade hall, the gate opens onto a long street of cabinet storefronts: Arcade Row, The Arena, FUD Field, Stadium, Parkour Park and Race Park. Walk into an open door to play; kiosks and this shuttle stop fast-travel between districts. Just for fun: no Bones or $KIBBLE change hands.' },
   { place: 'rescue', title: 'Rescue Station', text: 'Opens Inu Rescue: climb the girders and save pups from the grumpy cat. Your wallet comes along.' },
   { place: 'quest', title: 'Trainer Gate', text: 'Opens Inu Quest, the Shiba creature-collecting RPG. Beat the gym to complete a weekly quest step.' },
-  { place: 'quests', title: 'Quest Board (more games)', text: 'The weekly quest chain links every Inu game: Meme Brawl, PepeBallz, Arcade, Rescue and Quest. Finish the chain for a free outfit.' },
+  { place: 'quests', title: 'Quest Board (more games)', text: 'The weekly quest chain links every Inu game: Meme Brawl, Ribbit Nugs, Arcade, Rescue and Quest. Finish the chain for a free outfit.' },
   { place: 'leaders', title: 'Leaderboards Hall', text: 'Combined boards from every game. The top 3 each day, week and month share the prize pools. Skill only, free to enter.' },
   { place: 'board', title: 'Prize-pool board', text: 'Shows what the daily, weekly and monthly pools hold right now (1% of every purchase).' },
   { place: 'market', title: 'Farmers Market', text: 'Sell your crops and fish at the market stalls down by the farm. Prices change with the seasons.' },

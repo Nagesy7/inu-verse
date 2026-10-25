@@ -27,7 +27,7 @@ export function renderFly5(ctx) {
       <button class="btn" data-act="burnclaim" ${B.burnedU < F5.BURN_GOAL_U || B.claimed ? 'disabled' : ''}>${B.claimed ? 'Claimed' : 'Claim free ' + (OUTFITS[F5.BURN_REWARD]?.name || F5.BURN_REWARD)}</button>`;
   }
   if (tab === 'quests' && ctx.kp) {
-    html += `<p class="sub">Weekly cross-game quest chain, tracked on the kibble-pay server for your wallet (Verse Shiba, Arcade, Meme Brawl, PepeBallz). Finish all → cosmetic outfit. No purchase needed.</p><div id="srvq" class="grid"><div class="card">${ctx.kp.session ? 'Loading…' : 'Sign in with Phantom (top bar) to track quests.'}</div></div>`;
+    html += `<p class="sub">Weekly cross-game quest chain, tracked on the kibble-pay server for your wallet (Verse Shiba, Arcade, Meme Brawl, Ribbit Nugs). Finish all → cosmetic outfit. No purchase needed.</p><div id="srvq" class="grid"><div class="card">${ctx.kp.session ? 'Loading…' : 'Sign in with Phantom (top bar) to track quests.'}</div></div>`;
   } else if (tab === 'quests') {
     const q = F5.questProgress(s, week);
     html += `<p class="sub">Weekly cross-game quest chain. Verse steps check locally; Empires / Quest report through kibble-pay later (sim buttons below). Finish all → cosmetic.</p>

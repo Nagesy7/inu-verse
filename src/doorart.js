@@ -49,10 +49,10 @@ function bank(c, g, t) { const x = g.x * TILE, y = g.y * TILE, w = g.w * TILE, h
   R(c, x + dx - 8, y + h - 30, 32, 30, INK); R(c, x + dx - 6, y + h - 28, 28, 28, '#5a3a1a'); R(c, x + dx + 7, y + h - 28, 2, 28, '#3a240e'); R(c, x + dx + 2, y + h - 14, 3, 3, '#f0c840'); R(c, x + dx + 11, y + h - 14, 3, 3, '#f0c840');
   R(c, x - 6, y + h, w + 12, 4, '#bfb294'); const gl = 0.5 + 0.5 * Math.sin(t * 3); c.save(); c.globalAlpha = gl; R(c, x + w - 18, y + 10, 4, 4, '#fff'); c.restore(); }
 
-// New game buildings (Inu Empires, PepeBallz, Meme Brawl, Kibble Pay): one themed pixel facade each, same crisp-rect style.
+// New game buildings (Inu Empires, Ribbit Nugs, Meme Brawl, Kibble Pay): one themed pixel facade each, same crisp-rect style.
 const THEME = {
   empires: { wall: '#8a8478', hi: '#a8a294', lo: '#6a6458', roof: '#3a5a9a', sign: 'INU EMPIRES', signBg: '#2a2030', signCol: '#ffd84a', door: '#5a3a1a' },
-  pepeballz: { wall: '#3f9a4a', hi: '#62b86a', lo: '#2a7034', roof: '#f2efe6', sign: 'PEPEBALLZ', signBg: '#1a3a20', signCol: '#c8ff7a', door: '#1e2a3a' },
+  pepeballz: { wall: '#3f9a4a', hi: '#62b86a', lo: '#2a7034', roof: '#f2efe6', sign: 'RIBBIT NUGS', signBg: '#1a3a20', signCol: '#c8ff7a', door: '#1e2a3a' },
   memebrawl: { wall: '#9a2a34', hi: '#c8404a', lo: '#6a1a22', roof: '#1e1a2c', sign: 'MEME BRAWL', signBg: '#1e1a2c', signCol: '#ff8a3a', door: '#2a1a14' },
   kibblepay: { wall: '#1f2d5c', hi: '#2f3f7a', lo: '#141e40', roof: '#d4a640', sign: 'KIBBLE PAY', signBg: '#d4a640', signCol: '#1f2d5c', door: '#0e1630' } };
 function studio(c, g, t) { const T = THEME[g.id], x = g.x * TILE, y = g.y * TILE, w = g.w * TILE, h = g.h * TILE, dx = (g.door.tx - g.x) * TILE, n = night();
