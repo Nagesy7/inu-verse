@@ -28,6 +28,7 @@ import { wallet, TREASURY, DEMO, SOON, demoOnly, kibText, setWallet, kibblePayWa
 import { ZOOMS, DEFAULT_ZOOM, stepZoom, clampCam } from './zoom.js';
 import { makePresident, startVisit, updatePresident, presidentProps, presidentPresent, talk as presTalk, OUTFIT as PRES_OUTFIT, KINDS as PRES_KINDS } from './president.js';
 import { MALL_ITEMS, quote, buyMallItem, ensureMall, rollPeriods, fmtK, FEE_LABEL, OWNER, OWNER_WALLET, POOL_RULES, FEE_BPS, officeTreasuryNote, officeLedgerNote } from './mall.js';
+import { catStyle } from './facadeart.js';
 import { GAMES, boardRows, poolEntries } from './leaderboards.js';
 import { makeCrew, stepCrew, takeGig, drawVest, drawTool, drawCones } from './workers.js';
 import { trending, adProps, adAt } from './coinads.js';
@@ -1007,8 +1008,9 @@ function renderDealer() { const body = $('#panel-body'), lux = panel.dealer === 
   body.innerHTML = `<h2>${lux ? 'Zoomies Luxury Autos' : 'Zoomies Motors'}</h2><p class="sub">${lux ? `Luxury cars in ${kibText(state)}. ${FEE_LABEL}. Paid to the treasury, ${WL.walletHtml(TREASURY)}, via the ${wallet().simulated ? 'simulated' : 'live'} wallet.` : `Everyday cars priced in bones (you have ${Math.floor(state.bones)}).`} Pick a colour, buy, then drive it from your Garage.</p><div class="grid" id="dealgrid"></div>`;
   const grid = $('#dealgrid');
   for (const [id, m] of Object.entries(CAR_MODELS).filter(([, m]) => m.dealer === panel.dealer)) { const col = panel.col[id] || (lux ? 'Gold' : 'Red'), owned = g.cars.filter((c) => c.model === id).length;
-    const card = document.createElement('div'); card.className = 'card'; card.appendChild(carIcon(id, col));
-    card.insertAdjacentHTML('beforeend', `<b>${m.name}</b><small>${m.blurb} Top speed ${m.speed}.</small><div class="swatches">${Object.entries(CAR_COLORS).map(([n, h]) => `<button class="sw ${n === col ? 'on' : ''}" title="${n}" data-car="${id}" data-col="${n}" style="background:${h};width:16px;height:16px;border:2px solid ${n === col ? '#f2cc68' : '#141a2e'};margin:1px;padding:0"></button>`).join('')}</div><button class="btn green" data-buycar="${id}">Buy ${col} · ${priceTag(m)}</button>${owned ? `<small>Owned: ${owned}</small>` : ''}`);
+    const card = document.createElement('div'), cs = catStyle('car'); card.className = 'card cat-card'; card.style.borderColor = cs.border; card.style.background = cs.bg;
+    card.appendChild(carIcon(id, col));
+    card.insertAdjacentHTML('beforeend', `<div class="cat-chip" style="background:${cs.border};color:#141a2e">${cs.label}</div><b>${m.name}</b><small>${m.blurb} Top speed ${m.speed}.</small><div class="swatches">${Object.entries(CAR_COLORS).map(([n, h]) => `<button class="sw ${n === col ? 'on' : ''}" title="${n}" data-car="${id}" data-col="${n}" style="background:${h};width:16px;height:16px;border:2px solid ${n === col ? '#f2cc68' : '#141a2e'};margin:1px;padding:0"></button>`).join('')}</div><button class="btn green" data-buycar="${id}">Buy ${col} · ${priceTag(m)}</button>${owned ? `<small>Owned: ${owned}</small>` : ''}`);
     grid.appendChild(card); }
   grid.onclick = (e) => { const sw = e.target.closest('[data-col]'); if (sw) { panel.col[sw.dataset.car] = sw.dataset.col; return renderDealer(); }
     const b = e.target.closest('[data-buycar]'); if (!b) return; const id = b.dataset.buycar, r = buyCar(state, id, panel.col[id] || (lux ? 'Gold' : 'Red'));
@@ -1018,8 +1020,8 @@ function renderPets() { const body = $('#panel-body'), st = ensurePets(state);
   body.innerHTML = `<h2>Pawsome Pets</h2><p class="sub">Companions that follow you around. Common pets cost bones (${Math.floor(state.bones)}); exotic pets cost ${kibText(state)} with the ${FEE_LABEL}, sent to the treasury via the ${wallet().simulated ? 'simulated' : 'live'} wallet.</p>
    <label class="small">Name your new pet: <input id="petname" maxlength="16" placeholder="e.g. Biscuit"></label><div class="grid" id="petgrid"></div>`;
   const grid = $('#petgrid');
-  for (const [id, p] of Object.entries(PETS)) { const card = document.createElement('div'); card.className = 'card'; card.appendChild(petIcon(id));
-    card.insertAdjacentHTML('beforeend', `<b>${p.name}${p.exotic ? ' ★' : ''}</b><small>${p.exotic ? 'Exotic' : 'Common'}</small><button class="btn ${p.exotic ? 'alt' : 'green'}" data-buypet="${id}">Adopt · ${priceTag(p)}</button>`); grid.appendChild(card); }
+  for (const [id, p] of Object.entries(PETS)) { const card = document.createElement('div'), cs = catStyle('pets'); card.className = 'card cat-card'; card.style.borderColor = cs.border; card.style.background = cs.bg; card.appendChild(petIcon(id));
+    card.insertAdjacentHTML('beforeend', `<div class="cat-chip" style="background:${cs.border};color:#141a2e">${cs.label}</div><b>${p.name}${p.exotic ? ' ★' : ''}</b><small>${p.exotic ? 'Exotic' : 'Common'}</small><button class="btn ${p.exotic ? 'alt' : 'green'}" data-buypet="${id}">Adopt · ${priceTag(p)}</button>`); grid.appendChild(card); }
   grid.onclick = (e) => { const b = e.target.closest('[data-buypet]'); if (!b) return; const r = buyPet(state, b.dataset.buypet, $('#petname').value);
     if (r.ok) { toast(`${r.pet.name} the ${PETS[r.pet.species].name} is following you!`, 'good'); hud(); persist(); renderPets(); } else toast(r.reason, 'bad'); }; }
 function renderGarage() { const body = $('#panel-body'), g = ensureGarage(state), st = ensurePets(state);
@@ -1048,10 +1050,10 @@ function renderShop() {
   const grid = $('#shopgrid');
   for (const [id, d] of Object.entries(FURNITURE)) {
     if (d.mall || d.store) continue;
-    const card = document.createElement('div'); card.className = 'card';
+    const card = document.createElement('div'), cs = catStyle('furniture'); card.className = 'card cat-card'; card.style.borderColor = cs.border; card.style.background = cs.bg;
     const cell = 50 / Math.max(d.w, d.h + 0.2);
     card.appendChild(iconCanvas((x) => drawFurniture(x, id, 32 - (d.w * cell) / 2, 26 - (d.h * cell) / 2, cell, 0)));
-    card.insertAdjacentHTML('beforeend', `<div><b>${d.name}</b></div><div class="small" style="margin:2px 0">${d.w}×${d.h} · owned ${state.inventory[id] || 0}</div><div class="price">${d.price} bones</div><button class="btn" data-buy="${id}">Buy</button>`);
+    card.insertAdjacentHTML('beforeend', `<div class="cat-chip" style="background:${cs.border};color:#141a2e">${cs.label}</div><div><b>${d.name}</b></div><div class="small" style="margin:2px 0">${d.w}×${d.h} · owned ${state.inventory[id] || 0}</div><div class="price">${d.price} bones</div><button class="btn" data-buy="${id}">Buy</button>`);
     grid.appendChild(card);
   }
   grid.onclick = (e) => { const b = e.target.closest('[data-buy]'); if (!b) return; const r = buyFurniture(state, b.dataset.buy); if (r.ok) { toast(`Bought ${FURNITURE[b.dataset.buy].name}`, 'good'); hud(); persist(); renderShop(); } else toast(r.reason, 'bad'); };
@@ -1066,9 +1068,9 @@ function renderFashion() {
   for (const [id, d] of Object.entries(OUTFITS)) { if (d.drop && !state.wardrobe.owned.includes(id)) continue;
     if (d.mall) continue;
     const own = w.owned.includes(id), on = w.equipped[d.slot] === id;
-    const card = document.createElement('div'); card.className = 'card' + (on ? ' on' : ''); card.dataset.item = id;
+    const card = document.createElement('div'), cs = catStyle('outfit'); card.className = 'card cat-card' + (on ? ' on' : ''); card.style.borderColor = cs.border; card.style.background = cs.bg; card.dataset.item = id;
     card.appendChild(wearPreview(id)); // dressed layered-art preview of this item on your coat
-    card.insertAdjacentHTML('beforeend', `<div><b>${d.name}</b></div><div class="small" style="margin:2px 0">${SLOT_NAMES[d.slot]}</div><div class="price">${own ? 'Owned' : d.price + ' bones'}</div>${own ? `<button class="btn ${on ? 'ghost' : 'green'}" data-equip="${id}">${on ? 'Wearing' : 'Wear'}</button>` : `<button class="btn" data-buyfit="${id}">Buy</button>`}`);
+    card.insertAdjacentHTML('beforeend', `<div class="cat-chip" style="background:${cs.border};color:#141a2e">${cs.label}</div><div><b>${d.name}</b></div><div class="small" style="margin:2px 0">${SLOT_NAMES[d.slot]}</div><div class="price">${own ? 'Owned' : d.price + ' bones'}</div>${own ? `<button class="btn ${on ? 'ghost' : 'green'}" data-equip="${id}">${on ? 'Wearing' : 'Wear'}</button>` : `<button class="btn" data-buyfit="${id}">Buy</button>`}`);
     grid.appendChild(card);
   }
   grid.onclick = (e) => {
@@ -2007,12 +2009,13 @@ function renderMall() {
   body.innerHTML = `${demo}<h2>${esc(store?.name || 'Kibble Mall')}</h2><p class="sub">Luxury goods priced in ${kibText(state)}. Owned by ${OWNER.name}. Checkout shows the <b>${FEE_LABEL}</b>.</p><div class="grid" id="mallgrid"></div>${cat === 'all' ? pools : ''}`;
   const grid = $('#mallgrid');
   for (const [id, it] of items) {
-    const q = quote(id), card = document.createElement('div'); card.className = 'card';
+    const q = quote(id), card = document.createElement('div'), cs = catStyle(it.cat); card.className = 'card cat-card';
+    card.style.borderColor = cs.border; card.style.background = cs.bg; card.dataset.cat = it.cat;
     if (it.grants.outfit) card.appendChild(spriteCanvas(state.player.coat, { ...state.wardrobe.equipped, [OUTFITS[it.grants.outfit].slot]: it.grants.outfit }, 72, 92, 1));
     else if (it.grants.furniture) card.appendChild(iconCanvas((x) => drawFurniture(x, it.grants.furniture, 14, 4, 36, 0)));
     else card.appendChild(iconCanvas((x) => drawCar(x, 32, 40, { col: it.grants.car === 'limo' ? '#e3b341' : '#c8323c', kind: it.grants.car === 'limo' ? 'limo' : 'coupe', dir: 'east' })));
     const own = m.owned.includes(id);
-    card.insertAdjacentHTML('beforeend', `<div><b>${it.name}</b></div><div class="checkout"><div>Price <b>${fmtK(q.price)}</b></div><div class="small">2% fee ${fmtK(q.fee)} (1% owner ${fmtK(q.owner)} · pools ${fmtK(q.daily + q.weekly + q.monthly)})</div><div>Total <b>${fmtK(q.total)}</b> KIBBLE</div></div>${own && !it.grants.furniture ? '<div class="price">Owned</div>' : `<button class="btn" data-mbuy="${id}">Buy</button>`}`);
+    card.insertAdjacentHTML('beforeend', `<div class="cat-chip" style="background:${cs.border};color:#141a2e">${cs.label}</div><div><b>${it.name}</b></div><div class="checkout"><div>Price <b>${fmtK(q.price)}</b></div><div class="small">2% fee ${fmtK(q.fee)} (1% owner ${fmtK(q.owner)} · pools ${fmtK(q.daily + q.weekly + q.monthly)})</div><div>Total <b>${fmtK(q.total)}</b> KIBBLE</div></div>${own && !it.grants.furniture ? '<div class="price">Owned</div>' : `<button class="btn" data-mbuy="${id}">Buy</button>`}`);
     grid.appendChild(card);
   }
   grid.onclick = (e) => { const b = e.target.closest('[data-mbuy]'); if (!b) return; const r = buyMallItem(state, b.dataset.mbuy); if (r.ok) { toast(`Bought ${MALL_ITEMS[b.dataset.mbuy].name}: paid ${fmtK(r.quote.total)} KIBBLE incl. ${fmtK(r.quote.fee)} fee`, 'good'); hud(); persist(); renderMall(); } else toast(r.reason, 'bad'); };

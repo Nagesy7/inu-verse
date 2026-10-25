@@ -505,3 +505,7 @@ body:has(#arcade-ov:not([hidden])) #toast { z-index: 9100; top: 52px; }
 .acad-disc{margin:0 0 10px;padding:8px 10px;border:2px solid var(--goldd);background:rgba(20,26,46,.85);color:#f0e6c8;font-size:11px;line-height:1.45}
 .acad-lesson p{margin:8px 0;line-height:1.5}
 .acad-choice{display:block;width:100%;text-align:left;margin:4px 0;white-space:normal}
+
+/* Function color-coding for shop/item cards (matches outdoor façade identities) */
+.card.cat-card{border-width:3px;box-shadow:inset 0 0 0 1px rgba(255,255,255,.08)}
+.cat-chip{display:inline-block;font-size:9px;font-weight:700;letter-spacing:.04em;padding:2px 6px;margin:0 0 4px;border-radius:3px;text-transform:uppercase}

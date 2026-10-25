@@ -8,6 +8,7 @@ import { drawCar } from './cars.js';
 import { farmGround, farmStatic, farmDynamic } from './farmart.js';
 import { luxuryGround, luxuryProps, luxuryDynamic, drawMallFacade } from './luxury.js';
 import { drawEmblem, ART } from './art.js';
+import { drawTypedFacade, FUNC } from './facadeart.js';
 import { NPC_INTERIORS } from './homes.js';
 import { WALLS } from './furniture.js';
 
@@ -42,21 +43,22 @@ function pottedTree(c, x, y, s = 1) { // base centre
 }
 
 const THEMES = {
-  cafe:    { wall: '#8e2430', roof: '#6a1822', accent: '#f2a3b4', label: 'Barista job' },
-  shop:    { wall: '#1f5a5a', roof: '#163f42', accent: '#9fe3d8', label: 'Furniture' },
-  fashion: { wall: '#5a2352', roof: '#3f1739', accent: '#f0a6dc', label: 'Clothing' },
-  launch:  { wall: '#22377a', roof: '#18275a', accent: '#7fb4ff', label: 'Demo tokens' },
-  cars:    { wall: '#2a2a33', roof: '#1c1c24', accent: '#c9c9d6', label: 'Car dealer' },
-  academy: { wall: '#2f5a3a', roof: '#1e3a28', accent: '#c8e6a0', label: 'Pup school' },
-  petshop: { wall: '#3a8a8a', roof: '#1e5a5a', accent: '#ffd84a', label: 'Pets - bones & KIBBLE' },
-  cosy:    { wall: '#a8603a', roof: '#6a3a22', accent: '#ffd8a0', label: 'Everyday furniture' },
-  royal:   { wall: '#2a2440', roof: '#1a1630', accent: '#e3b341', label: 'Luxury design - KIBBLE' },
-  mall:    { wall: '#6a4a14', roof: '#3a2a0a', accent: '#fff1b0', label: 'Luxury - demo KIBBLE' },
-  jewel:   { wall: '#24305c', roof: '#121a36', accent: '#cfe8ff', label: 'Jewelry' },
-  designer:{ wall: '#5a2352', roof: '#3f1739', accent: '#f0a6dc', label: 'Designer outfits' },
-  goldden: { wall: '#7a4a24', roof: '#4a2a14', accent: '#f2cc68', label: 'Gold furniture' },
-  luxauto: { wall: '#1c1c24', roof: '#0c0c12', accent: '#e3b341', label: 'Car previews' },
-  office:  { wall: '#2a1a4a', roof: '#1a1030', accent: '#f2cc68', label: "President Inu" },
+  cafe:    { wall: FUNC.cafe.wall, roof: FUNC.cafe.roof, accent: FUNC.cafe.accent, label: 'Barista job' },
+  shop:    { wall: FUNC.shop.wall, roof: FUNC.shop.roof, accent: FUNC.shop.accent, label: 'Furniture' },
+  fashion: { wall: FUNC.fashion.wall, roof: FUNC.fashion.roof, accent: FUNC.fashion.accent, label: 'Clothing' },
+  launch:  { wall: FUNC.launch.wall, roof: FUNC.launch.roof, accent: FUNC.launch.accent, label: 'Demo tokens' },
+  cars:    { wall: FUNC.cars.wall, roof: FUNC.cars.roof, accent: FUNC.cars.accent, label: 'Car dealer' },
+  academy: { wall: FUNC.academy.wall, roof: FUNC.academy.roof, accent: FUNC.academy.accent, label: 'Pup school' },
+  petshop: { wall: FUNC.petshop.wall, roof: FUNC.petshop.roof, accent: FUNC.petshop.accent, label: 'Pets - bones & KIBBLE' },
+  cosy:    { wall: FUNC.cosy.wall, roof: FUNC.cosy.roof, accent: FUNC.cosy.accent, label: 'Everyday furniture' },
+  royal:   { wall: FUNC.royal.wall, roof: FUNC.royal.roof, accent: FUNC.royal.accent, label: 'Luxury design - KIBBLE' },
+  mall:    { wall: FUNC.mall.wall, roof: FUNC.mall.roof, accent: FUNC.mall.accent, label: 'Luxury - demo KIBBLE' },
+  jewel:   { wall: FUNC.jewel.wall, roof: FUNC.jewel.roof, accent: FUNC.jewel.accent, label: 'Jewelry' },
+  designer:{ wall: FUNC.designer.wall, roof: FUNC.designer.roof, accent: FUNC.designer.accent, label: 'Designer outfits' },
+  goldden: { wall: FUNC.goldden.wall, roof: FUNC.goldden.roof, accent: FUNC.goldden.accent, label: 'Gold furniture' },
+  luxauto: { wall: FUNC.luxauto.wall, roof: FUNC.luxauto.roof, accent: FUNC.luxauto.accent, label: 'Car previews' },
+  office:  { wall: FUNC.office.wall, roof: FUNC.office.roof, accent: FUNC.office.accent, label: "President Inu" },
+  clubhouse:{ wall: FUNC.clubhouse.wall, roof: FUNC.clubhouse.roof, accent: FUNC.clubhouse.accent, label: 'Pack lodge' },
 };
 
 // Chunky pseudo-isometric storefront filling footprint (x,y,w,h); flag pokes above.
@@ -250,7 +252,7 @@ export function prerenderMap() {
     else if (!LUX.has(d.kind)) props.push(d.kind === 'hedge' ? sp(S.hedge, d.x * TILE, d.y * TILE + 4, d.y * TILE + 30) : sp(S[d.kind], d.x * TILE - 2, d.y * TILE + 4, d.y * TILE + 30)); }
   for (const h of NPC_HOMES) props.push(sp(S.mailbox, (h.x + 5) * TILE + 6, (h.y + h.h + 1) * TILE - 34, (h.y + h.h + 1) * TILE - 2));
   // buildings (square front-facing art; legacy procedural storefront if the PNG is missing)
-  for (const b of [...BUILDINGS, ...MALL_BUILDINGS]) props.push({ y: (b.y + b.h) * TILE - 1, d: (c) => { if (b.id === 'mall') return drawMallFacade(c, pixelText); if (!drawBuildingArt(c, b.id, b.x, b.y, b.w, b.h)) legacyBuilding(c, b); else drawDoors(c, b); } });
+  for (const b of [...BUILDINGS, ...MALL_BUILDINGS]) props.push({ y: (b.y + b.h) * TILE - 1, d: (c) => { if (b.id === 'mall') return drawMallFacade(c, pixelText); if (drawTypedFacade(c, b)) return; if (!drawBuildingArt(c, b.id, b.x, b.y, b.w, b.h)) legacyBuilding(c, b); else drawDoors(c, b); } });
   for (const b of [...BUILDINGS, ...MALL_BUILDINGS]) if (DOORS[b.id] && DOORS[b.id].side !== 'front') props.push({ y: (b.y + b.h) * TILE - 26, d: (c) => sidePorch(c, b, DOORS[b.id].side) });
   props.push(...luxuryProps(), ...farmStatic());
   for (const h of NPC_HOMES) props.push({ y: (h.y + h.h) * TILE - 1, d: (c) => { if (!drawBuildingArt(c, HOUSE_ART[h.id], h.x, h.y, h.w, h.h)) legacyNpcHouse(c, h); plaque(c, `${h.owner.toUpperCase()}'S`, (h.x + 1.5) * TILE, (h.y + h.h) * TILE - 22); } });
@@ -324,7 +326,7 @@ function clubhouseProps(state, t, pack) {
     pixelText(c, 'PACK CLUBHOUSE', sx, sy - 18, 128, 8, GOLD_L); pixelText(c, 'FOUND OR JOIN A PACK', sx, sy - 5, 128, 8, '#f6e7b8', null); } }];
   const ch = pack.clubhouse;
   return [{ y: y + h - 1, d: (c) => {
-    if (!drawBuildingArt(c, 'clubhouse', b.x, b.y, b.w, b.h)) house(c, x, y, w, h, ch.roof || pack.color, shade(WALLS[ch.wall]?.color || '#f3e6cf', 0.7), `${pack.name}`);
+    if (drawTypedFacade(c, { ...b, name: pack?.name || 'Pack Clubhouse', id: 'clubhouse' })) {} else if (!drawBuildingArt(c, 'clubhouse', b.x, b.y, b.w, b.h)) house(c, x, y, w, h, ch.roof || pack.color, shade(WALLS[ch.wall]?.color || '#f3e6cf', 0.7), `${pack.name}`);
     const px = x + w + 6, top = y - 40;
     R(c, px - 2, top, 4, h + 34, GOLD_D); R(c, px - 1, top, 1, h + 34, GOLD_L); R(c, px - 4, top - 5, 8, 6, GOLD_L); R(c, px - 6, y + h - 8, 12, 4, GOLD_D);
     const bw = 46, bh = 30;
