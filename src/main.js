@@ -2,7 +2,7 @@ import { CHAPEL as CHAPEL_POS, LOTS as BIZ_LOTS } from './world.js';
 import { TILE, MAP_W, MAP_H, MAP, T, BUILDINGS, PLOTS, NPC_HOMES, CLUBHOUSE, MALL_BUILDINGS, STATUE, LEADERS, PLOT_COST, findPath, moveBody, nearestInteractable, interactables, isSolid } from './world.js';
 import { COATS, newGame, claimPlot, reconcilePlots, buyFurniture, placeFurniture, moveFurniture, storeFurniture, sellPlaced, sellFromInventory, upgrade, swapBonesToKibble, BONES_PER_KIBBLE } from './game.js';
 import { FURNITURE, WALLS, FLOORS, ROOM_W, ROOM_H, canPlace, itemAt, footprint } from './furniture.js';
-import { MENU, newShift, tickShift, addToTray, clearTray, serve, finishShift, SHIFT_LEN } from './cafe.js';
+import { MENU, newShift, tickShift, addToTray, clearTray, serve, finishShift, SHIFT_LEN, startCook, clearTable, seatCustomer, takeOrder, NUM_TABLES } from './cafe.js';
 import { createToken, playerBuy, playerSell, simulateTick, seedTokens, holderCount, PLAYER, CREATE_FEE } from './launch.js';
 import { price, marketCap, progress, fmtPrice } from './curve.js';
 import { save, load } from './save.js';
@@ -1064,11 +1064,27 @@ function renderWardrobe() {
 // ---- Café ----
 function renderCafe() {
   const body = $('#panel-body');
-  body.innerHTML = `<h2>Shiba Sips Café — Barista shift</h2><p class="sub">Tap menu items to fill your tray, then tap the customer whose order matches. Fast service = bigger tips. ${SHIFT_LEN}s shift. In the café, orders come from the customers seated at the tables.</p>
-   <div class="cafe"><div><div class="orders" id="orders"></div><div class="menu" id="menu"></div></div>
-   <div><div class="tray"><b>Tray</b> <button class="btn ghost" id="cleartray" style="float:right;padding:2px 8px">clear</button><div id="tray" style="margin-top:8px;min-height:40px"></div></div>
-   <p>Time <b id="ctime">${SHIFT_LEN}</b>s · Served <b id="cserved">0</b></p><div>Earned</div><div class="big-num" id="cearned">0</div>
-   <div class="row" style="justify-content:flex-start"><button class="btn green" id="cstart">Start classic shift</button></div></div></div>
+  body.innerHTML = `<h2>Shiba Sips Café — Floor shift</h2>
+   <p class="sub">Diner Dash loop: seat guests (auto), take orders, build the tray, <b>Cook</b>, <b>Serve</b> before the patience bar empties, then <b>Clear</b> dirty tables. Faster service = bigger Bones tips. ${SHIFT_LEN}s · ${NUM_TABLES} tables · waves ramp up.</p>
+   <div class="cafe dash">
+     <div class="dash-main">
+       <div class="dash-queue" id="cqueue"><span class="small">Line</span></div>
+       <div class="dash-tables" id="ctables"></div>
+       <div class="dash-tickets" id="orders"></div>
+       <div class="menu" id="menu"></div>
+     </div>
+     <div class="dash-side">
+       <div class="tray"><b>Tray</b> <button class="btn ghost" id="cleartray" style="float:right;padding:2px 8px">clear</button><div id="tray" style="margin-top:8px;min-height:40px"></div>
+         <div class="row" style="margin-top:8px;gap:6px;flex-wrap:wrap">
+           <button class="btn alt" id="ccook" style="flex:1">Cook matching ticket</button>
+         </div>
+       </div>
+       <p>Time <b id="ctime">${SHIFT_LEN}</b>s · Wave <b id="cwave">1</b><br>Served <b id="cserved">0</b> · Walkouts <b id="cfail">0</b> · Combo <b id="ccombo">0</b></p>
+       <div>Earned</div><div class="big-num" id="cearned">0</div>
+       <div id="cevents" class="dash-events small"></div>
+       <div class="row" style="justify-content:flex-start"><button class="btn green" id="cstart">Start floor shift</button></div>
+     </div>
+   </div>
    <h3>Mini-game shifts</h3><p class="small">Skill pays: score, streak bonus and a daily first-shift bonus. No paid boosts.</p><div class="grid">${['cafe', 'delivery'].map((k) => { const J = ensureJobs(state)[k]; return `<div class="card"><b>${JOB_DEFS[k].name}</b><small>${rankOf(J.xp).title} · best ${J.best}</small><button class="btn green" data-job="${k}">Play</button></div>`; }).join('')}</div>
    <h3>Your job ranks</h3><table class="lb"><tr><th>Job</th><th>Rank</th><th>Best</th><th>Runs</th></tr>${Object.entries(ensureJobs(state)).map(([k, J]) => `<tr><td>${JOB_DEFS[k].name}</td><td>${rankOf(J.xp).title}</td><td>${J.best}</td><td>${J.runs}</td></tr>`).join('')}</table>`;
   body.querySelectorAll('[data-job]').forEach((b) => b.onclick = () => playJob(b.dataset.job));
@@ -1076,28 +1092,141 @@ function renderCafe() {
   for (const m of MENU) { const b = document.createElement('button'); b.dataset.item = m.id; b.appendChild(iconCanvas((x) => drawMenuIcon(x, m.id, 20, 16, 1.2), 40, 32)); b.append(m.name); menu.appendChild(b); }
   menu.onclick = (e) => { const b = e.target.closest('[data-item]'); if (b && panel.shift && !panel.shift.over) { addToTray(panel.shift, b.dataset.item); cafeUi(); } };
   $('#cleartray').onclick = () => { if (panel.shift) { clearTray(panel.shift); cafeUi(); } };
-  $('#orders').onclick = (e) => { const o = e.target.closest('[data-order]'); if (!o || !panel.shift) return; const ord = panel.shift.orders.find((x) => x.id === +o.dataset.order), r = serve(panel.shift, +o.dataset.order); if (r.ok && ord) CP.shiftServed(ord); toast(r.ok ? `+${r.pay} bones!` : r.reason, r.ok ? 'good' : 'bad'); cafeUi(); };
+  $('#ccook').onclick = () => {
+    const s = panel.shift; if (!s || s.over) return;
+    const ticket = s.orders.find((o) => o.phase === 'order' && o.items.length === s.tray.length && [...o.items].sort().join() === [...s.tray].sort().join())
+      || s.orders.find((o) => o.phase === 'order');
+    if (!ticket) { toast('No open ticket to cook', 'bad'); return; }
+    const r = startCook(s, ticket.id);
+    toast(r.ok ? `Cooking for ${ticket.customer}…` : r.reason, r.ok ? 'good' : 'bad');
+    cafeUi();
+  };
+  const actOrder = (ord) => {
+    const s = panel.shift; if (!s || !ord) return;
+    if (ord.phase === 'seat') { const r = takeOrder(s, ord.id); toast(r.ok ? `${ord.customer}'s order taken` : r.reason, r.ok ? 'good' : 'bad'); }
+    else if (ord.phase === 'order') {
+      const r = startCook(s, ord.id);
+      if (r.ok) toast(`Cooking for ${ord.customer}…`, 'good');
+      else toast(r.reason, 'bad');
+    } else if (ord.phase === 'ready') {
+      const r = serve(s, ord.id);
+      if (r.ok) { CP.shiftServed(ord); toast(`Served! +${r.pay} Bones`, 'good'); }
+      else toast(r.reason, 'bad');
+    } else if (ord.phase === 'dirty') {
+      const r = clearTable(s, ord.id); toast(r.ok ? `Cleared · +${r.pay}` : r.reason, r.ok ? 'good' : 'bad');
+    } else if (ord.phase === 'cook') toast('Still cooking…', 'bad');
+    else if (ord.phase === 'eat') toast(`${ord.customer} is eating`, 'good');
+    cafeUi();
+  };
+  $('#orders').onclick = (e) => { const el = e.target.closest('[data-order]'); if (!el || !panel.shift) return; actOrder(panel.shift.orders.find((x) => x.id === +el.dataset.order)); };
+  $('#ctables').onclick = (e) => {
+    const s = panel.shift; if (!s) return;
+    const q = e.target.closest('[data-seat-q]');
+    if (q) {
+      const tbl = s.tables.find((t) => !t.orderId && !t.dirty);
+      if (!tbl) { toast('No free table', 'bad'); return; }
+      const r = seatCustomer(s, +q.dataset.seatQ, tbl.id);
+      toast(r.ok ? `Seated ${r.order.customer}` : r.reason, r.ok ? 'good' : 'bad'); cafeUi(); return;
+    }
+    const t = e.target.closest('[data-table]'); if (!t) return;
+    const tbl = s.tables.find((x) => x.id === +t.dataset.table);
+    const ord = tbl && s.orders.find((o) => o.id === tbl.orderId);
+    if (ord) actOrder(ord);
+  };
+  $('#cqueue').onclick = (e) => {
+    const s = panel.shift; if (!s) return;
+    const q = e.target.closest('[data-seat-q]'); if (!q) return;
+    const tbl = s.tables.find((t) => !t.orderId && !t.dirty);
+    if (!tbl) { toast('No free table', 'bad'); return; }
+    const r = seatCustomer(s, +q.dataset.seatQ, tbl.id);
+    toast(r.ok ? `Seated ${r.order.customer}` : r.reason, r.ok ? 'good' : 'bad'); cafeUi();
+  };
   $('#cstart').onclick = () => { panel.shift = newShift(rng); $('#cstart').hidden = true; cafeUi(); };
-  $('#orders').innerHTML = '<p class="small">Press Start shift to open the café.</p>';
+  $('#orders').innerHTML = '<p class="small">Press Start floor shift to open the café.</p>';
+  cafeUi();
 }
 function cafeUi() {
   const s = panel.shift; if (!s) return;
-  $('#ctime').textContent = Math.ceil(s.time); $('#cserved').textContent = s.served; $('#cearned').textContent = s.earned;
-  const name = (id) => MENU.find((m) => m.id === id).name;
-  const sig = s.orders.map((o) => o.id).join() + '|' + s.over;
+  const name = (id) => MENU.find((m) => m.id === id)?.name || id;
+  const phaseLabel = { queue: 'In line', seat: 'Tap: take order', order: 'Tap: cook tray', cook: 'Cooking…', ready: 'Tap: serve!', eat: 'Eating', dirty: 'Tap: clear' };
+  $('#ctime').textContent = Math.ceil(s.time);
+  $('#cserved').textContent = s.served;
+  $('#cearned').textContent = s.earned;
+  if ($('#cwave')) $('#cwave').textContent = s.wave;
+  if ($('#cfail')) $('#cfail').textContent = s.failed;
+  if ($('#ccombo')) $('#ccombo').textContent = s.combo;
+  if ($('#cevents')) $('#cevents').innerHTML = (s.events || []).slice(-3).map((e) => `<div class="ev-${e.kind}">${e.msg}</div>`).join('');
+
+  // queue
+  const qEl = $('#cqueue');
+  if (qEl) {
+    const qsig = s.queue.map((o) => o.id + ':' + Math.floor(o.patience)).join();
+    if (qEl.dataset.sig !== qsig) {
+      qEl.dataset.sig = qsig;
+      qEl.innerHTML = `<span class="small">Line (${s.queue.length})</span>` + (s.queue.map((o) =>
+        `<button class="btn ghost dash-q" data-seat-q="${o.id}">${o.customer}<i class="pat"><i style="width:${100 * o.patience / o.max}%"></i></i></button>`).join('') || '<span class="small">—</span>');
+    } else s.queue.forEach((o) => { const el = qEl.querySelector(`[data-seat-q="${o.id}"] .pat i`); if (el) el.style.width = (100 * o.patience / o.max) + '%'; });
+  }
+
+  // tables
+  const tEl = $('#ctables');
+  if (tEl && !s.over) {
+    const tsig = s.tables.map((t) => { const o = s.orders.find((x) => x.id === t.orderId); return `${t.id}:${t.dirty}:${o ? o.phase + o.id + Math.floor(o.patience) : ''}`; }).join('|');
+    if (tEl.dataset.sig !== tsig) {
+      tEl.dataset.sig = tsig;
+      tEl.innerHTML = s.tables.map((t) => {
+        const o = s.orders.find((x) => x.id === t.orderId);
+        if (!o) return `<div class="dash-table empty" data-table="${t.id}"><b>T${t.id}</b><span class="small">${t.dirty ? 'dirty?' : 'empty'}</span></div>`;
+        const pct = o.phase === 'cook' && o.cookMax ? 100 * (1 - o.cookT / o.cookMax) : 100 * o.patience / o.max;
+        const barCol = o.phase === 'cook' ? '#5fd3ff' : o.phase === 'ready' ? '#ffe66a' : o.phase === 'dirty' ? '#c4a882' : (o.patience / o.max < 0.3 ? '#d9534f' : '#3fa66a');
+        return `<div class="dash-table phase-${o.phase}" data-table="${t.id}" data-order="${o.id}">
+          <canvas width="52" height="40" data-face="${o.id}"></canvas>
+          <b>${o.customer}</b><span class="small">T${t.id} · ${phaseLabel[o.phase] || o.phase}</span>
+          <div class="small items">${o.phase === 'seat' ? '…' : o.items.map(name).join(' + ')}</div>
+          <div class="pat"><i style="width:${pct}%;background:${barCol}"></i></div>
+        </div>`;
+      }).join('');
+      tEl.querySelectorAll('canvas[data-face]').forEach((c) => {
+        const id = +c.dataset.face; const o = s.orders.find((x) => x.id === id); if (!o) return;
+        drawShiba(c.getContext('2d'), 26, 26, { coat: Object.keys(COATS)[o.id % 6], outfit: NPC_OUTFITS[o.id % NPC_OUTFITS.length], scale: 0.45, shadow: false });
+      });
+    } else {
+      s.tables.forEach((t) => {
+        const o = s.orders.find((x) => x.id === t.orderId); if (!o) return;
+        const el = tEl.querySelector(`[data-table="${t.id}"] .pat i`); if (!el) return;
+        const pct = o.phase === 'cook' && o.cookMax ? 100 * (1 - o.cookT / o.cookMax) : 100 * o.patience / o.max;
+        el.style.width = pct + '%';
+        el.style.background = o.phase === 'cook' ? '#5fd3ff' : o.phase === 'ready' ? '#ffe66a' : o.phase === 'dirty' ? '#c4a882' : (o.patience / o.max < 0.3 ? '#d9534f' : '#3fa66a');
+      });
+    }
+  }
+
+  // tickets strip (order/cook/ready only)
+  const tickets = s.over ? [] : s.orders.filter((o) => ['order', 'cook', 'ready'].includes(o.phase));
+  const sig = tickets.map((o) => o.id + o.phase).join() + '|' + s.over;
   if ($('#orders').dataset.sig !== sig) {
     $('#orders').dataset.sig = sig;
-    $('#orders').innerHTML = s.over ? '' : s.orders.map((o) => `<div class="order" data-order="${o.id}" data-items="${o.items.join(',')}"><canvas width="60" height="44" data-face="${o.customer}"></canvas><b>${o.customer}</b><div class="small" style="margin:4px 0">${o.items.map(name).join(' + ')}</div><div class="pat"><i></i></div></div>`).join('') || '<p class="small">Waiting for customers…</p>';
-    $('#orders').querySelectorAll('canvas[data-face]').forEach((c, i) => { const x = c.getContext('2d'); drawShiba(x, 30, 28, { coat: Object.keys(COATS)[s.orders[i].id % 6], outfit: NPC_OUTFITS[s.orders[i].id % NPC_OUTFITS.length], scale: 0.5, shadow: false }); });
+    if (s.over) $('#orders').innerHTML = '';
+    else {
+      $('#orders').innerHTML = tickets.map((o) => `<div class="order phase-${o.phase}" data-order="${o.id}" data-items="${o.items.join(',')}"><b>#${o.id} ${o.customer}</b><div class="small">${o.items.map(name).join(' + ')}</div><div class="small">${phaseLabel[o.phase]}</div><div class="pat"><i></i></div></div>`).join('') || '<p class="small">No open tickets — seat guests or wait for the next wave.</p>';
+    }
   }
-  s.orders.forEach((o) => { const el = $(`.order[data-order="${o.id}"] .pat i`); if (el) { el.style.width = (100 * o.patience / o.max) + '%'; el.style.background = o.patience / o.max < 0.3 ? '#d9534f' : '#3fa66a'; } });
+  tickets.forEach((o) => { const el = $(`.order[data-order="${o.id}"] .pat i`); if (el) { el.style.width = (100 * o.patience / o.max) + '%'; el.style.background = o.patience / o.max < 0.3 ? '#d9534f' : '#3fa66a'; } });
+
   const tray = $('#tray'); const tsig = s.tray.join();
-  if (tray.dataset.sig !== tsig) { tray.dataset.sig = tsig; tray.innerHTML = ''; s.tray.forEach((id) => tray.appendChild(iconCanvas((x) => drawMenuIcon(x, id, 18, 16, 1.1), 36, 32))); if (!s.tray.length) tray.innerHTML = '<span class="small">empty</span>'; }
+  if (tray.dataset.sig !== tsig) { tray.dataset.sig = tsig; tray.innerHTML = ''; s.tray.forEach((id) => tray.appendChild(iconCanvas((x) => drawMenuIcon(x, id, 18, 16, 1.1), 36, 32))); if (!s.tray.length) tray.innerHTML = '<span class="small">empty — tap menu</span>'; }
+
   if (s.over && !s.settled) {
     const total = finishShift(state, s); packAct('shift'); hud(); persist();
-    $('#orders').innerHTML = `<div class="card" style="width:100%"><h3>Shift complete!</h3><p>Served ${s.served} · missed ${s.failed}${s.served >= 5 ? ' · +25 star bonus' : ''}</p><div class="big-num" id="shift-total">+${total} bones</div></div>`;
+    const sum = s.summary || {};
+    $('#orders').innerHTML = `<div class="card" style="width:100%"><h3>Shift complete!</h3>
+      <p>Served ${sum.served || s.served} · walkouts ${sum.walkouts || s.failed} · cleared ${sum.cleared || s.cleared}</p>
+      <p class="small">Tips ${sum.tips || s.tips} · star +${sum.star || 0} · combo +${sum.comboBonus || 0} · wave ${sum.wave || s.wave} · best combo ${sum.maxCombo || s.maxCombo}</p>
+      <div class="big-num" id="shift-total">+${total} Bones</div></div>`;
+    if (tEl) tEl.innerHTML = '';
+    if (qEl) qEl.innerHTML = '';
     CP.shiftEnded(); const b = $('#cstart'); b.hidden = false; b.textContent = 'Work another shift';
-    toast(`Shift paid: +${total} bones`, 'good');
+    toast(`Shift paid: +${total} Bones`, 'good');
   }
 }
 

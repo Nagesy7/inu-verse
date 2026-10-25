@@ -59,7 +59,7 @@ export function makeCafePlay(D) {
   // shift: tag new orders with a seated customer (display only: items, patience and pay are untouched, no rng is used)
   function tagShift(shift) { if (!K.on || !shift) return; const live = new Set(shift.orders.map((o) => o.id));
     for (const d of K.diners) if (d.npc.waitingShift && !live.has(d.npc.waitingShift)) { const o = d.npc.waitingShift; d.npc.waitingShift = null; d.npc.emote = shift.over ? null : { kind: 'angry', t: 1.5 }; void o; }
-    for (const o of shift.orders) { if (o.tagged) continue; o.tagged = true; const pool = K.diners.filter((d) => d.npc.state === 'sit' && !d.npc.waitingShift);
+    for (const o of shift.orders) { if (o.tagged || !['order','cook','ready'].includes(o.phase || 'order')) continue; o.tagged = true; const pool = K.diners.filter((d) => d.npc.state === 'sit' && !d.npc.waitingShift);
       const d = pool.find((q) => !ticketAt(K.svc, q.seat)) || pool[0]; if (!d) continue; o.customer = d.name; o.seat = d.seat; d.npc.waitingShift = o.id; d.npc.emote = { kind: 'note', t: 99 }; } }
   function shiftServed(o) { const d = K.diners.find((q) => q.seat === o.seat && q.npc.waitingShift === o.id); if (!d) return false; d.npc.waitingShift = null; d.npc.emote = { kind: 'heart', t: 2 };
     cancelSeat(K.svc, d.seat); const t = request(K.svc, { who: d.name, seat: d.seat, dish: SHIFT_DISH[o.items[0]] || 'pupLatte' }); if (t) t.t = 0.4; return true; }

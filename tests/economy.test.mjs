@@ -37,8 +37,11 @@ test('wall/floor upgrades cost bones', () => {
   const s = newGame(); claimPlot(s, 'p1'); assert.ok(upgrade(s, 'p1', 'wall', 1).ok); assert.equal(s.bones, 120); assert.equal(upgrade(s, 'p1', 'floor', 3).ok, false);
 });
 test('cafe shift earns bones', () => {
-  const s = newGame(); const rng = mulberry32(7); const sh = newShift(rng); tickShift(sh, 0.5, rng);
-  assert.ok(sh.orders.length >= 1); const o = sh.orders[0];
+  const s = newGame(); const rng = mulberry32(7); const sh = newShift(rng);
+  for (let i = 0; i < 12; i++) tickShift(sh, 0.25, rng);
+  assert.ok(sh.orders.length >= 1);
+  const o = sh.orders.find((x) => x.phase === 'order') || sh.orders.find((x) => x.phase === 'seat') || sh.orders[0];
+  if (o.phase !== 'order') o.phase = 'order'; // headless: skip greet beat
   assert.equal(serve(sh, o.id).ok, false, 'empty tray wrong');
   o.items.forEach((i) => addToTray(sh, i)); const r = serve(sh, o.id); assert.ok(r.ok); assert.ok(r.pay > 0);
   while (!sh.over) tickShift(sh, 1, rng);

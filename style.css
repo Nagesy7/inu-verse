@@ -60,6 +60,34 @@ canvas#game{display:block;width:100vw;height:100vh;cursor:pointer}
 .menu{display:flex;gap:8px;flex-wrap:wrap;margin-top:12px}.menu button{background:var(--navy2);color:var(--cream);border:3px solid var(--goldd);padding:6px;cursor:pointer;font:inherit;font-size:11px;width:90px}
 .menu button:hover{border-color:var(--goldl)}
 .tray{background:var(--navy2);border:3px solid var(--goldd);padding:10px;min-height:80px}
+
+/* Diner Dash floor-shift layout */
+.cafe.dash{display:grid;grid-template-columns:1fr 260px;gap:14px;align-items:start}
+.dash-main{display:flex;flex-direction:column;gap:10px;min-width:0}
+.dash-side{display:flex;flex-direction:column;gap:8px}
+.dash-queue{display:flex;flex-wrap:wrap;gap:6px;align-items:center;min-height:36px;padding:6px;background:var(--navy2);border:2px dashed var(--goldd)}
+.dash-q{position:relative;padding:4px 8px 10px!important;font-size:11px}
+.dash-q .pat{position:absolute;left:4px;right:4px;bottom:3px;height:4px;background:var(--ink);overflow:hidden}
+.dash-q .pat i{display:block;height:100%;background:#3fa66a}
+.dash-tables{display:grid;grid-template-columns:repeat(auto-fill,minmax(120px,1fr));gap:8px}
+.dash-table{background:var(--navy2);border:3px solid var(--goldd);padding:6px;text-align:center;cursor:pointer;font-size:11px;min-height:110px}
+.dash-table.empty{opacity:.55;border-style:dashed;cursor:default}
+.dash-table.phase-ready{border-color:#ffe66a;box-shadow:0 0 0 2px rgba(255,230,106,.35)}
+.dash-table.phase-dirty{border-color:#c4a882}
+.dash-table.phase-cook{border-color:#5fd3ff}
+.dash-table .pat{height:6px;background:var(--ink);margin-top:4px;overflow:hidden}
+.dash-table .pat i{display:block;height:100%;background:#3fa66a}
+.dash-table canvas{background:var(--navy3);margin:0 auto 2px;display:block}
+.dash-tickets{display:flex;gap:8px;flex-wrap:wrap;min-height:70px}
+.dash-tickets .order{width:130px}
+.order.phase-ready{border-color:#ffe66a}
+.order.phase-cook{border-color:#5fd3ff}
+.dash-events{min-height:2.4em;color:#c9d2ef}
+.dash-events .ev-walkout{color:#ff8a8a}
+.dash-events .ev-serve{color:#5df07a}
+.dash-events .ev-cook{color:#5fd3ff}
+@media(max-width:700px){.cafe.dash{grid-template-columns:1fr}.dash-tables{grid-template-columns:repeat(2,1fr)}}
+
 .big-num{font-size:28px;color:#6fd394}
 .launch{display:grid;grid-template-columns:260px 1fr;gap:14px}
 .toklist{display:flex;flex-direction:column;gap:6px;max-height:360px;overflow:auto}

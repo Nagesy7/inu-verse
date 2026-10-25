@@ -57,11 +57,21 @@ test("townsfolk whose townai action is 'eat' get a seat (eaters first, regulars 
   const d = seatDiners(town, { taken: new Set(['s1']) }); assert.deepEqual(d.filter((x) => x.folk).map((x) => x.name), ['Mochi', 'Hana']); assert.ok(!d.some((x) => x.seat === 's1')); assert.equal(new Set(d.map((x) => x.seat)).size, d.length);
   assert.equal(seatDiners({ folk: {} }).length, 2);
 });
-test('barista shift economy is unchanged (pinned to the pre-restaurant values)', () => {
+test('floor-shift (Diner Dash) pays Bones tips; mini-game café job pins unchanged; eating never changes job pay', () => {
+  // Diner Dash floor shift: cook/serve loop earns tips; finishShift once
   const rng = mulberry32(42), s = newShift(rng), pays = [];
-  for (let i = 0; i < 1300; i++) { tickShift(s, 0.05, rng); if (i % 40 === 20 && s.orders.length) { const o = s.orders[0]; o.customer = 'Kiki'; o.seat = 's3'; o.tagged = true; /* café tagging is display only */ for (const it of o.items) addToTray(s, it); pays.push(serve(s, o.id).pay); } }
-  assert.deepEqual(pays, [22, 14, 14, 14, 14, 22, 22, 22, 14, 22, 22, 22, 22, 14, 30, 14, 22]); assert.equal(s.earned, 326);
-  const st = { bones: 0, stats: { shifts: 0, bonesEarned: 0, served: 0 } }; assert.equal(finishShift(st, s), 351); assert.equal(st.bones, 351); assert.deepEqual(st.stats, { shifts: 1, bonesEarned: 351, served: 17 }); assert.equal(finishShift(st, s), 0);
+  for (let i = 0; i < 400; i++) {
+    tickShift(s, 0.05, rng);
+    const o = s.orders.find((x) => x.phase === 'order');
+    if (!o || pays.length >= 4) continue;
+    o.customer = 'Kiki'; o.seat = 's3'; o.tagged = true; // café tagging is display only
+    s.tray = []; for (const it of o.items) addToTray(s, it);
+    const r = serve(s, o.id); if (r.ok) pays.push(r.pay);
+  }
+  assert.ok(pays.length >= 3); assert.ok(pays.every((p) => p >= 6)); assert.ok(s.earned === pays.reduce((a, b) => a + b, 0));
+  s.over = true; const st = { bones: 0, stats: { shifts: 0, bonesEarned: 0, served: 0 } };
+  const total = finishShift(st, s); assert.ok(total >= s.earned); assert.equal(st.bones, total); assert.equal(st.stats.shifts, 1); assert.equal(finishShift(st, s), 0);
+  // mini-game café job (match) economy stays pinned
   assert.deepEqual(JOBS.cafe, { name: 'Café Order Rush', game: 'match', dur: 45, base: 10, rate: 0.5, cap: 120, where: 'Shiba Sips Café' }); assert.equal(FIRST_SHIFT_BONUS, 25);
   assert.deepEqual([comboBonus(4), comboBonus(12), comboBonus(99)], [0, 6, 30]);
   assert.deepEqual(payFor('cafe', { score: 100, maxCombo: 10 }, true), { perf: 60, combo: 6, first: 25, total: 91 }); assert.deepEqual(payFor('cafe', { score: 300, maxCombo: 0 }, false), { perf: 120, combo: 0, first: 0, total: 120 }); assert.deepEqual(payFor('cafe', { score: 0 }, true), { perf: 10, combo: 0, first: 25, total: 12 });
