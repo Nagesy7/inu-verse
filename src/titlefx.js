@@ -1,4 +1,4 @@
-// Title screen backdrop: night-blue sky, drifting clouds, two parallax rows of an Inu Verse town silhouette (café awning, shrine
+// Title screen backdrop: warm cream/orange $KIBBLE-hub sky, drifting clouds, two parallax rows of an Inu Verse town silhouette (café awning, shrine
 // roof, kennel peaks, lit windows) and tumbling sakura petals. Original art, plain canvas rects. Pauses when the title is hidden.
 export function startTitleFx(cv, { alive }) { const c = cv.getContext('2d'); let W = 0, H = 0, last = 0;
   const rnd = (i) => { const x = Math.sin(i * 127.1 + 311.7) * 43758.5453; return x - Math.floor(x); };
@@ -16,10 +16,10 @@ export function startTitleFx(cv, { alive }) { const c = cv.getContext('2d'); let
       x += b.w + 6; } }
   function frame(now) { if (!alive()) { last = 0; return requestAnimationFrame(frame); } const t = now / 1000; const dw = cv.clientWidth, dh = cv.clientHeight;
     if (dw !== W || dh !== H) { W = cv.width = dw; H = cv.height = dh; } c.imageSmoothingEnabled = false;
-    const g = c.createLinearGradient(0, 0, 0, H); g.addColorStop(0, '#141a3a'); g.addColorStop(0.6, '#2a2f6a'); g.addColorStop(1, '#5a3a6a'); c.fillStyle = g; c.fillRect(0, 0, W, H);
-    { const mx = W * 0.8, my = H * 0.1; R(mx, my + 6, 28, 16, '#fff2c8'); R(mx + 4, my + 2, 20, 24, '#fff2c8'); R(mx + 8, my, 12, 28, '#fff2c8'); R(mx + 16, my + 6, 5, 4, '#e8d9a8'); } // moon
-    for (const k of clouds) { const x = ((k.x + t * k.v) % (W + 260)) - 200; R(x, k.y, k.w, 14, 'rgba(255,255,255,.10)'); R(x + 14, k.y - 8, k.w * 0.6, 10, 'rgba(255,255,255,.08)'); }
-    row(far, H * 0.78, 6, t, '#1d2350', '#3a4280'); row(near, H * 0.92, 14, t, '#0f1430', '#d4a640');
+    const g = c.createLinearGradient(0, 0, 0, H); g.addColorStop(0, '#FFE8C2'); g.addColorStop(0.35, '#FFF7EA'); g.addColorStop(0.7, '#F6E9D5'); g.addColorStop(1, '#E8913A'); c.fillStyle = g; c.fillRect(0, 0, W, H);
+    { const mx = W * 0.82, my = H * 0.12; R(mx, my + 6, 26, 14, '#FFF3D1'); R(mx + 4, my + 2, 18, 22, '#F2C14E'); R(mx + 8, my, 10, 26, '#F7A94F'); R(mx + 14, my + 6, 5, 4, '#FFE0A8'); } // warm sun
+    for (const k of clouds) { const x = ((k.x + t * k.v) % (W + 260)) - 200; R(x, k.y, k.w, 14, 'rgba(255,253,248,.55)'); R(x + 14, k.y - 8, k.w * 0.6, 10, 'rgba(255,243,209,.4)'); }
+    row(far, H * 0.78, 6, t, '#C9843A', '#FFF3D1'); row(near, H * 0.92, 14, t, '#5D3A1A', '#F2C14E');
     for (const p of petals) { const x = ((p.x + t * 28 * p.s + Math.sin(t * 0.9 + p.p) * 30) % (W + 40)) - 20, y = ((p.y + t * 20 * p.s) % (H + 40)) - 20, f = Math.floor(t * 5 + p.p) % 3;
       c.fillStyle = p.s > 1.1 ? '#ffd0de' : '#f59ab8'; if (f === 0) c.fillRect(x, y, 4, 2); else if (f === 1) c.fillRect(x + 1, y, 2, 3); else c.fillRect(x, y + 1, 4, 1); }
     last = now; requestAnimationFrame(frame); }
