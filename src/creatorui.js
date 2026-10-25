@@ -1,4 +1,5 @@
 // Character creator UI (title screen) + salon re-style panel. Renders choices as pixel chips.
+// LOOK (and other) rows: after a pick, collapse to a summary; tap the header to reopen (accordion).
 import { OPTIONS, TRAITS, STARTER_OUTFITS, HOMES, PATHS, defaultChoices, lookOf } from './creator.js';
 import { drawInuAvatarHi as drawInuAvatar } from './art.js';
 import { OUTFITS } from './outfits.js';
@@ -12,28 +13,91 @@ const ROWS = {
 };
 const label = (k, v) => k === 'outfit' ? STARTER_OUTFITS[v].name : k === 'trait' ? TRAITS[v].name : k === 'home' ? HOMES[v].name : k === 'path' ? PATHS[v].name : cap(v);
 const sub = (k, v) => k === 'trait' ? TRAITS[v].desc : k === 'home' ? HOMES[v].desc : k === 'path' ? PATHS[v].desc : '';
+const pickLabel = (k, v, list) => {
+  const i = list.indexOf(v);
+  if (k === 'coat') return COAT_NAMES[i] || v;
+  if (k === 'eyeColor') return 'colour ' + (i + 1);
+  return label(k, v);
+};
 export function profileOfChoices(c) { const eq = {}; for (const id of STARTER_OUTFITS[c.outfit]?.items || []) { const d = OUTFITS[id]; if (d) eq[d.slot] = { id, kind: d.look?.kind, c: d.look?.c || d.look?.frame, d: d.look?.d, accent: d.look?.accent || d.look?.pin, full: !!d.full }; }
   if (c.path === 'worker') eq.hat = { id: 'cap_red', kind: 'cap', c: '#c8282e', d: '#8e1a20' }; return { look: lookOf(c), outfit: eq, name: c.name }; }
 // mount into a container; tabs: which tab groups to show (salon = look + pronouns only)
 export function mountCreator(root, { choices = defaultChoices(), tabs = ['look', 'you', 'life'], onChange, onPick } = {}) {
-  let tab = tabs[0], popped = null; const c = { ...choices };
+  let tab = tabs[0], popped = null, open = null; // accordion: one open section key, or null = all collapsed to summaries
+  const c = { ...choices };
   const rows = (t) => t === 'you' && !tabs.includes('life') ? ROWS.you.filter((r) => r[0] === 'pronouns') : ROWS[t];
-  const draw = () => { root.innerHTML = `<div class="ctabs">${tabs.map((t) => `<button class="ctab ${t === tab ? 'sel' : ''}" data-tab="${t}" aria-pressed="${t === tab}">${{ look: 'Look', you: 'You', life: 'Life' }[t]}</button>`).join('')}</div>
-    <div class="crows">${rows(tab).map(([k, name, list, kind]) => `<div class="crow"><div class="clbl">${name}</div><div class="chips">${list.map((v, i) => kind === 'sw'
+  const sumHtml = (k, name, list, kind) => {
+    const v = c[k], lab = pickLabel(k, v, list);
+    if (kind === 'sw') return `<span class="csum"><i class="csw" style="background:${v}" aria-hidden="true"></i><span class="csum-lab">${esc(lab)}</span></span>`;
+    return `<span class="csum"><span class="csum-lab">${esc(lab)}</span></span>`;
+  };
+  const draw = () => {
+    const list = rows(tab);
+    root.innerHTML = `<div class="ctabs">${tabs.map((t) => `<button class="ctab ${t === tab ? 'sel' : ''}" data-tab="${t}" aria-pressed="${t === tab}">${{ look: 'Look', you: 'You', life: 'Life' }[t]}</button>`).join('')}</div>
+    <div class="crows">${list.map(([k, name, opts, kind]) => {
+      const isOpen = open === k;
+      return `<div class="crow ${isOpen ? 'open' : 'collapsed'}" data-sec="${k}">
+      <button type="button" class="clbl" data-toggle="${k}" aria-expanded="${isOpen}" aria-controls="chips-${k}"><span class="clbl-t">${esc(name)}</span>${isOpen ? '' : sumHtml(k, name, opts, kind)}<span class="clbl-chev" aria-hidden="true">${isOpen ? '▾' : '▸'}</span></button>
+      ${isOpen ? `<div class="chips" id="chips-${k}">${opts.map((v, i) => kind === 'sw'
       ? `<button class="chip-o sw ${c[k] === v ? 'sel' : ''}${popped === k + v ? ' pop' : ''}" data-k="${k}" data-v="${v}" aria-pressed="${c[k] === v}" aria-label="${name}: ${k === 'coat' ? COAT_NAMES[i] : v}" title="${k === 'coat' ? COAT_NAMES[i] : v}" style="background:${v}"></button>`
-      : `<button class="chip-o ${c[k] === v ? 'sel' : ''}${popped === k + v ? ' pop' : ''}" data-k="${k}" data-v="${v}" aria-pressed="${c[k] === v}">${esc(label(k, v))}${sub(k, v) ? `<small>${esc(sub(k, v))}</small>` : ''}</button>`).join('')}</div></div>`).join('')}</div>`; };
+      : `<button class="chip-o ${c[k] === v ? 'sel' : ''}${popped === k + v ? ' pop' : ''}" data-k="${k}" data-v="${v}" aria-pressed="${c[k] === v}">${esc(label(k, v))}${sub(k, v) ? `<small>${esc(sub(k, v))}</small>` : ''}</button>`).join('')}</div>` : ''}
+    </div>`;
+    }).join('')}</div>`;
+  };
   const refocus = (sel) => { const e = root.querySelector(sel); if (e) e.focus({ preventScroll: true }); };
-  root.onclick = (e) => { const t = e.target.closest('[data-tab]'); if (t) { const kb = document.activeElement === t; tab = t.dataset.tab; popped = null; draw(); onPick?.({ tab }); if (kb || e.detail === 0) refocus(`[data-tab="${tab}"]`); return; }
-    const b = e.target.closest('[data-k]'); if (!b) return; const k = b.dataset.k, v = b.dataset.v, kb = e.detail === 0; c[k] = v; popped = k + v; draw(); onChange?.(c);
-    const row = ROWS.look.concat(ROWS.you, ROWS.life).find((r) => r[0] === k), i = row?.[2].indexOf(v) ?? -1; onPick?.({ k, v, row: row?.[1] || k, label: k === 'coat' ? COAT_NAMES[i] || v : k === 'eyeColor' ? 'colour ' + (i + 1) : label(k, v) });
-    if (kb) refocus(`[data-k="${k}"][data-v="${CSS.escape(v)}"]`); };
-  // keyboard / d-pad focus: arrows move between chips (left/right in a row, up/down between rows and the tabs); Enter/Space picks
-  root.onkeydown = (e) => { const cur = document.activeElement; if (!root.contains(cur) || !['ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown'].includes(e.key)) return;
-    const rowsEl = [root.querySelector('.ctabs'), ...root.querySelectorAll('.crow .chips')], ri = rowsEl.findIndex((r) => r.contains(cur)); if (ri < 0) return; e.preventDefault();
-    const items = (r) => [...r.querySelectorAll('button')], here = items(rowsEl[ri]), ci = here.indexOf(cur);
-    if (e.key === 'ArrowLeft' || e.key === 'ArrowRight') { const n = here[(ci + (e.key === 'ArrowRight' ? 1 : -1) + here.length) % here.length]; n?.focus(); return; }
-    const nr = rowsEl[Math.max(0, Math.min(rowsEl.length - 1, ri + (e.key === 'ArrowDown' ? 1 : -1)))], list = items(nr); (list.find((x) => x.classList.contains('sel')) || list[Math.min(ci, list.length - 1)])?.focus(); };
-  draw(); return { get choices() { return c; }, set(k, v) { c[k] = v; draw(); }, tab(t) { tab = t; draw(); } };
+  const focusOpenChips = (k) => {
+    const sel = root.querySelector(`.crow[data-sec="${k}"] .chip-o.sel`) || root.querySelector(`.crow[data-sec="${k}"] .chip-o`);
+    sel?.focus({ preventScroll: true });
+  };
+  root.onclick = (e) => {
+    const t = e.target.closest('[data-tab]');
+    if (t) {
+      const kb = document.activeElement === t; tab = t.dataset.tab; popped = null; open = null; draw(); onPick?.({ tab });
+      if (kb || e.detail === 0) refocus(`[data-tab="${tab}"]`); return;
+    }
+    const tgl = e.target.closest('[data-toggle]');
+    if (tgl) {
+      const k = tgl.dataset.toggle, kb = e.detail === 0 || document.activeElement === tgl;
+      open = open === k ? null : k; popped = null; draw();
+      if (open === k && kb) focusOpenChips(k);
+      else if (kb) refocus(`[data-toggle="${k}"]`);
+      return;
+    }
+    const b = e.target.closest('[data-k]'); if (!b) return;
+    const k = b.dataset.k, v = b.dataset.v, kb = e.detail === 0;
+    c[k] = v; popped = k + v; open = null; // collapse this section after confirm/select
+    draw(); onChange?.(c);
+    const row = ROWS.look.concat(ROWS.you, ROWS.life).find((r) => r[0] === k), i = row?.[2].indexOf(v) ?? -1;
+    onPick?.({ k, v, row: row?.[1] || k, label: k === 'coat' ? COAT_NAMES[i] || v : k === 'eyeColor' ? 'colour ' + (i + 1) : label(k, v) });
+    if (kb) refocus(`[data-toggle="${k}"]`);
+  };
+  // keyboard / d-pad: left/right in open chips; up/down across tabs, section headers, and chips (opens collapsed section on focus)
+  root.onkeydown = (e) => {
+    const cur = document.activeElement; if (!root.contains(cur) || !['ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown'].includes(e.key)) return;
+    const secKeys = rows(tab).map((r) => r[0]);
+    const rowNodes = [root.querySelector('.ctabs'), ...secKeys.map((k) => root.querySelector(`.crow[data-sec="${k}"]`))];
+    const ri = rowNodes.findIndex((r) => r && r.contains(cur)); if (ri < 0) return; e.preventDefault();
+    const itemsOf = (r) => {
+      if (!r) return [];
+      if (r.classList?.contains('ctabs') || r === rowNodes[0]) return [...r.querySelectorAll('button')];
+      if (r.classList.contains('open')) return [...r.querySelectorAll('.chips button')];
+      const tgl = r.querySelector('[data-toggle]'); return tgl ? [tgl] : [];
+    };
+    const here = itemsOf(rowNodes[ri]), ci = Math.max(0, here.indexOf(cur));
+    if (e.key === 'ArrowLeft' || e.key === 'ArrowRight') {
+      if (here.length < 2) return;
+      here[(ci + (e.key === 'ArrowRight' ? 1 : -1) + here.length) % here.length]?.focus(); return;
+    }
+    const nri = Math.max(0, Math.min(rowNodes.length - 1, ri + (e.key === 'ArrowDown' ? 1 : -1)));
+    const dest = rowNodes[nri];
+    if (nri > 0 && dest && !dest.classList.contains('open')) {
+      open = dest.dataset.sec; popped = null; draw();
+      focusOpenChips(open); return;
+    }
+    const list = itemsOf(root.querySelector(nri === 0 ? '.ctabs' : `.crow[data-sec="${secKeys[nri - 1]}"]`) || dest);
+    (list.find((x) => x.classList.contains('sel')) || list[Math.min(ci, list.length - 1)])?.focus();
+  };
+  draw(); return { get choices() { return c; }, set(k, v) { c[k] = v; draw(); }, tab(t) { tab = t; open = null; draw(); }, get open() { return open; } };
 }
 // animated preview of a profile-ish {look, outfit, name}
 export function drawPreview(pc, prof, x, t, lbl) { const face = ['down', 'right', 'up', 'left'][Math.floor(t / 1600) % 4];
