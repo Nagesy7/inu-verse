@@ -96,6 +96,7 @@ import * as PAB from './sim/bureau.js'; // Paw Audit Bureau (Phase 1 sim layer):
 import { ensureShare, myHomePlot, layoutOf, layoutKey, homeApi, cleanLayout, cleanEntry, validHomeId, GB } from './homeshare.js';
 import * as KM from './kibblemood.js';
 import * as MWd from './moodworld.js';
+import * as FS from './foundingseats.js';
 import { ensurePacks, myPack, meIn, createPack, joinPack, leavePack, kickMember, recruitNpc, contribute, buyForPack, donateFurniture, upgradeClubhouse, placePackFurniture, movePackFurniture, storePackFurniture, postToBoard, recordActivity, memberScore, packScore, leaderboard, simulatePacks, packOfName, PACK_CREATE_COST, EMBLEMS, SEASON, SCORE, ME } from './packs.js';
 
 const $ = (s) => document.querySelector(s);
@@ -1507,6 +1508,9 @@ const MPL = createMultiplayer({ toast, onActions: () => wheel.open(), onTrade: (
 // companion id + form ride in the look's pl.look (cpi/cpf); remote clients strip them before reading the Shiba look
 function cpLook(pl) { const w = CMP.F.c && mode === 'world' && !drive ? IQC.toWire(CMP.F.c) : null; if (!w) return pl; return pl ? { ...pl, look: { ...pl.look, ...w } } : { look: w, outfit: {} }; }
 MPL.start().catch(() => {});
+// ---- Founding Five Thousand seat-open notice (ships with kibble-pay tracker; polls /api/tech) ----
+const FSN = FS.startFoundingNotice({ toast: (m, k) => toast(m, k), onShow: () => { try { blip(988); setTimeout(() => blip(1318), 120); } catch {} } });
+globalThis.__foundingSeats = () => FSN;
 // ---- $KIBBLE town mood (src/kibblemood.js + src/moodworld.js): one shared /api/kibble-mood fetch per minute, paused when hidden ----
 let crierRing = 0, crierPending = false;
 const MOOD = KM.startMood({ apiBase: '', onMood: (m) => { MWd.setMood(m, time); crierPending = true; } });
