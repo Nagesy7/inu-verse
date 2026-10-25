@@ -1,5 +1,5 @@
 // Inu Verse live multiplayer client: other players in your room, interpolated ~100 ms behind, drawn with the normal Shiba
-// renderer (coat/outfit layers, faces, name tags), chat bubbles + emotes through chat.js, a tiny "N online" chip.
+// renderer (coat/outfit layers, faces, name tags), chat bubbles + emotes through chat.js, primary text chat bar + "N online" chip.
 // OFF unless a realtime URL is configured (/api/config -> realtimeUrl, or ?mp=ws://localhost:8787 for local testing).
 // Every failure path (no URL, server down, socket drops, bad frames) silently falls back to solo play.
 import { MP, cleanChat, cleanLook, cleanState, emoteOk, guestName, interpolate, pushSnap, cullPlayers, validRoom } from './mpshared.js';
@@ -57,7 +57,7 @@ export function createMultiplayer({ getLocal, toast = () => {}, now = () => perf
     else if (m.t === 'l') setLook(r, m.look);
     else if (m.t === 'h') { r.h = validHomeId(m.h) ? m.h : null; ui.update(); } // the player's shared home ("Visit home")
     else if (m.t === 'k') { r.kennel = typeof m.k === 'string' ? m.k : null; r.kflair = m.lf === true; } // server-verified Kennel tier + Locked flair
-    else if (m.t === 'c') { if (S.muted.has(r.name)) return; const c = cleanChat(m.text); if (c.ok) say('mp:' + r.id, c.text, t, { force: true, life: 4.5 }); } // filtered again client-side
+    else if (m.t === 'c') { if (S.muted.has(r.name)) return; const c = cleanChat(m.text); if (c.ok) { say('mp:' + r.id, c.text, t, { force: true, life: 4.5 }); ui.log(r.name, c.text); } } // filtered again client-side
     else if (m.t === 'e' && emoteOk(m.k)) { if (remoteEmote(r, m.k, t) && m.k !== 'wave') return; r.emote = { kind: m.k, t: m.k === 'zoomies' ? 2.4 : 2.5 }; if (!S.muted.has(r.name)) emoteBubble('mp:' + r.id, m.k, t); } }
   const changed = (a, b) => !b || Math.abs(a.x - b.x) > 0.5 || Math.abs(a.y - b.y) > 0.5 || a.f !== b.f || a.m !== b.m || a.r !== b.r || a.d !== b.d || (a.p | 0) !== (b.p | 0) || Math.abs((a.cx ?? 999) - (b.cx ?? 999)) > 2 || Math.abs((a.cy ?? 999) - (b.cy ?? 999)) > 2;
   const api = {
@@ -91,10 +91,10 @@ export function createMultiplayer({ getLocal, toast = () => {}, now = () => perf
       const vis = view ? cullPlayers(list, view, me || { x: 0, y: 0 }, S.drawCap) : list.slice(0, S.drawCap); S.anchors.clear();
       return vis.map((r) => { S.anchors.set('mp:' + r.id, { x: r.x, y: r.y - 60 }); return { x: r.x, y: r.y, coat: r.coat, outfit: r.outfit, art: r.art, profile: r.profile, face: r.cur.f, phase: r.phase, moving: !!r.cur.m, name: r.name, emote: r.emote, act: r.act || null, mp: true, id: 'mp:' + r.id, w: r.w, kennel: r.w ? r.kennel : null, kflair: !!(r.w && r.kflair), cp: r.cp || null, cpOff: r.cp && r.cur.cx != null ? [r.cur.cx, r.cur.cy] : null }; }); },
     anchor(id) { return S.anchors.get(id) || null; },
-    chat(text) { const c = cleanChat(text); if (!c.ok) { if (c.reason !== 'empty') toast(c.reason, 'bad'); return false; }
+    chat(text) { const c = cleanChat(text); if (!c.ok) { if (c.reason !== 'empty') toast(c.reason === 'Message blocked by the chat filter.' ? 'Message blocked' : c.reason, 'bad'); return false; }
       const t = now(); if (t - S.lastChatAt < 1 / MP.CHAT_RATE) { toast('Slow down: one message every 2 seconds.', 'bad'); return false; }
       if (!send({ t: 'c', text: c.text })) { toast('Not connected: chat is offline right now.', 'bad'); return false; }
-      S.lastChatAt = t; say('me', c.text, t, { force: true, life: 4.5 }); return true; },
+      S.lastChatAt = t; say('me', c.text, t, { force: true, life: 4.5 }); ui.log(S.me || 'You', c.text, true); return true; },
     toggleMute(name) { if (S.muted.has(name)) S.muted.delete(name); else S.muted.add(name); lsSet(K_MUTE, JSON.stringify([...S.muted].slice(-200))); ui.update(); return S.muted.has(name); },
     setOptOut(v) { S.optOut = !!v; lsSet(K_OFF, v ? '1' : '0'); if (v) drop('off'); else { S.status = 'offline'; S.retryAt = 0; } ui.update(); },
     players() { return [...S.remotes.values()].map((r) => ({ id: r.id, name: r.name, w: r.w, h: r.h || null, muted: S.muted.has(r.name) })); },
@@ -102,39 +102,69 @@ export function createMultiplayer({ getLocal, toast = () => {}, now = () => perf
   };
   return api; }
 
-// ---- tiny HUD chip + popover (players online, say, mute) ----
+// ---- HUD: primary text chat bar + players-online chip (emotes stay on the Actions wheel) ----
+const CHAT_LOG = 40; // keep recent lines in the panel
 function makeUi(doc, S, h) {
-  const nop = { show() {}, update() {} }; if (!doc?.createElement) return nop;
-  let chip, pop, built = false;
-  const css = `#mp-chip{position:fixed;z-index:20;top:calc(max(8px,env(safe-area-inset-top)) + 10px);right:calc(max(8px,env(safe-area-inset-right)) + 58px);pointer-events:auto;cursor:pointer;font:inherit;font-size:10px;gap:4px;min-height:28px}body:not(.inworld) #mp-chip,body.drawer-open #mp-chip{display:none}#mp-chip[hidden]{display:none}@media (max-width:600px){#mp-chip{top:calc(max(8px,env(safe-area-inset-top)) + 58px);right:max(8px,env(safe-area-inset-right))}#mp-pop{top:calc(max(8px,env(safe-area-inset-top)) + 96px)}}#mp-chip i{display:inline-block;width:6px;height:6px;background:#7a7a7a;box-shadow:0 0 0 1px #141a2e}#mp-chip.on i{background:#6fe07a}#mp-chip.wait i{background:#f2cc68}
+  const nop = { show() {}, update() {}, log() {} }; if (!doc?.createElement) return nop;
+  let chip, pop, bar, logEl, input, built = false;
+  const log = []; // {name, text, me, t}
+  const css = `#mp-chip{position:fixed;z-index:20;top:calc(max(8px,env(safe-area-inset-top)) + 10px);right:calc(max(8px,env(safe-area-inset-right)) + 58px);pointer-events:auto;cursor:pointer;font:inherit;font-size:10px;gap:4px;min-height:28px}body:not(.inworld) #mp-chip,body.drawer-open #mp-chip,body.photo #mp-chip,body:not(.inworld) #mp-chat,body.drawer-open #mp-chat,body.photo #mp-chat,body.menu-open #mp-chat{display:none}#mp-chip[hidden],#mp-chat[hidden]{display:none}@media (max-width:600px){#mp-chip{top:calc(max(8px,env(safe-area-inset-top)) + 58px);right:max(8px,env(safe-area-inset-right))}#mp-pop{top:calc(max(8px,env(safe-area-inset-top)) + 96px)}}#mp-chip i{display:inline-block;width:6px;height:6px;background:#7a7a7a;box-shadow:0 0 0 1px #141a2e}#mp-chip.on i{background:#6fe07a}#mp-chip.wait i{background:#f2cc68}
 #mp-pop{position:fixed;top:calc(max(8px,env(safe-area-inset-top)) + 58px);right:max(8px,env(safe-area-inset-right));z-index:30;width:min(300px,92vw);background:#141a2e;border:3px solid #d4a640;box-shadow:0 0 0 2px #0c1022;color:#fff6e0;font:10px Silkscreen,monospace;padding:8px;pointer-events:auto}
-#mp-pop[hidden]{display:none}#mp-pop .row{display:flex;gap:6px;margin:6px 0}#mp-pop input{flex:1;min-width:0;font:inherit;font-size:12px;padding:6px;background:#0c1022;color:#fff6e0;border:2px solid #8a6a2a}#mp-pop button{font:inherit;cursor:pointer;background:#2a3358;color:#fff6e0;border:2px solid #d4a640;padding:4px 6px}
-#mp-pop ul{list-style:none;margin:6px 0 0;padding:0;max-height:40vh;overflow:auto}#mp-pop li{display:flex;justify-content:space-between;align-items:center;padding:3px 0;border-top:1px solid #2a3358}#mp-pop small{opacity:.7}`;
+#mp-pop[hidden]{display:none}#mp-pop .row{display:flex;gap:6px;margin:6px 0}#mp-pop button{font:inherit;cursor:pointer;background:#2a3358;color:#fff6e0;border:2px solid #d4a640;padding:4px 6px}
+#mp-pop ul{list-style:none;margin:6px 0 0;padding:0;max-height:40vh;overflow:auto}#mp-pop li{display:flex;justify-content:space-between;align-items:center;padding:3px 0;border-top:1px solid #2a3358}#mp-pop small{opacity:.7}
+#mp-chat{position:fixed;left:50%;transform:translateX(-50%);bottom:max(10px,env(safe-area-inset-bottom));z-index:26;width:min(440px,calc(100vw - 250px));pointer-events:none;font:10px Silkscreen,monospace;color:#fff6e0}
+#mp-chat .mp-log{pointer-events:none;max-height:7.2em;overflow:hidden;display:flex;flex-direction:column;justify-content:flex-end;gap:2px;margin:0 0 4px;padding:4px 6px;background:linear-gradient(180deg,transparent,#0c1022cc 30%);border-radius:4px;text-shadow:0 1px 0 #000,0 0 4px #000a;opacity:.85;transition:max-height .15s,opacity .15s}
+#mp-chat.focus .mp-log{pointer-events:auto;max-height:min(28vh,11em);overflow:auto;opacity:1;background:#0c1022e8;border:2px solid #8a6a2a;box-shadow:0 0 0 2px #0c1022}
+#mp-chat .mp-log div{line-height:1.25;word-break:break-word}#mp-chat .mp-log b{color:#f2cc68;font-weight:normal}#mp-chat .mp-log .me b{color:#6fe07a}
+#mp-chat .mp-row{pointer-events:auto;display:flex;gap:6px;align-items:stretch;background:#141a2ecc;border:3px solid #d4a640;box-shadow:0 0 0 2px #0c1022;padding:4px}
+#mp-chat input{flex:1;min-width:0;font:inherit;font-size:12px;padding:7px 8px;background:#0c1022;color:#fff6e0;border:2px solid #8a6a2a;min-height:36px}
+#mp-chat button#mp-send{font:inherit;cursor:pointer;background:#2a3358;color:#fff6e0;border:2px solid #d4a640;padding:4px 10px;min-width:52px;min-height:36px}
+#mp-chat button#mp-send:disabled,#mp-chat input:disabled{opacity:.45;cursor:default}
+@media (max-height:500px){#mp-chat{width:min(380px,calc(100vw - 230px));bottom:max(6px,env(safe-area-inset-bottom))}#mp-chat .mp-log{max-height:4.8em}#mp-chat.focus .mp-log{max-height:min(34vh,9em)}#mp-chat input,#mp-chat button#mp-send{min-height:32px;padding:5px 8px}}
+@media (max-width:520px) and (max-height:420px){#mp-chat{width:min(300px,calc(100vw - 210px))}}`;
+  function renderLog() { if (!logEl) return; logEl.innerHTML = log.slice(-12).map((m) => `<div class="${m.me ? 'me' : ''}"><b>${esc(m.name)}</b> ${esc(m.text)}</div>`).join(''); logEl.scrollTop = logEl.scrollHeight; }
+  function pushLog(name, text, me = false) { log.push({ name: String(name || 'Pup').slice(0, MP.NAME_MAX), text: String(text || '').slice(0, MP.CHAT_MAX), me: !!me, t: Date.now() }); while (log.length > CHAT_LOG) log.shift(); renderLog(); }
+  function focusChat() { if (!bar || chip?.hidden || S.status !== 'online') return; bar.classList.add('focus'); input.disabled = false; input.focus(); }
+  function blurChat() { if (!bar) return; bar.classList.remove('focus'); input.blur(); }
   function build() { if (built) return; built = true;
     const st = doc.createElement('style'); st.textContent = css; doc.head.appendChild(st);
     chip = doc.createElement('button'); chip.id = 'mp-chip'; chip.className = 'chip'; chip.title = 'Players online'; chip.setAttribute('aria-label', 'Players online'); chip.innerHTML = '<i></i><span>solo</span>';
     doc.body.appendChild(chip);
     pop = doc.createElement('div'); pop.id = 'mp-pop'; pop.hidden = true; pop.setAttribute('role', 'dialog'); pop.setAttribute('aria-label', 'Players online');
     pop.innerHTML = `<div class="row" style="justify-content:space-between"><b id="mp-status">Multiplayer</b><button id="mp-x" aria-label="Close">×</button></div>
-<div class="row"><input id="mp-say" maxlength="${MP.CHAT_MAX}" placeholder="Say something nice… (/ to chat)" autocomplete="off" enterkeyhint="send"><button id="mp-send">Say</button></div>
-<small>Be kind. Links, wallet addresses and seed phrases are blocked. Never share your seed phrase.</small><ul id="mp-list"></ul>
+<small>Chat is the bar at the bottom (Enter or /). Emotes stay on Actions (G). Be kind — slurs, threats, sexual content, links, wallets and seed phrases are blocked.</small><ul id="mp-list"></ul>
 <div class="row"><button id="mp-act" title="G">Actions (sit, dance…)</button><button id="mp-trade" title="Item-for-item trades">Trades</button><button id="mp-opt"></button></div>`;
     doc.body.appendChild(pop);
-    const input = pop.querySelector('#mp-say'), go = () => { if (h.say(input.value)) { input.value = ''; input.blur(); } };
+    bar = doc.createElement('div'); bar.id = 'mp-chat'; bar.hidden = true; bar.setAttribute('role', 'region'); bar.setAttribute('aria-label', 'Text chat');
+    bar.innerHTML = `<div class="mp-log" id="mp-log" aria-live="polite"></div><div class="mp-row"><input id="mp-say" maxlength="${MP.CHAT_MAX}" placeholder="Chat with pups… (Enter or /)" autocomplete="off" enterkeyhint="send" aria-label="Chat message"><button id="mp-send" type="button">Send</button></div>`;
+    doc.body.appendChild(bar);
+    logEl = bar.querySelector('#mp-log'); input = bar.querySelector('#mp-say');
+    const go = () => { if (h.say(input.value)) { input.value = ''; } blurChat(); };
     chip.onclick = (e) => { e.stopPropagation(); pop.hidden = !pop.hidden; update(); };
     pop.querySelector('#mp-x').onclick = () => { pop.hidden = true; };
-    pop.querySelector('#mp-send').onclick = go; input.onkeydown = (e) => { e.stopPropagation(); if (e.key === 'Enter') go(); if (e.key === 'Escape') { input.blur(); pop.hidden = true; } };
+    bar.querySelector('#mp-send').onclick = go;
+    input.onkeydown = (e) => { e.stopPropagation(); if (e.key === 'Enter') { e.preventDefault(); go(); } if (e.key === 'Escape') { e.preventDefault(); blurChat(); } };
+    input.onfocus = () => bar.classList.add('focus'); input.onblur = () => { setTimeout(() => { if (doc.activeElement !== input) bar.classList.remove('focus'); }, 80); };
     pop.querySelector('#mp-opt').onclick = () => h.toggle();
     pop.querySelector('#mp-act').onclick = () => { pop.hidden = true; h.actions?.(); }; pop.querySelector('#mp-act').hidden = !h.actions;
     pop.querySelector('#mp-trade').onclick = () => { pop.hidden = true; h.trade?.(null, null); }; pop.querySelector('#mp-trade').hidden = !h.trade;
     pop.querySelector('#mp-list').onclick = (e) => { const tr = e.target.closest('[data-trade]'); if (tr) { pop.hidden = true; h.trade?.(tr.dataset.trade, tr.dataset.tname); return; } const v = e.target.closest('[data-visit]'); if (v) { pop.hidden = true; h.visit?.(v.dataset.visit, v.dataset.vname, v.dataset.vkind || 'home'); return; } const b = e.target.closest('[data-mute]'); if (b) h.mute(b.dataset.mute); };
-    doc.addEventListener('keydown', (e) => { if (e.key !== '/' || /INPUT|TEXTAREA/.test(e.target?.tagName || '') || chip.hidden || S.status !== 'online') return; e.preventDefault(); pop.hidden = false; update(); input.focus(); }, true); }
+    doc.addEventListener('keydown', (e) => {
+      if (/INPUT|TEXTAREA|SELECT/.test(e.target?.tagName || '') || e.target?.isContentEditable) return;
+      if (chip.hidden || S.status !== 'online') return;
+      const busy = doc.getElementById('panel') && !doc.getElementById('panel').hidden
+        || doc.body.classList.contains('drawer-open') || doc.body.classList.contains('menu-open')
+        || doc.body.classList.contains('photo') || (doc.getElementById('act-wheel') && !doc.getElementById('act-wheel').hidden);
+      if (e.key === 'Escape' && bar.classList.contains('focus')) { e.preventDefault(); blurChat(); return; }
+      if (busy) return;
+      if (e.key === '/' || e.key === 'Enter') { e.preventDefault(); focusChat(); }
+    }, true); }
   const esc = (s) => String(s).replace(/[&<>"']/g, (c) => `&#${c.charCodeAt(0)};`);
   function update() { if (!built) return; const n = S.remotes.size + (S.status === 'online' ? 1 : 0), on = S.status === 'online';
-    chip.className = 'chip' + (on ? ' on' : S.status === 'connecting' ? ' wait' : ''); chip.querySelector('span').textContent = S.optOut ? 'solo' : on ? `${n} online` : S.status === 'connecting' ? '…' : 'solo';
-    if (pop.hidden) return;
+    chip.className = 'chip' + (on ? ' on' : S.status === 'connecting' ? ' wait' : ''); const lab = chip.querySelector('span'); if (lab) lab.textContent = S.optOut ? 'solo' : on ? `${n} online` : S.status === 'connecting' ? '…' : 'solo';
+    if (bar && input) { bar.hidden = chip.hidden; input.disabled = !on; const sb = bar.querySelector('#mp-send'); if (sb) sb.disabled = !on; if (!on) blurChat(); }
+    if (!pop || pop.hidden) return;
     pop.querySelector('#mp-status').textContent = S.optOut ? 'Multiplayer off (solo)' : on ? `${S.room === 'city' ? 'City' : S.roomName || S.room}${S.inst > 1 ? ' · instance ' + S.inst : ''} · ${n} here` : S.status === 'connecting' ? 'Connecting…' : 'Offline: playing solo';
     pop.querySelector('#mp-opt').textContent = S.optOut ? 'Turn multiplayer on' : 'Play solo (hide others)';
-    pop.querySelector('#mp-say').disabled = !on; pop.querySelector('#mp-send').disabled = !on;
     const ps = [...S.remotes.values()]; pop.querySelector('#mp-list').innerHTML = (on ? `<li><span>${esc(S.me || 'You')} <small>(you)</small></span></li>` : '') + ps.slice(0, 60).map((r) => `<li><span>${esc(r.name)}${r.w ? ` <small>${esc(r.w)}</small>` : ''}</span><span>${r.h && h.visit ? `<button data-visit="${esc(r.h)}" data-vname="${esc(r.name)}" title="Visit ${esc(r.name)}'s home and sign the guestbook">Visit home</button> <button data-visit="${esc(r.h)}" data-vname="${esc(r.name)}" data-vkind="shop" title="See how ${esc(r.name)} arranged their shop">Visit shop</button> ` : ''}${r.w && h.trade ? `<button data-trade="${esc(r.w)}" data-tname="${esc(r.name)}" title="Offer ${esc(r.name)} an item-for-item trade">Trade</button> ` : ''}<button data-mute="${esc(r.name)}">${S.muted.has(r.name) ? 'Unmute' : 'Mute'}</button></span></li>`).join(''); }
-  return { show(v) { if (v) build(); if (chip) chip.hidden = !v; }, update }; }
+  return { show(v) { if (v) build(); if (chip) chip.hidden = !v; if (bar) bar.hidden = !v; }, update, log: pushLog }; }

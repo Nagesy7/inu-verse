@@ -1,7 +1,7 @@
 // Live multiplayer: shared moderation/rate-limit/room rules (client == server), interpolation, client throttling, graceful offline.
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { MP, cleanChat, cleanName, take, pickInstance, interpolate, pushSnap, cullPlayers, cleanState, cleanLook, validRoom, seedLike, hasAddress } from '../src/mpshared.js';
+import { MP, cleanChat, cleanName, isHostile, take, pickInstance, interpolate, pushSnap, cullPlayers, cleanState, cleanLook, validRoom, seedLike, hasAddress } from '../src/mpshared.js';
 import { createMultiplayer, resolveRealtimeUrl } from '../src/multiplayer.js';
 import { originAllowed } from '../realtime/src/worker.js';
 import { publicConfig } from '../api/config.js';
@@ -11,6 +11,14 @@ test('filter: profanity masked, slurs refused, Scunthorpe-safe', () => {
   assert.equal(cleanChat('shiiiit man').text, '******* man'); assert.equal(cleanChat('shiiiit').ok, false); // all-profanity lines are not sent
   for (const s of ['n i g g e r', 'you f4gg0t', 'what a retard', 'N1GGA']) assert.equal(cleanChat(s).ok, false, s);
   for (const s of ['I love Nigeria', 'spicy raccoon tycoon', 'the cockpit cocktail', 'Scunthorpe', 'a classic assassin', 'flame retardant', 'hello friends!']) assert.equal(cleanChat(s).text, s, s);
+});
+test('filter: threats, harassment and sexual solicitations refused; normal talk allowed', () => {
+  for (const s of ['kill yourself', 'kys loser', "i'll kill you", 'go die', 'i know where you live', 'send nudes', 'send me nudes', 'rape you', 'I will murder you', 'suck my dick', 'k i l l yourself']) {
+    assert.equal(cleanChat(s).ok, false, s); assert.equal(isHostile(s) || /Message blocked/.test(cleanChat(s).reason || ''), true, s);
+  }
+  for (const s of ['hello friends!', 'nice day at the park', 'you suck at this game', 'die of laughter', 'kill time at the cafe', 'find me later at the park', 'show me your dance moves', 'beat the high score']) {
+    assert.equal(cleanChat(s).ok, true, s); assert.equal(isHostile(s), false, s);
+  }
 });
 test('filter: links stripped, length cap, control chars and html removed', () => {
   assert.equal(cleanChat('join www.scam.xyz now').text, 'join now');
@@ -108,4 +116,53 @@ test('config: realtime URL only from /api/config (wss) or ?mp=; off otherwise', 
   assert.equal(publicConfig({ REALTIME_URL: 'javascript:alert(1)' }).realtimeUrl, null); assert.equal(publicConfig({ REALTIME_URL: 'ws://insecure.example' }).realtimeUrl, null);
   const list = 'https://inu-verse-tawny.vercel.app,http://localhost:*'; assert.equal(originAllowed('https://inu-verse-tawny.vercel.app', list), true); assert.equal(originAllowed('http://localhost:8642', list), true);
   assert.equal(originAllowed('https://evil.example', list), false); assert.equal(originAllowed('http://localhost.evil.com', list), false); assert.equal(originAllowed(null, list), false);
+});
+
+test('primary chat bar: Send path filters + logs; Actions remain secondary', async () => {
+  const byId = new Map();
+  const mk = (tag = 'div') => {
+    const el = {
+      tagName: String(tag).toUpperCase(), children: [], style: {}, hidden: false, disabled: false, value: '',
+      _html: '', className: '', onclick: null, onkeydown: null, onfocus: null, onblur: null, scrollTop: 0, scrollHeight: 0, isContentEditable: false,
+      classList: { _s: new Set(), add(c) { this._s.add(c); }, remove(c) { this._s.delete(c); }, contains(c) { return this._s.has(c); } },
+      setAttribute() {}, focus() { this.onfocus?.(); }, blur() { this.onblur?.(); }, closest() { return null; },
+      appendChild(c) { this.children.push(c); if (c.id) byId.set(c.id, c); return c; },
+      querySelector(sel) {
+        if (sel.startsWith('#')) return byId.get(sel.slice(1)) || this.children.find((c) => c.id === sel.slice(1)) || null;
+        if (sel === 'span') return this.children.find((c) => c.tagName === 'SPAN') || null;
+        return null;
+      },
+    };
+    Object.defineProperty(el, 'id', { get() { return this._id; }, set(v) { this._id = v; if (v) byId.set(v, el); } });
+    Object.defineProperty(el, 'innerHTML', {
+      get() { return this._html; },
+      set(h) {
+        this._html = String(h); this.children = [];
+        // recreate known ids referenced in the template
+        for (const m of String(h).matchAll(/\bid="([^"]+)"/g)) { const c = mk('div'); c.id = m[1]; this.children.push(c); }
+        if (/<span[\s>]/i.test(h) && !this.children.some((c) => c.tagName === 'SPAN')) { const s = mk('span'); s.textContent = ''; this.children.push(s); }
+      },
+    });
+    Object.defineProperty(el, 'textContent', { get() { return this._tc || ''; }, set(v) { this._tc = String(v); }, configurable: true });
+    return el;
+  };
+  const body = mk('body'); body.classList.contains = () => false;
+  const head = mk('head');
+  const doc = { body, head, activeElement: null, createElement: (t) => mk(t), getElementById: (id) => byId.get(id) || null, addEventListener() {} };
+  let ms = 0; const L = { room: 'city', x: 100, y: 100, f: 'down', m: false, r: false, d: false, emote: null, name: 'Rex', look: { coat: 'tan', eq: {} } };
+  const WS = fakeWS(); const toasts = [];
+  const mp = createMultiplayer({ getLocal: () => L, WS, clock: () => ms, now: () => ms / 1000, doc, toast: (m) => toasts.push(m) });
+  await mp.start('ws://x'); ms += 16; mp.step(0.016);
+  const ws = WS.socks[0]; ws.open(); ws.recv({ t: 'w', id: 'me', name: 'Pup1', room: 'city', inst: 1, players: [{ id: 'a', name: 'Pup2', look: {}, s: { x: 10, y: 10 } }] });
+  const bar = byId.get('mp-chat'), input = byId.get('mp-say'), sendBtn = byId.get('mp-send'), log = byId.get('mp-log'), pop = byId.get('mp-pop');
+  assert.ok(bar && input && sendBtn && log && pop, 'chat bar + player pop built');
+  assert.equal(bar.hidden, false);
+  assert.ok(mp.chat('hello all')); assert.match(ws.sent.at(-1), /"t":"c".*hello all/);
+  assert.match(log.innerHTML, /hello all/);
+  assert.equal(mp.chat('kill yourself'), false); assert.match(String(toasts.at(-1)), /blocked/i);
+  assert.equal(mp.chat('send nudes'), false);
+  const { resetChat } = await import('../src/chat.js'); resetChat();
+  ws.recv({ t: 'c', id: 'a', text: 'hi friend' }); assert.match(log.innerHTML, /Pup2/);
+  assert.match(pop.innerHTML, /Actions/); // emotes remain secondary via Actions
+  assert.match(pop.innerHTML, /Chat is the bar at the bottom/);
 });
