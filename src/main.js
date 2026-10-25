@@ -1061,11 +1061,73 @@ function renderWardrobe() {
   $('#slots').onclick = (e) => { const a = e.target.closest('[data-wear]'), u = e.target.closest('[data-unequip]'); if (a) equipOutfit(state, a.dataset.wear); else if (u) unequipSlot(state, u.dataset.unequip); else return; persist(); renderWardrobe(); };
 }
 
+
+// ---- Café food sprites + pointer drag (tray/plate → customer; menu → station) ----
+/** Art Studio icons: assets/cafe/{id}.png (80) + assets/cafe/64/{id}.png — see assets/cafe/manifest.json */
+const CAFE_ICON_URL = (id, size = 36) => size <= 28 ? `assets/cafe/64/${id}.png` : `assets/cafe/${id}.png`;
+function cafeFoodImg(id, size = 36) {
+  const m = MENU.find((x) => x.id === id);
+  const img = document.createElement('img');
+  img.src = CAFE_ICON_URL(id, size); img.alt = m?.name || id; img.width = size; img.height = size;
+  img.className = 'cafe-food-icon'; img.draggable = false;
+  img.onerror = () => {
+    if (!img.dataset.triedFull && size <= 28) { img.dataset.triedFull = '1'; img.src = `assets/cafe/${id}.png`; return; }
+    const c = iconCanvas((x) => { x.imageSmoothingEnabled = false; drawMenuIcon(x, id, size / 2, size / 2, size / 28); }, size, size);
+    c.className = 'cafe-food-icon'; img.replaceWith(c);
+  };
+  return img;
+}
+function cafeFoodHtml(id, size = 28) {
+  const m = MENU.find((x) => x.id === id);
+  const src = CAFE_ICON_URL(id, size);
+  return `<img class="cafe-food-icon" src="${src}" alt="${m?.name || id}" width="${size}" height="${size}" draggable="false" onerror="this.onerror=null;this.src='assets/cafe/${id}.png'">`;
+}
+function sameTray(a, b) { return [...a].sort().join() === [...b].sort().join(); }
+let cafeDrag = null; // { kind:'tray'|'ready'|'menu', itemId?, orderId?, pointerId, ghost, moved }
+let cafeSuppressClick = 0; // ignore the synthetic click after a real drag-drop
+function cafeClearDragHighlights() {
+  document.querySelectorAll('.cafe .drop-target').forEach((el) => el.classList.remove('drop-target'));
+  document.querySelector('.cafe.dash')?.classList.remove('dragging-food');
+}
+function cafeEndDrag() {
+  cafeClearDragHighlights();
+  if (cafeDrag?.ghost) cafeDrag.ghost.remove();
+  document.querySelectorAll('.tray-chip.dragging,.tray-ready-chip.dragging,.order.dragging').forEach((el) => el.classList.remove('dragging'));
+  cafeDrag = null;
+}
+function cafeGhost(html, x, y) {
+  let g = cafeDrag?.ghost;
+  if (!g) { g = document.createElement('div'); g.className = 'cafe-drag-ghost'; document.body.appendChild(g); if (cafeDrag) cafeDrag.ghost = g; }
+  g.innerHTML = html; g.style.left = x + 'px'; g.style.top = y + 'px'; return g;
+}
+function cafeHighlightForDrag(s) {
+  cafeClearDragHighlights();
+  document.querySelector('.cafe.dash')?.classList.add('dragging-food');
+  if (!cafeDrag || !s) return;
+  if (cafeDrag.kind === 'menu') {
+    const m = MENU.find((x) => x.id === cafeDrag.itemId);
+    if (m) document.querySelector(`.dash-station[data-station="${m.station}"]`)?.classList.add('drop-target');
+    return;
+  }
+  // tray or ready plate → highlight matching tables
+  for (const t of s.tables) {
+    if (!t.open || !t.orderId) continue;
+    const o = s.orders.find((x) => x.id === t.orderId); if (!o) continue;
+    let ok = false;
+    if (cafeDrag.kind === 'ready' && o.phase === 'ready' && o.id === cafeDrag.orderId) ok = true;
+    if (cafeDrag.kind === 'tray' && o.phase === 'order' && sameTray(o.items, s.tray)) ok = true;
+    if (cafeDrag.kind === 'tray' && o.phase === 'ready') ok = true; // still allow drop; serve ignores tray
+    if (ok) document.querySelector(`.dash-table[data-table="${t.id}"]`)?.classList.add('drop-target');
+  }
+}
+
 // ---- Café ----
 function renderCafe() {
+  // warm Art Studio consumable sprites
+  for (const m of MENU) { const i = new Image(); i.src = CAFE_ICON_URL(m.id, 40); const j = new Image(); j.src = CAFE_ICON_URL(m.id, 22); }
   const body = $('#panel-body');
   body.innerHTML = `<h2>Shiba Sips Café — Floor shift</h2>
-   <p class="sub">Diner Dash: <b>tap a pup in line</b>, then tap an empty table to seat. Take orders, cook each dish at the <b>Drink / Grill / Prep</b> station, plate, serve, and clear dirty tables (dirt taxes everyone's patience). VIPs + specials pay more. ${SHIFT_LEN}s · ${TABLES_START}→${NUM_TABLES} tables as waves ramp.</p>
+   <p class="sub">Diner Dash: seat pups, cook with food icons at <b>Drink / Grill / Prep</b>, then <b>drag the plate onto the customer</b> (or tap). Drag a menu item onto its station to cook. Clear dirty tables — dirt taxes patience. VIPs + specials pay more. ${SHIFT_LEN}s · ${TABLES_START}→${NUM_TABLES} tables as waves ramp.</p>
    <div class="cafe dash">
      <div class="dash-main">
        <div class="dash-queue" id="cqueue"><span class="small">Line — tap guest, then an empty table</span></div>
@@ -1094,11 +1156,12 @@ function renderCafe() {
     const items = MENU.filter((m) => m.station === st.id);
     return `<div class="dash-station" data-station="${st.id}">
       <div class="st-head"><b>${st.emoji} ${st.name}</b><span class="st-busy small" data-busy="${st.id}"></span></div>
-      <div class="st-items">${items.map((m) => `<button class="btn ghost st-item" data-station="${st.id}" data-item="${m.id}">${m.name}</button>`).join('')}</div>
+      <div class="st-items">${items.map((m) => `<button class="btn ghost st-item" data-station="${st.id}" data-item="${m.id}" data-drag-menu="${m.id}">${cafeFoodHtml(m.id, 28)}<span>${m.name}</span></button>`).join('')}</div>
       <button class="btn alt st-auto" data-station-auto="${st.id}">Cook needed</button>
     </div>`;
   }).join('');
   stations.onclick = (e) => {
+    if (Date.now() - cafeSuppressClick < 400) return;
     const s = panel.shift; if (!s || s.over) return;
     const auto = e.target.closest('[data-station-auto]');
     const item = e.target.closest('[data-item]');
@@ -1136,8 +1199,9 @@ function renderCafe() {
     else if (ord.phase === 'eat') toast(`${ord.customer} is eating`, 'good');
     cafeUi();
   };
-  $('#orders').onclick = (e) => { const el = e.target.closest('[data-order]'); if (!el || !panel.shift) return; actOrder(panel.shift.orders.find((x) => x.id === +el.dataset.order)); };
+  $('#orders').onclick = (e) => { if (Date.now() - cafeSuppressClick < 400) return; const el = e.target.closest('[data-order]'); if (!el || !panel.shift) return; actOrder(panel.shift.orders.find((x) => x.id === +el.dataset.order)); };
   $('#ctables').onclick = (e) => {
+    if (Date.now() - cafeSuppressClick < 400) return;
     const s = panel.shift; if (!s) return;
     const t = e.target.closest('[data-table]'); if (!t) return;
     const tbl = s.tables.find((x) => x.id === +t.dataset.table);
@@ -1180,12 +1244,111 @@ function renderCafe() {
   };
   $('#cstart').onclick = () => { panel.shift = newShift(rng); $('#cstart').hidden = true; cafeUi(); };
   $('#orders').innerHTML = '<p class="small">Press Start floor shift to open the café.</p>';
+  // Drag consumables: menu→station (cook), tray/ready-plate→customer table (serve). Touch + mouse. Tap remains fallback.
+  const dashRoot = body.querySelector('.cafe.dash');
+  const onDragMove = (e) => {
+    if (!cafeDrag || e.pointerId !== cafeDrag.pointerId) return;
+    const dx = e.clientX - cafeDrag.x0, dy = e.clientY - cafeDrag.y0;
+    if (!cafeDrag.moved && dx * dx + dy * dy < 36) return;
+    cafeDrag.moved = true;
+    cafeGhost(cafeDrag.html, e.clientX, e.clientY);
+    cafeHighlightForDrag(panel.shift);
+    e.preventDefault();
+  };
+  const onDragUp = (e) => {
+    if (!cafeDrag || e.pointerId !== cafeDrag.pointerId) return;
+    const s = panel.shift;
+    const under = document.elementFromPoint(e.clientX, e.clientY);
+    const moved = cafeDrag.moved;
+    const kind = cafeDrag.kind, itemId = cafeDrag.itemId, orderId = cafeDrag.orderId;
+    cafeEndDrag();
+    window.removeEventListener('pointermove', onDragMove);
+    window.removeEventListener('pointerup', onDragUp);
+    window.removeEventListener('pointercancel', onDragUp);
+    if (!s || s.over || !moved) return;
+    cafeSuppressClick = Date.now();
+    if (kind === 'menu') {
+      const st = under?.closest?.('.dash-station[data-station]');
+      if (!st) { toast('Drop on a station', 'bad'); return; }
+      const stationId = st.dataset.station;
+      if (!stationId) return;
+      const r = cookAtStation(s, stationId, itemId);
+      toast(r.ok ? (r.instant ? 'On tray' : `Cooking…`) : r.reason, r.ok ? 'good' : 'bad');
+      cafeUi(); return;
+    }
+    const t = under?.closest?.('[data-table]');
+    if (!t) return;
+    const tbl = s.tables.find((x) => x.id === +t.dataset.table);
+    const ord = tbl && s.orders.find((o) => o.id === tbl.orderId);
+    if (!ord) { toast('Drop on a seated customer', 'bad'); return; }
+    if (kind === 'ready') {
+      if (ord.id !== orderId) { toast('Wrong table for that plate', 'bad'); return; }
+      if (ord.phase !== 'ready') { toast('Plate not ready yet', 'bad'); return; }
+      const r = serve(s, ord.id);
+      if (r.ok) { CP.shiftServed(ord); toast(`Served! +${r.pay} Bones${r.tip ? ` (tip ${r.tip})` : ''}${r.combo >= 2 ? ` · x${r.combo}` : ''}`, 'good'); }
+      else toast(r.reason, 'bad');
+      cafeUi(); return;
+    }
+    if (kind === 'tray') {
+      if (ord.phase === 'ready') {
+        const r = serve(s, ord.id);
+        if (r.ok) { CP.shiftServed(ord); toast(`Served! +${r.pay} Bones${r.tip ? ` (tip ${r.tip})` : ''}`, 'good'); }
+        else toast(r.reason, 'bad');
+      } else if (ord.phase === 'order') {
+        const r = serve(s, ord.id); // tray-match instant plate+serve
+        if (r.ok) { CP.shiftServed(ord); toast(`Plated & served! +${r.pay} Bones`, 'good'); }
+        else toast(r.reason === 'Wrong order!' ? 'Tray does not match this order' : r.reason, 'bad');
+      } else toast('Customer is not waiting for food', 'bad');
+      cafeUi();
+    }
+  };
+  const startCafeDrag = (e, spec) => {
+    if (!panel.shift || panel.shift.over) return;
+    if (e.button != null && e.button !== 0) return;
+    cafeEndDrag();
+    cafeDrag = { ...spec, pointerId: e.pointerId, x0: e.clientX, y0: e.clientY, moved: false, ghost: null };
+    e.currentTarget?.setPointerCapture?.(e.pointerId);
+    window.addEventListener('pointermove', onDragMove, { passive: false });
+    window.addEventListener('pointerup', onDragUp);
+    window.addEventListener('pointercancel', onDragUp);
+  };
+  stations.addEventListener('pointerdown', (e) => {
+    const btn = e.target.closest('[data-drag-menu]'); if (!btn) return;
+    // Don't steal taps on "Cook needed"
+    if (e.target.closest('[data-station-auto]')) return;
+    const id = btn.dataset.dragMenu;
+    startCafeDrag(e, { kind: 'menu', itemId: id, html: cafeFoodHtml(id, 36) + `<span>${MENU.find((m) => m.id === id)?.name || id}</span>` });
+  });
+  // Tray chips + ready plates are rebuilt in cafeUi; use delegation on the tray box
+  const trayBox = body.querySelector('.tray');
+  trayBox?.addEventListener('pointerdown', (e) => {
+    const chip = e.target.closest('[data-drag-tray],[data-drag-ready]'); if (!chip) return;
+    if (chip.dataset.dragReady) {
+      const oid = +chip.dataset.dragReady;
+      const ord = panel.shift?.orders.find((o) => o.id === oid);
+      const icons = (ord?.items || []).map((id) => cafeFoodHtml(id, 28)).join('');
+      chip.classList.add('dragging');
+      startCafeDrag(e, { kind: 'ready', orderId: oid, html: icons + `<span>→ ${ord?.customer || 'table'}</span>` });
+    } else {
+      const id = chip.dataset.dragTray;
+      chip.classList.add('dragging');
+      startCafeDrag(e, { kind: 'tray', itemId: id, html: (panel.shift?.tray || []).map((x) => cafeFoodHtml(x, 32)).join('') || cafeFoodHtml(id, 36) });
+    }
+  });
+  $('#orders').addEventListener('pointerdown', (e) => {
+    const el = e.target.closest('.order.phase-ready[data-order]'); if (!el) return;
+    const oid = +el.dataset.order;
+    const ord = panel.shift?.orders.find((o) => o.id === oid); if (!ord) return;
+    el.classList.add('dragging');
+    startCafeDrag(e, { kind: 'ready', orderId: oid, html: ord.items.map((id) => cafeFoodHtml(id, 28)).join('') + `<span>→ ${ord.customer}</span>` });
+  });
+
   cafeUi();
 }
 function cafeUi() {
   const s = panel.shift; if (!s) return;
   const name = (id) => MENU.find((m) => m.id === id)?.name || id;
-  const phaseLabel = { queue: 'In line', seat: 'Tap: take order', order: 'Stations → tray → plate', cook: 'Plating…', ready: 'Tap: serve!', eat: 'Eating', dirty: 'Tap: CLEAR (dirt taxes floor)' };
+  const phaseLabel = { queue: 'In line', seat: 'Tap: take order', order: 'Cook → drag tray here', cook: 'Plating…', ready: 'Drag plate here!', eat: 'Eating', dirty: 'Tap: CLEAR (dirt taxes floor)' };
   $('#ctime').textContent = Math.ceil(s.time);
   $('#cserved').textContent = s.served;
   $('#cearned').textContent = s.earned;
@@ -1241,6 +1404,7 @@ function cafeUi() {
         return `<div class="dash-table phase-${o.phase}${o.vip ? ' vip' : ''}" data-table="${t.id}" data-order="${o.id}">
           <canvas width="52" height="40" data-face="${o.id}"></canvas>
           <b>${o.vip ? '★ ' : ''}${o.customer}</b><span class="small">T${t.id} · ${phaseLabel[o.phase] || o.phase}</span>
+          <div class="order-foods">${o.phase === 'seat' ? '' : o.items.map((id) => cafeFoodHtml(id, 22)).join('')}</div>
           <div class="small items">${o.phase === 'seat' ? '…' : o.items.map(name).join(' + ')}${o.special ? ' · SPECIAL' : ''}</div>
           <div class="pat"><i style="width:${pct}%;background:${barCol}"></i></div>
         </div>`;
@@ -1267,13 +1431,33 @@ function cafeUi() {
     $('#orders').dataset.sig = sig;
     if (s.over) $('#orders').innerHTML = '';
     else {
-      $('#orders').innerHTML = tickets.map((o) => `<div class="order phase-${o.phase}${o.vip?' vip':''}" data-order="${o.id}" data-items="${o.items.join(',')}"><b>#${o.id} ${o.vip?'★ ':''}${o.customer}</b><div class="small">${o.items.map(name).join(' + ')}</div><div class="small">${phaseLabel[o.phase]}</div><div class="pat"><i></i></div></div>`).join('') || '<p class="small">No open tickets — seat guests from the line.</p>';
+      $('#orders').innerHTML = tickets.map((o) => `<div class="order phase-${o.phase}${o.vip?' vip':''}" data-order="${o.id}" data-items="${o.items.join(',')}"><b>#${o.id} ${o.vip?'★ ':''}${o.customer}</b><div class="order-foods">${o.items.map((id) => cafeFoodHtml(id, 22)).join('')}</div><div class="small">${o.items.map(name).join(' + ')}</div><div class="small">${phaseLabel[o.phase]}</div><div class="pat"><i></i></div></div>`).join('') || '<p class="small">No open tickets — seat guests from the line.</p>';
     }
   }
   tickets.forEach((o) => { const el = $(`.order[data-order="${o.id}"] .pat i`); if (el) { el.style.width = (100 * o.patience / o.max) + '%'; el.style.background = o.patience / o.max < 0.3 ? '#d9534f' : '#3fa66a'; } });
 
-  const tray = $('#tray'); const tsig = s.tray.join();
-  if (tray.dataset.sig !== tsig) { tray.dataset.sig = tsig; tray.innerHTML = ''; s.tray.forEach((id) => tray.appendChild(iconCanvas((x) => drawMenuIcon(x, id, 18, 16, 1.1), 36, 32))); if (!s.tray.length) tray.innerHTML = '<span class="small">empty — cook at stations</span>'; }
+  const tray = $('#tray');
+  const readyPlates = s.over ? [] : s.orders.filter((o) => o.phase === 'ready');
+  const tsig = s.tray.join() + '|R:' + readyPlates.map((o) => o.id).join();
+  if (tray && tray.dataset.sig !== tsig) {
+    tray.dataset.sig = tsig; tray.innerHTML = '';
+    if (!s.tray.length && !readyPlates.length) tray.innerHTML = '<span class="small">empty — cook at stations, then drag plates onto customers</span>';
+    s.tray.forEach((id) => {
+      const chip = document.createElement('div'); chip.className = 'tray-chip'; chip.dataset.dragTray = id; chip.title = (MENU.find((m) => m.id === id)?.name || id) + ' — drag onto matching customer';
+      chip.appendChild(cafeFoodImg(id, 40)); tray.appendChild(chip);
+    });
+    if (readyPlates.length) {
+      const wrap = document.createElement('div'); wrap.className = 'tray-ready';
+      readyPlates.forEach((o) => {
+        const chip = document.createElement('div'); chip.className = 'tray-ready-chip'; chip.dataset.dragReady = o.id;
+        chip.title = `Drag onto ${o.customer}'s table to serve`;
+        o.items.forEach((id) => chip.appendChild(cafeFoodImg(id, 28)));
+        const lab = document.createElement('span'); lab.textContent = `→ ${o.customer}`; chip.appendChild(lab);
+        wrap.appendChild(chip);
+      });
+      tray.appendChild(wrap);
+    }
+  }
 
   if (s.over && !s.settled) {
     const total = finishShift(state, s); packAct('shift'); hud(); persist();

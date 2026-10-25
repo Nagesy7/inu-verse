@@ -112,6 +112,28 @@ canvas#game{display:block;width:100vw;height:100vh;cursor:pointer}
 .dash-pop.pop-ready{background:#2a3358;color:#ffe66a;border:2px solid #ffe66a}
 @keyframes dash-pop-up{0%{opacity:0;transform:translateY(8px) scale(.9)}15%{opacity:1;transform:translateY(-4px) scale(1.05)}70%{opacity:1;transform:translateY(-18px)}100%{opacity:0;transform:translateY(-32px)}}
 @keyframes dash-pulse{0%,100%{box-shadow:0 0 0 0 rgba(255,230,106,.35)}50%{box-shadow:0 0 0 4px rgba(255,230,106,.2)}}
+/* Café consumable sprites + drag-to-serve (Diner Dash plating) */
+.cafe-food-icon{image-rendering:pixelated;image-rendering:crisp-edges;display:inline-block;vertical-align:middle;pointer-events:none;flex-shrink:0}
+.st-item{display:flex!important;align-items:center;gap:6px;touch-action:none}
+.st-item .cafe-food-icon{width:28px;height:28px}
+.tray{touch-action:none}
+.tray-chip{display:inline-flex;align-items:center;justify-content:center;gap:2px;padding:4px;margin:2px;background:var(--navy3);border:2px solid var(--goldd);border-radius:8px;cursor:grab;touch-action:none;user-select:none;-webkit-user-select:none}
+.tray-chip:active,.tray-chip.dragging{cursor:grabbing;opacity:.85}
+.tray-chip .cafe-food-icon{width:40px;height:40px}
+.tray-ready{display:flex;flex-wrap:wrap;gap:6px;margin-top:8px}
+.tray-ready-chip{display:inline-flex;align-items:center;gap:4px;padding:4px 8px 4px 4px;background:#2a3358;border:2px solid #ffe66a;border-radius:10px;cursor:grab;touch-action:none;user-select:none;font-size:11px;color:#ffe6a0}
+.tray-ready-chip .cafe-food-icon{width:28px;height:28px}
+.tray-ready-chip:active,.tray-ready-chip.dragging{cursor:grabbing}
+.dash-table .order-foods{display:flex;justify-content:center;gap:2px;flex-wrap:wrap;margin:2px 0;min-height:20px}
+.dash-table .order-foods .cafe-food-icon{width:22px;height:22px}
+.dash-table.drop-target,.dash-station.drop-target{border-color:#5df07a!important;box-shadow:0 0 0 3px rgba(93,240,122,.45)!important;animation:dash-pulse 0.9s ease-in-out infinite}
+.dash-tickets .order{touch-action:none;cursor:pointer}
+.dash-tickets .order.phase-ready{cursor:grab;touch-action:none}
+.dash-tickets .order.phase-ready.dragging{cursor:grabbing;opacity:.8}
+.cafe-drag-ghost{position:fixed;z-index:9999;pointer-events:none;display:flex;align-items:center;gap:4px;padding:6px 8px;background:rgba(26,32,56,.92);border:2px solid #ffe66a;border-radius:10px;box-shadow:0 6px 18px rgba(0,0,0,.45);transform:translate(-50%,-50%);font-size:12px;color:#fff6e0}
+.cafe-drag-ghost .cafe-food-icon{width:36px;height:36px}
+.cafe.dash.dragging-food{cursor:grabbing}
+.cafe.dash.dragging-food .dash-table,.cafe.dash.dragging-food .dash-station{transition:border-color .1s,box-shadow .1s}
 @media(max-width:700px){.cafe.dash{grid-template-columns:1fr}.dash-tables{grid-template-columns:repeat(2,1fr)}.dash-stations{grid-template-columns:1fr}}
 
 .big-num{font-size:28px;color:#6fd394}

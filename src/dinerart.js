@@ -1,5 +1,14 @@
 // Café dish art: tiny original pixel dishes (cups, bowls, plates) drawn in world px on the café tables, in the waiter's paw and
-// as menu icons. left: 1 = full .. 0 = empty plate (crumbs). No external art.
+// as menu icons. left: 1 = full .. 0 = empty plate (crumbs). Prefers Inu Art Studio PNGs under assets/cafe/ when present.
+// Prefer Inu Art Studio PNGs (assets/cafe/{id}.png) when loaded; canvas pixel fallback otherwise.
+const CAFE_PNG = Object.create(null);
+export function preloadCafeIcons(ids) {
+  for (const id of ids) {
+    if (CAFE_PNG[id]) continue;
+    const img = new Image(); img.src = `assets/cafe/${id}.png`;
+    img.onload = () => { CAFE_PNG[id] = img; }; img.onerror = () => { CAFE_PNG[id] = null; };
+  }
+}
 const R = (c, x, y, w, h, col) => { c.fillStyle = col; c.fillRect(Math.round(x), Math.round(y), w, h); };
 const LOOK = {
   pupLatte: { kind: 'cup', cup: '#f4efe6', fill: '#c69866', top: '#f8eedd', mark: '#a0704a' },
@@ -33,5 +42,11 @@ export function drawDish(c, id, x, y, left = 1, t = 0, carried = false, k = 1) {
     else if (L.shape === 'ball') { R(c, px, y - 1, 3, 3, L.fill); R(c, px + 1, y - 2, 1, 1, L.top); }
     else if (L.shape === 'pops') { R(c, px + 1, y - 4, 1, 4, L.top); R(c, px, y - 2, 3, 3, L.fill); }
     else { R(c, px, y - 1, 3, 3, L.fill); R(c, px, y - 2, 3, 1, L.top); } } }
-// menu icon (panel): same dish, scaled up on a little table cloth
-export function drawDishIcon(c, id, w = 40, h = 32) { c.imageSmoothingEnabled = false; R(c, 0, h - 8, w, 8, '#f2e2c0'); R(c, 0, h - 8, w, 1, '#d4a640'); c.save(); c.translate(w / 2, h / 2 - 2); c.scale(2, 2); drawDish(c, id, 0, 0, 1, 0); c.restore(); }
+// menu icon (panel): Art Studio PNG if loaded, else canvas dish on a little table cloth
+export function drawDishIcon(c, id, w = 40, h = 32) {
+  c.imageSmoothingEnabled = false; R(c, 0, h - 8, w, 8, '#f2e2c0'); R(c, 0, h - 8, w, 1, '#d4a640');
+  if (CAFE_PNG[id] === undefined) preloadCafeIcons([id]);
+  const img = CAFE_PNG[id];
+  if (img) { const s = Math.min(w - 4, h - 10); c.drawImage(img, (w - s) / 2, 1, s, s); return; }
+  c.save(); c.translate(w / 2, h / 2 - 2); c.scale(2, 2); drawDish(c, id, 0, 0, 1, 0); c.restore();
+}
