@@ -1,7 +1,7 @@
 // Verse quest-style place onboarding: visit places, learn what they do, earn Bones and optional inventory-only cosmetics.
 // Per-place mascots appear once that place is onboarded (as if the mascot onboarded you). Cosmetics follow champion rules:
 // inventory-only, never sold (OUTFITS.*.quest === true). Pure logic — no DOM.
-import { ensureWardrobe } from './outfits.js';
+import { ensureWardrobe, earnBones } from './outfits.js';
 
 export const ONBOARD_KEY = 'inuverse.onboard.v1';
 export const ONBOARD_MARK = 'verse-onboard-v1';
@@ -82,13 +82,9 @@ function grantCosmetic(s, id) {
 }
 
 function grantBones(s, n) {
-  const amt = Math.max(0, Math.floor(n || 0));
-  if (!amt) return 0;
-  s.bones = (s.bones || 0) + amt;
-  s.stats ||= { shifts: 0, bonesEarned: 0, served: 0 };
-  s.stats.bonesEarned = (s.stats.bonesEarned || 0) + amt;
-  ensureOnboard(s).bonesEarned = (s.onboard.bonesEarned || 0) + amt;
-  return amt;
+  const { total } = earnBones(s, n);
+  if (total) ensureOnboard(s).bonesEarned = (s.onboard.bonesEarned || 0) + total;
+  return total;
 }
 
 /** Complete a place quest (idempotent). Awards Bones + optional place cosmetic, then any newly hit milestones. */

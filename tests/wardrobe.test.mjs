@@ -1,5 +1,5 @@
 import test from 'node:test'; import assert from 'node:assert/strict';
-import { OUTFITS, SLOTS, buyOutfit, equipOutfit, unequipSlot, ensureWardrobe, outfitLook, owns } from '../src/outfits.js';
+import { OUTFITS, SLOTS, buyOutfit, equipOutfit, unequipSlot, ensureWardrobe, outfitLook, owns, wornBonesBonus, earnBones } from '../src/outfits.js';
 import { newGame, COATS, normalizeCoat } from '../src/game.js';
 import { save, load, MemoryStorage, SAVE_KEY } from '../src/save.js';
 import { BUILDINGS, interactables } from '../src/world.js';
@@ -10,7 +10,7 @@ test('six starter coats only', () => {
   assert.equal(newGame({ coat: 'golden' }).player.coat, 'golden');
 });
 test('catalog covers required clothing and valid slots', () => {
-  for (const d of Object.values(OUTFITS)) { assert.ok(SLOTS.includes(d.slot)); assert.ok(d.price > 0 || d.drop); }
+  for (const d of Object.values(OUTFITS)) { assert.ok(SLOTS.includes(d.slot)); assert.ok(d.price > 0 || d.drop || d.quest); }
   for (const id of ['cap_red', 'suit_navy', 'tux_black', 'hoodie_maroon', 'jacket_black', 'gown_white', 'hawaiian', 'shades', 'chain_gold', 'sneakers_red']) assert.ok(OUTFITS[id], id);
 });
 test('buy deducts bones, rejects duplicates and insufficient funds', () => {
@@ -46,4 +46,20 @@ test('wardrobe survives save/load; old saves migrate', () => {
 test('Fetch Fashion is a reachable building', () => {
   assert.ok(BUILDINGS.find((b) => b.id === 'fashion'));
   assert.ok(interactables(newGame()).find((i) => i.id === 'fashion'));
+});
+test('worn outfit bonesBonus adds flat earn perk for onboarding neck cosmetics', () => {
+  assert.equal(OUTFITS.ob_apron_pin.bonesBonus, 2);
+  assert.equal(OUTFITS.ob_scout_bandana.bonesBonus, 3);
+  assert.equal(OUTFITS.ob_verse_pin.bonesBonus, 5);
+  const s = newGame(); ensureWardrobe(s);
+  assert.equal(wornBonesBonus(s), 0);
+  s.wardrobe.owned.push('ob_apron_pin'); equipOutfit(s, 'ob_apron_pin');
+  assert.equal(wornBonesBonus(s), 2);
+  const before = s.bones; const r = earnBones(s, 10);
+  assert.deepEqual(r, { base: 10, bonus: 2, total: 12 });
+  assert.equal(s.bones, before + 12);
+  // neck slot: swapping to bandana replaces apron
+  s.wardrobe.owned.push('ob_scout_bandana'); equipOutfit(s, 'ob_scout_bandana');
+  assert.equal(wornBonesBonus(s), 3);
+  assert.equal(earnBones(s, 0).total, 0, 'no bonus on zero base');
 });

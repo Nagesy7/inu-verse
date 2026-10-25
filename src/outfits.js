@@ -48,9 +48,10 @@ export const OUTFITS = {
   sneakers_gold:{ slot: 'feet', name: 'Black & Gold Sneakers', price: 120, look: { c: '#18181e', sole: '#e3b341' } },
   loafers:      { slot: 'feet', name: 'Shiny Loafers', price: 70, look: { c: '#141418', sole: '#3a3a44' } },
   // Verse quest onboarding rewards (inventory-only, never sold — champion / quest rules)
-  ob_apron_pin:     { slot: 'neck', name: 'Café Apron Pin', price: 0, quest: true, look: { kind: 'pin', c: '#f4efe6', d: '#c8282e' } },
-  ob_scout_bandana: { slot: 'neck', name: 'Verse Scout Bandana', price: 0, quest: true, look: { kind: 'scarf', c: '#2a9a5a', d: '#1a6a3a', accent: '#e3b341' } },
-  ob_verse_pin:     { slot: 'neck', name: 'Verse Graduate Pin', price: 0, quest: true, look: { kind: 'pin', c: '#e3b341', d: '#9c7424' } },
+  // bonesBonus: flat extra Bones on top of each base earn while worn (neck slot → only one at a time). Modest onboarding perk.
+  ob_apron_pin:     { slot: 'neck', name: 'Café Apron Pin', price: 0, quest: true, bonesBonus: 2, look: { kind: 'pin', c: '#f4efe6', d: '#c8282e' } },
+  ob_scout_bandana: { slot: 'neck', name: 'Verse Scout Bandana', price: 0, quest: true, bonesBonus: 3, look: { kind: 'scarf', c: '#2a9a5a', d: '#1a6a3a', accent: '#e3b341' } },
+  ob_verse_pin:     { slot: 'neck', name: 'Verse Graduate Pin', price: 0, quest: true, bonesBonus: 5, look: { kind: 'pin', c: '#e3b341', d: '#9c7424' } },
 };
 
 const fail = (reason) => ({ ok: false, reason });
@@ -91,4 +92,27 @@ export function unequipSlot(s, slot) {
 export function outfitLook(equipped = {}) {
   const o = {}; for (const [slot, id] of Object.entries(equipped || {})) if (OUTFITS[id]) o[slot] = { id, full: !!OUTFITS[id].full, ...OUTFITS[id].look };
   return o;
+}
+
+/** Flat Bones bonus from currently equipped outfits (sum of bonesBonus fields). */
+export function wornBonesBonus(s) {
+  ensureWardrobe(s);
+  let n = 0;
+  for (const id of Object.values(s.wardrobe.equipped || {})) {
+    const b = OUTFITS[id]?.bonesBonus;
+    if (Number.isFinite(b) && b > 0) n += Math.floor(b);
+  }
+  return n;
+}
+/** Credit Bones for an earn event, adding worn outfit bonus when base > 0. Returns { base, bonus, total }. */
+export function earnBones(s, base) {
+  const amt = Math.max(0, Math.floor(Number(base) || 0));
+  const bonus = amt > 0 ? wornBonesBonus(s) : 0;
+  const total = amt + bonus;
+  if (total) {
+    s.bones = (s.bones || 0) + total;
+    s.stats ||= { shifts: 0, bonesEarned: 0, served: 0 };
+    s.stats.bonesEarned = (s.stats.bonesEarned || 0) + total;
+  }
+  return { base: amt, bonus, total };
 }

@@ -1,7 +1,7 @@
 // Item 5 — nine engagement flywheels. Cosmetics / status only. No paid entry, no chance.
 import { wallet } from './wallet.js';
 import { toU, ensureMall } from './mall.js';
-import { OUTFITS } from './outfits.js';
+import { OUTFITS, earnBones } from './outfits.js';
 import { FURNITURE } from './furniture.js';
 
 const ok = (x = {}) => ({ ok: true, ...x });
@@ -288,8 +288,8 @@ export function claimDaily(s, day) {
   if (F.streak.day === day - 1) F.streak.count += 1;
   else F.streak.count = 1;
   F.streak.day = day;
-  const bones = STREAK_BONES(F.streak.count);
-  s.bones += bones;
+  const bonesBase = STREAK_BONES(F.streak.count);
+  const earned = earnBones(s, bonesBase); const bones = earned.total;
   let cosmetic = null;
   if (F.streak.count >= STREAK_DAY_REWARD && !F.streak.claimed30) {
     F.streak.claimed30 = true;

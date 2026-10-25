@@ -1,6 +1,7 @@
 // Job mini-games: pay, streak/combo bonuses, daily first-shift bonus, ranks and personal bests. Pure + testable.
 // Fair by design: pay depends only on in-game performance; there are no paid boosts.
 import { perk } from './traits.js';
+import { earnBones } from './outfits.js';
 export const JOBS = {
   cafe:        { name: 'Café Order Rush', game: 'match', dur: 45, base: 10, rate: 0.5, cap: 120, where: 'Shiba Sips Café' },
   delivery:    { name: 'Delivery Dash', game: 'dodge', dur: 40, base: 10, rate: 0.45, cap: 110, where: 'Shiba Sips Café' },
@@ -26,8 +27,8 @@ export function ensureJobs(s) { s.jobs ||= {}; for (const k in JOBS) s.jobs[k] |
 export function finishJob(s, jobId, result, day) { const J = ensureJobs(s)[jobId], first = J.lastDay !== day, pay = payFor(jobId, result, first, perk(s, 'jobPay')), before = rankOf(J.xp);
   J.runs++; J.lastDay = day; J.xp += pay.perf + pay.combo; /* skill xp capped per run */ const pb = result.score > J.best; if (pb) J.best = Math.round(result.score); J.bestCombo = Math.max(J.bestCombo, result.maxCombo || 0);
   J.today = J.today?.day === day ? { day, total: J.today.total + pay.total, best: Math.max(J.today.best, pay.perf) } : { day, total: pay.total, best: pay.perf };
-  s.bones += pay.total; if (s.stats) s.stats.bonesEarned = (s.stats.bonesEarned || 0) + pay.total; const after = rankOf(J.xp);
-  return { ...pay, pb, best: J.best, rank: after.title, rankUp: after.level > before.level, next: after.next, xp: J.xp }; }
+  const earned = earnBones(s, pay.total); const after = rankOf(J.xp);
+  return { ...pay, outfitBonus: earned.bonus, total: earned.total, pb, best: J.best, rank: after.title, rankUp: after.level > before.level, next: after.next, xp: J.xp }; }
 
 // daily Job board (feeds the daily prize pool): today's shift earnings across all jobs vs seeded townsfolk
 const h32 = (x) => { let h = 2166136261; for (const c of String(x)) h = Math.imul(h ^ c.charCodeAt(0), 16777619); return (h >>> 0) / 4294967296; };

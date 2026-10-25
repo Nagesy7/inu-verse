@@ -60,7 +60,7 @@ import { arcadeProps } from './arcadeart.js';
 import { ARCADE, GAME_DOORS } from './world.js';
 import { doorProps } from './doorart.js';
 import { createGuide } from './guideui.js';
-import { isRealWallet } from './guide.js';
+import { isRealWallet, placeById } from './guide.js';
 import * as OB from './onboard.js';
 import { createOnboardUi } from './onboardui.js';
 import { mascotActors, drawMascotTag } from './onboardart.js';
@@ -175,6 +175,7 @@ async function bootKibble() {
     // Connect Wallet (title + in-game): cloud save keyed by wallet, holder tier from on-chain $KIBBLE (VIP perks read the real balance).
     const js = (g) => { try { return JSON.parse(g('inuverse.save.v1') || 'null'); } catch { return null; } };
     G.mountWallet(K, { game: KGAME, keys: ['inuverse.save.v1', 'inu.profile.v1:'], position: 'top-center',
+      playerName: () => state?.player?.name || '',
       progress: (g) => { const s = js(g); return s ? Math.floor((s.stats?.bonesEarned || 0) + (s.stats?.shifts || 0) * 10 + (s.clockSec || 0) / 60) : 0; },
       label: (g) => { const s = js(g); return s ? `${s.player?.name || 'Shiba'} · ${Math.floor(s.stats?.bonesEarned || 0)} bones earned` : ''; },
       onWallet: () => { if (K.kp?.session) wallet().refresh?.().then(() => state && hud()).catch(() => {}); syncStreak(); } }); }
@@ -246,7 +247,11 @@ function startGame(s) { loadProfile(s).catch(() => {}); IQC.ensureChoice(s); loa
   { const r = DIS.parseReturn(location.search); if (r) { const g = DIS.HUB_GATE; Object.assign(state.player, { x: (g.out[0] + 0.5) * TILE, y: (g.out[1] + 0.5) * TILE }); globalThis.__districtReturn = r;
       setTimeout(() => { if (mode === 'world') enterRoom('districts', r.spawn || 'd-' + r.district); if (r.cabinet) setTimeout(() => toast(`Welcome back from ${DIS.cabTitle(r.cabinet)}!`, 'good'), 400); }, 60); } }
   cam.x = state.player.x; cam.y = state.player.y; hud(); persist(); wayUi(true);
-  if (/[?&]kibblesign=1/.test(location.search)) setTimeout(() => openPanel('launch', { tab: 'kibble', sign: true }), 900); else setTimeout(tourCheck, 1400); // ?kibblesign=1: creator signing card for $KIBBLE
+  // Hub / deep-links: ?open=launch opens Launch Hall (guide + panel). ?kibblesign=1 opens creator signing card.
+  { const open = (new URLSearchParams(location.search).get('open') || '').toLowerCase().replace(/[_\s-]/g, '');
+    if (open === 'launch' || open === 'launchhall') setTimeout(() => { const p = placeById(state, 'launch'); if (p) { guide.setGuide(p); guide.walk(); } openPanel('launch'); }, 700);
+    else if (/[?&]kibblesign=1/.test(location.search)) setTimeout(() => openPanel('launch', { tab: 'kibble', sign: true }), 900);
+    else setTimeout(tourCheck, 1400); }
 }
 
 // ---------------- Input ----------------

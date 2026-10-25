@@ -61,7 +61,7 @@ test('barista shift economy is unchanged (pinned to the pre-restaurant values)',
   const rng = mulberry32(42), s = newShift(rng), pays = [];
   for (let i = 0; i < 1300; i++) { tickShift(s, 0.05, rng); if (i % 40 === 20 && s.orders.length) { const o = s.orders[0]; o.customer = 'Kiki'; o.seat = 's3'; o.tagged = true; /* café tagging is display only */ for (const it of o.items) addToTray(s, it); pays.push(serve(s, o.id).pay); } }
   assert.deepEqual(pays, [22, 14, 14, 14, 14, 22, 22, 22, 14, 22, 22, 22, 22, 14, 30, 14, 22]); assert.equal(s.earned, 326);
-  const st = { bones: 0, stats: { shifts: 0, bonesEarned: 0, served: 0 } }; assert.equal(finishShift(st, s), 351); assert.deepEqual(st, { bones: 351, stats: { shifts: 1, bonesEarned: 351, served: 17 } }); assert.equal(finishShift(st, s), 0);
+  const st = { bones: 0, stats: { shifts: 0, bonesEarned: 0, served: 0 } }; assert.equal(finishShift(st, s), 351); assert.equal(st.bones, 351); assert.deepEqual(st.stats, { shifts: 1, bonesEarned: 351, served: 17 }); assert.equal(finishShift(st, s), 0);
   assert.deepEqual(JOBS.cafe, { name: 'Café Order Rush', game: 'match', dur: 45, base: 10, rate: 0.5, cap: 120, where: 'Shiba Sips Café' }); assert.equal(FIRST_SHIFT_BONUS, 25);
   assert.deepEqual([comboBonus(4), comboBonus(12), comboBonus(99)], [0, 6, 30]);
   assert.deepEqual(payFor('cafe', { score: 100, maxCombo: 10 }, true), { perf: 60, combo: 6, first: 25, total: 91 }); assert.deepEqual(payFor('cafe', { score: 300, maxCombo: 0 }, false), { perf: 120, combo: 0, first: 0, total: 120 }); assert.deepEqual(payFor('cafe', { score: 0 }, true), { perf: 10, combo: 0, first: 25, total: 12 });
