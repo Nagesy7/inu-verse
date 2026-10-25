@@ -1,6 +1,6 @@
 import { CHAPEL as CHAPEL_POS, LOTS as BIZ_LOTS } from './world.js';
 import { TILE, MAP_W, MAP_H, MAP, T, BUILDINGS, PLOTS, NPC_HOMES, CLUBHOUSE, MALL_BUILDINGS, STATUE, LEADERS, PLOT_COST, findPath, moveBody, nearestInteractable, interactables, isSolid } from './world.js';
-import { COATS, newGame, claimPlot, buyFurniture, placeFurniture, moveFurniture, storeFurniture, sellPlaced, sellFromInventory, upgrade, swapBonesToKibble, BONES_PER_KIBBLE } from './game.js';
+import { COATS, newGame, claimPlot, reconcilePlots, buyFurniture, placeFurniture, moveFurniture, storeFurniture, sellPlaced, sellFromInventory, upgrade, swapBonesToKibble, BONES_PER_KIBBLE } from './game.js';
 import { FURNITURE, WALLS, FLOORS, ROOM_W, ROOM_H, canPlace, itemAt, footprint } from './furniture.js';
 import { MENU, newShift, tickShift, addToTray, clearTray, serve, finishShift, SHIFT_LEN } from './cafe.js';
 import { createToken, playerBuy, playerSell, simulateTick, seedTokens, holderCount, PLAYER, CREATE_FEE } from './launch.js';
@@ -9,7 +9,7 @@ import { save, load } from './save.js';
 import { OUTFITS, SLOTS, SLOT_NAMES, buyOutfit, equipOutfit, unequipSlot, ensureWardrobe } from './outfits.js';
 import { mulberry32 } from './rng.js';
 import { spawnNpcs, updateNpc, NPC_OUTFITS } from './npc.js';
-import { npcHome } from './homes.js';
+import { npcHome, installHomeScene, HOME_OX, HOME_OY } from './homes.js';
 import { drawShiba, drawFurniture, drawRoom, drawMenuIcon, drawBoneIcon, drawEmblem, GOLD } from './art.js';
 import { ART, artReady, artKey } from './art.js';
 import { carProps, catProps, dogWalkActors, leashProps, drawBreadBasket } from './ambient.js';
@@ -87,7 +87,7 @@ import { feel } from './feel.js';
 import { faceTalk, faceReact } from './face.js';
 import { stepChat, drawChat, emoteBubble, say as chatSay } from './chat.js';
 import { makeRoomPlay } from './roomplay.js';
-import { sceneForDoor, HUB_GATES, resolveExit, makePortalState, portalStep, SCENES, scene as sceneOf, walkInExits, solidAt as sceneSolid } from './scenes.js';
+import { sceneForDoor, HUB_GATES, resolveExit, makePortalState, portalStep, SCENES, scene as sceneOf, walkInExits, solidAt as sceneSolid, ST as ROOM_ST } from './scenes.js';
 import { hubGateProp } from './sceneart.js';
 import { buildDrawer, drawerOpen } from './hudmenu.js';
 import { makeDoorState, doorStep, doorExit, outsideOf } from './doors.js';
@@ -96,7 +96,7 @@ import { createMultiplayer } from './multiplayer.js';
 import { createTrading, renderTrade, TRADE_CSS } from './tradeui.js';
 import { createJoystick, joyPref, JOY_KEY } from './joystick.js';
 import * as PAB from './sim/bureau.js'; // Paw Audit Bureau (Phase 1 sim layer): desk + Watchdogs + report panel
-import { ensureShare, myHomePlot, layoutOf, layoutKey, homeApi, cleanLayout, cleanEntry, validHomeId, GB } from './homeshare.js';
+import { ensureShare, myHomePlot, layoutOf, layoutKey, homeApi, cleanLayout, cleanEntry, validHomeId, validPlotId, GB } from './homeshare.js';
 import * as KM from './kibblemood.js';
 import * as MWd from './moodworld.js';
 import * as FS from './foundingseats.js';
@@ -234,6 +234,7 @@ function titleScreen() {
 
 function startGame(s) { loadProfile(s).catch(() => {}); IQC.ensureChoice(s); loadCompanionProfile(); ENG.ensureEngage(s); ENG.addSeasonXp(s, 'login', Math.floor((s.clockSec || 0) / DAY_LEN)); F5.ensureFly5(s); F5.holderCheck(s); OB.ensureOnboard(s); s.town ||= makeTown(rng); townH = -1; seedTokens(s, rng); REL.ensureRel(s); ensureFarm(s); ensureBiz(s); s.clockSec ??= 0; catchUp(s, Date.now(), { season: seasonOf(Math.floor(s.clockSec / DAY_LEN)), rain: false }); hourIdx = Math.floor(s.clockSec / (DAY_LEN / 24));
   state = s; state.kibble ??= DEMO ? 20 : 0; if (!DEMO) state.kibble = 0; ensureWardrobe(state); ensurePacks(state); ensureMall(state); state.clockSec ??= 0; lastEarned = state.stats.bonesEarned; mode = 'world'; LS.ensureStreak(state); setTimeout(() => syncStreak(), 0);
+  setTimeout(() => refreshPlotOwners(), 0);
   buildDrawer(document, { joystick: joyApi, bork: () => { initAudio(); bork(); player.emote = { kind: 'bork', t: 1.2 }; emoteBubble('me', 'bork', time); } }); $('#title').hidden = true; $('#hud').hidden = false; $('#minimap-wrap').hidden = false; document.body.classList.add('inworld');
   makeAlive(); mapImg = prerenderMap(); npcs = spawnNpcs(rng, 6); npcs.forEach((n) => { n.art = artKey(n.coat); }); amb = makeAmbient(42);
   Promise.all([artReady, buildingsReady, document.fonts?.load('8px Silkscreen').catch(() => {})]).then(() => { mapImg = prerenderMap(); });
@@ -493,7 +494,7 @@ $('#btn-pools').onclick = () => { initAudio(); uiClick?.(); openPanel('city', { 
 $('#photo-save').onclick = () => { const tmp = document.createElement('canvas'); tmp.width = cv.width; tmp.height = cv.height; const tx = tmp.getContext('2d'); tx.drawImage(cv, 0, 0); F5.watermarkPhoto(tx, tmp.width, tmp.height); const a = document.createElement('a'); a.download = `inu-verse-${Date.now()}.png`; a.href = tmp.toDataURL('image/png'); a.click(); F5.submitPhoto(state, Math.floor(gameDay() / 7), { caption: 'Inu Verse snap' }); toast('Photo saved + entered this week\'s board', 'good'); };
 $('#photo-exit').onclick = () => togglePhoto();
 $('#btn-phantom').onclick = async () => { initAudio(); if (DEMO) return toast('Demo mode: fake KIBBLE, no wallet. Remove ?demo=1 to use Phantom.', ''); if (!K.kp) return toast('Wallet service is offline right now. Try again soon.', 'bad');
-  try { const a = await wallet().connect(); if (state) { state.walletAddr = a; if (hasCustomLook(state)) await saveProfile(state); persist(); hud(); tourCheck(); } toast(`Signed in ${a.slice(0, 4)}…${a.slice(-4)}${K.mode === 'live' ? '' : ' · ' + SOON}`, 'good'); } catch (e) { toast(e.message || 'Phantom sign-in failed', 'bad'); } };
+  try { const a = await wallet().connect(); if (state) { state.walletAddr = a; if (hasCustomLook(state)) await saveProfile(state); persist(); hud(); tourCheck(); refreshPlotOwners(); } toast(`Signed in ${a.slice(0, 4)}…${a.slice(-4)}${K.mode === 'live' ? '' : ' · ' + SOON}`, 'good'); } catch (e) { toast(e.message || 'Phantom sign-in failed', 'bad'); } };
 $('#btn-help').onclick = () => openPanel('help');
 $('#btn-guide').onclick = () => guide?.startTour(true);
 $('#btn-quests').onclick = () => { initAudio(); uiClick?.(); openPanel('onboard'); };
@@ -782,10 +783,29 @@ function renderDiner() { const body = $('#panel-body'), mt = CP.meTicket(), fav 
     const r = dinerOrder(state, b.dataset.dish); if (!r.ok) return toast(r.reason, 'bad');
     CP.placeOrder(r.dish.id, seat.id); hud(); persist(); const counter = !panel.seat; closePanel();
     toast(`Ordered ${r.dish.name} (-${r.price} Bones)${counter ? `. Take a seat, it's coming to table ${seat.id.slice(1)}` : ''}`, 'good'); if (counter) RP.planTo([seat.tx, seat.ty]); }; }
-const RP = makeRoomPlay({ player, extra: CP, diner: (s) => openDiner(s), zoom: () => ZOOM, time: () => time, blocked: () => !!panel || feel.talking() || mode !== 'room',
+const homeRoomExtra = {
+  enter: (...a) => CP.enter?.(...a), update: (...a) => CP.update?.(...a),
+  props: (t) => {
+    const base = CP.props?.(t) || [], sc = RP.sc, items = sc?.homeItems;
+    if (!items?.length) return base;
+    const out = base.slice();
+    for (const it of items) {
+      if (!FURNITURE[it.id]) continue;
+      const x = (HOME_OX + (it.x | 0)) * ROOM_ST, y = (HOME_OY + (it.y | 0)) * ROOM_ST, f = footprint(it.id, it.rot | 0);
+      out.push({ y: y + f.h * ROOM_ST * 0.85, d: (c) => drawFurniture(c, it.id, x, y, ROOM_ST, it.rot | 0) });
+    }
+    return out;
+  },
+};
+const RP = makeRoomPlay({ player, extra: homeRoomExtra, diner: (s) => openDiner(s), zoom: () => ZOOM, time: () => time, blocked: () => !!panel || feel.talking() || mode !== 'room',
   input: () => { let dx = 0, dy = 0; if (!panel) { if (keys.has('w') || keys.has('arrowup')) dy -= 1; if (keys.has('s') || keys.has('arrowdown')) dy += 1; if (keys.has('a') || keys.has('arrowleft')) dx -= 1; if (keys.has('d') || keys.has('arrowright')) dx += 1; }
     return { dx, dy, stick: { x: panel ? 0 : touch.x, y: panel ? 0 : touch.y }, mag: touch.mag || 0, shift: keys.has('shift'), holdRun: player.holdRun }; },
-  openPanel: (k, o) => openPanel(k, o), build: (id) => { if (myPack(state)) { roomBuild = { id: RP.id, at: { x: RP.R.p.x, y: RP.R.p.y, face: player.face } }; enterBuild(id); } else openPanel('packs'); },
+  openPanel: (k, o) => openPanel(k, o), build: (id) => {
+    roomBuild = { id: RP.id, at: { x: RP.R.p.x, y: RP.R.p.y, face: player.face } };
+    if (id === 'clubhouse') { if (myPack(state)) enterBuild(id); else { roomBuild = null; openPanel('packs'); } return; }
+    if (id === 'share' || RP.sc?.shared) { const sh = RP.sc?.shared, home = RP.sc?.homeLayout; if (home) enterBuild('share', true, { home, shared: sh }); return; }
+    const readOnly = !!RP.sc?.readOnly || !state.plots?.[id]; enterBuild(id, readOnly);
+  },
   say: (n, t) => feel.say(n, t, blip), emote: (k) => { player.emote = { kind: k, t: 1.4 }; emoteBubble('me', k, time); }, bell: () => blip(1320), blip: (f) => blip(f),
   chat: (id, t) => chatSay(id, t, time), fade: () => feel.fade(), dust: (x, y) => feel.dust(x, y), portal: (ex) => roomPortal(ex),
   drawGround: (c) => feel.drawGround(c), drawAir: (c) => feel.drawAir(c), drawMark: (c, m, t) => drawMark(c, m, t), bubble: (c, x, y, t) => feel.bubble(c, x, y, t),
@@ -843,8 +863,8 @@ function enterExternal(d) { const url = d.kind === 'arcade' ? arcadeUrl() : game
 function interact(it, viaDoor = false) { if (!viaDoor && isWalkDoor(it)) { toast(`Walk into the door to enter ${it.name}`, ''); return; } faceReact('me', it.kind === 'building' || it.kind === 'mall' ? 'wow' : 'curious', 1.2);
   { const obPlace = OB.placeFromInteract(it); if (obPlace) setTimeout(() => onboardUi.offer(obPlace), 320); }
   if (it.kind === 'building') openPanel(it.id);
-  else if (it.kind === 'plot') { if (state.plots[it.id]) enterBuild(it.id, false); else openPanel('plot', { plotId: it.id }); }
-  else if (it.kind === 'visit') enterBuild(it.id, true);
+  else if (it.kind === 'plot') { if (state.plots[it.id]) enterHomeWalk(it.id, false); else openPanel('plot', { plotId: it.id }); }
+  else if (it.kind === 'visit') enterHomeWalk(it.id, true);
   else if (it.kind === 'stall') openPanel('launch', { sel: it.id });
   else if (it.kind === 'mall' && it.cat === 'car') openPanel('dealer', { dealer: 'luxauto' });
   else if (it.kind === 'mall' && it.cat === 'pets') openPanel('pets');
@@ -907,9 +927,20 @@ function openPanel(kind, opts = {}) {
   if (kind === 'furn') return renderFurnStore(relCtx(), opts.store);
   if (kind === 'plot') {
     const p = PLOTS.find((x) => x.id === opts.plotId);
-    body.innerHTML = `<h2>Empty plot ${p.id.toUpperCase()}</h2><p class="sub">A sunny ${p.w}×${p.h} lot on Bone Street. Claim it to build and decorate your own home.</p>
-      <p><b>Cost:</b> ${PLOT_COST} bones · You have ${Math.floor(state.bones)}</p><div class="row" style="justify-content:flex-start"><button class="btn green" id="claim">Claim plot for ${PLOT_COST} bones</button></div>`;
-    $('#claim').onclick = () => { const r = claimPlot(state, p.id); if (r.ok) { state.town && playerDid(state.town, 'You moved into a new home on Bone Street.');  toast('Plot claimed! Your new home is ready.', 'good'); hud(); persist(); closePanel(); enterBuild(p.id, false); } else toast(r.reason, 'bad'); };
+    const taken = !DEMO && state.plotOwners?.[p.id] && !state.plotOwners[p.id].mine;
+    const who = taken ? (state.plotOwners[p.id].name || state.plotOwners[p.id].short) : null;
+    body.innerHTML = `<h2>${taken ? 'Taken' : 'Empty'} plot ${p.id.toUpperCase()}</h2><p class="sub">A sunny ${p.w}×${p.h} lot on Bone Street. ${taken ? `Owned by <b>${esc(who)}</b> — one plot, one owner.` : 'Claim it to build and decorate your own home. Each plot has one owner.'}</p>
+      <p><b>Cost:</b> ${PLOT_COST} bones · You have ${Math.floor(state.bones)}</p><div class="row" style="justify-content:flex-start">${taken ? '' : `<button class="btn green" id="claim">Claim plot for ${PLOT_COST} bones</button>`}</div>`;
+    const btn = $('#claim'); if (btn) btn.onclick = async () => {
+      btn.disabled = true;
+      if (state.plots[p.id]) { toast('Already yours', 'bad'); return; }
+      if (state.bones < PLOT_COST) { toast(`Need ${PLOT_COST} bones`, 'bad'); btn.disabled = false; return; }
+      const reg = await registerPlotClaim(p.id);
+      if (!reg.ok) { toast(reg.reason, 'bad'); refreshPlotOwners(); btn.disabled = false; openPanel('plot', { plotId: p.id }); return; }
+      const r = claimPlot(state, p.id, { free: !!reg.already });
+      if (r.ok) { state.town && playerDid(state.town, 'You moved into a new home on Bone Street.'); toast(reg.already ? 'Welcome back — your plot is ready.' : 'Plot claimed! Your new home is ready.', 'good'); hud(); persist(); closePanel(); enterHomeWalk(p.id, false); }
+      else { toast(r.reason, 'bad'); btn.disabled = false; }
+    };
   } else if (kind === 'shop') renderShop();
   else if (kind === 'cafe') renderCafe();
   else if (kind === 'diner') renderDiner();
@@ -1225,6 +1256,45 @@ function roomGeom() { if (buildSide()) { const W = Math.min(300, Math.floor(inne
   const cell = Math.floor(Math.min((innerWidth - 60) / ROOM_W, (innerHeight - 80 - bh) / (ROOM_H + 1.6), 64)); const ox = Math.floor(innerWidth / 2 - (ROOM_W * cell) / 2), oy = Math.floor(80 + cell * 1.6); return { cell, ox, oy }; }
 // ---- Round 4: share your home + guestbook (src/homeshare.js, api/home.js) ----
 const HOME = homeApi('');
+// Unique map-plot ownership (one wallet per plot). Demo stays local-only; live claims register on the server first.
+async function refreshPlotOwners() {
+  if (!state || DEMO) return null;
+  try {
+    const j = await HOME.plots(K.kp?.session || null);
+    state.plotOwners = j.plots || {};
+    const dropped = reconcilePlots(state, state.plotOwners);
+    if (dropped.length) { toast(`Plot ${dropped.map((x) => x.toUpperCase()).join(', ')} already had an owner — cleared from this save.`, 'bad'); persist(); }
+    return state.plotOwners;
+  } catch { return state.plotOwners || null; }
+}
+async function registerPlotClaim(plotId) {
+  if (DEMO || !K.kp) return { ok: true, local: true };
+  if (!K.kp.session) {
+    try { if (!K.kp.address) await K.kp.connect?.(); await K.kp.signIn(); } catch (e) { return { ok: false, reason: 'Sign in with Phantom to claim a plot (one owner each).' }; }
+  }
+  if (!K.kp.session) return { ok: false, reason: 'Sign in with Phantom to claim a plot (one owner each).' };
+  try {
+    const j = await HOME.claimPlot(plotId, state.player?.name, K.kp.session);
+    state.plotOwners = state.plotOwners || {};
+    state.plotOwners[plotId] = { short: j.short, name: j.name || state.player?.name, mine: true, at: new Date().toISOString() };
+    return { ok: true, already: !!j.already };
+  } catch (e) {
+    if (e.status === 409) return { ok: false, reason: e.message || 'That plot already has an owner', taken: true };
+    return { ok: false, reason: e.message || 'Could not claim plot' };
+  }
+}
+function enterHomeWalk(plotId, readOnly, opt = {}) {
+  const home = opt.home || (readOnly && !opt.shared ? npcHome(plotId) : state.plots[plotId]);
+  if (!home) return;
+  const sceneId = 'home:' + (opt.shared?.id || plotId);
+  const npc = NPC_HOMES.find((h) => h.id === plotId);
+  const name = opt.shared?.name ? `${opt.shared.name}'s Home` : (readOnly && npc ? `${npc.owner}'s Home` : `${state.player.name}'s Home`);
+  installHomeScene(sceneId, home, { plotId: opt.shared ? 'share' : plotId, name, readOnly: !!readOnly || !!opt.shared, shared: opt.shared || null });
+  const door = opt.shared ? null : (interactables(state).find((i) => i.id === plotId) || { kind: readOnly ? 'visit' : 'plot', id: plotId, tx: 0, ty: 0 });
+  if (door) lastDoor = door;
+  enterRoom(sceneId, 'door', door);
+}
+
 let pubT = 0, pubBusy = false;
 function sharedHomeId() { const sh = state?.homeShare; return sh && sh.open !== false && ((sh.pubKey && myHomePlot(state)) || sh.shopPubKey) ? sh.id : null; } // also identifies your published shop ("Visit shop")
 function schedulePublish() { clearTimeout(pubT); pubT = setTimeout(() => publishHome(), 2500); }
@@ -1240,7 +1310,7 @@ async function visitShared(id, name) { if (!validHomeId(id) || !(mode === 'world
   try { j = await HOME.get(id); } catch (e) { return toast(e.status === 404 ? `${name || 'That player'} hasn't opened their home to visitors yet.` : 'Could not reach that home right now.', 'bad'); }
   const home = cleanLayout(j.layout); if (!home || !(mode === 'world' || mode === 'room')) return;
   if (mode === 'room') roomBuild = { id: RP.id, at: { x: RP.R.p.x, y: RP.R.p.y, face: player.face } };
-  enterBuild('share', true, { home, shared: { id, name: j.name || name || 'A pup', book: j.book || [] } }); }
+  enterHomeWalk(id, true, { home, shared: { id, name: j.name || name || 'A pup', book: j.book || [] } }); }
 function sharedBuildBar(bb) { const sh = build.shared, h = build.home;
   bb.innerHTML = `<div class="bb-col" style="flex:1"><h3>Visiting ${esc(sh.name)}'s home</h3><div class="small">${h.items.length} pieces of furniture. Sign the guestbook! Be kind: it's filtered like chat (no links, addresses or seed phrases).</div>
    <div class="row gbsign"><input id="gbtext" maxlength="${GB.TEXT_MAX}" placeholder="Write in ${esc(sh.name)}'s guestbook…" autocomplete="off" enterkeyhint="send"><button class="btn alt" id="gbsign">Sign</button></div>
@@ -1257,7 +1327,14 @@ function enterBuild(id, readOnly, opt = {}) {
   if (!readOnly && !pack && state.plots[id]) { const sh = ensureShare(state); if (sh.plot !== id) { sh.plot = id; sh.pubKey = null; } } document.body.classList.add('building');
   $('#prompt').hidden = true; $('#minimap-wrap').hidden = true; wayUi(false); buildBar();
 }
-function exitBuild() { doorExit(doorSt, time); document.body.classList.remove('building'); const wasShared = !!build?.shared || !!build?.shop, wasOwn = build && !build.readOnly && !build.pack && !build.shop; if (build?.shop?.own) publishShop(); if (wasOwn) publishHome(); if (roomBuild) { const rb = roomBuild; roomBuild = null; feel.fade(); uiClose(); build = null; $('#buildbar').hidden = true; mode = 'room'; RP.enter(rb.id, rb.at); return; } if (!wasShared && lastDoor && (lastDoor.kind === 'plot' || lastDoor.kind === 'visit' || lastDoor.kind === 'clubhouse')) { const o = outsideOf(lastDoor); Object.assign(state.player, { x: o.x, y: o.y }); player.face = o.face; } feel.fade(); uiClose(); mode = 'world'; build = null; $('#buildbar').hidden = true; $('#minimap-wrap').hidden = false; wayUi(true); persist(); }
+function exitBuild() { doorExit(doorSt, time); document.body.classList.remove('building'); const wasShared = !!build?.shared || !!build?.shop, wasOwn = build && !build.readOnly && !build.pack && !build.shop; if (build?.shop?.own) publishShop(); if (wasOwn) publishHome(); if (roomBuild) { const rb = roomBuild; const b = build; roomBuild = null; feel.fade(); uiClose();
+    // Refresh walkable home scene so new furniture blocks movement the same way outdoors solids do.
+    if (rb.id?.startsWith('home:') && b) {
+      const home = b.home || state.plots[b.plotId];
+      if (home) installHomeScene(rb.id, home, { plotId: b.shared ? 'share' : b.plotId, name: RP.sc?.name, readOnly: !!b.readOnly || !!b.shared, shared: b.shared || null });
+    }
+    build = null; $('#buildbar').hidden = true; mode = 'room'; RP.enter(rb.id, rb.at); return; }
+  if (!wasShared && lastDoor && (lastDoor.kind === 'plot' || lastDoor.kind === 'visit' || lastDoor.kind === 'clubhouse')) { const o = outsideOf(lastDoor); Object.assign(state.player, { x: o.x, y: o.y }); player.face = o.face; } feel.fade(); uiClose(); mode = 'world'; build = null; $('#buildbar').hidden = true; $('#minimap-wrap').hidden = false; wayUi(true); persist(); }
 function rotateSel() { if (build?.shop) return shopRotate(); if (build?.sel) { build.sel.rot = (build.sel.rot + 1) % 4; } else if (build?.picked) { const it = build.picked; const r = build.pack ? movePackFurniture(state, it.uid, it.x, it.y, (it.rot + 1) % 4) : moveFurniture(state, build.plotId, it.uid, it.x, it.y, (it.rot + 1) % 4); if (!r.ok) toast('No room to rotate here', 'bad'); persist(); } }
 function buildClick(c) {
   if (!build || build.readOnly) return;

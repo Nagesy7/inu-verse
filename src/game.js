@@ -30,13 +30,23 @@ export function newGame({ name = 'Inu', coat = 'tan' } = {}) {
 const ok = (extra = {}) => ({ ok: true, ...extra });
 const fail = (reason) => ({ ok: false, reason });
 
-export function claimPlot(s, plotId) {
+export function claimPlot(s, plotId, { free = false } = {}) {
   if (!PLOTS.find((p) => p.id === plotId)) return fail('No such plot');
   if (s.plots[plotId]) return fail('Already yours');
-  if (s.bones < PLOT_COST) return fail(`Need ${PLOT_COST} bones`);
-  s.bones -= PLOT_COST;
+  if (!free && s.bones < PLOT_COST) return fail(`Need ${PLOT_COST} bones`);
+  if (!free) s.bones -= PLOT_COST;
   s.plots[plotId] = { wall: 0, floor: 0, items: [], roof: ['#e0735a', '#5a8de0', '#69b67a', '#b07ad6'][Object.keys(s.plots).length % 4] };
   return ok();
+}
+// Drop local ownership of plots the server says another wallet owns (unique ownership).
+export function reconcilePlots(s, registry) {
+  if (!s?.plots || !registry || typeof registry !== 'object') return [];
+  const dropped = [];
+  for (const id of Object.keys(s.plots)) {
+    const r = registry[id];
+    if (r && r.mine === false) { delete s.plots[id]; dropped.push(id); }
+  }
+  return dropped;
 }
 
 export function buyFurniture(s, id, qty = 1) {

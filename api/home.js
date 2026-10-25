@@ -18,11 +18,13 @@
 //   block/unblock {tid} | report {id|tid, reason} | book {id}. Items only, sign-message only, every step in the Bureau item book.
 // No tokens or payments here: a home is furniture the player already owns, copied for others to look at; a trade swaps items
 // (never Bones, Pawmarks or $KIBBLE) and the wallet is only used to check who is signing.
+// Map plots (p1..p8): one owner per plot. Keys plot:v1:<id> = { w, name, at }. Claimed via op "claimPlot" with Bearer session.
+// GET ?plots=1 lists short owners (and mine:true when signed in). First wallet to claim a plot wins; others get 409.
 import { createHash, randomBytes } from "node:crypto";
 import { upstashKv, memoryKv } from "./_lib/kv.js";
-import { validHomeId, cleanLayout, cleanEntry, homeOwnerName, GB } from "../src/homeshare.js";
+import { validHomeId, validPlotId, PLOT_IDS, cleanLayout, cleanEntry, homeOwnerName, GB } from "../src/homeshare.js";
 import { SHOP_RE, homeIdOf, cleanShopPayload, toWire } from "../src/interiors.js";
-import { makeTrades } from "./_lib/trades.js";
+import { makeTrades, kpSessionWallet } from "./_lib/trades.js";
 
 export const TTL_S = 90 * 86400, SIGN_GAP_S = 15, SIGN_HOME_GAP_S = 60, PUBLISH_GAP_S = 2, SHOP_GAP_S = 3, SHOP_IP_GAP_S = 1, SHOP_BODY_MAX = 4096;
 const sha = (s) => createHash("sha256").update(String(s)).digest("hex");
@@ -31,10 +33,20 @@ let MEM = null;
 export function makeHandler({ env = process.env, kv, now = () => Date.now(), sleep = (ms) => new Promise((r) => setTimeout(r, ms)), sessionWallet, verify } = {}) {
   const store = kv !== undefined ? kv : (upstashKv(env) || (MEM ||= memoryKv()));
   const salt = env.HOME_IP_SALT || "inu-verse-home";
+  const who = sessionWallet || kpSessionWallet;
   const getJ = async (k, d) => { const raw = await store.get(k); try { return JSON.parse(raw || "null") ?? d; } catch { return d; } }; // store errors propagate (500), bad JSON -> default
   async function locked(id, fn) { const L = "home:lock:" + id; for (let i = 0; i < 20; i++) { if (await store.setNX(L, "1", 5)) { try { return await fn(); } finally { try { await store.del(L); } catch {} } } await sleep(100); } throw Object.assign(new Error("busy, try again"), { status: 503 }); }
   const trade = makeTrades({ store, now, env, sleep, ...(sessionWallet ? { sessionWallet } : {}), ...(verify ? { verify } : {}) });
   const owner = async (id, key) => { const h = await getJ("home:v1:" + id, null); return h && typeof key === "string" && key.length >= 16 && h.kh === sha(key) ? h : null; };
+  const bearer = (req) => String(req.headers?.authorization || "").replace(/^Bearer\s+/i, "");
+  const shortW = (w) => (w ? w.slice(0, 4) + "…" + w.slice(-4) : "");
+  const B58 = /^[1-9A-HJ-NP-Za-km-z]{32,44}$/;
+  async function walletOf(req) {
+    const token = bearer(req); if (!token || token.length < 16) return null;
+    const ck = "plot:sess:" + sha(token).slice(0, 32); let w = await store.get(ck);
+    if (!w) { w = await who(token); if (!w || !B58.test(w)) return null; await store.set(ck, w, 300); }
+    return B58.test(w) ? w : null;
+  }
   return async function handler(req, res) {
     res.setHeader("access-control-allow-origin", "*"); res.setHeader("access-control-allow-headers", "content-type, authorization"); res.setHeader("content-type", "application/json"); res.setHeader("cache-control", "no-store");
     const send = (code, o) => { res.statusCode = code; res.end(JSON.stringify(o)); };
@@ -43,6 +55,11 @@ export function makeHandler({ env = process.env, kv, now = () => Date.now(), sle
       if (req.method === "GET" && (req.query?.shop ?? new URL(req.url, "http://x").searchParams.get("shop")) != null) { const id = String(req.query?.shop ?? new URL(req.url, "http://x").searchParams.get("shop"));
         if (!SHOP_RE.test(id)) return send(400, { error: "bad shop id" }); const r = await getJ("shop:v1:" + id, null); if (!r) return send(404, { error: "This shop hasn't been opened to visitors yet." });
         return send(200, { id, owner: r.owner, layout: r.layout, updatedAt: r.updatedAt }); }
+      // Global map-plot ownership (one wallet per plot id). Public list; optional Bearer marks mine.
+      if (req.method === "GET" && (req.query?.plots ?? new URL(req.url, "http://x").searchParams.get("plots")) != null) {
+        const me = await walletOf(req); const plots = {};
+        for (const id of PLOT_IDS) { const r = await getJ("plot:v1:" + id, null); plots[id] = r && B58.test(r.w || "") ? { short: shortW(r.w), name: r.name || null, at: r.at || null, mine: !!(me && r.w === me) } : null; }
+        return send(200, { plots }); }
       if (req.method === "GET") { const id = String((req.query?.id) ?? new URL(req.url, "http://x").searchParams.get("id") ?? "");
         if (!validHomeId(id)) return send(400, { error: "bad home id" });
         const h = await getJ("home:v1:" + id, null); if (!h) return send(404, { error: "This home hasn't been opened to visitors yet." });
@@ -50,6 +67,18 @@ export function makeHandler({ env = process.env, kv, now = () => Date.now(), sle
       if (req.method !== "POST") return send(405, { error: "GET or POST" });
       const rawLen = typeof req.body === "string" ? req.body.length : JSON.stringify(req.body || {}).length; if (rawLen > SHOP_BODY_MAX * 4) return send(413, { error: "too big" });
       const b = typeof req.body === "string" ? JSON.parse(req.body || "{}") : req.body || {};
+      if (b.op === "claimPlot") {
+        const plotId = String(b.plotId || ""); if (!validPlotId(plotId)) return send(400, { error: "bad plot id" });
+        const w = await walletOf(req); if (!w) return send(401, { error: "Sign in with Phantom to claim a plot" });
+        if (!(await store.setNX("plot:rl:" + sha(w).slice(0, 16), "1", 2))) return send(429, { error: "Claiming too fast", retryAfter: 2 });
+        return await locked("plot:" + plotId, async () => {
+          const cur = await getJ("plot:v1:" + plotId, null);
+          if (cur && cur.w === w) return send(200, { ok: true, plotId, short: shortW(w), already: true, name: cur.name || homeOwnerName(b.name) });
+          if (cur && cur.w !== w) return send(409, { error: "That plot already has an owner", short: shortW(cur.w), name: cur.name || null });
+          const rec = { w, name: homeOwnerName(b.name), at: new Date(now()).toISOString() };
+          await store.set("plot:v1:" + plotId, JSON.stringify(rec)); // permanent: one plot = one owner
+          return send(200, { ok: true, plotId, short: shortW(w), name: rec.name });
+        }); }
       if (b.op === "trade") { if (rawLen > SHOP_BODY_MAX) return send(413, { error: "too big" });
         const token = String(req.headers?.authorization || "").replace(/^Bearer\s+/i, ""), ipHash = sha(salt + "|" + ipOf(req)).slice(0, 24);
         try { return send(200, await trade(b, { token, ipHash })); } catch (e) { if (!e.status) throw e; return send(e.status, { error: e.message, ...(e.extra || {}) }); } }

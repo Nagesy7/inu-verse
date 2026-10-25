@@ -86,3 +86,79 @@ test('main/ui wiring: Visit home in the player list, guestbook in build mode, la
   for (const w of [/\bbuy\b/i, /\bsell\b/i, /kibble/i, /price/i, /bones/i]) assert.doesNotMatch(r4, w, 'no new paid mechanics / banned copy in the R4 block: ' + w);
   const api = fs.readFileSync(new URL('../api/home.js', import.meta.url), 'utf8'); assert.doesNotMatch(api, /wallet\s*[:=]|transfer|sign(Transaction|Message)/);
 });
+
+// ---- Unique map-plot ownership (one wallet per plot) + walkable homes ----
+const callAuth = (h, { method = 'POST', body, query = '', headers = {}, ip = '1.2.3.4' }) => new Promise((done) => {
+  const q = query ? (query.startsWith('?') ? query : '?' + query) : '';
+  const res = { headers: {}, setHeader(k, v) { this.headers[k] = v; }, end(b) { done({ code: this.statusCode, headers: this.headers, body: b ? JSON.parse(b) : null }); } };
+  const urlQ = {}; if (q.includes('plots')) urlQ.plots = '1'; if (q.includes('id=')) urlQ.id = q.split('id=')[1];
+  h({ method, url: '/api/home' + q, query: urlQ, headers: { 'x-forwarded-for': ip, ...headers }, body: body && JSON.stringify(body) }, res);
+});
+
+test('unique plot ownership: first wallet wins; second gets 409; reclaim by owner is already', async () => {
+  const { kv, h, tick } = mk();
+  const W1 = '11111111111111111111111111111111', W2 = '22222222222222222222222222222222';
+  const T1 = 'sess-token-wallet-one', T2 = 'sess-token-wallet-two';
+  const h1 = makeHandler({ env: {}, kv, now: () => 1_800_000_000_000, sleep: async () => {}, sessionWallet: async (tok) => tok === T1 ? W1 : tok === T2 ? W2 : null });
+  assert.equal((await callAuth(h1, { method: 'GET', query: '?plots=1' })).code, 200);
+  let r = await callAuth(h1, { body: { op: 'claimPlot', plotId: 'p1', name: 'Alpha' }, headers: { authorization: 'Bearer ' + T1 } });
+  assert.equal(r.code, 200); assert.equal(r.body.ok, true); assert.equal(r.body.already, undefined);
+  tick(3000);
+  r = await callAuth(h1, { body: { op: 'claimPlot', plotId: 'p1', name: 'Beta' }, headers: { authorization: 'Bearer ' + T2 } });
+  assert.equal(r.code, 409); assert.match(r.body.error, /already has an owner/i);
+  tick(3000);
+  r = await callAuth(h1, { body: { op: 'claimPlot', plotId: 'p1', name: 'Alpha' }, headers: { authorization: 'Bearer ' + T1 } });
+  assert.equal(r.code, 200); assert.equal(r.body.already, true);
+  r = await callAuth(h1, { method: 'GET', query: '?plots=1', headers: { authorization: 'Bearer ' + T1 } });
+  assert.equal(r.body.plots.p1.mine, true); assert.equal(r.body.plots.p1.name, 'Alpha');
+  r = await callAuth(h1, { method: 'GET', query: '?plots=1', headers: { authorization: 'Bearer ' + T2 } });
+  assert.equal(r.body.plots.p1.mine, false);
+  assert.equal((await callAuth(h1, { body: { op: 'claimPlot', plotId: 'p9', name: 'X' }, headers: { authorization: 'Bearer ' + T1 } })).code, 400);
+  assert.equal((await callAuth(h1, { body: { op: 'claimPlot', plotId: 'p2', name: 'X' } })).code, 401);
+});
+
+test('reconcilePlots drops local plots the registry says another wallet owns', async () => {
+  const { claimPlot, reconcilePlots, newGame } = await import('../src/game.js');
+  const s = newGame(); s.bones = 9999; assert.ok(claimPlot(s, 'p1').ok); assert.ok(claimPlot(s, 'p2').ok);
+  const dropped = reconcilePlots(s, { p1: { mine: true, short: 'aaaa…bbbb' }, p2: { mine: false, short: 'cccc…dddd' } });
+  assert.deepEqual(dropped, ['p2']); assert.ok(s.plots.p1); assert.equal(s.plots.p2, undefined);
+  assert.deepEqual(reconcilePlots(s, null), []);
+});
+
+test('walkable home scenes: furniture solids block tiles; rugs walkable; Decorate spot; catalog grew', async () => {
+  const { makeHomeDef, furnitureSolids, installHomeScene, HOME_OX, HOME_OY, npcHome } = await import('../src/homes.js');
+  const { FURNITURE } = await import('../src/furniture.js');
+  const { scene, solidAt } = await import('../src/scenes.js');
+  const home = { wall: 0, floor: 0, items: [
+    { uid: 1, id: 'sofa', x: 2, y: 2, rot: 0 },
+    { uid: 2, id: 'rug', x: 4, y: 3, rot: 0 },
+    { uid: 3, id: 'dresser', x: 0, y: 0, rot: 0 },
+  ]};
+  const def = makeHomeDef(home, { plotId: 'p1', name: "Pup's Home" });
+  assert.ok(def.spots.some((s) => s.id === 'decor' && s.act.build === 'p1'));
+  assert.ok(def.furnSolids.some((c) => c.x === HOME_OX + 2 && c.y === HOME_OY + 2), 'sofa solid');
+  assert.ok(!def.furnSolids.some((c) => c.x === HOME_OX + 4 && c.y === HOME_OY + 3), 'rug not solid');
+  const sc = installHomeScene('home:p1', home, { plotId: 'p1', name: "Pup's Home" });
+  assert.equal(sc.id, 'home:p1');
+  assert.equal(solidAt(sc, HOME_OX + 2, HOME_OY + 2), true);
+  assert.equal(solidAt(sc, HOME_OX + 4, HOME_OY + 3), false);
+  const visit = makeHomeDef(npcHome('h1'), { plotId: 'h1', name: "Mochi's Home", readOnly: true });
+  assert.ok(visit.spots.some((s) => s.id === 'look')); assert.ok(!visit.spots.some((s) => s.id === 'decor'));
+  // expanded catalog: base extras + set pieces
+  for (const id of ['dresser', 'desk', 'stool', 'curtain', 'clock', 'cushion', 'mat', 'bookshelf', 'fishbowl']) assert.ok(FURNITURE[id], id);
+  assert.ok(Object.keys(FURNITURE).length >= 60, 'furniture catalog expanded (got ' + Object.keys(FURNITURE).length + ')');
+});
+
+test('main wiring: walkable homes + unique claim (not jump-to-build); same room controls as outdoors', () => {
+  const m = fs.readFileSync(new URL('../src/main.js', import.meta.url), 'utf8');
+  assert.match(m, /enterHomeWalk\(/);
+  assert.match(m, /registerPlotClaim\(/);
+  assert.match(m, /refreshPlotOwners\(/);
+  assert.match(m, /installHomeScene/);
+  assert.match(m, /homeRoomExtra/);
+  assert.match(m, /HOME\.claimPlot/);
+  assert.match(m, /else if \(it\.kind === 'plot'\) \{ if \(state\.plots\[it\.id\]\) enterHomeWalk/);
+  assert.match(m, /else if \(it\.kind === 'visit'\) enterHomeWalk/);
+  assert.match(m, /enterHomeWalk\(id, true, \{ home, shared:/);
+  assert.doesNotMatch(m, /else if \(it\.kind === 'plot'\) \{ if \(state\.plots\[it\.id\]\) enterBuild\(it\.id, false\)/);
+});

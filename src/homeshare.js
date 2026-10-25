@@ -11,6 +11,10 @@ import { cleanChat, cleanName } from './mpshared.js';
 
 export const HOME_RE = /^h[0-9a-z]{12}$/;
 export const validHomeId = (id) => typeof id === 'string' && HOME_RE.test(id);
+// Map plots on Bone Street: one global owner each (server registry via /api/home op claimPlot).
+export const PLOT_IDS = Object.freeze(['p1', 'p2', 'p3', 'p4', 'p5', 'p6', 'p7', 'p8']);
+export const PLOT_RE = /^p[1-8]$/;
+export const validPlotId = (id) => typeof id === 'string' && PLOT_RE.test(id);
 export const GB = { MAX: 50, TEXT_MAX: 120, ITEMS_MAX: 80, NAME_MAX: 16 };
 const rndStr = (n, abc, rnd) => Array.from({ length: n }, () => abc[Math.floor(rnd() * abc.length)]).join('');
 function rand() { try { const a = new Uint32Array(1); globalThis.crypto.getRandomValues(a); return a[0] / 2 ** 32; } catch { return Math.random(); } }
@@ -33,11 +37,17 @@ export function cleanEntry(name, text) { const c = cleanChat(text, GB.TEXT_MAX);
 export const homeOwnerName = (n) => cleanName(n, 'A pup');
 
 export function homeApi(base = '', f = (...a) => globalThis.fetch(...a)) {
-  const call = async (method, body, q = '') => { const r = await f(`${base}/api/home${q}`, method === 'GET' ? { headers: { accept: 'application/json' } } : { method, headers: { 'content-type': 'application/json' }, body: JSON.stringify(body) });
-    let j = null; try { j = await r.json(); } catch {} if (!r.ok) { const e = new Error(j?.error || 'home ' + r.status); e.status = r.status; throw e; } return j; };
+  const call = async (method, body, q = '', session = null) => {
+    const headers = method === 'GET' ? { accept: 'application/json' } : { 'content-type': 'application/json' };
+    if (session) headers.authorization = 'Bearer ' + session;
+    const r = await f(`${base}/api/home${q}`, method === 'GET' ? { headers } : { method, headers, body: JSON.stringify(body) });
+    let j = null; try { j = await r.json(); } catch {} if (!r.ok) { const e = new Error(j?.error || 'home ' + r.status); e.status = r.status; e.body = j; throw e; } return j; };
   return { get: (id) => call('GET', null, '?id=' + encodeURIComponent(id)),
     publish: (share, name, layout) => call('POST', { op: 'publish', id: share.id, key: share.key, name, layout }),
     sign: (id, name, text) => call('POST', { op: 'sign', id, name, text }),
     del: (share, entry) => call('POST', { op: 'del', id: share.id, key: share.key, entry }),
-    book: (share) => call('POST', { op: 'book', id: share.id, key: share.key }) };
+    book: (share) => call('POST', { op: 'book', id: share.id, key: share.key }),
+    // Unique map-plot ownership (one wallet per plot). session = kibble-pay Bearer token.
+    plots: (session = null) => call('GET', null, '?plots=1', session),
+    claimPlot: (plotId, name, session) => call('POST', { op: 'claimPlot', plotId, name }, '', session) };
 }

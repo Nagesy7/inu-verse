@@ -144,7 +144,10 @@ export function interactables(state) {
   list.push({ kind: 'mall', id: 'leaders', name: 'Leaderboards Hall', cat: 'leaders', tx: LEADERS.x + 3, ty: LEADERS.y + LEADERS.h });
   for (const p of PLOTS) {
     const owned = !!state?.plots?.[p.id];
-    list.push({ kind: 'plot', id: p.id, name: owned ? 'Your Home' : 'Plot for claim', tx: p.x + 3, ty: p.y + p.h });
+    const reg = state?.plotOwners?.[p.id];
+    let name = owned ? 'Your Home' : 'Plot for claim';
+    if (!owned && reg && reg.mine === false) name = reg.name ? `${reg.name}'s plot` : `Taken (${reg.short})`;
+    list.push({ kind: 'plot', id: p.id, name, tx: p.x + 3, ty: p.y + p.h });
   }
   for (const h of NPC_HOMES) list.push({ kind: 'visit', id: h.id, name: `${h.owner}'s Home`, tx: h.x + 3, ty: h.y + h.h });
   list.push({ kind: 'clubhouse', id: CLUBHOUSE.id, name: state?.packs?.joined ? 'Pack Clubhouse' : 'Pack Clubhouse lot', tx: CLUBHOUSE.x + 4, ty: CLUBHOUSE.y + CLUBHOUSE.h });

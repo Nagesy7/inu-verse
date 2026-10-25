@@ -212,11 +212,16 @@ export const HUB_GATES = [
 
 // ---- parsing / queries ----
 const cache = {};
-export function scene(id) { if (cache[id]) return cache[id]; const s = SCENES[id]; if (!s) return null;
+export function compileScene(id, s) {
   const h = s.map.length, w = Math.max(...s.map.map((r) => r.length)), cells = [];
   for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) { const ch = s.map[y][x] ?? (s.kind === 'zone' ? 'w' : '#'), L = s.legend[ch] || s.legend[s.kind === 'zone' ? 'g' : '.']; cells.push({ ch, floor: L[0], prop: L[1], solid: !!L[2] }); }
   for (const st of s.structs || []) for (let y = st.y; y < st.y + st.h; y++) for (let x = st.x; x < st.x + st.w; x++) if (cells[y * w + x] && !(st.door && st.door[0] === x && st.door[1] === y)) cells[y * w + x].solid = true; // multi-tile buildings (doorway alcove stays open)
-  return (cache[id] = { id, ...s, w, h, cells, at: (x, y) => (x < 0 || y < 0 || x >= w || y >= h ? null : cells[y * w + x]), ...(id === 'districts' ? { districtAt } : {}) }); }
+  // Optional furniture solids (player homes): mark object-layer footprints so walking matches outdoor collision.
+  for (const f of s.furnSolids || []) { const c = cells[f.y * w + f.x]; if (c && !c.mat) c.solid = true; }
+  return { id, ...s, w, h, cells, at: (x, y) => (x < 0 || y < 0 || x >= w || y >= h ? null : cells[y * w + x]), ...(id === 'districts' ? { districtAt } : {}) };
+}
+export function putScene(id, s) { return (cache[id] = compileScene(id, s)); }
+export function scene(id) { if (cache[id]) return cache[id]; const s = SCENES[id]; if (!s) return null; return (cache[id] = compileScene(id, s)); }
 export const solidAt = (sc, x, y) => { const c = sc.at(x, y); return !c || c.solid; };
 export const exitAt = (sc, tx, ty) => sc.exits.find((e) => e.tiles.some(([x, y]) => x === tx && y === ty)) || null;
 export function spawnOf(id, key) { const sc = scene(id); const s = sc.spawns[key] || Object.values(sc.spawns)[0]; return { x: (s[0] + 0.5) * ST, y: (s[1] + 0.5) * ST, face: s[2] }; }
