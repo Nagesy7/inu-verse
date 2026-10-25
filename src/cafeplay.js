@@ -8,7 +8,7 @@ import { DISHES, SEATS, WAITER_HOME, dishById, makeService, request, tickService
 import { drawDish } from './dinerart.js';
 const ST = 32, SPEED = 46, DOOR = [7, 9];
 // shift menu ids (cafe.js MENU) -> what the waiter carries out to that customer (display only)
-export const SHIFT_DISH = { latte: 'pupLatte', biscuit: 'boneCookie', berry: 'berrySplash', cake: 'sakuraMochi', tea: 'matchaWag' };
+export const SHIFT_DISH = { latte: 'pupLatte', biscuit: 'boneCookie', berry: 'berrySplash', cake: 'sakuraMochi', tea: 'matchaWag', salad: 'kibbleBowl' };
 const seatOf = (id) => SEATS.find((s) => s.id === id);
 const C = (tx, ty) => ({ x: (tx + 0.5) * ST, y: (ty + 0.5) * ST });
 export function makeCafePlay(D) {

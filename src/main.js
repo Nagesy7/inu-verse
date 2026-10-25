@@ -2,7 +2,7 @@ import { CHAPEL as CHAPEL_POS, LOTS as BIZ_LOTS } from './world.js';
 import { TILE, MAP_W, MAP_H, MAP, T, BUILDINGS, PLOTS, NPC_HOMES, CLUBHOUSE, MALL_BUILDINGS, STATUE, LEADERS, PLOT_COST, findPath, moveBody, nearestInteractable, interactables, isSolid } from './world.js';
 import { COATS, newGame, claimPlot, reconcilePlots, buyFurniture, placeFurniture, moveFurniture, storeFurniture, sellPlaced, sellFromInventory, upgrade, swapBonesToKibble, BONES_PER_KIBBLE } from './game.js';
 import { FURNITURE, WALLS, FLOORS, ROOM_W, ROOM_H, canPlace, itemAt, footprint } from './furniture.js';
-import { MENU, newShift, tickShift, addToTray, clearTray, serve, finishShift, SHIFT_LEN, startCook, clearTable, seatCustomer, takeOrder, NUM_TABLES } from './cafe.js';
+import { MENU, STATIONS, newShift, tickShift, addToTray, clearTray, serve, finishShift, SHIFT_LEN, startCook, clearTable, seatCustomer, takeOrder, NUM_TABLES, TABLES_START, cookAtStation, selectQueue, seatSelected } from './cafe.js';
 import { createToken, playerBuy, playerSell, simulateTick, seedTokens, holderCount, PLAYER, CREATE_FEE } from './launch.js';
 import { price, marketCap, progress, fmtPrice } from './curve.js';
 import { save, load } from './save.js';
@@ -1065,40 +1065,58 @@ function renderWardrobe() {
 function renderCafe() {
   const body = $('#panel-body');
   body.innerHTML = `<h2>Shiba Sips Café — Floor shift</h2>
-   <p class="sub">Diner Dash loop: seat guests (auto), take orders, build the tray, <b>Cook</b>, <b>Serve</b> before the patience bar empties, then <b>Clear</b> dirty tables. Faster service = bigger Bones tips. ${SHIFT_LEN}s · ${NUM_TABLES} tables · waves ramp up.</p>
+   <p class="sub">Diner Dash: <b>tap a pup in line</b>, then tap an empty table to seat. Take orders, cook each dish at the <b>Drink / Grill / Prep</b> station, plate, serve, and clear dirty tables (dirt taxes everyone's patience). VIPs + specials pay more. ${SHIFT_LEN}s · ${TABLES_START}→${NUM_TABLES} tables as waves ramp.</p>
    <div class="cafe dash">
      <div class="dash-main">
-       <div class="dash-queue" id="cqueue"><span class="small">Line</span></div>
+       <div class="dash-queue" id="cqueue"><span class="small">Line — tap guest, then an empty table</span></div>
        <div class="dash-tables" id="ctables"></div>
+       <div class="dash-stations" id="cstations"></div>
        <div class="dash-tickets" id="orders"></div>
-       <div class="menu" id="menu"></div>
      </div>
      <div class="dash-side">
        <div class="tray"><b>Tray</b> <button class="btn ghost" id="cleartray" style="float:right;padding:2px 8px">clear</button><div id="tray" style="margin-top:8px;min-height:40px"></div>
          <div class="row" style="margin-top:8px;gap:6px;flex-wrap:wrap">
-           <button class="btn alt" id="ccook" style="flex:1">Cook matching ticket</button>
+           <button class="btn alt" id="ccook" style="flex:1">Plate matching ticket</button>
          </div>
        </div>
-       <p>Time <b id="ctime">${SHIFT_LEN}</b>s · Wave <b id="cwave">1</b><br>Served <b id="cserved">0</b> · Walkouts <b id="cfail">0</b> · Combo <b id="ccombo">0</b></p>
+       <p>Time <b id="ctime">${SHIFT_LEN}</b>s · Wave <b id="cwave">1</b> · ★ <b id="cstars">0</b><br>Served <b id="cserved">0</b> · Walkouts <b id="cfail">0</b> · Combo <b id="ccombo">0</b></p>
        <div>Earned</div><div class="big-num" id="cearned">0</div>
        <div id="cevents" class="dash-events small"></div>
+       <div id="cpops" class="dash-pops" aria-live="polite"></div>
        <div class="row" style="justify-content:flex-start"><button class="btn green" id="cstart">Start floor shift</button></div>
      </div>
    </div>
    <h3>Mini-game shifts</h3><p class="small">Skill pays: score, streak bonus and a daily first-shift bonus. No paid boosts.</p><div class="grid">${['cafe', 'delivery'].map((k) => { const J = ensureJobs(state)[k]; return `<div class="card"><b>${JOB_DEFS[k].name}</b><small>${rankOf(J.xp).title} · best ${J.best}</small><button class="btn green" data-job="${k}">Play</button></div>`; }).join('')}</div>
    <h3>Your job ranks</h3><table class="lb"><tr><th>Job</th><th>Rank</th><th>Best</th><th>Runs</th></tr>${Object.entries(ensureJobs(state)).map(([k, J]) => `<tr><td>${JOB_DEFS[k].name}</td><td>${rankOf(J.xp).title}</td><td>${J.best}</td><td>${J.runs}</td></tr>`).join('')}</table>`;
   body.querySelectorAll('[data-job]').forEach((b) => b.onclick = () => playJob(b.dataset.job));
-  const menu = $('#menu');
-  for (const m of MENU) { const b = document.createElement('button'); b.dataset.item = m.id; b.appendChild(iconCanvas((x) => drawMenuIcon(x, m.id, 20, 16, 1.2), 40, 32)); b.append(m.name); menu.appendChild(b); }
-  menu.onclick = (e) => { const b = e.target.closest('[data-item]'); if (b && panel.shift && !panel.shift.over) { addToTray(panel.shift, b.dataset.item); cafeUi(); } };
+  const stations = $('#cstations');
+  stations.innerHTML = STATIONS.map((st) => {
+    const items = MENU.filter((m) => m.station === st.id);
+    return `<div class="dash-station" data-station="${st.id}">
+      <div class="st-head"><b>${st.emoji} ${st.name}</b><span class="st-busy small" data-busy="${st.id}"></span></div>
+      <div class="st-items">${items.map((m) => `<button class="btn ghost st-item" data-station="${st.id}" data-item="${m.id}">${m.name}</button>`).join('')}</div>
+      <button class="btn alt st-auto" data-station-auto="${st.id}">Cook needed</button>
+    </div>`;
+  }).join('');
+  stations.onclick = (e) => {
+    const s = panel.shift; if (!s || s.over) return;
+    const auto = e.target.closest('[data-station-auto]');
+    const item = e.target.closest('[data-item]');
+    let r;
+    if (auto) r = cookAtStation(s, auto.dataset.stationAuto);
+    else if (item) r = cookAtStation(s, item.dataset.station, item.dataset.item);
+    else return;
+    toast(r.ok ? (r.instant ? 'On tray' : `Cooking…`) : r.reason, r.ok ? 'good' : 'bad');
+    cafeUi();
+  };
   $('#cleartray').onclick = () => { if (panel.shift) { clearTray(panel.shift); cafeUi(); } };
   $('#ccook').onclick = () => {
     const s = panel.shift; if (!s || s.over) return;
     const ticket = s.orders.find((o) => o.phase === 'order' && o.items.length === s.tray.length && [...o.items].sort().join() === [...s.tray].sort().join())
       || s.orders.find((o) => o.phase === 'order');
-    if (!ticket) { toast('No open ticket to cook', 'bad'); return; }
+    if (!ticket) { toast('No open ticket to plate', 'bad'); return; }
     const r = startCook(s, ticket.id);
-    toast(r.ok ? `Cooking for ${ticket.customer}…` : r.reason, r.ok ? 'good' : 'bad');
+    toast(r.ok ? `Plating for ${ticket.customer}…` : r.reason, r.ok ? 'good' : 'bad');
     cafeUi();
   };
   const actOrder = (ord) => {
@@ -1106,40 +1124,59 @@ function renderCafe() {
     if (ord.phase === 'seat') { const r = takeOrder(s, ord.id); toast(r.ok ? `${ord.customer}'s order taken` : r.reason, r.ok ? 'good' : 'bad'); }
     else if (ord.phase === 'order') {
       const r = startCook(s, ord.id);
-      if (r.ok) toast(`Cooking for ${ord.customer}…`, 'good');
-      else toast(r.reason, 'bad');
+      if (r.ok) toast(`Plating for ${ord.customer}…`, 'good');
+      else toast(r.reason === 'Wrong order!' ? 'Build the tray at stations first' : r.reason, 'bad');
     } else if (ord.phase === 'ready') {
       const r = serve(s, ord.id);
-      if (r.ok) { CP.shiftServed(ord); toast(`Served! +${r.pay} Bones`, 'good'); }
+      if (r.ok) { CP.shiftServed(ord); toast(`Served! +${r.pay} Bones${r.tip ? ` (tip ${r.tip})` : ''}${r.combo >= 2 ? ` · x${r.combo}` : ''}`, 'good'); }
       else toast(r.reason, 'bad');
     } else if (ord.phase === 'dirty') {
       const r = clearTable(s, ord.id); toast(r.ok ? `Cleared · +${r.pay}` : r.reason, r.ok ? 'good' : 'bad');
-    } else if (ord.phase === 'cook') toast('Still cooking…', 'bad');
+    } else if (ord.phase === 'cook') toast('Still plating…', 'bad');
     else if (ord.phase === 'eat') toast(`${ord.customer} is eating`, 'good');
     cafeUi();
   };
   $('#orders').onclick = (e) => { const el = e.target.closest('[data-order]'); if (!el || !panel.shift) return; actOrder(panel.shift.orders.find((x) => x.id === +el.dataset.order)); };
   $('#ctables').onclick = (e) => {
     const s = panel.shift; if (!s) return;
-    const q = e.target.closest('[data-seat-q]');
-    if (q) {
-      const tbl = s.tables.find((t) => !t.orderId && !t.dirty);
-      if (!tbl) { toast('No free table', 'bad'); return; }
-      const r = seatCustomer(s, +q.dataset.seatQ, tbl.id);
-      toast(r.ok ? `Seated ${r.order.customer}` : r.reason, r.ok ? 'good' : 'bad'); cafeUi(); return;
-    }
     const t = e.target.closest('[data-table]'); if (!t) return;
     const tbl = s.tables.find((x) => x.id === +t.dataset.table);
-    const ord = tbl && s.orders.find((o) => o.id === tbl.orderId);
+    if (!tbl) return;
+    if (!tbl.open) { toast(`Table unlocks at a later wave`, 'bad'); return; }
+    if (!tbl.orderId && !tbl.dirty) {
+      const r = seatSelected(s, tbl.id);
+      toast(r.ok ? `Seated ${r.order.customer} at T${tbl.id}` : (s.queue.length ? 'Tap a guest in line first' : r.reason), r.ok ? 'good' : 'bad');
+      cafeUi(); return;
+    }
+    const ord = s.orders.find((o) => o.id === tbl.orderId);
     if (ord) actOrder(ord);
+  };
+  // Pointer drag from queue → table (desktop); tap-tap still works on mobile
+  let dragQ = null;
+  $('#cqueue').onpointerdown = (e) => {
+    const s = panel.shift; if (!s) return;
+    const q = e.target.closest('[data-seat-q]'); if (!q) return;
+    dragQ = +q.dataset.seatQ;
+    selectQueue(s, dragQ);
+    q.setPointerCapture?.(e.pointerId);
+    cafeUi();
+  };
+  $('#cqueue').onpointerup = (e) => {
+    const s = panel.shift; if (!s || dragQ == null) return;
+    const under = document.elementFromPoint(e.clientX, e.clientY);
+    const t = under?.closest?.('[data-table]');
+    if (t) {
+      const r = seatCustomer(s, dragQ, +t.dataset.table);
+      toast(r.ok ? `Seated ${r.order.customer}` : r.reason, r.ok ? 'good' : 'bad');
+    }
+    dragQ = null; cafeUi();
   };
   $('#cqueue').onclick = (e) => {
     const s = panel.shift; if (!s) return;
     const q = e.target.closest('[data-seat-q]'); if (!q) return;
-    const tbl = s.tables.find((t) => !t.orderId && !t.dirty);
-    if (!tbl) { toast('No free table', 'bad'); return; }
-    const r = seatCustomer(s, +q.dataset.seatQ, tbl.id);
-    toast(r.ok ? `Seated ${r.order.customer}` : r.reason, r.ok ? 'good' : 'bad'); cafeUi();
+    const r = selectQueue(s, +q.dataset.seatQ);
+    toast(r.ok ? (r.selected ? 'Selected — tap an empty table' : 'Deselected') : r.reason, r.ok ? 'good' : 'bad');
+    cafeUi();
   };
   $('#cstart').onclick = () => { panel.shift = newShift(rng); $('#cstart').hidden = true; cafeUi(); };
   $('#orders').innerHTML = '<p class="small">Press Start floor shift to open the café.</p>';
@@ -1148,41 +1185,63 @@ function renderCafe() {
 function cafeUi() {
   const s = panel.shift; if (!s) return;
   const name = (id) => MENU.find((m) => m.id === id)?.name || id;
-  const phaseLabel = { queue: 'In line', seat: 'Tap: take order', order: 'Tap: cook tray', cook: 'Cooking…', ready: 'Tap: serve!', eat: 'Eating', dirty: 'Tap: clear' };
+  const phaseLabel = { queue: 'In line', seat: 'Tap: take order', order: 'Stations → tray → plate', cook: 'Plating…', ready: 'Tap: serve!', eat: 'Eating', dirty: 'Tap: CLEAR (dirt taxes floor)' };
   $('#ctime').textContent = Math.ceil(s.time);
   $('#cserved').textContent = s.served;
   $('#cearned').textContent = s.earned;
   if ($('#cwave')) $('#cwave').textContent = s.wave;
   if ($('#cfail')) $('#cfail').textContent = s.failed;
-  if ($('#ccombo')) $('#ccombo').textContent = s.combo;
-  if ($('#cevents')) $('#cevents').innerHTML = (s.events || []).slice(-3).map((e) => `<div class="ev-${e.kind}">${e.msg}</div>`).join('');
+  if ($('#ccombo')) $('#ccombo').textContent = s.combo + (s.combo >= 3 ? '!' : '');
+  if ($('#cstars')) $('#cstars').textContent = '★'.repeat(s.stars || 0) || '0';
+  if ($('#cevents')) $('#cevents').innerHTML = (s.events || []).slice(-4).map((e) => `<div class="ev-${e.kind}">${e.msg}</div>`).join('');
+  // floating tip / combo popups
+  const pops = $('#cpops');
+  if (pops) {
+    const psig = (s.pops || []).map((p) => p.id).join();
+    if (pops.dataset.sig !== psig) {
+      pops.dataset.sig = psig;
+      pops.innerHTML = (s.pops || []).map((p) => `<div class="dash-pop pop-${p.kind}" style="--life:${Math.max(0.2, p.t)}">${p.text}</div>`).join('');
+    }
+  }
+  // station busy indicators
+  for (const st of STATIONS) {
+    const el = document.querySelector(`[data-busy="${st.id}"]`);
+    if (!el) continue;
+    const slot = s.stations?.[st.id];
+    if (slot && slot.busy > 0) { el.textContent = `busy ${slot.busy.toFixed(1)}s`; el.classList.add('on'); }
+    else { el.textContent = 'ready'; el.classList.remove('on'); }
+  }
 
   // queue
   const qEl = $('#cqueue');
   if (qEl) {
-    const qsig = s.queue.map((o) => o.id + ':' + Math.floor(o.patience)).join();
+    const qsig = s.queue.map((o) => o.id + ':' + Math.floor(o.patience) + (o.vip ? 'V' : '') + (s.selectedQueueId === o.id ? '*' : '')).join() + `|sel:${s.selectedQueueId}`;
     if (qEl.dataset.sig !== qsig) {
       qEl.dataset.sig = qsig;
-      qEl.innerHTML = `<span class="small">Line (${s.queue.length})</span>` + (s.queue.map((o) =>
-        `<button class="btn ghost dash-q" data-seat-q="${o.id}">${o.customer}<i class="pat"><i style="width:${100 * o.patience / o.max}%"></i></i></button>`).join('') || '<span class="small">—</span>');
+      qEl.innerHTML = `<span class="small">Line (${s.queue.length})${s.selectedQueueId ? ' · tap a table' : ' · tap a guest'}</span>` + (s.queue.map((o) =>
+        `<button class="btn ghost dash-q${s.selectedQueueId === o.id ? ' sel' : ''}${o.vip ? ' vip' : ''}" data-seat-q="${o.id}">${o.vip ? '★ ' : ''}${o.customer}${o.special ? ' · special' : ''}<i class="pat"><i style="width:${100 * o.patience / o.max}%"></i></i></button>`).join('') || '<span class="small">—</span>');
     } else s.queue.forEach((o) => { const el = qEl.querySelector(`[data-seat-q="${o.id}"] .pat i`); if (el) el.style.width = (100 * o.patience / o.max) + '%'; });
   }
 
   // tables
   const tEl = $('#ctables');
   if (tEl && !s.over) {
-    const tsig = s.tables.map((t) => { const o = s.orders.find((x) => x.id === t.orderId); return `${t.id}:${t.dirty}:${o ? o.phase + o.id + Math.floor(o.patience) : ''}`; }).join('|');
+    const tsig = s.tables.map((t) => { const o = s.orders.find((x) => x.id === t.orderId); return `${t.id}:${t.open}:${t.dirty}:${Math.floor(t.dirtyAge||0)}:${o ? o.phase + o.id + Math.floor(o.patience) + (o.vip?'V':'') : ''}:${s.selectedQueueId||''}`; }).join('|');
     if (tEl.dataset.sig !== tsig) {
       tEl.dataset.sig = tsig;
       tEl.innerHTML = s.tables.map((t) => {
+        if (!t.open) return `<div class="dash-table locked" data-table="${t.id}"><b>T${t.id}</b><span class="small">unlocks later</span></div>`;
         const o = s.orders.find((x) => x.id === t.orderId);
-        if (!o) return `<div class="dash-table empty" data-table="${t.id}"><b>T${t.id}</b><span class="small">${t.dirty ? 'dirty?' : 'empty'}</span></div>`;
+        if (!o) {
+          const seatHint = s.selectedQueueId || s.queue.length ? (s.selectedQueueId ? 'Tap to seat' : 'Empty') : 'Empty';
+          return `<div class="dash-table empty${t.dirty ? ' phase-dirty' : ''}${s.selectedQueueId ? ' seat-target' : ''}" data-table="${t.id}"><b>T${t.id}</b><span class="small">${t.dirty ? 'DIRTY' : seatHint}</span></div>`;
+        }
         const pct = o.phase === 'cook' && o.cookMax ? 100 * (1 - o.cookT / o.cookMax) : 100 * o.patience / o.max;
         const barCol = o.phase === 'cook' ? '#5fd3ff' : o.phase === 'ready' ? '#ffe66a' : o.phase === 'dirty' ? '#c4a882' : (o.patience / o.max < 0.3 ? '#d9534f' : '#3fa66a');
-        return `<div class="dash-table phase-${o.phase}" data-table="${t.id}" data-order="${o.id}">
+        return `<div class="dash-table phase-${o.phase}${o.vip ? ' vip' : ''}" data-table="${t.id}" data-order="${o.id}">
           <canvas width="52" height="40" data-face="${o.id}"></canvas>
-          <b>${o.customer}</b><span class="small">T${t.id} · ${phaseLabel[o.phase] || o.phase}</span>
-          <div class="small items">${o.phase === 'seat' ? '…' : o.items.map(name).join(' + ')}</div>
+          <b>${o.vip ? '★ ' : ''}${o.customer}</b><span class="small">T${t.id} · ${phaseLabel[o.phase] || o.phase}</span>
+          <div class="small items">${o.phase === 'seat' ? '…' : o.items.map(name).join(' + ')}${o.special ? ' · SPECIAL' : ''}</div>
           <div class="pat"><i style="width:${pct}%;background:${barCol}"></i></div>
         </div>`;
       }).join('');
@@ -1203,25 +1262,25 @@ function cafeUi() {
 
   // tickets strip (order/cook/ready only)
   const tickets = s.over ? [] : s.orders.filter((o) => ['order', 'cook', 'ready'].includes(o.phase));
-  const sig = tickets.map((o) => o.id + o.phase).join() + '|' + s.over;
+  const sig = tickets.map((o) => o.id + o.phase + (o.vip?'V':'')).join() + '|' + s.over;
   if ($('#orders').dataset.sig !== sig) {
     $('#orders').dataset.sig = sig;
     if (s.over) $('#orders').innerHTML = '';
     else {
-      $('#orders').innerHTML = tickets.map((o) => `<div class="order phase-${o.phase}" data-order="${o.id}" data-items="${o.items.join(',')}"><b>#${o.id} ${o.customer}</b><div class="small">${o.items.map(name).join(' + ')}</div><div class="small">${phaseLabel[o.phase]}</div><div class="pat"><i></i></div></div>`).join('') || '<p class="small">No open tickets — seat guests or wait for the next wave.</p>';
+      $('#orders').innerHTML = tickets.map((o) => `<div class="order phase-${o.phase}${o.vip?' vip':''}" data-order="${o.id}" data-items="${o.items.join(',')}"><b>#${o.id} ${o.vip?'★ ':''}${o.customer}</b><div class="small">${o.items.map(name).join(' + ')}</div><div class="small">${phaseLabel[o.phase]}</div><div class="pat"><i></i></div></div>`).join('') || '<p class="small">No open tickets — seat guests from the line.</p>';
     }
   }
   tickets.forEach((o) => { const el = $(`.order[data-order="${o.id}"] .pat i`); if (el) { el.style.width = (100 * o.patience / o.max) + '%'; el.style.background = o.patience / o.max < 0.3 ? '#d9534f' : '#3fa66a'; } });
 
   const tray = $('#tray'); const tsig = s.tray.join();
-  if (tray.dataset.sig !== tsig) { tray.dataset.sig = tsig; tray.innerHTML = ''; s.tray.forEach((id) => tray.appendChild(iconCanvas((x) => drawMenuIcon(x, id, 18, 16, 1.1), 36, 32))); if (!s.tray.length) tray.innerHTML = '<span class="small">empty — tap menu</span>'; }
+  if (tray.dataset.sig !== tsig) { tray.dataset.sig = tsig; tray.innerHTML = ''; s.tray.forEach((id) => tray.appendChild(iconCanvas((x) => drawMenuIcon(x, id, 18, 16, 1.1), 36, 32))); if (!s.tray.length) tray.innerHTML = '<span class="small">empty — cook at stations</span>'; }
 
   if (s.over && !s.settled) {
     const total = finishShift(state, s); packAct('shift'); hud(); persist();
     const sum = s.summary || {};
-    $('#orders').innerHTML = `<div class="card" style="width:100%"><h3>Shift complete!</h3>
-      <p>Served ${sum.served || s.served} · walkouts ${sum.walkouts || s.failed} · cleared ${sum.cleared || s.cleared}</p>
-      <p class="small">Tips ${sum.tips || s.tips} · star +${sum.star || 0} · combo +${sum.comboBonus || 0} · wave ${sum.wave || s.wave} · best combo ${sum.maxCombo || s.maxCombo}</p>
+    $('#orders').innerHTML = `<div class="card" style="width:100%"><h3>Shift complete! ${'★'.repeat(sum.stars || 0) || ''}</h3>
+      <p>Served ${sum.served || s.served} · walkouts ${sum.walkouts || s.failed} · cleared ${sum.cleared || s.cleared} · VIPs ${sum.vipServed || 0}</p>
+      <p class="small">Tips ${sum.tips || s.tips} · star +${sum.star || 0} · combo +${sum.comboBonus || 0} · VIP +${sum.vipBonus || 0} · tidy +${sum.clearBonus || 0} · wave ${sum.wave || s.wave} · best combo ${sum.maxCombo || s.maxCombo}</p>
       <div class="big-num" id="shift-total">+${total} Bones</div></div>`;
     if (tEl) tEl.innerHTML = '';
     if (qEl) qEl.innerHTML = '';

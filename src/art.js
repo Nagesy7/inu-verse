@@ -207,6 +207,7 @@ export function drawMenuIcon(ctx, id, x, y, s = 1) {
   if (id === 'berry') { ctx.fillStyle = '#f2efe8'; ctx.beginPath(); ctx.arc(0, 0, 10, 0, Math.PI); ctx.fill(); for (const [bx, by, col] of [[-5, -1, '#5a4fcf'], [0, -3, '#d8425a'], [5, -1, '#5a4fcf'], [-2, -5, '#7a6cf0'], [3, -6, '#d8425a']]) { ctx.fillStyle = col; ctx.beginPath(); ctx.arc(bx, by, 3, 0, 7); ctx.fill(); } }
   if (id === 'cake') { ctx.fillStyle = '#fbe3ea'; ctx.beginPath(); ctx.moveTo(-10, 8); ctx.lineTo(10, 8); ctx.lineTo(10, -2); ctx.lineTo(-10, -6); ctx.fill(); ctx.fillStyle = '#ef8fb0'; ctx.fillRect(-10, 1, 20, 2.5); ctx.fillStyle = '#e04a6a'; ctx.beginPath(); ctx.arc(0, -7, 3, 0, 7); ctx.fill(); }
   if (id === 'tea') { ctx.fillStyle = '#e8e2d0'; ctx.beginPath(); ctx.moveTo(-8, -5); ctx.lineTo(8, -5); ctx.lineTo(6, 8); ctx.lineTo(-6, 8); ctx.fill(); ctx.fillStyle = '#8cbf5a'; ctx.beginPath(); ctx.ellipse(0, -5, 8, 2.5, 0, 0, 7); ctx.fill(); }
+  if (id === 'salad') { ctx.fillStyle = '#f2efe8'; ctx.beginPath(); ctx.ellipse(0, 4, 11, 5, 0, 0, 7); ctx.fill(); for (const [bx, by, col] of [[-5, 0, '#4caf50'], [0, -3, '#8bc34a'], [5, 1, '#66bb6a'], [-2, 2, '#ff7043'], [3, -1, '#ffca28']]) { ctx.fillStyle = col; ctx.beginPath(); ctx.ellipse(bx, by, 3.2, 2.2, 0.4, 0, 7); ctx.fill(); } }
   ctx.restore();
 }
 
