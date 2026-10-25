@@ -405,6 +405,7 @@ function arcadeUrl() { const p = profileFromState(state), q = new URLSearchParam
   try { const lite = { ...p, pets: [] }; q.set('p', btoa(unescape(encodeURIComponent(JSON.stringify(lite)))).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '')); } catch {}
   q.set('from', 'inu-verse'); q.set('spawn', 'arcade'); return ARCADE.url + '?' + q.toString(); }
 function openArcade() { const url = arcadeUrl(), touch = matchMedia('(pointer: coarse)').matches; setMusicActive(false); // the arcade iframe plays its own music: duck the hub loop so two tracks never overlap
+  onboardEngage('arcade', 'use');
   if (touch) { const w = window.open(url, '_blank', 'noopener'); toast(w ? 'Inu Arcade opened in a new tab' : 'Allow pop-ups to open the arcade', w ? 'good' : 'bad'); return; }
   keys.clear(); let ov = document.getElementById('arcade-ov');
   if (!ov) { ov = document.createElement('div'); ov.id = 'arcade-ov'; ov.innerHTML = '<div class="arc-bar"><button class="btn" id="arc-back">◀ Back to Inu Verse</button><b>INU ARCADE</b><a class="btn alt" id="arc-tab" target="_blank" rel="noopener">Open in new tab ↗</a></div><iframe id="arc-frame" allow="autoplay; fullscreen; gamepad" title="Inu Arcade"></iframe>'; document.body.appendChild(ov);
@@ -415,6 +416,8 @@ function gameDoorUrl(id) { const g = GAME_DOORS.find((d) => d.id === id), w = st
   if (/^[1-9A-HJ-NP-Za-km-z]{32,44}$/.test(w || '')) q.set('wallet', w); if (DEMO) q.set('demo', '1'); q.set('from', 'inu-verse'); q.set('spawn', id); return g.url + '?' + q.toString(); }
 function openGameDoor(id) { const url = gameDoorUrl(id), g = GAME_DOORS.find((d) => d.id === id); keys.clear(); const w = window.open(url, '_blank', 'noopener');
   toast(w ? `${g.name} opened in a new tab${/wallet=/.test(url) ? ' with your wallet' : ''}` : 'Allow pop-ups to open ' + g.name, w ? 'good' : 'bad');
+  if (id === 'rescue') onboardEngage('rescue', 'use');
+  if (id === 'quest') onboardEngage('quest', 'use');
   if (id === 'rescue' || id === 'quest') maybeOfferOnboard(id, { id }); }
 globalThis.__doors = { url: gameDoorUrl, open: openGameDoor };
 // ---- onboarding tour + wayfinding (src/guide.js, src/guideui.js) ----
@@ -429,6 +432,26 @@ const onboardUi = createOnboardUi({
   setGuide: (p) => guide.setGuide(p), closePanel: () => closePanel(),
 });
 globalThis.__onboard = onboardUi;
+/** Mark place engaged (verified use/act/claim). act/claim auto-complete; use-places need Got it after engagement. Idempotent. */
+function onboardEngage(place, kind = null) {
+  if (!state || !place) return null;
+  const q = OB.questByPlace(place);
+  if (!q || OB.isPlaceDone(state, place)) return null;
+  const k = kind || q.need || 'use';
+  const m = OB.markEngaged(state, place, k);
+  if (!m.ok) return m;
+  // Café / plot claim: the real action is the proof — pay immediately (idempotent).
+  if (q.need === 'act' || q.need === 'claim') {
+    const r = OB.completePlace(state, place);
+    if (r.ok) onboardUi.celebrate(r);
+    return r;
+  }
+  // use-places: engagement only; Got it on the learn card claims (never from Quests list alone).
+  persist();
+  if (onboardUi.open && onboardUi.pending?.place === place) onboardUi.show(q); // refresh Claim button
+  else setTimeout(() => onboardUi.offer(place), 200);
+  return m;
+}
 function wayUi(on) { const w = document.getElementById('wayctl'); if (w) w.hidden = !on; }
 async function tourCheck() { if (!state || mode !== 'world') return; const w = state.walletAddr; const prof = isRealWallet(w) ? await profileStore().get(w).catch(() => null) : null; guide.maybeStartTour(prof); }
 // ---- Kibble Bank: read-only view of the wallet (kibble-pay). No deposits, lending or yield. ----
@@ -820,6 +843,7 @@ const RP = makeRoomPlay({ player, extra: homeRoomExtra, diner: (s) => openDiner(
   drawChat: (c, res) => drawChat(c, res, time), drawActor: drawRoomActor, rm: () => reducedMotion(), remotes: (view, me) => MPL.actors(view, me), anchor: (id) => MPL.anchor(id), night: () => !!globalThis.__inuNight, arrived: (sc) => roomUi(sc) });
 function roomUi(sc) { $('#minimap-wrap').hidden = true; wayUi(false); toast(sc.name, ''); globalThis.__roomVisits = (globalThis.__roomVisits || 0) + 1; }
 function enterRoom(id, at, door = null) { if (mode === 'room' && RP.id === id) return; stopWalk(); keys.clear(); player.v = { x: 0, y: 0 }; feel.fade(); blip(660);
+  if (id === 'districts') onboardEngage('shuttle', 'use');
   if (door) { const o = outsideOf(door); Object.assign(state.player, { x: o.x, y: o.y }); } // saves/reloads/Back-to-Verse always land you outside, never inside a room
   setTimeout(() => { mode = 'room'; RP.enter(id, at); roomUi(RP.sc); persist(); }, 70); }
 function enterGate(g) { if (mode !== 'world' || panel) return; globalThis.__portalFires = (globalThis.__portalFires || 0) + 1; stopWalk(); Object.assign(state.player, { x: (g.out[0] + 0.5) * TILE, y: (g.out[1] + 0.5) * TILE }); enterRoom(g.to, g.at); }
@@ -863,13 +887,23 @@ function enterDoor(d) { lastDoor = d; keys.clear(); stopWalk(); player.v = { x: 
 // External games: same-tab navigation (a movement event is not a user gesture, so window.open would be popup-blocked).
 // Your spot is saved one tile outside the door, so coming back (browser Back) puts you outside, not in the doorway.
 function enterExternal(d) { const url = d.kind === 'arcade' ? arcadeUrl() : gameDoorUrl(d.id), name = d.name.replace(/^.*\((.*)\)$/, '$1');
+  if (d.kind === 'arcade') onboardEngage('arcade', 'use');
+  else if (d.id === 'rescue') onboardEngage('rescue', 'use');
+  else if (d.id === 'quest') onboardEngage('quest', 'use');
   const o = outsideOf(d); Object.assign(state.player, { x: o.x, y: o.y }); player.face = o.face; persist();
   let ov = document.getElementById('enter-ov'); if (!ov) { ov = document.createElement('div'); ov.id = 'enter-ov'; document.body.appendChild(ov); }
   ov.innerHTML = `<div class="enter-card"><b>Entering ${esc(name)}…</b><small>opening ${esc(new URL(url).host)}</small><button class="btn ghost" id="enter-cancel">Stay in Inu Verse</button></div>`; ov.hidden = false; feel.fade(); blip(660);
   entering = setTimeout(() => { entering = null; globalThis.__lastNav = url; if (!globalThis.__noNav) location.assign(url); else ov.hidden = true; }, 800);
   ov.querySelector('#enter-cancel').onclick = () => { clearTimeout(entering); entering = null; ov.hidden = true; doorExit(doorSt, time); }; }
 function interact(it, viaDoor = false) { if (!viaDoor && isWalkDoor(it)) { toast(`Walk into the door to enter ${it.name}`, ''); return; } faceReact('me', it.kind === 'building' || it.kind === 'mall' ? 'wow' : 'curious', 1.2);
-  { const obPlace = OB.placeFromInteract(it); if (obPlace) setTimeout(() => onboardUi.offer(obPlace), 320); }
+  { const obPlace = OB.placeFromInteract(it);
+    if (obPlace) {
+      setTimeout(() => onboardUi.offer(obPlace), 320);
+      // use-need places: opening from the world counts as engagement. act/claim wait for their hooks.
+      const q = OB.questByPlace(obPlace);
+      if (q && q.need === 'use') onboardEngage(obPlace, 'use');
+    }
+  }
   if (it.kind === 'building') openPanel(it.id);
   else if (it.kind === 'plot') { if (state.plots[it.id]) enterHomeWalk(it.id, false); else openPanel('plot', { plotId: it.id }); }
   else if (it.kind === 'visit') enterHomeWalk(it.id, true);
@@ -946,7 +980,7 @@ function openPanel(kind, opts = {}) {
       const reg = await registerPlotClaim(p.id);
       if (!reg.ok) { toast(reg.reason, 'bad'); refreshPlotOwners(); btn.disabled = false; openPanel('plot', { plotId: p.id }); return; }
       const r = claimPlot(state, p.id, { free: !!reg.already });
-      if (r.ok) { state.town && playerDid(state.town, 'You moved into a new home on Bone Street.'); toast(reg.already ? 'Welcome back — your plot is ready.' : 'Plot claimed! Your new home is ready.', 'good'); hud(); persist(); closePanel(); enterHomeWalk(p.id, false); }
+      if (r.ok) { state.town && playerDid(state.town, 'You moved into a new home on Bone Street.'); toast(reg.already ? 'Welcome back — your plot is ready.' : 'Plot claimed! Your new home is ready.', 'good'); onboardEngage('home', 'claim'); hud(); persist(); closePanel(); enterHomeWalk(p.id, false); }
       else { toast(r.reason, 'bad'); btn.disabled = false; }
     };
   } else if (kind === 'academy') return renderAcademy({ state, body, toast, hud, persist, tab: opts.tab, open: (tab) => openPanel('academy', { tab }) });
@@ -963,7 +997,7 @@ function openPanel(kind, opts = {}) {
   else if (kind === 'dealer') renderDealer();
   else if (kind === 'pets') renderPets();
   else if (kind === 'garage') renderGarage();
-  else if (kind === 'help') body.innerHTML = `<h2>How to play</h2><ul><li>Walk with <b>WASD</b>/<b>arrows</b> or <b>click</b> anywhere.</li><li>Press <b>E</b> near doors and signs.</li><li>Earn <b>bones</b> serving orders at the Shiba Sips Café, or tap <b>Quests</b> to visit places, learn what they do and earn Bones (optional inventory-only cosmetics).</li><li>Claim a plot (${PLOT_COST} bones), buy furniture at Paws & Pillows, decorate (R to rotate).</li><li>Buy clothes at <b>Fetch Fashion</b> and dress up in your <b>Wardrobe</b> (HUD button).</li><li>Launch Hall: create and trade <b>simulated</b> tokens paired with demo <b>$KIBBLE</b>. Nothing here is real money or on any blockchain.</li><li><b>Packs</b>: found or join a Pack (HUD button), chip in bones to the treasury, decorate the shared clubhouse north of Market Row and climb the Kibble Cup. Packs are simulated locally for now.</li><li>Visit Mochi, Kuro, Hana and Taro's homes on Sakura Lane.</li></ul><button class="btn red" id="reset">Reset save</button>`;
+  else if (kind === 'help') body.innerHTML = `<h2>How to play</h2><ul><li>Walk with <b>WASD</b>/<b>arrows</b> or <b>click</b> anywhere.</li><li>Press <b>E</b> near doors and signs.</li><li>Earn <b>bones</b> serving orders at the Shiba Sips Café, or tap <b>Quests</b> to see place tasks — finish each task (not just visit / Got it) for Bones and optional inventory-only cosmetics.</li><li>Claim a plot (${PLOT_COST} bones), buy furniture at Paws & Pillows, decorate (R to rotate).</li><li>Buy clothes at <b>Fetch Fashion</b> and dress up in your <b>Wardrobe</b> (HUD button).</li><li>Launch Hall: create and trade <b>simulated</b> tokens paired with demo <b>$KIBBLE</b>. Nothing here is real money or on any blockchain.</li><li><b>Packs</b>: found or join a Pack (HUD button), chip in bones to the treasury, decorate the shared clubhouse north of Market Row and climb the Kibble Cup. Packs are simulated locally for now.</li><li>Visit Mochi, Kuro, Hana and Taro's homes on Sakura Lane.</li></ul><button class="btn red" id="reset">Reset save</button>`;
   if (kind === 'help') $('#reset').onclick = () => { if (confirm('Delete your local save?')) { localStorage.clear(); location.reload(); } };
 }
 // ---------- Car dealers, pet shop, garage ----------
@@ -1001,7 +1035,7 @@ function renderGarage() { const body = $('#panel-body'), g = ensureGarage(state)
     else if (t.dataset.walk) { st.active = st.active === t.dataset.walk ? null : t.dataset.walk; persist(); renderGarage(); }
     else if (t.dataset.rename) { const n = prompt('New name?'); if (n) { renamePet(state, t.dataset.rename, n); persist(); renderGarage(); } } }; }
 function closePanel() { doorExit(doorSt, time); if (panel?.viaDoor) feel.fade(); const dg = $('#dialog'); if (dg) { dg.style.pointerEvents = ''; dg.style.visibility = ''; }
-  if (panel?.kind === 'cafe' && panel.shift && !panel.shift.settled && panel.shift.earned > 0) { finishShift(state, panel.shift); packAct('shift'); toast(`Shift ended early: +${panel.shift.paid} bones`, 'good'); hud(); persist(); }
+  if (panel?.kind === 'cafe' && panel.shift && !panel.shift.settled && panel.shift.earned > 0) { finishShift(state, panel.shift); packAct('shift'); toast(`Shift ended early: +${panel.shift.paid} bones`, 'good'); onboardEngage('cafe', 'act'); hud(); persist(); }
   if (panel?.kind === 'cafe') CP.shiftEnded();
   if (panel) uiClose(); panel = null; $('#panel').hidden = true;
 }
@@ -1213,7 +1247,7 @@ function renderCafe() {
   };
   const actOrder = (ord) => {
     const s = panel.shift; if (!s || !ord) return;
-    if (ord.phase === 'seat') { const r = takeOrder(s, ord.id); toast(r.ok ? `${ord.customer}'s order taken` : r.reason, r.ok ? 'good' : 'bad'); }
+    if (ord.phase === 'seat') { const r = takeOrder(s, ord.id); toast(r.ok ? `${ord.customer}'s order taken` : r.reason, r.ok ? 'good' : 'bad'); if (r.ok) onboardEngage('cafe', 'act'); }
     else if (ord.phase === 'order') {
       const r = startCook(s, ord.id);
       if (r.ok) toast(`Plating for ${ord.customer}…`, 'good');
@@ -1489,7 +1523,7 @@ function cafeUi() {
   }
 
   if (s.over && !s.settled) {
-    const total = finishShift(state, s); packAct('shift'); hud(); persist();
+    const total = finishShift(state, s); packAct('shift'); onboardEngage('cafe', 'act'); hud(); persist();
     const sum = s.summary || {};
     $('#orders').innerHTML = `<div class="card" style="width:100%"><h3>Shift complete! ${'★'.repeat(sum.stars || 0) || ''}</h3>
       <p>Served ${sum.served || s.served} · walkouts ${sum.walkouts || s.failed} · cleared ${sum.cleared || s.cleared} · VIPs ${sum.vipServed || 0}</p>

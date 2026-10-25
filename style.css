@@ -487,7 +487,7 @@ body:has(#arcade-ov:not([hidden])) #toast { z-index: 9100; top: 52px; }
 #obcard .ob-body{flex:1;min-width:0}#obcard .ob-name{font-size:9px;color:#9ff0c0;text-transform:uppercase}
 #obcard .ob-title{display:block;font-size:14px;color:#fff6e0;margin:1px 0 3px}
 #obcard .ob-text{font-size:11px;line-height:16px}#obcard .ob-row{display:flex;gap:6px;align-items:center;margin-top:6px}
-#obcard .ob-sp{flex:1}#obcard .ob-reward{font-size:10px;color:#ffd84a}#obcard .ob-note{font-size:8px;color:#8a9ab8;margin-top:4px}
+#obcard .ob-sp{flex:1}#obcard .ob-reward{font-size:10px;color:#ffd84a}#obcard .ob-task{font-size:10px;color:#9ff0c0;margin-top:4px;line-height:14px}#obcard .ob-note{font-size:8px;color:#8a9ab8;margin-top:4px}
 #obcard .btn{font-size:11px;padding:5px 10px}
 .ob-progress{background:#1a2438;border:2px solid var(--ink);padding:8px 10px;margin:8px 0;color:#ffd84a}
 .ob-grid{display:grid;grid-template-columns:1fr 1fr;gap:6px;margin:8px 0}
