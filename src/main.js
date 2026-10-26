@@ -213,18 +213,18 @@ function titleScreen() {
   const capOf = (c, last) => { const t = TRAITS[c.trait], H = HOMES_[c.home], P = PATHS_[c.path], F = OUTFITS_[c.outfit];
     return `${last ? `<b class="cap-last">${esc(last.row)}: ${esc(last.label)}</b>` : '<b class="cap-last">Pick anything: the preview updates live</b>'}<span>${esc(c.pronouns)} · ${esc(t?.name || '')} · ${esc(F?.name || '')} · ${esc(H?.name || '')}${c.path !== 'none' ? ' · ' + esc(P?.name || '') : ''}</span>`; };
   let capLast = null; const cap = () => { const el = $('#pv-cap'); if (el) { el.innerHTML = capOf(creator.choices, capLast); el.classList.remove('flash'); void el.offsetWidth; el.classList.add('flash'); } };
-  creator = mountCreator($('#creator'), { choices: { ...defaultChoices(), name: $('#name').value }, onPick: (o) => { initAudio(); uiClick(); if (o.k) { capLast = o; cap(); const pv = $('#preview'); pv.classList.remove('bump'); void pv.offsetWidth; pv.classList.add('bump'); } } });
+  creator = mountCreator($('#creator'), { choices: defaultChoices(), onPick: (o) => { initAudio(); uiClick(); if (o.k) { capLast = o; cap(); const pv = $('#preview'); pv.classList.remove('bump'); void pv.offsetWidth; pv.classList.add('bump'); } } });
   cap(); startTitleFx($('#title-bg'), { alive: () => mode === 'title' && !$('#title').hidden });
   const fadeIn = (go) => { if ($('#title').classList.contains('leaving')) return; initAudio(); uiClick(); $('#title').classList.add('leaving'); setTimeout(go, 380); }; // smooth fade into the world
   const saved = load(localStorage);
   if (saved) { $('#continue').hidden = false; $('#continue').onclick = () => fadeIn(() => startGame(saved)); }
-  $('#start').onclick = () => fadeIn(() => { const ch = { ...creator.choices, name: $('#name').value.trim() || 'Inu' }; const s = newGame({ name: ch.name, coat: 'tan' });
+  $('#start').onclick = () => fadeIn(() => { const ch = { ...creator.choices, name: (creator.choices.name || '').trim() || 'Inu' }; const s = newGame({ name: ch.name, coat: 'tan' });
     applyCreation(s, ch, { ensureFarm, ensureJobs, ensureRel: REL.ensureRel }); seedTokens(s, rng); startGame(s); saveProfile(s); toast(`Welcome to Inu Verse, ${s.player.name}! ${TRAITS[s.player.trait].name}: ${TRAITS[s.player.trait].desc}.`, 'good'); });
   const pv = $('#preview'), pc = pv.getContext('2d');
   const faces = ['down', 'right', 'up', 'left'];
   const loop = (t) => {
     if (mode !== 'title') return; if (globalThis.__titleFreeze != null) t = globalThis.__titleFreeze; pc.imageSmoothingEnabled = false; pc.clearRect(0, 0, pv.width, pv.height);
-    const prof = profileOfChoices({ ...creator.choices, name: $('#name').value });
+    const prof = profileOfChoices(creator.choices);
     if (saved) { drawPreview(pc, prof, pv.width * 0.3, t, 'NEW'); const x = pv.width * 0.72, face = faces[Math.floor(t / 1600) % 4];
       pc.fillStyle = '#d4a640'; pc.fillRect(x - 54, 150, 108, 10); pc.fillStyle = '#8f6a22'; pc.fillRect(x - 54, 158, 108, 4); pc.fillStyle = '#24305c'; pc.fillRect(x - 50, 152, 100, 5);
       if (saved.player.look) drawProfileShiba(pc, x, 138, profileFromState(saved), { scale: 1.1, phase: t / 90, moving: true, face, shadow: false }); else drawShiba(pc, x, 140, { art: artKey(saved.player.coat, saved.wardrobe?.equipped), coat: saved.player.coat, outfit: saved.wardrobe?.equipped, scale: 2, phase: t / 90, moving: true, face, shadow: false });

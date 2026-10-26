@@ -1,5 +1,5 @@
 // Start screen: every selectable option shows a distinct selected state (class + aria-pressed + computed style) and changes the
-// preview or the caption under it; LOOK rows collapse to a summary after select and reopen via the section header; arrow-key focus
+// preview or the caption under it; LOOK/You/Life rows (incl. Name on You) collapse to a summary after select/confirm and reopen via the section header; arrow-key focus
 // moves between chips; the selected ring/badge never covers a row label; nothing clipped at 667x375, 750x342, 844x390.
 import test from 'node:test'; import assert from 'node:assert/strict'; import http from 'node:http'; import fs from 'node:fs'; import path from 'node:path';
 import { chromium } from 'playwright';
@@ -39,6 +39,23 @@ test('start screen options + phone landscape', { timeout: 180000 }, async () => 
     assert.equal(await p.evaluate(() => !!document.querySelector('#creator [data-k="ears"]')), false);
     await p.click('#creator [data-toggle="ears"]');
     assert.equal(await p.evaluate(() => document.querySelector('#creator [data-k="ears"][data-v="floppy"]')?.classList.contains('sel')), true);
+    // Name (You tab): open → type → Done/confirm → collapsed summary; reopen shows input
+    await p.click('#creator [data-tab="you"]');
+    assert.equal(await p.evaluate(() => !!document.querySelector('#creator .crow[data-sec="name"].collapsed .csum')), true);
+    await p.click('#creator [data-toggle="name"]');
+    assert.equal(await p.evaluate(() => !!document.querySelector('#creator #name')), true);
+    await p.fill('#creator #name', 'Mochi');
+    await p.click('#creator [data-name-done]');
+    assert.equal(await p.evaluate(() => document.querySelector('#creator .crow[data-sec="name"].collapsed .csum-lab')?.textContent), 'Mochi');
+    assert.equal(await p.evaluate(() => !!document.querySelector('#creator #name')), false);
+    assert.equal(await p.evaluate(() => globalThis.__profile?.creator?.()?.choices?.name), 'Mochi');
+    await p.click('#creator [data-toggle="name"]');
+    assert.equal(await p.evaluate(() => document.querySelector('#creator #name')?.value), 'Mochi');
+    await p.fill('#creator #name', 'Biscuit');
+    await p.locator('#creator #name').press('Enter');
+    assert.equal(await p.evaluate(() => document.querySelector('#creator .crow[data-sec="name"].collapsed .csum-lab')?.textContent), 'Biscuit');
+    // Start uses creator.choices.name (no standalone #name outside creator when collapsed)
+    assert.equal(await p.evaluate(() => !document.querySelector('#title > .title-card > .lbl #name') && !document.querySelector('.title-card > label.lbl')), true);
     for (const [w, h] of [[667, 375], [750, 342], [844, 390]]) { const q = await (await b.newContext({ viewport: { width: w, height: h }, hasTouch: true })).newPage(); await q.goto(url); await q.waitForTimeout(800);
       const c = await q.evaluate(() => { const card = document.querySelector('.title-card'), r = card.getBoundingClientRect(), bad = []; for (const e of card.querySelectorAll('button,input,canvas,h1')) { const x = e.getBoundingClientRect(); if (x.width && (x.left < r.left - 1 || x.right > r.right + 1)) bad.push(e.id || e.dataset.v || e.tagName); }
         const st = document.getElementById('start').getBoundingClientRect(), pv = document.getElementById('preview').getBoundingClientRect();
