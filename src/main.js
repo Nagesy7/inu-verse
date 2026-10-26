@@ -173,28 +173,36 @@ async function syncStreak(why = '') { if (!state || streakBusy) return; streakBu
 setInterval(() => { if (state && LS.sydneyDay() !== streakDay) syncStreak(); }, 60_000);
 addEventListener('kibble:wallet', () => setTimeout(() => syncStreak(), 300));
 async function bootKibble() {
-  try { const G = await import('https://kibble-pay.vercel.app/inu-games.js'); K = await G.initKibble({ game: KGAME }); G.mountFooter(K.mode);
+  try { const G = await import('./vendor/inu-games.js'); K = await G.initKibble({ game: KGAME }); G.mountFooter(K.mode);
     // Connect Wallet (title + in-game): cloud save keyed by wallet, holder tier from on-chain $KIBBLE (VIP perks read the real balance).
     const js = (g) => { try { return JSON.parse(g('inuverse.save.v1') || 'null'); } catch { return null; } };
     G.mountWallet(K, { game: KGAME, keys: ['inuverse.save.v1', 'inu.profile.v1:'], position: 'top-center',
       playerName: () => state?.player?.name || '',
       progress: (g) => { const s = js(g); return s ? Math.floor((s.stats?.bonesEarned || 0) + (s.stats?.shifts || 0) * 10 + (s.clockSec || 0) / 60) : 0; },
       label: (g) => { const s = js(g); return s ? `${s.player?.name || 'Shiba'} · ${Math.floor(s.stats?.bonesEarned || 0)} bones earned` : ''; },
-      onWallet: () => { if (K.kp?.session) wallet().refresh?.().then(() => state && hud()).catch(() => {}); syncStreak(); } }); }
+      onWallet: () => { syncPhantomBtn(); if (K.kp?.session) wallet().refresh?.().then(() => state && hud()).catch(() => {}); syncStreak(); } }); }
   catch (e) { K = { mode: DEMO ? 'demo' : 'offline', kp: null }; }
   document.body.dataset.kibble = K.mode;
   if (!DEMO) { PB.load(globalThis.__poolFetch || fetch).catch(() => {}); setInterval(() => { if (document.visibilityState === 'visible') PB.load(globalThis.__poolFetch || fetch).catch(() => {}); }, PB.CACHE_MS); }
   if (K.kp) { setWallet(kibblePayWallet(K.kp)); setProfileStore(kibblePayProfileStore(K.kp)); refreshPools(); if (K.kp.session) wallet().refresh().catch(() => {}); }
   syncStreak();
-  const b = $('#btn-phantom'); if (b) { b.title = DEMO ? 'Demo mode: no wallet' : 'Sign in with Phantom'; b.innerHTML = DEMO ? 'Demo mode <small>(fake KIBBLE)</small>' : 'Phantom'; }
+  syncPhantomBtn();
   if (state) hud();
+}
+/** Hide the purple Connect Phantom HUD CTA once wallet is connected / SIWS'd — shared #inu-wallet pill replaces it. */
+function syncPhantomBtn() {
+  const b = $('#btn-phantom'); if (!b) return;
+  if (DEMO) { b.hidden = false; b.title = 'Demo mode: no wallet'; b.innerHTML = 'Demo mode <small>(fake KIBBLE)</small>'; return; }
+  const connected = !!(K?.kp?.signedIn || K?.kp?.address || wallet()?.address);
+  b.hidden = connected;
+  if (!connected) { b.title = 'Sign in with Phantom'; b.textContent = 'Connect Phantom'; }
 }
 addEventListener('kibble:paid', (e) => { toast(e.detail.burn ? 'Burn confirmed: tap again to unlock it.' : 'Payment confirmed: tap Buy again to receive it.', 'good'); wallet().refresh?.().then(() => state && hud()).catch(() => {}); refreshPools(); });
 addEventListener('kibble:failed', (e) => toast(e.detail.reason || 'Payment failed', 'bad'));
-addEventListener('kibble:wallet', () => { if (state) { state.walletAddr = wallet().address; hud(); } });
+addEventListener('kibble:wallet', () => { syncPhantomBtn(); if (state) { state.walletAddr = wallet().address; hud(); } });
 bootKibble(); refreshRegistry(true);
 if (localStorage.getItem('inu.noext.resume')) import('./launchui.js').then((m) => m.resumeAuth({ toast })).catch(() => {}); // finish Google/Apple sign-in after Phantom's redirect
-function hud() { GOLD.name = F5.isVip(state) ? state.player.name : null; { const P = DEMO ? poolsOf(state) : serverPools, el = $('#pools'); if (el) el.textContent = P ? `D${(P.daily / 1e6).toFixed(2)} W${(P.weekly / 1e6).toFixed(2)} M${(P.monthly / 1e6).toFixed(2)}` : 'pools'; } $('#bones').textContent = Math.floor(state.bones); $('#kibble').textContent = DEMO ? state.kibble.toFixed(2) : (wallet().live ? (wallet().balanceUi ?? '–') : 'soon'); $('#hud-name').textContent = state.player.name; { const ch = $('#streak-chip'); if (ch) { const k = JSON.stringify(LS.view(state)); if (ch.dataset.k !== k) { ch.dataset.k = k; ch.innerHTML = LSUI.chipHtml(state); ch.classList.toggle('device', !state.loginStreak?.wallet); } } } }
+function hud() { syncPhantomBtn(); GOLD.name = F5.isVip(state) ? state.player.name : null; { const P = DEMO ? poolsOf(state) : serverPools, el = $('#pools'); if (el) el.textContent = P ? `D${(P.daily / 1e6).toFixed(2)} W${(P.weekly / 1e6).toFixed(2)} M${(P.monthly / 1e6).toFixed(2)}` : 'pools'; } $('#bones').textContent = Math.floor(state.bones); $('#kibble').textContent = DEMO ? state.kibble.toFixed(2) : (wallet().live ? (wallet().balanceUi ?? '–') : 'soon'); $('#hud-name').textContent = state.player.name; { const ch = $('#streak-chip'); if (ch) { const k = JSON.stringify(LS.view(state)); if (ch.dataset.k !== k) { ch.dataset.k = k; ch.innerHTML = LSUI.chipHtml(state); ch.classList.toggle('device', !state.loginStreak?.wallet); } } } }
 
 function resize() { const nw = Math.round(innerWidth * devicePixelRatio), nh = Math.round(innerHeight * devicePixelRatio); if (cv.width !== nw || cv.height !== nh) { cv.width = nw; cv.height = nh; vignette = null; } // only touch the backing store on a real size change (visualViewport fires during address-bar moves; re-setting width clears the canvas)
   document.body.classList.toggle('landscape', innerWidth > innerHeight); document.body.classList.toggle('short', innerHeight < 520); }
@@ -525,7 +533,7 @@ $('#btn-pools').onclick = () => { initAudio(); uiClick?.(); openPanel('city', { 
 $('#photo-save').onclick = () => { const tmp = document.createElement('canvas'); tmp.width = cv.width; tmp.height = cv.height; const tx = tmp.getContext('2d'); tx.drawImage(cv, 0, 0); F5.watermarkPhoto(tx, tmp.width, tmp.height); const a = document.createElement('a'); a.download = `inu-verse-${Date.now()}.png`; a.href = tmp.toDataURL('image/png'); a.click(); F5.submitPhoto(state, Math.floor(gameDay() / 7), { caption: 'Inu Verse snap' }); toast('Photo saved + entered this week\'s board', 'good'); };
 $('#photo-exit').onclick = () => togglePhoto();
 $('#btn-phantom').onclick = async () => { initAudio(); if (DEMO) return toast('Demo mode: fake KIBBLE, no wallet. Remove ?demo=1 to use Phantom.', ''); if (!K.kp) return toast('Wallet service is offline right now. Try again soon.', 'bad');
-  try { const a = await wallet().connect(); if (state) { state.walletAddr = a; if (hasCustomLook(state)) await saveProfile(state); persist(); hud(); tourCheck(); refreshPlotOwners(); } toast(`Signed in ${a.slice(0, 4)}…${a.slice(-4)}${K.mode === 'live' ? '' : ' · ' + SOON}`, 'good'); } catch (e) { toast(e.message || 'Phantom sign-in failed', 'bad'); } };
+  try { const a = await wallet().connect(); syncPhantomBtn(); if (state) { state.walletAddr = a; if (hasCustomLook(state)) await saveProfile(state); persist(); hud(); tourCheck(); refreshPlotOwners(); } toast(`Signed in ${a.slice(0, 4)}…${a.slice(-4)}${K.mode === 'live' ? '' : ' · ' + SOON}`, 'good'); } catch (e) { syncPhantomBtn(); toast(e.message || 'Phantom sign-in failed', 'bad'); } };
 $('#btn-help').onclick = () => openPanel('help');
 $('#btn-guide').onclick = () => guide?.startTour(true);
 $('#btn-quests').onclick = () => { initAudio(); uiClick?.(); openPanel('onboard'); };

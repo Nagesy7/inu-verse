@@ -27,6 +27,7 @@ canvas#game{display:block;width:100vw;height:100vh;cursor:pointer}
 .btn.ghost{background:var(--navy);color:var(--cream);border-color:var(--goldd);box-shadow:none}.btn.green{background:var(--green);color:#fff;box-shadow:inset -3px -3px 0 #1d5e37,inset 3px 3px 0 #4cb072}.btn.red{background:var(--red);color:#fff;box-shadow:inset -3px -3px 0 #7a1520,inset 3px 3px 0 #d84a54}
 .btn:disabled{opacity:.5;cursor:not-allowed}
 .btn.phantom{background:#ab9ff2;opacity:.85;box-shadow:inset -3px -3px 0 #7b6cd0}
+#btn-phantom[hidden]{display:none!important}
 .small{font-size:11px;color:#b9b08e;margin-top:12px}
 #hud{position:fixed;top:10px;left:10px;right:10px;display:flex;gap:8px;align-items:center;z-index:5;pointer-events:none}
 #hud>*{pointer-events:auto}.spacer{flex:1}
