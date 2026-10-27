@@ -7,6 +7,7 @@ Legend: **done** = reviewable & status written · **landed** = already in `maste
 
 | Item | Ref | Status | One-liner |
 |------|-----|--------|-----------|
+| Holder Lounge (`feat/holder-lounge`) | this branch | **open** / shipping | `$KIBBLE`-gated room past free Trainer Gate; six Quest-mirrored features. Tests lounge+scenes+world green. Pre-existing outfit-art/trade fails unrelated. |
 | Launch Hall (`hub-launch-hall`) | `origin/hub-launch-hall` @ `d365047` | **open** / reviewable | Wallet-only `/hall.html` + stacked façades; 2 feature commits ahead of merge-base, **5 behind** master (SIWS pill etc.). `BRANCH_STATUS.md` on branch. Pushed. |
 | Building façades | tip of `hub-launch-hall` (`31be440`) | **open** / reviewable | Typed silhouettes + function colors (`src/facadeart.js`). Lives on `hub-launch-hall` only (not a separate branch). Tests 8/8. |
 | Text chat (`feat/text-chat`) | `origin/feat/text-chat` @ `3771955` (feature `f5ab828`) | **open** / reviewable | Primary MP text chat bar + light moderation. Tests 15/15. `BRANCH_STATUS.md` pushed. Low–medium merge risk. |

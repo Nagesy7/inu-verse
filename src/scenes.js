@@ -218,10 +218,34 @@ export const SCENES = {
       { id: 'stall', tx: 10, ty: 9, face: 'up', name: 'Charm stall', act: { say: 'Keeper Hoshi: "Charms for good naps and tasty treats. Come back when the island festival opens!"' }, label: 'Look' }],
     npcs: [{ name: 'Keeper Hoshi', coat: 'cream', x: 9, y: 6, wander: true, lines: ['Welcome, traveller. Ring the bell for luck.', 'The island festival will open here one day.'] },
       { name: 'Pilgrim Nori', coat: 'tan', x: 16, y: 8, wander: true, lines: ['I sailed all the way from Biscuit Beach!', 'The view from the shrine is amazing.'] }] }),
+  lounge: S({ name: '$KIBBLE Holder Lounge', kind: 'interior', floor: 'wood', wall: '#5a3a28', legend: IN, map: [
+    '##############',
+    '#WW#NNNN#WWWW#',
+    '#P..........P#',
+    '#..hhhhhh....#',
+    '#............#',
+    '#.L......R..P#',
+    '#............#',
+    '#P..........L#',
+    '######EE######'],
+    spawns: { door: [6, 7, 'up'] }, exits: [{ tiles: [[6, 8], [7, 8]], face: 'down', to: 'hub', door: 'lounge' }],
+    spots: [
+      { id: 'gallery', tx: 4, ty: 2, face: 'up', name: 'Silhouette gallery', act: { panel: 'lounge', opts: { tab: 'gallery' } }, label: 'Silhouette gallery' },
+      { id: 'night', tx: 7, ty: 2, face: 'up', name: 'Night watch pane', act: { panel: 'lounge', opts: { tab: 'night' } }, label: 'Night watch' },
+      { id: 'rival', tx: 9, ty: 2, face: 'up', name: 'Rival board', act: { panel: 'lounge', opts: { tab: 'rival' } }, label: 'Rival board' },
+      { id: 'seat1', tx: 3, ty: 3, face: 'up', name: 'Kennel seat', act: { panel: 'lounge', opts: { tab: 'kennel' } }, label: 'Kennel seats' },
+      { id: 'seat2', tx: 5, ty: 3, face: 'up', name: 'Kennel seat', act: { panel: 'lounge', opts: { tab: 'kennel' } }, label: 'Kennel seats' },
+      { id: 'hearth', tx: 2, ty: 4, face: 'down', name: 'Lore hearth', act: { panel: 'lounge', opts: { tab: 'lore' } }, label: 'Lore hearth' },
+      { id: 'rack', tx: 10, ty: 4, face: 'down', name: 'Cosmetic rack', act: { panel: 'lounge', opts: { tab: 'rack' } }, label: 'Cosmetic rack' }],
+    npcs: [{ name: 'Host Barkley', coat: 'cream', x: 7, y: 5, staff: true, lines: [
+      'Welcome, holder — Trainer Gate next door stays free for every pup.',
+      'Six corners: silhouettes, night watch, rival, seats, lore, cosmetics.',
+      'Bones never leave the games. $KIBBLE cosmetics only.'] }] }),
   districts: S({ ...DISTRICTS_SCENE, legend: { ...OUT, ...DISTRICTS_SCENE.legend } }), // Arcade Districts (districts.js): Arcade Row + five districts
 };
+
 // door ids on the hub that now lead into a walkable interior (Launch Hall + mall stores + game doors keep their old entry)
-export const DOOR_SCENES = { 'building:cafe': 'cafe', 'building:shop': 'shop', 'building:fashion': 'fashion', 'building:cars': 'cars', 'building:academy': 'academy', 'bank:bank': 'bank', 'mall:mall': 'mall', 'clubhouse:clubhouse': 'clubhouse' };
+export const DOOR_SCENES = { 'building:cafe': 'cafe', 'building:shop': 'shop', 'building:fashion': 'fashion', 'building:cars': 'cars', 'building:academy': 'academy', 'building:lounge': 'lounge', 'bank:bank': 'bank', 'mall:mall': 'mall', 'clubhouse:clubhouse': 'clubhouse' };
 export const sceneForDoor = (d) => DOOR_SCENES[d.kind + ':' + d.id] || null;
 // hub gates (walk into them to change zone). tx,ty = hub stand tile; face = walking direction.
 export const HUB_GATES = [

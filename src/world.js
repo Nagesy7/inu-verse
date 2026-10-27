@@ -10,6 +10,8 @@ export const BUILDINGS = [
   { id: 'launch', name: 'Launch Hall', x: 35, y: 11, w: 12, h: 7 },
   { id: 'cars', name: 'Zoomies Motors', x: 50, y: 12, w: 10, h: 6 },
   { id: 'academy', name: 'Good Boy Academy', x: 35, y: 1, w: 10, h: 5 },
+  // $KIBBLE Holder Lounge — east of free Trainer Gate (quest portal stays free; lounge is gated)
+  { id: 'lounge', name: '$KIBBLE Holder Lounge', x: 7, y: 55, w: 6, h: 4 },
 ];
 // Kibble Mall district (south). Owned by President Inu. Stores open the Mall panel filtered by category.
 export const MALL_BUILDINGS = [
@@ -24,7 +26,7 @@ export const MALL_BUILDINGS = [
   { id: 'royal', name: 'Maison Royale', x: 55, y: 69, w: 7, h: 5, cat: 'furn_royal' },
 ];
 // Varied entrances: front door offset (tiles from the left), or a side porch on the left/right wall facing a side street.
-export const DOORS = {"cafe": {dx: 1, side: "front"}, "shop": {dx: 7, side: "front"}, "fashion": {dx: 0, side: "right"}, "cars": {dx: 2, side: "front"}, "academy": {dx: 4, side: "front"}, "jewel": {dx: 0, side: "left"}, "designer": {dx: 6, side: "front"}, "goldden": {dx: 0, side: "right"}, "luxauto": {dx: 1, side: "front"}, "petshop": {dx: 6, side: "front"}};
+export const DOORS = {"cafe": {dx: 1, side: "front"}, "shop": {dx: 7, side: "front"}, "fashion": {dx: 0, side: "right"}, "cars": {dx: 2, side: "front"}, "academy": {dx: 4, side: "front"}, "lounge": {dx: 2, side: "front"}, "jewel": {dx: 0, side: "left"}, "designer": {dx: 6, side: "front"}, "goldden": {dx: 0, side: "right"}, "luxauto": {dx: 1, side: "front"}, "petshop": {dx: 6, side: "front"}};
 export function doorTile(b) { const d = DOORS[b.id]; if (!d) return { tx: b.x + Math.floor(b.w / 2), ty: b.y + b.h, side: 'front' };
   return d.side === 'left' ? { tx: b.x - 1, ty: b.y + b.h - 1, side: 'left' } : d.side === 'right' ? { tx: b.x + b.w, ty: b.y + b.h - 1, side: 'right' } : { tx: b.x + d.dx, ty: b.y + b.h, side: 'front' }; }
 export const STATUE = { x: 31, y: 71 };

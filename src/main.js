@@ -87,6 +87,8 @@ import { feel } from './feel.js';
 import { faceTalk, faceReact } from './face.js';
 import { stepChat, drawChat, emoteBubble, say as chatSay } from './chat.js';
 import { renderAcademy } from './academyui.js';
+import * as Lounge from './lounge.js';
+import { renderLounge } from './loungeui.js';
 import { makeRoomPlay } from './roomplay.js';
 import { sceneForDoor, HUB_GATES, resolveExit, makePortalState, portalStep, SCENES, scene as sceneOf, walkInExits, solidAt as sceneSolid, ST as ROOM_ST } from './scenes.js';
 import { hubGateProp } from './sceneart.js';
@@ -261,6 +263,7 @@ function startGame(s) { loadProfile(s).catch(() => {}); IQC.ensureChoice(s); loa
   { const open = (new URLSearchParams(location.search).get('open') || '').toLowerCase().replace(/[_\s-]/g, '');
     if (open === 'launch' || open === 'launchhall') setTimeout(() => { const p = placeById(state, 'launch'); if (p) { guide.setGuide(p); guide.walk(); } openPanel('launch'); }, 700);
     else if (open === 'academy' || open === 'goodboy' || open === 'school') setTimeout(() => { const p = placeById(state, 'academy'); if (p) { guide.setGuide(p); guide.walk(); } openPanel('academy'); }, 700);
+    else if (open === 'lounge' || open === 'holder' || open === 'holderlounge') setTimeout(() => { const p = placeById(state, 'lounge'); if (p) { guide.setGuide(p); guide.walk(); } tryEnterLounge(); }, 700);
     else if (/[?&]kibblesign=1/.test(location.search)) setTimeout(() => openPanel('launch', { tab: 'kibble', sign: true }), 900);
     else setTimeout(tourCheck, 1400); }
 }
@@ -508,7 +511,7 @@ function petPup(n) { if (n.workerRef) { const w = n.workerRef; blip(880); if (w.
   if (n.pet) { petF.love = 2; blip(990); feel.say(n.pet.name, ['*happy noises*', '*nuzzles you*', '*purrs/chirps contentedly*', '*does a little spin*'][Math.floor(rng() * 4)], textBlip); return; }
   if (n.president) { if (pres.stage === 'visit') { const d = claimPresDrop(state, 'visit' + pres.n); if (d.ok) { toast(`President Inu gave you a free limited drop: ${d.drop.name}!`, 'good'); persist(); } } const r = presTalk(pres, state); pres.emote = { kind: 'heart', t: 2 }; blip(990); feel.say('President Inu', r.quote, textBlip); if (r.tip) { toast(`President Inu tipped you ${r.tip} bones!`, 'good'); hud(); persist(); } return; } n.wag = 1.2; n.path = []; blip(990); if (REL.PEOPLE[n.name]) { const r = REL.chat(state, n.name, gameDay()); if (r.gain) n.emote = { kind: 'heart', t: 2.2 }; persist(); openPanel('friend', { name: n.name }); if (r.scene) startScene(n.name, REL.SCENES[r.scene](n.name)); return; } feel.say(n.name, PUP_LINES[Math.floor(rng() * PUP_LINES.length)], textBlip); }
 const PUP_LINES = ['Woof! That spot behind the ears... perfect!', 'Arf! Have you tried the taiyaki cart on Main Street?', 'Wanna race to Sakura Pond? Last one there is a wet biscuit!', 'I buried a bone by the big tree. Shh, it is a secret.', 'Bork bork! The Launch Hall is busy today.'];
-const CHAT_PLACE = { cafe: 'cafe', shop: 'shop', fashion: 'shop', cars: 'shop', launch: 'mall', mall: 'mall', square: 'mall', arcade: 'arcade', bank: 'bank', chapel: 'chapel', farm: 'farm', field: 'farm', gamedoor: 'game', visit: 'home', plot: 'home', matchmaker: 'park', lot: 'shop' };
+const CHAT_PLACE = { cafe: 'cafe', shop: 'shop', fashion: 'shop', cars: 'shop', launch: 'mall', mall: 'mall', square: 'mall', arcade: 'arcade', bank: 'bank', chapel: 'chapel', farm: 'farm', field: 'farm', gamedoor: 'game', visit: 'home', plot: 'home', matchmaker: 'park', lot: 'shop', lounge: 'mall', academy: 'mall' };
 function chatPlace(x, y) { const it = nearestInteractable(state, x, y, 5); return it && (CHAT_PLACE[it.id] || CHAT_PLACE[it.kind]); }
 function doEmote(kind) { emoteBubble('me', kind, time); player.emote = { kind, t: kind === 'zoomies' ? 2.4 : 2.5 }; $('#emotes').hidden = true; blip(kind === 'heart' ? 990 : 740);
   for (const n of npcs) if (Math.hypot(n.x - state.player.x, n.y - state.player.y) < 260 && rng() < 0.6) setTimeout(() => { n.emote = { kind: rng() < 0.5 ? kind : 'heart', t: 2 }; }, 400 + rng() * 600); }
@@ -849,7 +852,45 @@ const RP = makeRoomPlay({ player, extra: homeRoomExtra, diner: (s) => openDiner(
   chat: (id, t) => chatSay(id, t, time), fade: () => feel.fade(), dust: (x, y) => feel.dust(x, y), portal: (ex) => roomPortal(ex),
   drawGround: (c) => feel.drawGround(c), drawAir: (c) => feel.drawAir(c), drawMark: (c, m, t) => drawMark(c, m, t), bubble: (c, x, y, t) => feel.bubble(c, x, y, t),
   drawChat: (c, res) => drawChat(c, res, time), drawActor: drawRoomActor, rm: () => reducedMotion(), remotes: (view, me) => MPL.actors(view, me), anchor: (id) => MPL.anchor(id), night: () => !!globalThis.__inuNight, arrived: (sc) => roomUi(sc) });
-function roomUi(sc) { $('#minimap-wrap').hidden = true; wayUi(false); toast(sc.name, ''); globalThis.__roomVisits = (globalThis.__roomVisits || 0) + 1; }
+function roomUi(sc) { $('#minimap-wrap').hidden = true; wayUi(false); toast(sc.name, ''); globalThis.__roomVisits = (globalThis.__roomVisits || 0) + 1;
+  if (sc?.id === 'lounge') refreshLoungeQuest(); }
+/** Live / demo $KIBBLE gate for the Holder Lounge. Trainer Gate (quest gamedoor) is never gated. */
+function loungeGateNow() {
+  const signed = !!(K.kp?.session || K.kp?.signedIn);
+  const balU = DEMO ? Lounge.toU(state.kibble || 0) : Lounge.balUFromUi(wallet()?.balanceUi);
+  const kennelTier = KEN?.real?.tier || null;
+  return Lounge.loungeGate(state, { balU, signedIn: signed, kennelTier, demo: DEMO });
+}
+let loungeQuest = { status: 'idle', save: null };
+async function refreshLoungeQuest() {
+  if (DEMO) { loungeQuest = { status: 'empty', save: null }; return loungeQuest; }
+  const r = await Lounge.loadQuestSave({ kp: K.kp }); loungeQuest = r; return r;
+}
+function tryEnterLounge(door = null) {
+  const g = loungeGateNow();
+  if (!g.ok) { toast(g.reason || 'Hold $KIBBLE to enter the Holder Lounge', 'bad'); blip(220); return false; }
+  enterRoom('lounge', 'door', door); return true;
+}
+function renderLoungePanel(opts = {}) {
+  const g = loungeGateNow();
+  const phase = dayPhase(time + dayOffset);
+  const owned = {};
+  try {
+    const inv = wallet()?.inv || {};
+    for (const [k, v] of Object.entries(inv)) if (v) owned[k] = true;
+  } catch {}
+  // kibble-pay inventory keys may be bare cosmetic ids or game-prefixed
+  renderLounge({
+    state, body: $('#panel-body'), toast, hud, persist,
+    tab: opts.tab, open: (tab) => openPanel('lounge', { tab }),
+    gate: g, phaseLabel: phase.label,
+    companions: CMP.prof || null,
+    questSave: loungeQuest.save, questStatus: loungeQuest.status,
+    ownedCosmetics: owned, bones: state.bones,
+  });
+  // kick a fresh Quest read when the board opens (read-only)
+  if (loungeQuest.status === 'idle' || opts.refresh) refreshLoungeQuest().then(() => { if (panel?.kind === 'lounge') renderLoungePanel({ ...opts, refresh: false }); });
+}
 function enterRoom(id, at, door = null) { if (mode === 'room' && RP.id === id) return; stopWalk(); keys.clear(); player.v = { x: 0, y: 0 }; feel.fade(); blip(660);
   if (id === 'districts') onboardEngage('shuttle', 'use');
   if (door) { const o = outsideOf(door); Object.assign(state.player, { x: o.x, y: o.y }); } // saves/reloads/Back-to-Verse always land you outside, never inside a room
@@ -889,7 +930,7 @@ globalThis.__room = () => mode === 'room' ? { id: RP.id, x: RP.R.p.x, y: RP.R.p.
 globalThis.__roomWalk = (tx, ty, run) => RP.planTo([tx, ty], { run });
 globalThis.__roomTap = (tx, ty) => { const k = globalThis.__roomCam; if (!k) return; RP.click((tx * 32 + 16 + k.ox) * k.Z, (ty * 32 + 16 + k.oy) * k.Z, false); };
 function enterDoor(d) { lastDoor = d; keys.clear(); stopWalk(); player.v = { x: 0, y: 0 }; doorExit(doorSt, time); globalThis.__doorEnters = (globalThis.__doorEnters || 0) + 1; globalThis.__lastDoor = d.kind + ":" + d.id;
-  { const sid = sceneForDoor(d); if (sid) return enterRoom(sid, 'door', d); }
+  { const sid = sceneForDoor(d); if (sid === 'lounge') return tryEnterLounge(d); if (sid) return enterRoom(sid, 'door', d); }
   if (d.kind === 'gamedoor' || (d.kind === 'arcade' && COARSE.matches)) return enterExternal(d);
   feel.fade(); interact(d, true); if (panel) panel.viaDoor = true; }
 // External games: same-tab navigation (a movement event is not a user gesture, so window.open would be popup-blocked).
@@ -992,6 +1033,11 @@ function openPanel(kind, opts = {}) {
       else { toast(r.reason, 'bad'); btn.disabled = false; }
     };
   } else if (kind === 'academy') return renderAcademy({ state, body, toast, hud, persist, tab: opts.tab, open: (tab) => openPanel('academy', { tab }) });
+  else if (kind === 'lounge') {
+    const g = loungeGateNow();
+    if (!g.ok && mode !== 'room') { toast(g.reason || 'Hold $KIBBLE to enter the Holder Lounge', 'bad'); return; }
+    return renderLoungePanel(opts);
+  }
   else if (kind === 'shop') renderShop();
   else if (kind === 'cafe') renderCafe();
   else if (kind === 'diner') renderDiner();

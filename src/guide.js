@@ -27,7 +27,7 @@ const rect = (o) => (o && o.w ? { fx: o.x + o.w / 2, fy: o.y + o.h / 2 } : null)
 const RECTS = Object.fromEntries([...BUILDINGS, ...MALL_BUILDINGS, ...GAME_DOORS, ARCADE, BANK, CLUBHOUSE, CHAPEL, BARN, MARKET, CRAFT, ...PLOTS, ...NPC_HOMES, ...FIELDS].filter((o) => o?.id).map((o) => [o.id, o]));
 RECTS.leaders = LEADERS; RECTS.pond = { ...POND, id: 'pond' }; RECTS.pen = { ...PEN, id: 'pen' }; RECTS.board = { x: STATUE.x, y: STATUE.y - 2, w: 2, h: 2 };
 const GAME_IDS = new Set(['arcade', 'rescue', 'quest', 'launch', 'shuttle']);
-const WORK_IDS = new Set(['cafe', 'office', 'bizboard', 'academy']);
+const WORK_IDS = new Set(['cafe', 'office', 'bizboard', 'academy', 'lounge']);
 function groupOf(it) {
   if (FEATURED.includes(it.id)) return 'Featured';
   if (it.kind === 'arcade' || it.kind === 'gamedoor' || it.kind === 'community' || GAME_IDS.has(it.id)) return 'Games';
@@ -38,8 +38,8 @@ function groupOf(it) {
   if (it.kind === 'mall' || it.kind === 'building') return 'Shops & Mall';
   return 'Park & Square';
 }
-const NICE = { shuttle: 'Arcade Districts (gate + fast travel)', launch: 'Launch Hall ($KIBBLE + your coins)', bank: 'Kibble Bank', pools: 'VIP Lounge & Pools Monument', burn: 'Burn Festival Monument', board: 'Prize-pool board (Mall statue)', quests: 'Quest Board (cross-game quests)', cafe: 'Shiba Sips Café (jobs)', office: "President's Office", academy: 'Good Boy Academy (pup school)' };
-const KEYWORDS = { shuttle: 'arcade districts arena fud field stadium parkour race park arcade row cabinets fast travel shiba scuffle', bank: 'wallet balance inventory history purchases', cafe: 'jobs work coffee shift', arcade: 'games scores chomp invaders', rescue: 'inu rescue pups game door', quest: 'inu quest trainer gate game door', leaders: 'leaderboards scores prizes', board: 'prize pool kibble', pools: 'vip lounge holder pools', burn: 'burn kibble festival monument', mall: 'kibble shop luxury', launch: 'tokens launch hall coins', quests: 'quest chain weekly', academy: 'good boy academy school quiz lesson dean barkley trading' };
+const NICE = { shuttle: 'Arcade Districts (gate + fast travel)', launch: 'Launch Hall ($KIBBLE + your coins)', bank: 'Kibble Bank', pools: 'VIP Lounge & Pools Monument', burn: 'Burn Festival Monument', board: 'Prize-pool board (Mall statue)', quests: 'Quest Board (cross-game quests)', cafe: 'Shiba Sips Café (jobs)', office: "President's Office", academy: 'Good Boy Academy (pup school)', lounge: '$KIBBLE Holder Lounge (gated)', quest: 'Trainer Gate (Inu Quest — free)' };
+const KEYWORDS = { shuttle: 'arcade districts arena fud field stadium parkour race park arcade row cabinets fast travel shiba scuffle', bank: 'wallet balance inventory history purchases', cafe: 'jobs work coffee shift', arcade: 'games scores chomp invaders', rescue: 'inu rescue pups game door', quest: 'inu quest trainer gate game door', leaders: 'leaderboards scores prizes', board: 'prize pool kibble', pools: 'vip lounge holder pools', burn: 'burn kibble festival monument', mall: 'kibble shop luxury', launch: 'tokens launch hall coins', quests: 'quest chain weekly', academy: 'good boy academy school quiz lesson dean barkley trading', lounge: 'holder lounge kibble silhouette rival night watch kennel lore hearth cosmetic' };
 // nearest walkable tile (spiral search) so every place has a reachable stand tile
 export function nearestWalkable(tx, ty, r = 6) { tx = Math.round(tx); ty = Math.round(ty); if (!isSolid(tx, ty)) return [tx, ty];
   for (let d = 1; d <= r; d++) for (let dy = -d; dy <= d; dy++) for (let dx = -d; dx <= d; dx++) { if (Math.max(Math.abs(dx), Math.abs(dy)) !== d) continue; if (!isSolid(tx + dx, ty + dy)) return [tx + dx, ty + dy]; } return null; }

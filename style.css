@@ -645,3 +645,21 @@ body.short #title .title-card>.row{
   background:linear-gradient(180deg, transparent, var(--kb-goldL) 30%);
   box-shadow:0 -6px 8px rgba(242,193,78,.35);
 }
+
+/* $KIBBLE Holder Lounge */
+.lounge-disc{margin:0 0 10px;padding:8px 10px;border:2px solid var(--goldd);background:rgba(20,26,46,.85);color:#f0e6c8;font-size:11px;line-height:1.45}
+.lounge-gate{margin-bottom:8px}.lounge-gate.ok{border-color:#3fa69a}.lounge-gate.no{border-color:#c86a4a}
+.lounge-tabs{flex-wrap:wrap}.lounge-tabs .ctab{flex:1 1 30%;min-width:7em;font-size:10px}
+.lounge-gallery{display:grid;grid-template-columns:repeat(auto-fill,minmax(140px,1fr));gap:8px}
+.lounge-sil-art{height:64px;display:flex;align-items:flex-end;justify-content:center;background:linear-gradient(180deg,#1a1420,#2a2030);border-radius:6px;margin-bottom:6px}
+.lounge-sil-pup{display:inline-block;width:28px;height:36px;background:#0a0a0c;border-radius:40% 40% 35% 35%;box-shadow:0 0 0 2px #e8e0d0;opacity:.92;position:relative}
+.lounge-sil-pup::before{content:'';position:absolute;left:4px;right:4px;top:-8px;height:14px;background:#0a0a0c;border-radius:50%;box-shadow:0 0 0 2px #e8e0d0}
+.lounge-sil-pup.stage-2{transform:scale(1.15)}.lounge-sil-pup.stage-3{transform:scale(1.35)}
+.lounge-chain{display:flex;flex-wrap:wrap;gap:4px;align-items:center;margin-top:6px;font-size:10px}
+.lounge-form{padding:2px 6px;border:1px solid var(--goldd);border-radius:4px;background:rgba(0,0,0,.25)}
+.lounge-form.cur{border-color:var(--goldl);background:rgba(242,204,104,.2)}
+.lounge-arrow{opacity:.5}
+.lounge-beats{margin:8px 0 0;padding-left:1.1em;line-height:1.45}
+.lounge-party{display:grid;grid-template-columns:repeat(3,1fr);gap:6px;margin-top:8px}
+.lounge-slot.empty{opacity:.55}
+.lounge-plaque p{line-height:1.45}
