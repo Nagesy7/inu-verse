@@ -98,5 +98,5 @@ export const STATIC = {
   "bonesSwap": true,
   "randomPaid": []
  },
- "fingerprint": "76581d10d7eada59"
+ "fingerprint": "fb83671e96606602"
 };

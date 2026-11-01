@@ -663,3 +663,44 @@ body.short #title .title-card>.row{
 .lounge-party{display:grid;grid-template-columns:repeat(3,1fr);gap:6px;margin-top:8px}
 .lounge-slot.empty{opacity:.55}
 .lounge-plaque p{line-height:1.45}
+
+/* ===== HUD crowding fix (phones + desktop guide): the Connect Wallet pill (#inu-wallet, inline-positioned top-centre by the shared
+   kibble-pay widget, hence !important), the HUD chips, the tour, the town crier and the guide card never overlap or clip.
+   S = top safe edge. Portrait phones get 3 rows: [chips | ☰] / [clock | wallet] / [prompt, tour, crier | online, minimap]. ===== */
+/* title: the card starts below the pill instead of under it */
+#title:not([hidden]){box-sizing:border-box;padding-top:calc(max(6px,env(safe-area-inset-top)) + 52px)}
+#title .title-card{max-height:calc(100dvh - 64px - env(safe-area-inset-top) - env(safe-area-inset-bottom))}
+/* short landscape title: the card fills the screen, so the pill moves to the free space under the preview (left column) */
+body.short.landscape:not(.inworld) #title:not([hidden]){padding-top:0}
+body.short.landscape:not(.inworld) #title .title-card{max-height:calc(100dvh - 12px - env(safe-area-inset-top) - env(safe-area-inset-bottom))}
+body.short.landscape:not(.inworld) #inu-wallet{top:auto!important;bottom:calc(max(6px,env(safe-area-inset-bottom)) + 30px)!important;left:21vw!important;right:auto!important;transform:translateX(-50%)!important}
+/* desktop: the crier drops below the guide card while one is showing */
+body[data-guide] #crier-banner{top:calc(max(8px,env(safe-area-inset-top)) + 104px)}
+@media (pointer:coarse) and (orientation:portrait){
+ body.inworld #hud{flex-wrap:wrap!important;max-width:calc(100vw - 16px - 58px);row-gap:4px}
+ body.inworld #inu-wallet{top:calc(max(8px,env(safe-area-inset-top)) + 52px)!important;left:auto!important;right:max(8px,env(safe-area-inset-right))!important;transform:none!important}
+ body.inworld #inu-wallet-btn{max-width:calc(100vw - 186px);overflow:hidden;text-overflow:ellipsis}
+ #prompt{top:calc(max(8px,env(safe-area-inset-top)) + 100px);max-width:calc(100vw - 130px)}
+ #mp-chip{top:calc(max(8px,env(safe-area-inset-top)) + 100px)!important}
+ #minimap-wrap,body.mm-on #minimap-wrap{top:calc(max(8px,env(safe-area-inset-top)) + 140px)!important}
+ #tour{top:calc(max(8px,env(safe-area-inset-top)) + 100px)}
+ #crier-banner{top:calc(max(8px,env(safe-area-inset-top)) + 100px);max-width:calc(100vw - 24px)}
+ body.touring #crier-banner,body[data-guide] #crier-banner{top:auto;bottom:calc(max(8px,env(safe-area-inset-bottom)) + 156px)}
+ body[data-guide].inworld #crier-banner{bottom:calc(max(8px,env(safe-area-inset-bottom)) + 232px)}
+ #guidechip{left:12px;right:12px;bottom:calc(max(8px,env(safe-area-inset-bottom)) + 156px);flex-wrap:nowrap;justify-content:center}
+ #guidechip .gname{min-width:0;flex:1;white-space:normal;overflow:visible;line-height:1.35}#guidechip .gdist,#guidechip .btn{white-space:nowrap;flex:none}
+ body.touring #guidechip{display:none}
+}
+@media (pointer:coarse) and (orientation:landscape){
+ body.inworld #inu-wallet{top:calc(max(8px,env(safe-area-inset-top)) + 54px)!important;left:auto!important;right:max(8px,env(safe-area-inset-right))!important;transform:none!important}
+ body.inworld #inu-wallet-btn{max-width:calc(50vw - 170px);overflow:hidden;text-overflow:ellipsis}
+ #crier-banner,#prompt{max-width:calc(100vw - 340px)}
+ body.mm-on #minimap-wrap{top:calc(max(8px,env(safe-area-inset-top)) + 104px)!important}
+}
+/* narrow desktop windows: the centred pill met the clock chip; dock it just right of the chips (or under the ☰ when very narrow) */
+@media (pointer:fine) and (min-width:821px) and (max-width:1100px){body.inworld #inu-wallet{left:calc(max(8px,env(safe-area-inset-left)) + 484px)!important;transform:none!important}body.inworld #inu-wallet-btn{max-width:calc(100vw - 666px);overflow:hidden;text-overflow:ellipsis}}
+@media (pointer:fine) and (max-width:1100px){#guidechip .gname{white-space:normal;line-height:1.35}#guidechip .gdist,#guidechip .btn{white-space:nowrap;flex:none}}
+@media (pointer:fine) and (max-width:820px){
+ body.inworld #inu-wallet{top:calc(max(8px,env(safe-area-inset-top)) + 104px)!important;left:auto!important;right:max(8px,env(safe-area-inset-right))!important;transform:none!important}
+ body.mm-on #minimap-wrap{top:calc(max(8px,env(safe-area-inset-top)) + 156px)!important}
+}

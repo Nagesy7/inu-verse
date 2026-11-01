@@ -16,8 +16,15 @@ export const MONEY_WORDS = Object.freeze(['bone', 'bones', 'kibble', 'kibbles', 
   'usdc', 'sol', 'lamport', 'lamports', 'point', 'points', 'gem', 'gems', 'bux', 'dollar', 'dollars', 'price', 'cost', 'amount', 'value', 'unit', 'units', 'fee', 'fees', 'tip', 'tips',
   'currency', 'balance', 'pay', 'payment', 'qty', 'quantity', 'count', 'sum', 'total']);
 const words = (k) => String(k).replace(/([a-z])([A-Z])/g, '$1 $2').toLowerCase().split(/[^a-z0-9$]+/).map((w) => w.replace(/^\$/, '')).filter(Boolean);
-export const moneyish = (k) => /bone|kibble|pawmark/i.test(String(k)) || words(k).some((w) => MONEY_WORDS.includes(w));
-const isMoneyKey = (k) => { const s = String(k).toLowerCase().replace(/[^a-z$]/g, ''); return ECON_KEYS.filter((x) => x !== 'wardrobe' && x !== 'inventory').includes(s.replace(/^\$/, '')) || moneyish(k); };
+const CURRENCY_KEYS = Object.freeze(ECON_KEYS.filter((x) => x !== 'wardrobe' && x !== 'inventory'));
+// moneyish: the id IS a real currency id (exact match, case/$/separator-insensitive: 'bones', 'BONES', '$KIBBLE', 'paw_marks') or
+// LEADS with one as a whole word (a currency-named item: 'kibble_bag', 'bone_pile', 'bones_x10'). Never a bare substring and never a
+// descriptive word later in a real item's name: f:cosy_bone_street_sketch is a catalog sketch, not currency (src/trade.js decides).
+const isCurrencyWord = (w) => MONEY_WORDS.includes(w) || CURRENCY_KEYS.includes(w) || ECON_UNITS.some((u) => u.toLowerCase().replace(/[^a-z0-9]/g, '') === w) || w === SIM_UNIT.toLowerCase();
+export const moneyish = (k) => { const s = String(k).toLowerCase().replace(/^\$/, '').replace(/[^a-z0-9]/g, ''); if (!s) return false;
+  return isCurrencyWord(s) || isCurrencyWord(words(k)[0] || ''); };
+// Entry-data KEYS are stricter: any whole word that is a currency word (camelCase / snake_case split) counts, e.g. bonesPaid, kibble_amount.
+const isMoneyKey = (k) => moneyish(k) || words(k).some(isCurrencyWord);
 const isUnit = (v) => typeof v === 'string' && (ECON_UNITS.includes(v.trim().toUpperCase()) || v.trim().toUpperCase() === SIM_UNIT || v.trim().toUpperCase() === 'PAWMARKS');
 
 // The one gate for what a deal may carry. Returns { a, b } (fresh arrays) or throws FirewallError: 'economy' for anything
@@ -32,7 +39,7 @@ export function offerItems(o) {
     for (const id of list) {
       if (typeof id === 'number' || typeof id === 'bigint' || (id && typeof id === 'object') || isUnit(id)) throw new FirewallError('economy', `side ${who}: only item ids, never amounts or currency`);
       if (typeof id !== 'string' || !ITEM_RE.test(id)) throw new FirewallError(/^\s*\d/.test(String(id)) ? 'economy' : 'shape', `side ${who}: "${String(id).slice(0, 40)}" is not an item id`);
-      if (isMoneyKey(id.slice(2))) throw new FirewallError('economy', `side ${who}: "${id}" names a currency`);
+      if (moneyish(id.slice(2))) throw new FirewallError('economy', `side ${who}: "${id}" names a currency`);
       if (out.includes(id)) throw new FirewallError('shape', `side ${who}: "${id}" listed twice`);
       out.push(id);
     }
