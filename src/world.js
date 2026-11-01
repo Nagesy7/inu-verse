@@ -70,7 +70,7 @@ export const GAME_DOORS = [
   { id: 'kibblepay', name: 'Kibble Pay Office', x: 58, y: 60, w: 4, h: 4, door: { tx: 59, ty: 64 }, url: 'https://kibble-pay.vercel.app/' },
 ];
 // Community notice board (Telegram). A sign, not a door: tap A to open the invite link.
-export const COMMUNITY = { id: 'telegram', name: 'Community Board (Telegram)', x: 5, y: 53, url: 'https://t.me/+L1LZkNnEsAA2M2Jl' };
+export const COMMUNITY = { id: 'telegram', name: 'Community Board (Telegram)', x: 5, y: 53, url: 'https://t.me/KibbleCoin' };
 // Kibble Bank: read-only wallet view (balance, inventory, purchase history). No deposits, lending or yield.
 export const BANK = { id: 'bank', name: 'Kibble Bank', x: 40, y: 53, w: 5, h: 4, door: { tx: 42, ty: 57 } };
 export const SQUARE = { pools: { x: 19, y: 81 }, burn: { x: 28.5, y: 81 }, quest: { x: 10.5, y: 80 } }; // Item 5 monuments + quest board

@@ -10,7 +10,7 @@ test('every game has a building with a reachable door, a Places entry and a corr
     assert.ok(isSolid(g.x + 1, g.y + 1)); assert.ok(!isSolid(g.door.tx, g.door.ty)); assert.ok(findPath(4, 19, g.door.tx, g.door.ty), 'reach ' + name); assert.ok(ids.has(g.id), name + ' missing from Places');
     assert.ok(NETWORK.has(MAP[g.door.ty][g.door.tx]), name + ' door off the road/path network'); }
   assert.ok(!JSON.stringify(all).includes('meme-kombat'), 'old Meme Brawl link');
-  assert.match(COMMUNITY.url, /^https:\/\/t\.me\/\+L1LZkNnEsAA2M2Jl$/); assert.ok(interactables(null).some((i) => i.kind === 'community')); });
+  assert.match(COMMUNITY.url, /^https:\/\/t\.me\/KibbleCoin$/); assert.ok(interactables(null).some((i) => i.kind === 'community')); });
 const at = (d, face, moving = true) => ({ x: (d.tx + 0.5) * TILE, y: (d.ty + 0.5) * TILE, face, moving });
 // arrive from the tile in front (a fresh state never arms the tile you start/spawn on)
 const from = (st, d, doors, now) => { const r = doorDir(d); doorStep(st, { x: (d.tx - r.dx + 0.5) * TILE, y: (d.ty - r.dy + 0.5) * TILE, face: r.face, moving: false }, doors, now); };
