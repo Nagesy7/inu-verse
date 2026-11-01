@@ -2240,6 +2240,6 @@ addEventListener('message', (e) => { const m = DIS.arcadeMessage(e, new URL(ARCA
   else if (m.kind === 'ready') { const b = document.querySelector('#arcade-ov .arc-bar b'); if (b && arcadeOpen) b.textContent = m.cabinetId && m.cabinetId !== 'arcade' ? 'PLAYING ' + DIS.cabTitle(m.cabinetId).toUpperCase() : 'INU ARCADE'; }
   else if (m.kind === 'score' && arcadeOpen) toast(DIS.scoreToast(m), 'good'); });
 Object.assign(window.__inu, { act: ACT, doAction: (k) => doAction(k), wheel, hud: () => state && hud() }); // Round 3 test hooks (actions + wheel)
-// Hub Bones rewards (daily quests / season pass / invites at kibbleinu.com): Bones only, collected once per server receipt by /inu-profile.js.
+// Hub Bones rewards (daily quests / season pass / invites at kibbleinu.com): Bones only, collected once per server receipt by kibble-pay /inu-eco.js.
 window.InuBonesSink = (n) => { if (!state || DEMO || !(n > 0)) return false; state.bones = (state.bones || 0) + Math.floor(n); hud(); persist(); toast(`+${Math.floor(n)} Bones from Inu quests`, 'good'); return true; };
-window.InuProfile?.collectBones?.(window.InuBonesSink);
+window.InuEco?.collectBones?.(window.InuBonesSink);
