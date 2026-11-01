@@ -690,6 +690,8 @@ body[data-guide] #crier-banner{top:calc(max(8px,env(safe-area-inset-top)) + 104p
  #guidechip{left:12px;right:12px;bottom:calc(max(8px,env(safe-area-inset-bottom)) + 156px);flex-wrap:nowrap;justify-content:center}
  #guidechip .gname{min-width:0;flex:1;white-space:normal;overflow:visible;line-height:1.35}#guidechip .gdist,#guidechip .btn{white-space:nowrap;flex:none}
  body.touring #guidechip{display:none}
+ /* the tour card spans the width at the chip's row: the live players-online chip waits until the tour ends */
+ body.touring #mp-chip{display:none!important}
 }
 @media (pointer:coarse) and (orientation:landscape){
  body.inworld #inu-wallet{top:calc(max(8px,env(safe-area-inset-top)) + 54px)!important;left:auto!important;right:max(8px,env(safe-area-inset-right))!important;transform:none!important}
