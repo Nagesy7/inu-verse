@@ -96,7 +96,7 @@ export async function dexInfo(mint, f = fetch) { try { const r = await f(`https:
 // Real on-chain checks through the server RPC (api/_lib/clean.js), cached per coin in Upstash (launchhall:clean:<mint>) for
 // CLEAN_TTL so the Helius free tier is only hit about twice an hour per coin; stale results are served while one request
 // recomputes (lock launchhall:cleanlock:<mint>). At most CLEAN_PER_REQ coins are computed per request; the rest say pending.
-export const CLEAN_KEY = "clean:v2:"; // bump when the checks change so old results are not served
+export const CLEAN_KEY = "clean:v3:"; // bump when the checks change so old results are not served
 export const CLEAN_TTL_MS = 30 * 60_000, CLEAN_MAX_AGE_MS = 24 * 3600_000, CLEAN_PER_REQ = 2, CLEAN_MAX = 12;
 export async function dexLiquidity(mint, f = fetch) { try { const r = await f(`https://api.dexscreener.com/tokens/v1/solana/${mint}`); if (!r.ok) return null; const a = (await r.json() || []).filter((p) => p.baseToken?.address === mint);
   return a.length ? a.reduce((s, p) => s + Number(p.liquidity?.usd || 0), 0) : null; } catch { return null; } }

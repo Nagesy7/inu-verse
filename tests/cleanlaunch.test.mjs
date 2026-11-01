@@ -63,3 +63,38 @@ test('unreadable transactions never count as clean (first-slot + dev history -> 
   const rpc = fakeRpc(); rpc.batch = async (reqs) => reqs.map(() => null); const r = await cleanChecks(MINT, { rpc, solUsd: async () => 150 });
   assert.equal(r.checks.snipes.status, 'unknown'); assert.match(r.checks.snipes.note, /Could not read/); assert.notEqual(r.overall, 'pass');
   assert.match(fs.readFileSync('api/_lib/clean.js', 'utf8'), /maxSupportedTransactionVersion: 1/); });
+
+// creatorSold with the per-coin published project-wallet allowlist ($KIBBLE only)
+import { creatorSoldCheck, PROJECT_WALLETS } from '../api/_lib/clean.js';
+const PV = 'BzLYTFAfUsjzQ5x8bx5BbPK4DFtaHrLCuferkvkxTNGJ', BV = 'Bv35NAj1XvfSGrQKpHHw29ojZmY4NYyUZr7rwXpPhW8Y';
+const tb = (o) => Object.entries(o).map(([owner, amount]) => ({ mint: MINT, owner, uiTokenAmount: { amount: String(amount) } }));
+const tx = (pre, post) => ({ meta: { preTokenBalances: tb(pre), postTokenBalances: tb(post) } });
+const M = 1e6; // 1 token at 6 decimals
+const kibbleTxs = [
+  tx({ [CURVE]: 1000 * M }, { [CURVE]: 724 * M, [CREATOR]: 276 * M }),            // creator buys 276
+  tx({ [CREATOR]: 276 * M, [PV]: 0 }, { [CREATOR]: 76 * M, [PV]: 200 * M }),      // moves 200 to President's Vault
+  tx({ [CREATOR]: 76 * M, [CURVE]: 724 * M }, { [CREATOR]: 0, [CURVE]: 800 * M }), // sells 76 on the curve
+  tx({ [BV]: 100 * M, [CREATOR]: 0 }, { [BV]: 0, [CREATOR]: 100 * M }),           // receives 100 from Bone Vault
+  tx({ [CREATOR]: 100 * M, [CURVE]: 800 * M }, { [CREATOR]: 52 * M, [CURVE]: 848 * M }), // sells 48 on the curve
+];
+const kSigs = kibbleTxs.map((_, i) => ({ signature: 'sig' + i }));
+test('creatorSold: $KIBBLE transfers to its published project wallets are listed but not counted; curve sells still count', () => {
+  assert.deepEqual(Object.keys(PROJECT_WALLETS[MINT]).sort(), [PV, CREATOR, BV].sort());
+  const r = creatorSoldCheck(kibbleTxs, { mint: MINT, creator: CREATOR, curve: CURVE, sigs: kSigs });
+  assert.equal(r.status, 'warn'); assert.equal(r.value, 44.93); // 124 sold of 276 bought (inbound from Bone Vault excluded)
+  assert.equal(r.offloaded.length, 2); assert.ok(r.offloaded.every((s) => s.kind === 'swapped into the pump.fun curve for SOL'));
+  assert.match(r.note, /sig2/); assert.match(r.note, /sig4/); assert.match(r.note, /President's Vault/); assert.match(r.note, /Bone Vault/);
+  assert.equal(r.moved.length, 1); assert.equal(r.moved[0].signature, 'sig1'); assert.equal(r.fromProject.length, 1); });
+test('creatorSold: other coins (no allowlist) count every outflow exactly as before', () => {
+  const r = creatorSoldCheck(kibbleTxs, { mint: 'OtherMint1111', creator: CREATOR, curve: CURVE, sigs: kSigs, project: undefined });
+  const other = kibbleTxs.map((t) => ({ meta: { preTokenBalances: t.meta.preTokenBalances.map((b) => ({ ...b, mint: 'X' })), postTokenBalances: t.meta.postTokenBalances.map((b) => ({ ...b, mint: 'X' })) } }));
+  const o = creatorSoldCheck(other, { mint: 'X', creator: CREATOR, curve: CURVE, sigs: kSigs });
+  assert.equal(o.status, 'fail'); assert.equal(o.value, 86.17); assert.match(o.note, /went down by 86.17% of what it received/); assert.equal(o.offloaded, undefined);
+  assert.ok(r); });
+test('creatorSold: a send to a wallet NOT on the allowlist still counts, even for $KIBBLE', () => {
+  const t = [tx({ [CURVE]: 100 * M }, { [CURVE]: 0, [CREATOR]: 100 * M }), tx({ [CREATOR]: 100 * M, [W(5)]: 0 }, { [CREATOR]: 0, [W(5)]: 100 * M })];
+  const r = creatorSoldCheck(t, { mint: MINT, creator: CREATOR, curve: CURVE, sigs: [{ signature: 'a' }, { signature: 'b' }] });
+  assert.equal(r.status, 'fail'); assert.equal(r.offloaded[0].kind, 'sent out'); });
+test('creatorSold: only moves to project wallets -> pass with the moves listed', () => {
+  const r = creatorSoldCheck(kibbleTxs.slice(0, 2), { mint: MINT, creator: CREATOR, curve: CURVE, sigs: kSigs });
+  assert.equal(r.status, 'pass'); assert.match(r.note, /Not counted/); assert.match(r.note, /sig1/); });

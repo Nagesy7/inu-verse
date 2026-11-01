@@ -4,6 +4,7 @@
 //   creator balance went down (offloaded or moved) · other wallets buying in the creation slot (bundles/snipes) · liquidity
 import { findPda, b58decode, b58encode, bondingCurveOf, PUMP_PROGRAM } from "../coins.js";
 import { redact } from "./rpc.js";
+import { WALLETS, KIBBLE_MINT } from "../../src/wallets.js";
 export const PUMP_FEES = "pfeeUxB6jkeY1Hxd7CsFCAjcbHA9rWtchMGdZ6VojVZ"; // pump.fun creator fee sharing program (SharingConfig PDA ["sharing-config", mint])
 export const PUMP_AMM = "pAMMBay6oceH9fJKBRHGP5D4bD4sWpmSwMn52FMfXEA";
 export const RAYDIUM_AUTH = "5Q544fKrFoe6tsEbD7S8EmxGTJYAKtTVhAW5Q5pge4j1";
@@ -58,6 +59,39 @@ export async function holderTable(mint, rpc, curveAddr = bondingCurveOf(mint)) {
   return { holders, excluded, accounts: big.length, unresolved: big.length - rows.length };
 }
 
+// Per-coin PUBLISHED project wallets (explicit public allowlist, not a general bypass). Plain transfers between the creator
+// and these wallets are shown but not counted as selling (in or out); every other outflow (pump.fun curve / AMM sells, sends
+// to any other wallet) still counts. Only coins listed here are affected. Source: the wallets the project publishes on its site.
+export const PROJECT_WALLETS = {
+  // $KIBBLE (kibbleinu.com): President's Vault, Kennel Chest (the pump.fun creator), Bone Vault, as published in src/wallets.js
+  [KIBBLE_MINT]: Object.fromEntries([WALLETS.presidentsVault, WALLETS.kennelChest, WALLETS.boneVault].map((w) => [w.address, w.name])),
+};
+const fmt = (raw, dec = 6) => (raw / 10 ** dec).toLocaleString("en-US", { maximumFractionDigits: 0 });
+// Creator balance went down: walk the creator's token transactions. Per tx, the creator's change d; the counterparties are the
+// other owners whose balance of this mint moved the opposite way. A tx whose counterparties are ALL published project wallets
+// is an internal move (listed, not counted); everything else counts (to the bonding curve = "swapped into the pump.fun curve for SOL").
+export function creatorSoldCheck(txs, { mint, creator, curve, sigs = [], partial = false, decimals = 6, project = PROJECT_WALLETS[mint] || null }) {
+  let out = 0, inn = 0, missing = 0; const counted = [], moved = [], fromProject = [];
+  txs.forEach((t, i) => { if (!t) { missing++; return; } const pre = t.meta?.preTokenBalances, post = t.meta?.postTokenBalances, sig = sigs[i]?.signature || t.transaction?.signatures?.[0] || null;
+    const d = bal(post, creator, mint) - bal(pre, creator, mint); if (!d) return;
+    const owners = [...new Set([...(pre || []), ...(post || [])].filter((b) => b.mint === mint && b.owner && b.owner !== creator).map((b) => b.owner))];
+    const cps = owners.filter((o) => Math.sign(bal(post, o, mint) - bal(pre, o, mint)) === -Math.sign(d));
+    const internal = !!project && cps.length > 0 && cps.every((o) => project[o]);
+    const row = { amount: Math.abs(d), counterparty: cps.length === 1 ? cps[0] : cps, name: internal ? cps.map((o) => project[o]).join(" + ") : null, signature: sig };
+    if (internal) { (d < 0 ? moved : fromProject).push(row); return; }
+    if (d < 0) { out += -d; counted.push({ ...row, kind: cps.includes(curve) ? "swapped into the pump.fun curve for SOL" : cps.length ? "sent out" : "burned or unknown" }); } else inn += d; });
+  if (missing > txs.length / 2) return unknown("Creator history unavailable from RPC right now");
+  const n = txs.length - missing, tail = partial ? ", latest transactions only" : "", sumOf = (a) => a.reduce((s, r) => s + r.amount, 0);
+  const extra = project ? { projectWallets: project, offloaded: counted, moved, fromProject } : {};
+  const projTxt = project && (moved.length || fromProject.length) ? ` Not counted (moves between the project's published wallets): ${moved.length ? `${fmt(sumOf(moved), decimals)} moved out to ${[...new Set(moved.map((r) => r.name))].join(", ")} in ${moved.length} transfer${moved.length === 1 ? "" : "s"} (${moved.map((r) => short(r.signature)).join(", ")})` : ""}${moved.length && fromProject.length ? "; " : ""}${fromProject.length ? `${fmt(sumOf(fromProject), decimals)} received from ${[...new Set(fromProject.map((r) => r.name))].join(", ")} (${fromProject.map((r) => short(r.signature)).join(", ")})` : ""}.` : "";
+  const none = `No outflow from the creator in ${n} transaction${n === 1 ? "" : "s"}${partial ? " (latest only)" : ""}`;
+  if (out === 0) return project ? st("pass", 0, `${none} outside the project's published wallets.${projTxt}`, extra) : st("pass", 0, none);
+  const peak = Math.max(inn, out, 1), p = pct(out, peak), status = out / peak >= LIMITS.soldFrac ? "fail" : "warn";
+  if (!project) return st(status, p, `Creator balance went down by ${p}% of what it received (offloaded or moved)${tail}`);
+  const list = counted.map((r) => `${fmt(r.amount, decimals)} ${r.kind}${r.kind === "sent out" ? " " + [].concat(r.counterparty).map(short).join("+") : ""} (${r.signature})`).join("; ");
+  return st(status, p, `Creator offloaded or sent out ${fmt(out, decimals)} = ${p}% of the ${fmt(inn, decimals)} it received from outside the project's published wallets${tail}. ${counted.length} counted outflow${counted.length === 1 ? "" : "s"}: ${list}.${projTxt}`, extra);
+}
+
 export async function cleanChecks(mint, { rpc, creatorHint = null, dexLiquidityUsd = async () => null, solUsd = async () => null, now = Date.now() } = {}) {
   const c = {}, ctx = {};
   // 1) mint account: authorities, supply, token program
@@ -91,11 +125,7 @@ export async function cleanChecks(mint, { rpc, creatorHint = null, dexLiquidityU
       const partial = sigs.length >= LIMITS.creatorTxs; sigs = [...new Map(sigs.filter((s) => !s.err).map((s) => [s.signature, s])).values()].slice(0, LIMITS.creatorTxs);
       if (!sigs.length) c.creatorSold = st("pass", 0, "Creator never held this coin");
       else { const txs = await rpc.batch(sigs.map((s) => ["getTransaction", [s.signature, { encoding: "json", maxSupportedTransactionVersion: 1, commitment: "confirmed" }]]));
-        let out = 0, inn = 0, missing = 0; for (const t of txs) { if (!t) { missing++; continue; } const d = bal(t.meta?.postTokenBalances, ctx.creator, mint) - bal(t.meta?.preTokenBalances, ctx.creator, mint); if (d < 0) out += -d; else inn += d; }
-        const peak = Math.max(inn, out, 1), frac = out / peak;
-        if (missing > sigs.length / 2) c.creatorSold = unknown("Creator history unavailable from RPC right now");
-        else c.creatorSold = out === 0 ? st("pass", 0, `No outflow from the creator in ${sigs.length} transaction${sigs.length === 1 ? "" : "s"}${partial ? " (latest only)" : ""}`)
-          : st(frac >= LIMITS.soldFrac ? "fail" : "warn", pct(out, peak), `Creator balance went down by ${pct(out, peak)}% of what it received (offloaded or moved)${partial ? ", latest transactions only" : ""}`); } }
+        c.creatorSold = creatorSoldCheck(txs, { mint, creator: ctx.creator, curve: curveAddr, sigs, partial, decimals: ctx.decimals ?? 6 }); } }
     catch { c.creatorSold = unknown("Creator history unavailable from RPC right now"); } }
   // 6) bundled / sniped first-slot entries: find the creation slot from the bonding-curve history
   try { let before, all = [], done = false; for (let i = 0; i < LIMITS.historyPages; i++) { const page = (await rpc.one("getSignaturesForAddress", [curveAddr, { limit: 1000, ...(before ? { before } : {}) }])) || []; all.push(...page); if (page.length < 1000) { done = true; break; } before = page[page.length - 1].signature; }
