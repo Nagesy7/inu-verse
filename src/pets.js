@@ -33,7 +33,7 @@ export function followStep(f, tx, ty, dt) { const dx = tx - f.x, dy = ty - f.y, 
 // ---------- pixel sprites (native 16x16, 2 frames) ----------
 const cache = new Map();
 export function petSprite(species, frame = 0, pal = null) { const k = species + frame + (pal ? pal.join('') : ''); let cv = cache.get(k); if (cv) return cv;
-  cv = document.createElement('canvas'); cv.width = 16; cv.height = 16; const c = cv.getContext('2d'), [a, b, e] = pal || PETS[species].pal, I = '#141a2e', P = (x, y, w, h, col) => { c.fillStyle = col; c.fillRect(x, y, w, h); }, f = frame;
+  cv = document.createElement('canvas'); cv.width = 16; cv.height = 16; const c = cv.getContext('2d'), [a, b, e] = pal || PETS[species]?.pal || ['#e3a35a', '#a8662c', '#fff1dc'], I = '#141a2e', P = (x, y, w, h, col) => { c.fillStyle = col; c.fillRect(x, y, w, h); }, f = frame;
   const legs = (xs, y) => xs.forEach((x, i) => P(x, y + ((i + f) % 2 ? 0 : -1), 2, 2, b));
   switch (species) {
     case 'kitten': P(3, 7, 9, 6, I); P(4, 8, 7, 4, a); P(9, 3, 6, 6, I); P(10, 4, 4, 4, a); P(10, 2, 2, 2, I); P(13, 2, 2, 2, I); P(11, 5, 1, 1, I); P(13, 5, 1, 1, I); P(1, 5 + f, 2, 4, a); P(5, 9, 4, 1, b); legs([4, 9], 13); break;
@@ -47,6 +47,9 @@ export function petSprite(species, frame = 0, pal = null) { const k = species + 
     case 'peacock': for (let i = 0; i < 5; i++) { P(0 + i * 2, 1 + (i % 2) + f, 3, 9, b); P(1 + i * 2, 3 + (i % 2) + f, 1, 2, e); } P(8, 5, 5, 8, I); P(9, 6, 3, 6, a); P(10, 2, 3, 4, a); P(13, 3, 1, 1, e); P(11, 1, 1, 1, e); P(9, 13, 1, 2, b); P(11, 13, 1, 2, b); break;
     case 'dragon': P(2, 8, 10, 5, I); P(3, 9, 8, 3, a); P(9, 5, 6, 5, I); P(10, 6, 4, 3, a); P(12, 7, 1, 1, I); P(4, 5 - f, 4, 4, b); P(5, 6 - f, 2, 2, e); P(0, 10, 3, 2, a); P(0, 11, 1, 1, e); for (const x of [4, 6, 8]) P(x, 8, 1, 1, e); legs([4, 9], 13); break;
     case 'koi': P(2, 4, 12, 11, I); P(3, 5, 10, 9, c3(b)); P(5 + f * 2, 8, 5, 3, a); P(6 + f * 2, 9, 2, 1, e); P(3 + f * 2, 9, 2, 1, a); P(4, 6, 1, 3, '#ffffff'); P(3, 14, 10, 1, '#e3b341'); break;
+    case 'pup': // chunky little shiba-style pup: pointy ears, cream muzzle + belly, curled tail that wags
+      P(3, 8, 9, 6, I); P(4, 9, 7, 4, a); P(5, 11, 5, 2, e); P(8, 3, 7, 7, I); P(9, 4, 5, 5, a); P(8, 1, 3, 3, I); P(12, 1, 3, 3, I); P(9, 2, 1, 2, b); P(13, 2, 1, 2, b);
+      P(11, 7, 4, 2, e); P(14, 6, 2, 2, I); P(11, 5, 1, 2, I); P(9, 7, 1, 1, '#ff9fb8'); P(0 + f, 4, 4, 5, I); P(1 + f, 5, 2, 3, a); P(2 + f, 5, 1, 1, e); legs([4, 9], 14); break;
     case 'snowowl': P(4, 3, 9, 11, I); P(5, 4, 7, 9, a); P(6, 5, 2, 2, e); P(9, 5, 2, 2, e); P(6, 5, 1, 1, I); P(10, 5, 1, 1, I); P(8, 7, 1, 1, '#e3b341'); P(5, 9, 7, 1, b); P(4 - f, 7, 1, 4, b); P(12 + f, 7, 1, 4, b); P(6, 14, 1, 2, '#e3b341'); P(10, 14, 1, 2, '#e3b341'); break;
   }
   cv = hires(cv); if (!globalThis.__noDetail) shadeSprite(cv, { r: 2, light: 0.26, dark: 0.28, glint: 'small', grad: 0.14, bands: [0.18, 0.22] }); cache.set(k, cv); return cv; } // 32x32: 2x pixel density (same palette)

@@ -2,6 +2,7 @@ import { PLOTS, PLOT_COST, TILE } from './world.js';
 import { ensurePacks } from './packs.js';
 import { FURNITURE, WALLS, FLOORS, canPlace } from './furniture.js';
 import { markBought, canSellFurniture, afterFurnitureSold } from './trade.js';
+import { ensureClub, roomOf, SAVE_V } from './club/state.js';
 
 export const START_BONES = 500, START_KIBBLE = 200000, BONES_PER_KIBBLE = 0.0025, SELL_BACK = 0.5;
 // The six starter Shiba coats (only avatar choices at character creation).
@@ -18,13 +19,13 @@ export const normalizeCoat = (c) => (COATS[c] ? c : COATS[COAT_ALIASES[c]] ? COA
 
 export function newGame({ name = 'Inu', coat = 'tan' } = {}) {
   const s = {
-    v: 1, player: { name: String(name).slice(0, 14) || 'Inu', coat: normalizeCoat(coat), x: 31.5 * TILE, y: 23.5 * TILE },
+    v: SAVE_V, player: { name: String(name).slice(0, 14) || 'Inu', coat: normalizeCoat(coat), x: 31.5 * TILE, y: 23.5 * TILE },
     bones: START_BONES, kibble: START_KIBBLE, plots: {}, inventory: {}, tokens: [], uid: 1,
     stats: { shifts: 0, bonesEarned: 0, served: 0 }, simTime: 0,
     wardrobe: { owned: [], equipped: {} },
     packs: null,
   };
-  ensurePacks(s); s.mall = { v: 1, treasury: 0, pools: { daily: 0, weekly: 0, monthly: 0 }, owned: [], cars: [], ledger: [], winners: [], period: { day: 0 }, activity: { dayBones: 0, weekDecor: 0 } }; return s;
+  ensurePacks(s); s.mall = { v: 1, treasury: 0, pools: { daily: 0, weekly: 0, monthly: 0 }, owned: [], cars: [], ledger: [], winners: [], period: { day: 0 }, activity: { dayBones: 0, weekDecor: 0 } }; ensureClub(s); return s;
 }
 
 const ok = (extra = {}) => ({ ok: true, ...extra });
@@ -60,6 +61,7 @@ export function buyFurniture(s, id, qty = 1) {
 
 export function sellFromInventory(s, id) {
   if (!s.inventory[id]) return fail('None in inventory');
+  if (FURNITURE[id]?.party) return fail('Party items are keepsakes and can\'t be sold');
   if (!canSellFurniture(s, id)) return fail("Got it in a trade, so it can't be sold for Bones");
   s.inventory[id]--; if (!s.inventory[id]) delete s.inventory[id]; afterFurnitureSold(s, id);
   const refund = Math.floor(FURNITURE[id].price * SELL_BACK);
@@ -67,7 +69,7 @@ export function sellFromInventory(s, id) {
 }
 
 export function placeFurniture(s, plotId, id, x, y, rot = 0) {
-  const home = s.plots[plotId];
+  const home = roomOf(s, plotId);
   if (!home) return fail('Not your plot');
   if (!s.inventory[id]) return fail('Buy it at the Furniture Shop first');
   if (!canPlace(home, id, x, y, rot)) return fail('Blocked');
@@ -77,28 +79,29 @@ export function placeFurniture(s, plotId, id, x, y, rot = 0) {
 }
 
 export function moveFurniture(s, plotId, uid, x, y, rot) {
-  const home = s.plots[plotId]; const it = home?.items.find((i) => i.uid === uid);
+  const home = roomOf(s, plotId); const it = home?.items.find((i) => i.uid === uid);
   if (!it) return fail('Missing');
   if (!canPlace(home, it.id, x, y, rot, uid)) return fail('Blocked');
   it.x = x; it.y = y; it.rot = rot % 4; return ok();
 }
 
 export function storeFurniture(s, plotId, uid) {
-  const home = s.plots[plotId]; const i = home?.items.findIndex((x) => x.uid === uid);
+  const home = roomOf(s, plotId); const i = home?.items.findIndex((x) => x.uid === uid);
   if (i == null || i < 0) return fail('Missing');
   const [it] = home.items.splice(i, 1); s.inventory[it.id] = (s.inventory[it.id] || 0) + 1; return ok();
 }
 
 export function sellPlaced(s, plotId, uid) {
-  const home = s.plots[plotId]; const it = home?.items.find((x) => x.uid === uid);
+  const home = roomOf(s, plotId); const it = home?.items.find((x) => x.uid === uid);
   if (!it) return fail('Missing');
+  if (FURNITURE[it.id]?.party) return fail('Party items are keepsakes and can\'t be sold');
   if (!canSellFurniture(s, it.id)) return fail("Got it in a trade, so it can't be sold for Bones");
   const r = storeFurniture(s, plotId, uid); if (!r.ok) return r;
   return sellFromInventory(s, it.id);
 }
 
 export function upgrade(s, plotId, kind, level) {
-  const home = s.plots[plotId]; if (!home) return fail('Not your plot');
+  const home = roomOf(s, plotId); if (!home) return fail('Not your plot');
   const list = kind === 'wall' ? WALLS : FLOORS; const opt = list[level];
   if (!opt) return fail('Unknown');
   if (home[kind] === level) return fail('Already applied');

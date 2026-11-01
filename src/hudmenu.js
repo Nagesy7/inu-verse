@@ -2,6 +2,7 @@
 // Every other control is moved (with its existing handlers) into a single tidy drawer.
 export const DRAWER = [
   ['Explore', ['w-guide', 'btn-quests', 'w-places', 'w-map', 'zoomctl']],
+  ['Club', ['btn-kennel', 'btn-pups', 'btn-stamps', 'btn-party', 'btn-times']],
   ['Me', ['btn-wardrobe', 'btn-garage', 'btn-companion', 'btn-pack', 'btn-engage', 'btn-pools']],
   ['Fun', ['btn-emote', 'dr-bork', 'btn-photo']],
   ['Settings', ['btn-mute', 'dr-minimap', 'dr-joy', 'btn-help', 'btn-phantom']],

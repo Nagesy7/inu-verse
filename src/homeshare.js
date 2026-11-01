@@ -20,8 +20,9 @@ const rndStr = (n, abc, rnd) => Array.from({ length: n }, () => abc[Math.floor(r
 function rand() { try { const a = new Uint32Array(1); globalThis.crypto.getRandomValues(a); return a[0] / 2 ** 32; } catch { return Math.random(); } }
 export function newShare(rnd = rand) { return { id: 'h' + rndStr(12, '0123456789abcdefghijklmnopqrstuvwxyz', rnd), key: rndStr(32, '0123456789abcdef', rnd) }; }
 export function ensureShare(s, rnd) { if (!s.homeShare || !validHomeId(s.homeShare.id) || !/^[0-9a-f]{32}$/.test(s.homeShare.key || '')) s.homeShare = newShare(rnd); return s.homeShare; }
-// your home = the plot you last decorated in build mode (homeShare.plot), else the first plot you claimed
-export const myHomePlot = (s) => { const p = s?.homeShare?.plot; return p && s.plots?.[p] ? p : Object.keys(s?.plots || {})[0] || null; };
+// your home = the plot you last decorated in build mode (homeShare.plot; 'kennel' = your personal Kennel room, src/club),
+// else the first plot you claimed, else your Kennel (every player has one, so everyone can host visitors)
+export const myHomePlot = (s) => { if (!s) return null; const p = s.homeShare?.plot; if (p === 'kennel' || (p && s.plots?.[p])) return p; return Object.keys(s.plots || {})[0] || 'kennel'; };
 // layout copy that is safe to publish: only known furniture, in bounds, no overlaps (same rule as build mode), known wall/floor
 export function cleanLayout(l) { if (!l || typeof l !== 'object' || !Array.isArray(l.items)) return null;
   const out = { items: [], wall: Number.isInteger(l.wall) && WALLS[l.wall] ? l.wall : 0, floor: Number.isInteger(l.floor) && FLOORS[l.floor] ? l.floor : 0 };

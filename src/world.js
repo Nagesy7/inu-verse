@@ -75,6 +75,7 @@ export const COMMUNITY = { id: 'telegram', name: 'Community Board (Telegram)', x
 export const BANK = { id: 'bank', name: 'Kibble Bank', x: 40, y: 53, w: 5, h: 4, door: { tx: 42, ty: 57 } };
 export const SQUARE = { pools: { x: 19, y: 81 }, burn: { x: 28.5, y: 81 }, quest: { x: 10.5, y: 80 } }; // Item 5 monuments + quest board
 export { LOTS } from './biz.js';
+import { BOOTH } from './club/parties.js';
 import { LOTS as BIZ_LOTS } from './biz.js';
 import { SIM_SOLIDS, SIM_SPOTS } from './sim/place.js'; // Paw Audit Bureau desk, Barkley Precinct kiosk, Greenpaw Rangers station (src/sim/**)
 export function buildMap() {
@@ -144,6 +145,7 @@ export function interactables(state) {
   for (const b of MALL_BUILDINGS) list.push({ kind: 'mall', id: b.id, name: b.name, cat: b.cat, ...doorTile(b) });
   list.push({ kind: 'mall', id: 'board', name: 'Mall prize-pool board', cat: 'board', tx: STATUE.x + 3, ty: STATUE.y });
   { const K = KIBBLE_PLAZA; list.push({ kind: 'kibble', id: 'kstatue', name: 'Kibble Statue (town mood)', tx: K.statue.x, ty: K.statue.y + 1 }, { kind: 'kibble', id: 'crier', name: 'Crier Barkley', tx: K.crier.x, ty: K.crier.y + 1 }, { kind: 'kibble', id: 'dailybone', name: 'The Daily Bone', tx: K.news.x, ty: K.news.y + 1 }, { kind: 'kibble', id: 'kwall', name: 'Kibble Kennel wall', tx: K.wall.x + Math.floor(K.wall.w / 2), ty: K.wall.y + 1 }, { kind: 'kibble', id: 'raidgate', name: 'Boss Raid gate (free)', tx: K.raid.x + 1, ty: K.raid.y + 1 }); }
+  list.push({ kind: 'club', id: 'partybooth', name: 'Party Booth', tx: BOOTH[0], ty: BOOTH[1] });
   list.push({ kind: 'mall', id: 'leaders', name: 'Leaderboards Hall', cat: 'leaders', tx: LEADERS.x + 3, ty: LEADERS.y + LEADERS.h });
   for (const p of PLOTS) {
     const owned = !!state?.plots?.[p.id];

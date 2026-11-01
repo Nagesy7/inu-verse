@@ -24,6 +24,13 @@ import { makeCafePlay } from './cafeplay.js';
 import { drawDishIcon } from './dinerart.js';
 import { CAR_MODELS, CAR_COLORS, ensureGarage, buyCar, carOf } from './garage.js';
 import { PETS, ensurePets, buyPet, renamePet, activePet, followStep, petSprite } from './pets.js';
+import { KENNEL_ID, kennelOf, roomOf, isKennel } from './club/state.js';
+import { award, visit as visitStamp } from './club/stamps.js';
+import { partyAt, nextParty, attend as attendParty } from './club/parties.js';
+import { huntAt, huntSpots, foundIn, collect as collectPin } from './club/hunts.js';
+import { pupsOf, mood as pupMood } from './club/pups.js';
+import { ICONS as CLUB_ICONS, ICON_CELL, PARTY_SPRITES } from './club/iconmap.js';
+import { renderPups, renderStamps, renderParty, renderTimes, stampToast } from './club/clubui.js';
 import { wallet, TREASURY, DEMO, SOON, demoOnly, kibText, setWallet, kibblePayWallet, GAME as KGAME } from './wallet.js';
 import { ZOOMS, DEFAULT_ZOOM, stepZoom, clampCam } from './zoom.js';
 import { makePresident, startVisit, updatePresident, presidentProps, presidentPresent, talk as presTalk, OUTFIT as PRES_OUTFIT, KINDS as PRES_KINDS } from './president.js';
@@ -258,13 +265,15 @@ function startGame(s) { loadProfile(s).catch(() => {}); IQC.ensureChoice(s); loa
   // back from an Arcade cabinet (contract §3.4): ?spawn=door-<cabinet>&district=<id> -> stand at that door in the districts zone
   { const r = DIS.parseReturn(location.search); if (r) { const g = DIS.HUB_GATE; Object.assign(state.player, { x: (g.out[0] + 0.5) * TILE, y: (g.out[1] + 0.5) * TILE }); globalThis.__districtReturn = r;
       setTimeout(() => { if (mode === 'world') enterRoom('districts', r.spawn || 'd-' + r.district); if (r.cabinet) setTimeout(() => toast(`Welcome back from ${DIS.cabTitle(r.cabinet)}!`, 'good'), 400); }, 60); } }
-  cam.x = state.player.x; cam.y = state.player.y; hud(); persist(); wayUi(true);
+  cam.x = state.player.x; cam.y = state.player.y; hud(); persist(); wayUi(true); clubWelcome();
   // Hub / deep-links: ?open=launch opens Launch Hall (guide + panel). ?kibblesign=1 opens creator signing card.
   { const open = (new URLSearchParams(location.search).get('open') || '').toLowerCase().replace(/[_\s-]/g, '');
     if (open === 'launch' || open === 'launchhall') setTimeout(() => { const p = placeById(state, 'launch'); if (p) { guide.setGuide(p); guide.walk(); } openPanel('launch'); }, 700);
     else if (open === 'academy' || open === 'goodboy' || open === 'school') setTimeout(() => { const p = placeById(state, 'academy'); if (p) { guide.setGuide(p); guide.walk(); } openPanel('academy'); }, 700);
     else if (open === 'lounge' || open === 'holder' || open === 'holderlounge') setTimeout(() => { const p = placeById(state, 'lounge'); if (p) { guide.setGuide(p); guide.walk(); } tryEnterLounge(); }, 700);
     else if (/[?&]kibblesign=1/.test(location.search)) setTimeout(() => openPanel('launch', { tab: 'kibble', sign: true }), 900);
+    else if (['pups', 'stamps', 'party', 'times'].includes(open)) setTimeout(() => openPanel('club-' + open), 700);
+    else if (open === 'kennel') setTimeout(enterKennel, 700);
     else setTimeout(tourCheck, 1400); }
 }
 
@@ -415,7 +424,7 @@ function fastTravel(id) { closePanel(); globalThis.__fastTravels = (globalThis._
 function arcadeUrl() { const p = profileFromState(state), q = new URLSearchParams(); if (/^[1-9A-HJ-NP-Za-km-z]{32,44}$/.test(p.wallet || '')) q.set('wallet', p.wallet);
   try { const lite = { ...p, pets: [] }; q.set('p', btoa(unescape(encodeURIComponent(JSON.stringify(lite)))).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '')); } catch {}
   q.set('from', 'inu-verse'); q.set('spawn', 'arcade'); return ARCADE.url + '?' + q.toString(); }
-function openArcade() { const url = arcadeUrl(), touch = matchMedia('(pointer: coarse)').matches; setMusicActive(false); // the arcade iframe plays its own music: duck the hub loop so two tracks never overlap
+function openArcade() { stamp('arcade'); const url = arcadeUrl(), touch = matchMedia('(pointer: coarse)').matches; setMusicActive(false); // the arcade iframe plays its own music: duck the hub loop so two tracks never overlap
   onboardEngage('arcade', 'use');
   if (touch) { const w = window.open(url, '_blank', 'noopener'); toast(w ? 'Inu Arcade opened in a new tab' : 'Allow pop-ups to open the arcade', w ? 'good' : 'bad'); return; }
   keys.clear(); let ov = document.getElementById('arcade-ov');
@@ -488,7 +497,7 @@ async function renderBank() { const body = $('#panel-body'), kp = K.kp, w = wall
 function closeArcade() { setMusicActive(true); const ov = document.getElementById('arcade-ov'); if (ov) { ov.hidden = true; ov.querySelector('#arc-frame').src = 'about:blank'; } arcadeOpen = false; fetchArcadeTop(); }
 let arcadeOpen = false; globalThis.__arcade = { open: openArcade, close: closeArcade, url: arcadeUrl, get top() { return arcadeTop; } };
 globalThis.__eng = ENG; globalThis.__fly5 = F5;
-function playJob(id) { if (panel) closePanel(); keys.clear(); startJob(id, { state, rng, day: gameDay, blip, rustle, fanfare, done: (r) => { ENG.addSeasonXp(state, 'job', gameDay()); F5.tourneyScore(state, id, r.score || 0, Math.floor(gameDay() / 7)); hud(); persist(); if ((r.pb || r.rankUp) && state.town) playerDid(state.town, `You ${r.rankUp ? 'made ' + r.rank + ' as a' : 'set a new best as a'} ${JOB_DEFS[id].name.toLowerCase()} worker.`); toast(`${JOB_DEFS[id].name}: +${r.total} bones${r.pb ? ' · new best!' : ''}${r.rankUp ? ` · rank ${r.rank}!` : ''}`, 'good'); }, closed: () => keys.clear() }); }
+function playJob(id) { if (panel) closePanel(); keys.clear(); startJob(id, { state, rng, day: gameDay, blip, rustle, fanfare, done: (r) => { stamp('job'); ENG.addSeasonXp(state, 'job', gameDay()); F5.tourneyScore(state, id, r.score || 0, Math.floor(gameDay() / 7)); hud(); persist(); if ((r.pb || r.rankUp) && state.town) playerDid(state.town, `You ${r.rankUp ? 'made ' + r.rank + ' as a' : 'set a new best as a'} ${JOB_DEFS[id].name.toLowerCase()} worker.`); toast(`${JOB_DEFS[id].name}: +${r.total} bones${r.pb ? ' · new best!' : ''}${r.rankUp ? ` · rank ${r.rank}!` : ''}`, 'good'); }, closed: () => keys.clear() }); }
 globalThis.__playJob = playJob;
 if (globalThis.kibblePay) setProfileStore(kibblePayProfileStore(globalThis.kibblePay)); // real SIWS-signed profile when the SDK is present
 globalThis.__profile = { store: profileStore, setProfileStore, kibblePayProfileStore, mine: () => profileFromState(state), creator: () => creator };
@@ -513,7 +522,7 @@ function petPup(n) { if (n.workerRef) { const w = n.workerRef; blip(880); if (w.
 const PUP_LINES = ['Woof! That spot behind the ears... perfect!', 'Arf! Have you tried the taiyaki cart on Main Street?', 'Wanna race to Sakura Pond? Last one there is a wet biscuit!', 'I buried a bone by the big tree. Shh, it is a secret.', 'Bork bork! The Launch Hall is busy today.'];
 const CHAT_PLACE = { cafe: 'cafe', shop: 'shop', fashion: 'shop', cars: 'shop', launch: 'mall', mall: 'mall', square: 'mall', arcade: 'arcade', bank: 'bank', chapel: 'chapel', farm: 'farm', field: 'farm', gamedoor: 'game', visit: 'home', plot: 'home', matchmaker: 'park', lot: 'shop', lounge: 'mall', academy: 'mall' };
 function chatPlace(x, y) { const it = nearestInteractable(state, x, y, 5); return it && (CHAT_PLACE[it.id] || CHAT_PLACE[it.kind]); }
-function doEmote(kind) { emoteBubble('me', kind, time); player.emote = { kind, t: kind === 'zoomies' ? 2.4 : 2.5 }; $('#emotes').hidden = true; blip(kind === 'heart' ? 990 : 740);
+function doEmote(kind) { stamp('emote'); emoteBubble('me', kind, time); player.emote = { kind, t: kind === 'zoomies' ? 2.4 : 2.5 }; $('#emotes').hidden = true; blip(kind === 'heart' ? 990 : 740);
   for (const n of npcs) if (Math.hypot(n.x - state.player.x, n.y - state.player.y) < 260 && rng() < 0.6) setTimeout(() => { n.emote = { kind: rng() < 0.5 ? kind : 'heart', t: 2 }; }, 400 + rng() * 600); }
 function toggleEmotes() { $('#emotes').hidden = true; wheel.toggle(); }
 // ---- Round 3: sit / lie down / dances / wave / wag / sleep / bow (src/actions.js), picked from the action wheel ----
@@ -544,6 +553,85 @@ $('#btn-pack').onclick = () => { if (mode === 'world') openPanel('packs'); };
 $('#btn-wardrobe').onclick = () => { if (mode === 'world') openPanel('wardrobe'); };
 $('#btn-garage').onclick = () => { if (mode === 'world') openPanel('garage'); };
 $('#btn-companion').onclick = () => { if (mode === 'world') openPanel('companions'); };
+// ---- Club features (src/club): My Kennel, Pet Pups, Stamp Book, monthly parties, pin hunt, Inu Times. All free / Bones-only,
+// no $KIBBLE or wallet. Reached from Menu → Club (and the Party Booth on the grass east of the avenue). ?party=<month|key|off>
+// and ?hunt=<n> override the date-driven party / hunt for proofs; ?open=kennel|pups|stamps|party|times deep-links.
+const CLUBQ = new URLSearchParams(location.search), PARTY_OV = CLUBQ.get('party'), HUNT_OV = CLUBQ.get('hunt');
+const CLUB_IMG = new Image(); CLUB_IMG.src = 'assets/club/icons.png'; const PARTY_IMG = new Image(); PARTY_IMG.src = 'assets/club/party.png';
+const clubNow = () => Date.now();
+let partyMemo = { at: -1e9, p: null, next: null }, huntMemo = { at: -1e9, h: null, spots: null };
+function partyNow() { const n = clubNow(); if (n - partyMemo.at > 10000) partyMemo = { at: n, p: partyAt(n, PARTY_OV), next: null }; return partyMemo.p; }
+function boothParty() { const p = partyNow(); if (p) return p; if (!partyMemo.next) partyMemo.next = nextParty(clubNow()); return partyMemo.next; }
+function huntNow() { const n = clubNow(); if (n - huntMemo.at > 10000) { const h = huntAt(n, HUNT_OV); huntMemo = { at: n, h, spots: huntMemo.h?.n === h.n ? huntMemo.spots : huntSpots(h.n, (id) => sceneOf(id)) }; } return { ...huntMemo.h, spots: huntMemo.spots }; }
+const clubCtx = () => ({ state, body: $('#panel-body'), toast, hud, persist, now: clubNow, party: partyNow, hunt: huntNow, partyOverride: PARTY_OV, drawFurniture,
+  blip: () => blip(880), love: (id) => { if (petF.id === id) petF.love = 2; }, go: (k, o) => openPanel(k, o), enterKennel: () => { closePanel(); enterKennel(); } });
+function stamp(id) { if (!state) return; const st = award(state, id, clubNow()); if (st.length) { stampToast({ toast }, st); persist(); } }
+function clubVisit(sceneId) { if (!state || !sceneId) return; const st = visitStamp(state, sceneId, clubNow()); if (st.length) { stampToast({ toast }, st); persist(); } }
+function enterKennel() {
+  if (!state || panel || !(mode === 'world' || mode === 'room')) return;
+  if (mode === 'room' && RP.id === 'home:' + KENNEL_ID) return toast('You are already in your Kennel', '');
+  installHomeScene('home:' + KENNEL_ID, kennelOf(state), { plotId: KENNEL_ID, name: `${state.player.name}'s Kennel` });
+  enterRoom('home:' + KENNEL_ID, 'door', null); stamp('kennel-home');
+}
+function clubWelcome() { const p = partyNow(); if (!p) return; const st = attendParty(state, p, clubNow()); if (st.length) persist();
+  setTimeout(() => { if (!panel) toast(`${p.name} is on! Find the Party Booth east of the avenue, or Menu → Club → Party & Pins.`, 'good'); }, 2600); }
+{ const clubBtn = (id, fn) => { const b = $(id); if (b) b.onclick = () => { if (!state) return; initAudio(); uiClick?.(); if (mode === 'build') return toast('Finish decorating first', 'bad'); if (!(mode === 'world' || mode === 'room')) return; fn(); }; };
+  clubBtn('#btn-kennel', () => { if (panel) closePanel(); enterKennel(); });
+  clubBtn('#btn-pups', () => openPanel('club-pups')); clubBtn('#btn-stamps', () => openPanel('club-stamps'));
+  clubBtn('#btn-party', () => openPanel('club-party')); clubBtn('#btn-times', () => openPanel('club-times')); }
+// hub party decor: lantern posts on the walks, sagging bunting between neighbours, drifting petals / sparkles, the booth
+function partyWorldProps(ox, oy, vw, vh) {
+  if (!state || !PARTY_IMG.complete || !PARTY_IMG.naturalWidth) return [];
+  const out = [], p = partyNow(), bp = boothParty(), x0 = -ox - 96, x1 = -ox + vw + 96, y0 = -oy - 96, y1 = -oy + vh + 120;
+  if (bp) { const [bx, by] = bp.booth, s = PARTY_SPRITES['booth_' + bp.key], cx = (bx + 0.5) * TILE, cy = by * TILE + 6;
+    if (s && cx > x0 && cx < x1 && cy > y0 && cy < y1) out.push({ y: cy, d: (c) => { c.save(); c.imageSmoothingEnabled = false; c.globalAlpha = p ? 1 : 0.85; c.drawImage(PARTY_IMG, s[0], s[1], s[2], s[3], Math.round(cx - s[2] / 2), Math.round(cy - s[3]), s[2], s[3]); c.restore(); } }); }
+  if (!p) return out;
+  const s = PARTY_SPRITES['post_' + p.key], pal = p.palette; if (!s) return out;
+  const pos = p.posts.map(([tx, ty]) => ({ tx, ty, x: (tx + 0.5) * TILE, y: (ty + 0.5) * TILE + 8 }));
+  for (const q of pos) { if (q.ty === 23 || q.x < x0 || q.x > x1 || q.y < y0 || q.y > y1) continue; // south-walk bunting ties onto the street trees (posts would hide behind them)
+    out.push({ y: q.y, d: (c) => { c.save(); c.imageSmoothingEnabled = false; c.drawImage(PARTY_IMG, s[0], s[1], s[2], s[3], Math.round(q.x - s[2] / 2), Math.round(q.y - s[3]), s[2], s[3]);
+      if (p.sparkles || globalThis.__inuNight) { const on = Math.floor(time * 3 + q.tx) % 2; c.fillStyle = on ? pal.light : pal.accent; c.globalAlpha = 0.35; c.fillRect(Math.round(q.x - 7), Math.round(q.y - s[3] + 2), 14, 14); } c.restore(); } }); }
+  for (let i = 0; i + 1 < pos.length; i++) { const a = pos[i], b = pos[i + 1]; if (a.ty !== b.ty || b.tx - a.tx > 8) continue;
+    if (Math.max(a.x, b.x) < x0 || Math.min(a.x, b.x) > x1 || a.y < y0 || a.y > y1) continue;
+    const top = a.y - s[3] + 10, cols = [pal.main, pal.light, pal.accent];
+    out.push({ y: a.y - 1, d: (c) => { c.save(); const L = b.x - a.x, sag = 14; c.fillStyle = pal.dark;
+      for (let x = 0; x <= L; x += 2) { const u = x / L, yy = top + Math.sin(u * Math.PI) * sag; c.fillRect(Math.round(a.x + x), Math.round(yy), 2, 2); }
+      let k = 0; for (let x = 10; x < L - 6; x += 14, k++) { const u = x / L, yy = Math.round(top + Math.sin(u * Math.PI) * sag) + 2, fx = Math.round(a.x + x), sw = Math.sin(time * 2 + x * 0.3 + a.tx) > 0.6 ? 1 : 0;
+        c.fillStyle = cols[k % 3]; for (let r = 0; r < 4; r++) c.fillRect(fx - 4 + r + sw, yy + r * 2, 8 - r * 2, 2); }
+      c.restore(); } }); }
+  if (!reducedMotion()) out.push({ y: 1e9, d: (c) => { c.save(); const W = vw + 40, H = vh + 40, n = p.petals ? 34 : 24;
+    for (let i = 0; i < n; i++) { const sp = 1 + (i % 3) * 0.35, px = -ox - 20 + ((i * 97.3 + time * 14 * sp + Math.sin(time + i) * 10) % W + W) % W, py = -oy - 20 + ((i * 53.7 + time * 22 * sp) % H + H) % H;
+      if (p.petals) { c.fillStyle = i % 3 ? pal.petal : pal.light; const w = Math.sin(time * 3 + i) > 0 ? 4 : 2; c.fillRect(Math.round(px), Math.round(py), w, 2); c.fillRect(Math.round(px + 1), Math.round(py + 2), 2, 1); }
+      else { const tw = (Math.sin(time * 4 + i * 1.7) + 1) / 2; c.globalAlpha = 0.25 + tw * 0.6; c.fillStyle = i % 2 ? pal.light : pal.accent; c.fillRect(Math.round(px), Math.round(py), 2, 2); if (tw > 0.8) { c.fillRect(Math.round(px - 2), Math.round(py), 6, 1); c.fillRect(Math.round(px + 0.5), Math.round(py - 2), 1, 6); } } }
+    c.restore(); } });
+  return out;
+}
+// rooms: this hunt's hidden pins (bob + sparkle until found) and, in your Kennel, the pups who stayed home
+function drawClubIcon(c, key, x, y, size) { const ic = CLUB_ICONS[key]; if (!ic || !CLUB_IMG.complete || !CLUB_IMG.naturalWidth) return; c.drawImage(CLUB_IMG, ic[0] * ICON_CELL, ic[1] * ICON_CELL, ICON_CELL, ICON_CELL, Math.round(x - size / 2), Math.round(y - size / 2), size, size); }
+function roomPins() { if (!state || mode !== 'room' || !RP.id) return []; const h = huntNow(), got = foundIn(state, h.n); return h.spots.filter((sp) => sp.room === RP.id && !got.includes(sp.pin.id)); }
+function kennelSpots(sc, n) { const free = []; if (!sc) return free;
+  for (let ty = HOME_OY + 1; ty < HOME_OY + ROOM_H; ty++) for (let tx = HOME_OX; tx < HOME_OX + ROOM_W; tx++) if (!sceneSolid(sc, tx, ty)) free.push([tx, ty]);
+  return Array.from({ length: Math.min(n, free.length) }, (_, k) => free[Math.floor(((k + 0.5) * free.length) / Math.max(n, 1))]); }
+function clubRoomProps(t) {
+  const out = [];
+  for (const sp of roomPins()) { const x = (sp.tx + 0.5) * ROOM_ST, y = (sp.ty + 0.5) * ROOM_ST, bob = reducedMotion() ? 0 : Math.round(Math.sin(t * 3 + sp.tx) * 2);
+    out.push({ y: y + 6, d: (c) => { c.save(); c.imageSmoothingEnabled = false; c.fillStyle = 'rgba(10,14,30,.3)'; c.fillRect(Math.round(x - 7), Math.round(y + 7), 14, 3);
+      drawClubIcon(c, sp.pin.icon, x, y - 4 + bob, 24); const tw = Math.floor(t * 4 + sp.ty) % 4; c.fillStyle = '#fff6c8';
+      if (tw < 2) { const sx = Math.round(x + (tw ? 9 : -10)), sy = Math.round(y - 14 + bob); c.fillRect(sx - 2, sy, 5, 1); c.fillRect(sx, sy - 2, 1, 5); } c.restore(); } }); }
+  if (RP.id === 'home:' + KENNEL_ID) { const pets = ensurePets(state), stay = pupsOf(state).filter((p) => p.id !== pets.active).slice(0, 5), spots = kennelSpots(RP.sc, stay.length);
+    stay.forEach((pup, i) => { const sp = spots[i]; if (!sp) return; const m = pupMood(pup, clubNow()), wob = reducedMotion() ? 0 : Math.sin(t * 0.7 + i * 2);
+      const a = { petSpecies: 'pup', petPal: pup.pal, petName: pup.name + (m === 'hungry' ? ' (hungry)' : m === 'bored' ? ' (bored)' : ''), phase: t * 6 + i, moving: m === 'happy' && Math.abs(wob) > 0.6, dir: wob > 0 ? 1 : -1, love: 0 };
+      const x = (sp[0] + 0.5) * ROOM_ST + wob * 6, y = (sp[1] + 0.6) * ROOM_ST;
+      out.push({ y, d: (c) => { c.save(); c.translate(Math.round(x), Math.round(y)); c.scale(0.75, 0.75); drawPetActor(c, a); c.restore(); } }); }); }
+  return out;
+}
+function clubRoomUpdate() { if (!state || mode !== 'room' || !RP.R?.p) return; const p = RP.R.p;
+  for (const sp of roomPins()) { const x = (sp.tx + 0.5) * ROOM_ST, y = (sp.ty + 0.5) * ROOM_ST; if (Math.hypot(p.x - x, p.y - y) > 22) continue;
+    const r = collectPin(state, huntNow().n, sp.pin.id, clubNow()); if (!r.ok) continue;
+    blip(1180); toast(r.all ? `Found the ${r.pin.name}! That's every pin this hunt.` : `Found the ${r.pin.name}! (Menu → Club → Party & Pins)`, 'good');
+    if (r.stamps?.length) setTimeout(() => stampToast({ toast }, r.stamps), 1600); hud(); persist(); }
+}
+
 $('#panel-close').onclick = () => closePanel();
 // ---- touch controls (virtual stick on the left, A/B + menu on the right) ----
 { const pad = $('#stick'), knob = $('#knob');
@@ -640,7 +728,7 @@ function updateWorld(dt) {
   else if (pk) { pr.hidden = false; pr.innerHTML = `<kbd${tch ? ' class="ta"' : ''}>${tch ? 'A' : 'E'}</kbd>Drive your ${esc(CAR_MODELS[carOf(state, pk.id)?.model]?.name || 'car')}`; setA('DRIVE'); }
   else if (pup?.workerRef) { pr.hidden = false; const v = pup.workerRef.chatted ? `Play ${JOB_DEFS[WORKER_JOB[pup.workerRef.job]].name} with` : 'Chat with'; pr.innerHTML = tch ? `<kbd class="ta">A</kbd>${v} ${esc(pup.name)}` : `<kbd>E</kbd>${v} ${esc(pup.name)}`; setA('TALK'); }
   else if (pup) { pr.hidden = false; const v = REL.PEOPLE[pup.name] && !pup.pet ? `Talk to ${esc(pup.name)} ${'♥'.repeat(REL.hearts(REL.ensureRel(state)[pup.name]))}` : `Pet ${esc(pup.name)}`; pr.innerHTML = tch ? `<kbd class="ta">A</kbd>${v}` : `<kbd>E</kbd>${v} · <kbd>T</kbd> throw ball`; setA(REL.PEOPLE[pup.name] && !pup.pet ? 'TALK' : 'PET'); }
-  else if (it) { pr.hidden = false; const verb = { community: 'Open', gamedoor: 'Play', bank: 'Enter', arcade: 'Play at', matchmaker: 'Browse', square: 'Open', building: 'Enter', plot: state.plots[it.id] ? 'Enter' : 'Inspect', visit: 'Visit', stall: 'View', clubhouse: myPack(state) ? 'Decorate' : 'Open', mall: 'Enter', field: 'Tend', farm: 'Use', lot: 'Visit', biz: 'Read', chapel: 'Enter', kibble: it.id === 'crier' ? 'Talk to' : it.id === 'kstatue' ? 'Look at' : 'Read' }[it.kind] || 'Use'; pr.innerHTML = isWalkDoor(it) ? `<kbd>${it.side === 'left' ? '▶' : it.side === 'right' ? '◀' : '▲'}</kbd>Walk in to ${verb === 'Enter' ? 'enter' : verb.toLowerCase()} ${esc(it.name)}` : `<kbd${tch ? ' class="ta"' : ''}>${tch ? 'A' : 'E'}</kbd>${verb} ${esc(it.name)}`; pr.dataset.target = it.id; setA(isWalkDoor(it) ? '' : verb.toUpperCase()); }
+  else if (it) { pr.hidden = false; const verb = { community: 'Open', gamedoor: 'Play', bank: 'Enter', arcade: 'Play at', matchmaker: 'Browse', square: 'Open', building: 'Enter', plot: state.plots[it.id] ? 'Enter' : 'Inspect', visit: 'Visit', club: 'Visit', stall: 'View', clubhouse: myPack(state) ? 'Decorate' : 'Open', mall: 'Enter', field: 'Tend', farm: 'Use', lot: 'Visit', biz: 'Read', chapel: 'Enter', kibble: it.id === 'crier' ? 'Talk to' : it.id === 'kstatue' ? 'Look at' : 'Read' }[it.kind] || 'Use'; pr.innerHTML = isWalkDoor(it) ? `<kbd>${it.side === 'left' ? '▶' : it.side === 'right' ? '◀' : '▲'}</kbd>Walk in to ${verb === 'Enter' ? 'enter' : verb.toLowerCase()} ${esc(it.name)}` : `<kbd${tch ? ' class="ta"' : ''}>${tch ? 'A' : 'E'}</kbd>${verb} ${esc(it.name)}`; pr.dataset.target = it.id; setA(isWalkDoor(it) ? '' : verb.toUpperCase()); }
   else { pr.hidden = true; setA(''); }
 }
 
@@ -663,7 +751,7 @@ function renderWorld() {
     const tx0 = Math.floor(-ox / TILE) - 1, ty0 = Math.floor(-oy / TILE) - 1; ctx.save(); ctx.scale(SCALE, SCALE); drawWater(ctx, time, tx0, ty0, tx0 + Math.ceil(vw / TILE) + 2, ty0 + Math.ceil(vh / TILE) + 2); ctx.restore(); }
   const phase = dayPhase(time + dayOffset);
   globalThis.__inuNight = phase.dark;
-  const dyn = [...HUB_GATES.map((g) => hubGateProp(g, time)), hubSignProp(62, 58, time), ...dynamicProps(state, time, myPack(state)), ...presidentProps(pres, time), ...doorProps(time), ...carWorldProps(), ...crewProps(), ...adProps(trend, adRot, adIdx, !!globalThis.__inuNight, time, featuredMap()), ...confettiProps(), ...squareProps(state, time, Math.floor(gameDay() / 7)), ...arcadeProps(time, arcadeTop), ...MWd.statueProps(time, { drawShiba, artLoaded: () => !!ART['shiba-golden'] }), ...MWd.newsProps(time), ...KN.wallProps(KIBBLE_PLAZA.wall, KEN.wall, time, TILE), ...RD.gateProps(KIBBLE_PLAZA.raid, time, TILE), ...MWd.firepitProps(time), ...MWd.plazaSkyProps(time), ...PAB.bureauProps(time, { drawShiba }, state.player)];
+  const dyn = [...HUB_GATES.map((g) => hubGateProp(g, time)), hubSignProp(62, 58, time), ...dynamicProps(state, time, myPack(state)), ...presidentProps(pres, time), ...doorProps(time), ...carWorldProps(), ...crewProps(), ...adProps(trend, adRot, adIdx, !!globalThis.__inuNight, time, featuredMap()), ...confettiProps(), ...partyWorldProps(ox, oy, vw, vh), ...squareProps(state, time, Math.floor(gameDay() / 7)), ...arcadeProps(time, arcadeTop), ...MWd.statueProps(time, { drawShiba, artLoaded: () => !!ART['shiba-golden'] }), ...MWd.newsProps(time), ...KN.wallProps(KIBBLE_PLAZA.wall, KEN.wall, time, TILE), ...RD.gateProps(KIBBLE_PLAZA.raid, time, TILE), ...MWd.firepitProps(time), ...MWd.plazaSkyProps(time), ...PAB.bureauProps(time, { drawShiba }, state.player)];
   for (const d of dyn) if (d.flat) d.d(ctx);
   const view = { x0: -ox, y0: -oy, x1: -ox + vw, y1: -oy + vh };
   drawGroundLife(ctx, amb, phase, view); drawAliveGround(ctx, ALIVE, view, phase); feel.drawGround(ctx);
@@ -735,7 +823,7 @@ function drawPresident(c, a) { // navy suit, gold tie (recoloured), sash, sungla
   if (a.coffee) { c.fillStyle = '#141a2e'; c.fillRect(17, -40, 12, 16); c.fillStyle = '#f4f1ea'; c.fillRect(18, -39, 10, 14); c.fillStyle = '#8a5a30'; c.fillRect(18, -34, 10, 4); c.fillStyle = '#141a2e'; c.fillRect(17, -42, 12, 3); }
   const tagY = cv.top - 138 - 14; c.font = '8px Silkscreen, monospace'; c.textAlign = 'center'; c.textBaseline = 'middle'; const tw = Math.ceil(c.measureText('PRESIDENT INU').width) + 14;
   c.fillStyle = '#121a36'; c.fillRect(-tw / 2 - 2, tagY - 8, tw + 4, 16); c.fillStyle = '#d4a640'; c.fillRect(-tw / 2, tagY - 6, tw, 12); c.fillStyle = '#ffe08a'; c.fillRect(-tw / 2, tagY - 6, tw, 1); c.fillStyle = '#121a36'; c.fillText('PRESIDENT INU', 0, tagY + 1); }
-function petActors() { const pet = activePet(state); if (!pet || drive) return []; return [{ x: petF.x, y: petF.y, petSpecies: pet.species, petPal: pet.burn ? pet.pal : null, petName: pet.name, dir: petF.dir, moving: petF.moving, phase: petF.phase, love: petF.love }]; }
+function petActors() { const pet = activePet(state); if (!pet || drive) return []; return [{ x: petF.x, y: petF.y, petSpecies: pet.species, petPal: pet.burn || pet.species === 'pup' ? pet.pal : null, petName: pet.name, dir: petF.dir, moving: petF.moving, phase: petF.phase, love: petF.love }]; }
 function drawPetActor(c, a) { const spr = petSprite(a.petSpecies, Math.floor(a.phase / 2.5) % 2, a.petPal), hop = a.moving ? -Math.abs(Math.sin(a.phase)) * 4 : 0;
   c.fillStyle = 'rgba(10,14,30,.3)'; c.beginPath(); c.ellipse(0, 10, 18, 5, 0, 0, 7); c.fill(); c.save(); if (a.dir < 0) c.scale(-1, 1); c.drawImage(spr, -24, -36 + hop, 48, 48); c.restore();
   if (a.love > 0) { c.fillStyle = '#ff5a8a'; const y = -44 - (2 - a.love) * 10; c.fillRect(-6, y, 4, 4); c.fillRect(2, y, 4, 4); c.fillRect(-6, y + 2, 12, 4); c.fillRect(-4, y + 6, 8, 2); c.fillRect(-2, y + 8, 4, 2); }
@@ -826,11 +914,11 @@ function renderDiner() { const body = $('#panel-body'), mt = CP.meTicket(), fav 
     CP.placeOrder(r.dish.id, seat.id); hud(); persist(); const counter = !panel.seat; closePanel();
     toast(`Ordered ${r.dish.name} (-${r.price} Bones)${counter ? `. Take a seat, it's coming to table ${seat.id.slice(1)}` : ''}`, 'good'); if (counter) RP.planTo([seat.tx, seat.ty]); }; }
 const homeRoomExtra = {
-  enter: (...a) => CP.enter?.(...a), update: (...a) => CP.update?.(...a),
+  enter: (...a) => CP.enter?.(...a), update: (...a) => { CP.update?.(...a); clubRoomUpdate(); },
   props: (t) => {
-    const base = CP.props?.(t) || [], sc = RP.sc, items = sc?.homeItems;
-    if (!items?.length) return base;
-    const out = base.slice();
+    const base = CP.props?.(t) || [], sc = RP.sc, items = sc?.homeItems, club = clubRoomProps(t);
+    if (!items?.length) return club.length ? base.concat(club) : base;
+    const out = base.concat(club);
     for (const it of items) {
       if (!FURNITURE[it.id]) continue;
       const x = (HOME_OX + (it.x | 0)) * ROOM_ST, y = (HOME_OY + (it.y | 0)) * ROOM_ST, f = footprint(it.id, it.rot | 0);
@@ -846,13 +934,13 @@ const RP = makeRoomPlay({ player, extra: homeRoomExtra, diner: (s) => openDiner(
     roomBuild = { id: RP.id, at: { x: RP.R.p.x, y: RP.R.p.y, face: player.face } };
     if (id === 'clubhouse') { if (myPack(state)) enterBuild(id); else { roomBuild = null; openPanel('packs'); } return; }
     if (id === 'share' || RP.sc?.shared) { const sh = RP.sc?.shared, home = RP.sc?.homeLayout; if (home) enterBuild('share', true, { home, shared: sh }); return; }
-    const readOnly = !!RP.sc?.readOnly || !state.plots?.[id]; enterBuild(id, readOnly);
+    const readOnly = !!RP.sc?.readOnly || !roomOf(state, id); enterBuild(id, readOnly);
   },
   say: (n, t) => feel.say(n, t, blip), emote: (k) => { player.emote = { kind: k, t: 1.4 }; emoteBubble('me', k, time); }, bell: () => blip(1320), blip: (f) => blip(f),
   chat: (id, t) => chatSay(id, t, time), fade: () => feel.fade(), dust: (x, y) => feel.dust(x, y), portal: (ex) => roomPortal(ex),
   drawGround: (c) => feel.drawGround(c), drawAir: (c) => feel.drawAir(c), drawMark: (c, m, t) => drawMark(c, m, t), bubble: (c, x, y, t) => feel.bubble(c, x, y, t),
   drawChat: (c, res) => drawChat(c, res, time), drawActor: drawRoomActor, rm: () => reducedMotion(), remotes: (view, me) => MPL.actors(view, me), anchor: (id) => MPL.anchor(id), night: () => !!globalThis.__inuNight, arrived: (sc) => roomUi(sc) });
-function roomUi(sc) { $('#minimap-wrap').hidden = true; wayUi(false); toast(sc.name, ''); globalThis.__roomVisits = (globalThis.__roomVisits || 0) + 1;
+function roomUi(sc) { $('#minimap-wrap').hidden = true; wayUi(false); toast(sc.name, ''); clubVisit(sc?.id); globalThis.__roomVisits = (globalThis.__roomVisits || 0) + 1;
   if (sc?.id === 'lounge') refreshLoungeQuest(); }
 /** Live / demo $KIBBLE gate for the Holder Lounge. Trainer Gate (quest gamedoor) is never gated. */
 function loungeGateNow() {
@@ -956,6 +1044,7 @@ function interact(it, viaDoor = false) { if (!viaDoor && isWalkDoor(it)) { toast
   if (it.kind === 'building') openPanel(it.id);
   else if (it.kind === 'plot') { if (state.plots[it.id]) enterHomeWalk(it.id, false); else openPanel('plot', { plotId: it.id }); }
   else if (it.kind === 'visit') enterHomeWalk(it.id, true);
+  else if (it.kind === 'club') openPanel('club-party');
   else if (it.kind === 'stall') openPanel('launch', { sel: it.id });
   else if (it.kind === 'mall' && it.cat === 'car') openPanel('dealer', { dealer: 'luxauto' });
   else if (it.kind === 'mall' && it.cat === 'pets') openPanel('pets');
@@ -987,6 +1076,10 @@ function openPanel(kind, opts = {}) {
   if (!panel) { feel.fade(); uiOpen(); } panel = { kind, ...opts }; $('#panel').hidden = false; $('#prompt').hidden = true; keys.clear();
   const body = $('#panel-body'); body.onclick = null; const dg = $('#dialog'); if (dg) { dg.style.pointerEvents = 'none'; dg.style.visibility = 'hidden'; }
   if (kind !== 'onboard') maybeOfferOnboard(kind, opts);
+  if (kind === 'club-pups') return renderPups(clubCtx());
+  if (kind === 'club-stamps') return renderStamps(clubCtx(), opts.page || 0);
+  if (kind === 'club-party') return renderParty(clubCtx());
+  if (kind === 'club-times') return renderTimes(clubCtx());
   if (kind === 'field') return renderField(farmCtx(), opts.i);
   if (kind === 'farm') return renderFarm(farmCtx(), opts.id);
   if (kind === 'lot') return renderLot(farmCtx(), opts.id);
@@ -1006,7 +1099,7 @@ function openPanel(kind, opts = {}) {
     TRD.refresh({ quiet: false }).then(() => { if (opts.short && panel?.kind === 'trade') { const p = TRD.S.board.find((x) => x.short === opts.short); if (p) TRD.S.view = { mode: 'compose', to: p.tid, give: [], get: [] }; else TRD.S.err = `${opts.name || 'That player'} hasn't opened the Trading Post yet. Ask them to tap Trades in the players list.`; }
       if (panel?.kind === 'trade') renderTradePanel(); }); return; }
   if (kind === 'kibblemood') { body.innerHTML = MWd.moodCardHtml(MOOD.current, esc); body.querySelectorAll('[data-copy]').forEach((b) => b.onclick = () => copyText(b.dataset.copy)); body.querySelector('[data-npcrules]').onclick = () => openPanel('npcrules'); return; }
-  if (kind === 'dailybone') { body.innerHTML = MWd.dailyBoneHtml(MWd.MW.mood) + '<div id="db-vote"></div><div class="row" style="justify-content:flex-start"><button class="btn ghost tiny" data-npcrules>How the town talks</button></div>'; body.querySelector('[data-npcrules]').onclick = () => openPanel('npcrules'); BurnVote.fetchVoteNotice().then((n) => { const el = body.querySelector('#db-vote'); if (el && n) el.innerHTML = BurnVote.voteNoticeHtml(n); }).catch(() => {}); return; }
+  if (kind === 'dailybone') { body.innerHTML = MWd.dailyBoneHtml(MWd.MW.mood) + '<div id="db-vote"></div><div class="row" style="justify-content:flex-start"><button class="btn ghost tiny" data-npcrules>How the town talks</button><button class="btn alt tiny" data-inutimes>Read the Inu Times</button></div>'; body.querySelector('[data-npcrules]').onclick = () => openPanel('npcrules'); body.querySelector('[data-inutimes]').onclick = () => openPanel('club-times'); BurnVote.fetchVoteNotice().then((n) => { const el = body.querySelector('#db-vote'); if (el && n) el.innerHTML = BurnVote.voteNoticeHtml(n); }).catch(() => {}); return; }
   if (kind === 'kennel') { const draw = () => { if (panel?.kind !== 'kennel') return; body.innerHTML = KN.wallHtml({ wall: KEN.wall, me: KEN.real, wallet: KEN.wallet, override: KEN.override, overrideFlair: KEN.flair, show: KEN.show, peek: KEN.peeking });
       const cb = body.querySelector('#kn-show'); if (cb) cb.onchange = () => { KEN.show = cb.checked; KN.setShowMine(cb.checked); toast(cb.checked ? 'Kennel look on' : 'Kennel look hidden', 'good'); }; };
     draw(); refreshKennel(true).then(draw); return; }
@@ -1082,14 +1175,14 @@ function renderGarage() { const body = $('#panel-body'), g = ensureGarage(state)
   const gc = $('#gcars'); if (!g.cars.length) gc.innerHTML = '<p class="small">No cars yet - visit Zoomies Motors (Market Row) or Zoomies Luxury Autos (Kibble Mall).</p>';
   for (const c of g.cars) { const card = document.createElement('div'); card.className = 'card'; card.appendChild(carIcon(c.model, c.color)); card.insertAdjacentHTML('beforeend', `<b>${c.burn ? `${c.name} #${c.n}` : `${c.color} ${CAR_MODELS[c.model].name}`}</b>${g.active === c.id ? '<small>Home car</small>' : ''}<button class="btn green" data-drive="${c.id}">Drive</button><button class="btn ghost" data-home="${c.id}">Set as home car</button>`); gc.appendChild(card); }
   const gp = $('#gpets'); if (!st.owned.length) gp.innerHTML = '<p class="small">No pets yet - visit Pawsome Pets in the Kibble Mall district.</p>';
-  for (const p of st.owned) { const card = document.createElement('div'); card.className = 'card'; card.appendChild(petIcon(p.species, p.burn ? p.pal : null)); card.insertAdjacentHTML('beforeend', `<b>${esc(p.name)}</b><small>${p.burn ? "Limited burn edition" : PETS[p.species].name}${st.active === p.id ? ' · following' : ''}</small><button class="btn green" data-walk="${p.id}">${st.active === p.id ? 'Leave at home' : 'Take for a walk'}</button><button class="btn ghost" data-rename="${p.id}">Rename</button>`); gp.appendChild(card); }
+  for (const p of st.owned) { const card = document.createElement('div'); card.className = 'card'; card.appendChild(petIcon(p.species, p.burn || p.species === 'pup' ? p.pal : null)); card.insertAdjacentHTML('beforeend', `<b>${esc(p.name)}</b><small>${p.burn ? "Limited burn edition" : PETS[p.species]?.name || 'Pet pup'}${st.active === p.id ? ' · following' : ''}</small><button class="btn green" data-walk="${p.id}">${st.active === p.id ? 'Leave at home' : 'Take for a walk'}</button><button class="btn ghost" data-rename="${p.id}">Rename</button>`); gp.appendChild(card); }
   body.onclick = (e) => { const t = e.target.closest('button'); if (!t) return;
     if (t.dataset.drive) spawnCar(t.dataset.drive);
     else if (t.dataset.home) { g.active = t.dataset.home; persist(); renderGarage(); }
     else if (t.dataset.walk) { st.active = st.active === t.dataset.walk ? null : t.dataset.walk; persist(); renderGarage(); }
     else if (t.dataset.rename) { const n = prompt('New name?'); if (n) { renamePet(state, t.dataset.rename, n); persist(); renderGarage(); } } }; }
 function closePanel() { doorExit(doorSt, time); if (panel?.viaDoor) feel.fade(); const dg = $('#dialog'); if (dg) { dg.style.pointerEvents = ''; dg.style.visibility = ''; }
-  if (panel?.kind === 'cafe' && panel.shift && !panel.shift.settled && panel.shift.earned > 0) { finishShift(state, panel.shift); packAct('shift'); toast(`Shift ended early: +${panel.shift.paid} bones`, 'good'); onboardEngage('cafe', 'act'); hud(); persist(); }
+  if (panel?.kind === 'cafe' && panel.shift && !panel.shift.settled && panel.shift.earned > 0) { finishShift(state, panel.shift); packAct('shift'); stamp('cafe-shift'); toast(`Shift ended early: +${panel.shift.paid} bones`, 'good'); onboardEngage('cafe', 'act'); hud(); persist(); }
   if (panel?.kind === 'cafe') CP.shiftEnded();
   if (panel) uiClose(); panel = null; $('#panel').hidden = true;
 }
@@ -1577,7 +1670,7 @@ function cafeUi() {
   }
 
   if (s.over && !s.settled) {
-    const total = finishShift(state, s); packAct('shift'); onboardEngage('cafe', 'act'); hud(); persist();
+    const total = finishShift(state, s); packAct('shift'); stamp('cafe-shift'); onboardEngage('cafe', 'act'); hud(); persist();
     const sum = s.summary || {};
     $('#orders').innerHTML = `<div class="card" style="width:100%"><h3>Shift complete! ${'★'.repeat(sum.stars || 0) || ''}</h3>
       <p>Served ${sum.served || s.served} · walkouts ${sum.walkouts || s.failed} · cleared ${sum.cleared || s.cleared} · VIPs ${sum.vipServed || 0}</p>
@@ -1778,13 +1871,13 @@ async function registerPlotClaim(plotId) {
   }
 }
 function enterHomeWalk(plotId, readOnly, opt = {}) {
-  const home = opt.home || (readOnly && !opt.shared ? npcHome(plotId) : state.plots[plotId]);
+  const home = opt.home || (readOnly && !opt.shared ? npcHome(plotId) : roomOf(state, plotId));
   if (!home) return;
   const sceneId = 'home:' + (opt.shared?.id || plotId);
   const npc = NPC_HOMES.find((h) => h.id === plotId);
-  const name = opt.shared?.name ? `${opt.shared.name}'s Home` : (readOnly && npc ? `${npc.owner}'s Home` : `${state.player.name}'s Home`);
+  const name = opt.shared?.name ? `${opt.shared.name}'s Home` : (readOnly && npc ? `${npc.owner}'s Home` : isKennel(plotId) ? `${state.player.name}'s Kennel` : `${state.player.name}'s Home`);
   installHomeScene(sceneId, home, { plotId: opt.shared ? 'share' : plotId, name, readOnly: !!readOnly || !!opt.shared, shared: opt.shared || null });
-  const door = opt.shared ? null : (interactables(state).find((i) => i.id === plotId) || { kind: readOnly ? 'visit' : 'plot', id: plotId, tx: 0, ty: 0 });
+  const door = opt.shared || isKennel(plotId) ? null : (interactables(state).find((i) => i.id === plotId) || { kind: readOnly ? 'visit' : 'plot', id: plotId, tx: 0, ty: 0 });
   if (door) lastDoor = door;
   enterRoom(sceneId, 'door', door);
 }
@@ -1793,8 +1886,8 @@ let pubT = 0, pubBusy = false;
 function sharedHomeId() { const sh = state?.homeShare; return sh && sh.open !== false && ((sh.pubKey && myHomePlot(state)) || sh.shopPubKey) ? sh.id : null; } // also identifies your published shop ("Visit shop")
 function schedulePublish() { clearTimeout(pubT); pubT = setTimeout(() => publishHome(), 2500); }
 async function publishHome(force) { clearTimeout(pubT); const pid = myHomePlot(state); if (!pid || pubBusy) return; const sh = ensureShare(state); if (sh.open === false) return;
-  const layout = layoutOf(state.plots[pid]), key = layoutKey(layout) + '|' + state.player.name; if (!force && key === sh.pubKey) return;
-  pubBusy = true; try { await HOME.publish(sh, state.player.name, layout); sh.pubKey = key; sh.pubAt = Date.now(); save(state, localStorage); globalThis.__homePublished = (globalThis.__homePublished || 0) + 1; }
+  const layout = layoutOf(roomOf(state, pid)), key = layoutKey(layout) + '|' + state.player.name; if (!force && key === sh.pubKey) return;
+  pubBusy = true; try { await HOME.publish(sh, state.player.name, layout); sh.pubKey = key; if (pid === KENNEL_ID) stamp('kennel-open'); sh.pubAt = Date.now(); save(state, localStorage); globalThis.__homePublished = (globalThis.__homePublished || 0) + 1; }
   catch (e) { if (e.status === 403) { delete state.homeShare; ensureShare(state); save(state, localStorage); } else if (e.status === 429) schedulePublish(); } finally { pubBusy = false; } }
 const gbWhen = (iso) => { const d = new Date(iso); return isNaN(d) ? '' : d.toLocaleDateString(undefined, { month: 'short', day: 'numeric' }); };
 function gbList(book, own) { if (!book) return '<div class="small">Loading guestbook…</div>'; if (!book.length) return `<div class="small">${own ? 'No guestbook entries yet. Visitors can sign it from your home.' : 'No entries yet. Be the first to sign!'}</div>`;
@@ -1804,24 +1897,24 @@ async function visitShared(id, name) { if (!validHomeId(id) || !(mode === 'world
   try { j = await HOME.get(id); } catch (e) { return toast(e.status === 404 ? `${name || 'That player'} hasn't opened their home to visitors yet.` : 'Could not reach that home right now.', 'bad'); }
   const home = cleanLayout(j.layout); if (!home || !(mode === 'world' || mode === 'room')) return;
   if (mode === 'room') roomBuild = { id: RP.id, at: { x: RP.R.p.x, y: RP.R.p.y, face: player.face } };
-  enterHomeWalk(id, true, { home, shared: { id, name: j.name || name || 'A pup', book: j.book || [] } }); }
+  enterHomeWalk(id, true, { home, shared: { id, name: j.name || name || 'A pup', book: j.book || [] } }); stamp('visit-home'); }
 function sharedBuildBar(bb) { const sh = build.shared, h = build.home;
   bb.innerHTML = `<div class="bb-col" style="flex:1"><h3>Visiting ${esc(sh.name)}'s home</h3><div class="small">${h.items.length} pieces of furniture. Sign the guestbook! Be kind: it's filtered like chat (no links, addresses or seed phrases).</div>
    <div class="row gbsign"><input id="gbtext" maxlength="${GB.TEXT_MAX}" placeholder="Write in ${esc(sh.name)}'s guestbook…" autocomplete="off" enterkeyhint="send"><button class="btn alt" id="gbsign">Sign</button></div>
    <div class="gb">${gbList(sh.book, false)}</div></div><div class="bb-col"><button class="btn" id="bexit">Leave</button></div>`;
   $('#bexit').onclick = exitBuild; const inp = $('#gbtext'); inp.onkeydown = (e) => { e.stopPropagation(); if (e.key === 'Enter') $('#gbsign').click(); };
   $('#gbsign').onclick = async () => { const c = cleanEntry(state.player.name, inp.value); if (!c.ok) return toast(c.reason, 'bad'); const btn = $('#gbsign'); btn.disabled = true;
-    try { const r = await HOME.sign(sh.id, state.player.name, inp.value); if (build?.shared === sh) { sh.book = [r.entry, ...sh.book].slice(0, GB.MAX); toast(`Signed ${sh.name}'s guestbook`, 'good'); buildBar(); globalThis.__gbSigned = r.entry; } }
+    try { const r = await HOME.sign(sh.id, state.player.name, inp.value); if (build?.shared === sh) { sh.book = [r.entry, ...sh.book].slice(0, GB.MAX); toast(`Signed ${sh.name}'s guestbook`, 'good'); buildBar(); globalThis.__gbSigned = r.entry; stamp('guestbook'); } }
     catch (e) { toast(e.message || 'Could not sign right now', 'bad'); if (build?.shared === sh) btn.disabled = false; } }; }
 function roomCell(sx, sy) { const { cell, ox, oy } = roomGeom(); return { x: Math.floor((sx - ox) / cell), y: Math.floor((sy - oy) / cell) }; }
 function enterBuild(id, readOnly, opt = {}) {
   const pack = id === 'clubhouse';
-  feel.fade(); uiOpen(); mode = 'build'; const home = opt.home || (pack ? myPack(state).clubhouse : readOnly ? npcHome(id) : state.plots[id]);
+  feel.fade(); uiOpen(); mode = 'build'; const home = opt.home || (pack ? myPack(state).clubhouse : readOnly ? npcHome(id) : roomOf(state, id));
   build = { plotId: id, readOnly, pack, home, sel: null, hover: null, picked: null, shared: opt.shared || null, gb: false };
-  if (!readOnly && !pack && state.plots[id]) { const sh = ensureShare(state); if (sh.plot !== id) { sh.plot = id; sh.pubKey = null; } } document.body.classList.add('building');
+  if (!readOnly && !pack && roomOf(state, id)) { const sh = ensureShare(state); if (sh.plot !== id) { sh.plot = id; sh.pubKey = null; } } document.body.classList.add('building');
   $('#prompt').hidden = true; $('#minimap-wrap').hidden = true; wayUi(false); buildBar();
 }
-function exitBuild() { doorExit(doorSt, time); document.body.classList.remove('building'); const wasShared = !!build?.shared || !!build?.shop, wasOwn = build && !build.readOnly && !build.pack && !build.shop; if (build?.shop?.own) publishShop(); if (wasOwn) publishHome(); if (roomBuild) { const rb = roomBuild; const b = build; roomBuild = null; feel.fade(); uiClose();
+function exitBuild() { if (build && !build.readOnly && !build.shared && build.plotId === KENNEL_ID && kennelOf(state).items.length >= 5) stamp('kennel-decor'); doorExit(doorSt, time); document.body.classList.remove('building'); const wasShared = !!build?.shared || !!build?.shop, wasOwn = build && !build.readOnly && !build.pack && !build.shop; if (build?.shop?.own) publishShop(); if (wasOwn) publishHome(); if (roomBuild) { const rb = roomBuild; const b = build; roomBuild = null; feel.fade(); uiClose();
     // Refresh walkable home scene so new furniture blocks movement the same way outdoors solids do.
     if (rb.id?.startsWith('home:') && b) {
       const home = b.home || state.plots[b.plotId];
@@ -1886,7 +1979,7 @@ function renderBuild() { if (build.shop) return renderShopInterior();
   if (build.pack) { const pk = myPack(state); pk.members.slice(0, 6).forEach((m, i) => drawShiba(ctx, ox + cell * 0.8 + i * cell * 1.1, oy - cell * 0.15, { coat: m.coat, outfit: m.id === ME ? state.wardrobe.equipped : NPC_OUTFITS[i % NPC_OUTFITS.length], scale: 1, shadow: false }));
     const bx = ox + ROOM_W * cell - cell * 1.6, by0 = oy - cell * 1.5; ctx.fillStyle = pk.color; ctx.fillRect(bx, by0, cell * 1.4, cell * 1.2); ctx.fillStyle = '#d4a640'; ctx.fillRect(bx, by0 + cell * 1.2, cell * 1.4, 4); drawEmblem(ctx, pk.emblem, bx + cell * 0.35, by0 + cell * 0.2, cell * 0.14, '#fff6e0'); }
   if (!build.pack && !build.readOnly && state.spouse) { const sp = npcByName(state.spouse.name); drawShiba(ctx, ox + cell * 1.2, oy - cell * 0.2, { coat: sp?.coat || 'cream', outfit: sp?.outfit || {}, scale: 1.5, name: state.spouse.name }); (state.pups || []).forEach((p, i) => drawShiba(ctx, ox + cell * (2.4 + i), oy - cell * 0.1, { coat: p.coat.base, outfit: {}, scale: REL.PUP_SCALE[REL.stageOfPup(p, gameDay())] })); }
-  if (!build.pack && !build.readOnly) { const pet = activePet(state); if (pet) { ctx.save(); ctx.imageSmoothingEnabled = false; ctx.drawImage(petSprite(pet.species, Math.floor(time * 2) % 2), ox + ROOM_W * cell - cell * 1.6, oy - cell * 0.55, cell * 0.8, cell * 0.8); ctx.restore(); } }
+  if (!build.pack && !build.readOnly) { const pet = activePet(state); if (pet) { ctx.save(); ctx.imageSmoothingEnabled = false; ctx.drawImage(petSprite(pet.species, Math.floor(time * 2) % 2, pet.pal || null), ox + ROOM_W * cell - cell * 1.6, oy - cell * 0.55, cell * 0.8, cell * 0.8); ctx.restore(); } }
   else if (!build.shared) { const ni = +build.plotId.slice(1) - 1; if (!build.readOnly && statusGlow(state)) { ctx.save(); ctx.translate(ox + ROOM_W * cell - cell * 0.6, oy - cell * 0.2); drawFlair(ctx, statusGlow(state), performance.now() / 1000); ctx.restore(); } if (!build.readOnly && hasCustomLook(state)) drawProfileShiba(ctx, ox + ROOM_W * cell - cell * 0.6, oy - cell * 0.2, myProfile(), { scale: 1.5 }); else drawShiba(ctx, ox + ROOM_W * cell - cell * 0.6, oy - cell * 0.2, { coat: build.readOnly ? ['tan', 'dark', 'cream', 'red'][ni] : state.player.coat, outfit: build.readOnly ? NPC_OUTFITS[ni] : state.wardrobe.equipped, scale: 1.5 }); }
   ctx.fillStyle = '#f2cc68'; ctx.font = (buildSide() ? '12px' : '18px') + ' Silkscreen, monospace'; ctx.textAlign = 'center'; const tx = buildSide() ? Math.floor((innerWidth - Math.min(300, Math.floor(innerWidth * 0.38)) - 10) / 2) : innerWidth / 2, ty = buildSide() ? 18 : 70;
   if (!buildSide()) ctx.fillText(build.pack ? `${myPack(state).name} [${myPack(state).tag}] Clubhouse — decorate together` : build.shared ? `${build.shared.name}'s Home${build.shared.book ? ' · Guestbook ' + build.shared.book.length : ''}` : build.readOnly ? `${NPC_HOMES.find((x) => x.id === build.plotId).owner}'s Home` : `${state.player.name}'s Home — Build & Decorate`, tx, ty);
@@ -1960,7 +2053,7 @@ function packBuildBar(bb, h) {
   bb.innerHTML = `<div class="bb-col" style="flex:1"><h3>Pack furniture pool <span class="small">· treasury <b id="ptreas">${pk.treasury}</b> bones</span></h3><div class="inv" id="inv">${pool.length ? pool.map(([id, n]) => `<button data-inv="${id}" class="${build.sel?.id === id && build.sel.kind === 'new' ? 'sel' : ''}">${FURNITURE[id].name} ×${n}</button>`).join('') : '<span class="small">Pool empty — buy with the treasury or donate from your inventory.</span>'}</div>
    <div class="small">Pick from the shared pool, click the floor to place · <b>R</b> rotate · click placed items to move/store. Everyone in the Pack decorates here.</div>
    <div id="pickbar">${build.picked ? `<b>${FURNITURE[build.picked.id].name}</b> <span class="small">by ${esc(pk.members.find((m) => m.id === build.picked.by)?.name || 'a former member')}</span> <button class="btn ghost" id="pmove">Move</button> <button class="btn ghost" id="prot">Rotate</button> <button class="btn ghost" id="pstore">Store to pool</button>` : ''}</div>
-   <b>Buy for the Pack (treasury)</b><div class="inv" id="pbuy">${Object.entries(FURNITURE).filter(([, d]) => !d.mall).map(([id, d]) => `<button data-pbuy="${id}">${d.name} ${d.price}</button>`).join('')}</div>
+   <b>Buy for the Pack (treasury)</b><div class="inv" id="pbuy">${Object.entries(FURNITURE).filter(([, d]) => !d.mall && !d.party).map(([id, d]) => `<button data-pbuy="${id}">${d.name} ${d.price}</button>`).join('')}</div>
    ${inv.length ? `<b>Donate from your inventory</b><div class="inv" id="pdon">${inv.map(([id, n]) => `<button data-don="${id}">${FURNITURE[id].name} ×${n}</button>`).join('')}</div>` : ''}</div>
    <div class="bb-col"><b>Walls (treasury)</b><div class="up">${WALLS.map((w, i) => `<button class="btn ${h.wall === i ? 'alt' : 'ghost'}" data-wall="${i}">${w.name}${w.price ? ' ' + w.price : ''}</button>`).join('')}</div>
    <b>Floor (treasury)</b><div class="up">${FLOORS.map((w, i) => `<button class="btn ${h.floor === i ? 'alt' : 'ghost'}" data-floor="${i}">${w.name}${w.price ? ' ' + w.price : ''}</button>`).join('')}</div></div>
@@ -2139,7 +2232,7 @@ cv.addEventListener('wheel', (e) => { if (mode !== 'world') return; e.preventDef
   cv.addEventListener('touchmove', (e) => { if (!pinch || e.touches.length !== 2) return; const d = dist(e.touches); if (d / pinch > 1.35) { setZoom(stepZoom(ZOOM, 1)); pinch = d; } else if (pinch / d > 1.35) { setZoom(stepZoom(ZOOM, -1)); pinch = d; } }, { passive: true });
   cv.addEventListener('touchend', (e) => { if (e.touches.length < 2) pinch = null; }, { passive: true }); }
 document.getElementById('zin')?.addEventListener('click', () => setZoom(stepZoom(ZOOM, 1))); document.getElementById('zout')?.addEventListener('click', () => setZoom(stepZoom(ZOOM, -1)));
-window.__inu = { guide, open: (k, o) => openPanel(k, o), get time() { return time; }, get player() { return player; }, get zoom() { return ZOOM; }, setZoom, president: pres, presVisit: (k) => startVisit(pres, k, { dayLen: DAY_LEN }), setHour: (h) => { dayOffset = timeForHour(h) - time; }, setRain: (r) => { amb.rain = amb.rainTarget = r; amb.weatherT = 999; }, get amb() { return amb; }, get npcs() { return npcs; }, get mood() { return { ...MOOD.current, shown: MWd.MW.mood }; }, emote: (k) => doEmote(k), cam, get state() { return state; }, get mode() { return mode; }, get panel() { return panel?.kind; }, get panelObj() { return panel; }, mp: MPL };
+window.__inu = { guide, open: (k, o) => openPanel(k, o), get time() { return time; }, get player() { return player; }, get zoom() { return ZOOM; }, setZoom, president: pres, presVisit: (k) => startVisit(pres, k, { dayLen: DAY_LEN }), setHour: (h) => { dayOffset = timeForHour(h) - time; }, setRain: (r) => { amb.rain = amb.rainTarget = r; amb.weatherT = 999; }, get amb() { return amb; }, get npcs() { return npcs; }, get mood() { return { ...MOOD.current, shown: MWd.MW.mood }; }, emote: (k) => doEmote(k), cam, get state() { return state; }, get mode() { return mode; }, get panel() { return panel?.kind; }, get panelObj() { return panel; }, mp: MPL, club: { hunt: () => huntNow(), party: () => partyNow(), kennel: () => enterKennel(), room: (id, at) => enterRoom(id, at || null), get rp() { return RP; } } };
 // Inu Arcade inside the desktop overlay: its 🏠 button asks us to close the overlay instead of reloading.
 // framed Arcade (hall peek) -> Verse: ready / exit (close + inu:back-to-verse alias) / score. Origin pinned (districts.js). Score = toast only.
 addEventListener('message', (e) => { const m = DIS.arcadeMessage(e, new URL(ARCADE.url).origin); if (!m) return; globalThis.__arcadeMsgs = [...(globalThis.__arcadeMsgs || []).slice(-9), m];

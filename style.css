@@ -706,3 +706,25 @@ body[data-guide] #crier-banner{top:calc(max(8px,env(safe-area-inset-top)) + 104p
  body.inworld #inu-wallet{top:calc(max(8px,env(safe-area-inset-top)) + 104px)!important;left:auto!important;right:max(8px,env(safe-area-inset-right))!important;transform:none!important}
  body.mm-on #minimap-wrap{top:calc(max(8px,env(safe-area-inset-top)) + 156px)!important}
 }
+/* ---- Club: Pet Pups, Stamp Book, Party & Pin Hunt, Inu Times (src/club/clubui.js) ---- */
+.ci{display:inline-block;vertical-align:middle;background-image:url(assets/club/icons.png);background-repeat:no-repeat;image-rendering:pixelated;flex:none}.ci.dim{filter:grayscale(1) brightness(.55);opacity:.7}
+.club h2{display:flex;align-items:center;gap:8px;flex-wrap:wrap}.club h3{display:flex;align-items:center;gap:6px;flex-wrap:wrap;margin:12px 0 6px;color:var(--goldl)}
+.club .grid.pups{grid-template-columns:repeat(auto-fill,minmax(170px,1fr))}.club .card.pup canvas{image-rendering:pixelated;display:block;margin:0 auto}
+.club .card.pup.hungry,.club .card.pup.bored{border-color:#d8743a}.club .pupbtns{display:grid;grid-template-columns:1fr 1fr;gap:4px;margin-top:6px}.club .pupbtns .btn{min-height:40px;font-size:10px;padding:4px}
+.cbar{display:flex;align-items:center;gap:6px;font-size:10px;margin:3px 0}.cbar span{width:44px;text-align:left}.cbar i{flex:1;height:8px;background:#0a0f20;border:2px solid #000;display:block}.cbar b{display:block;height:100%}
+.club .coats{display:flex;flex-wrap:wrap;gap:6px}.club .coat{background:var(--navy2);border:3px solid var(--goldd);padding:4px;min-width:64px;min-height:64px;cursor:pointer;color:var(--cream);font:inherit;font-size:9px}.club .coat.on{border-color:var(--goldl);background:#2a3460}.club .coat canvas{image-rendering:pixelated;display:block;margin:0 auto}
+.club .adopt{gap:6px;margin-top:8px;flex-wrap:wrap}.club .adopt input{flex:1;min-width:140px;min-height:40px;font:inherit}
+.sbtabs{display:flex;gap:4px;overflow-x:auto;padding-bottom:4px;-webkit-overflow-scrolling:touch}.sbtabs .btn{white-space:nowrap;min-height:40px;font-size:10px}
+.sbpage{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:8px;margin:8px 0;background:#f4ecd8;padding:10px;border:4px solid #8a5a34;box-shadow:inset 0 0 0 3px #d8c3a0}
+.stamp{background:#fffaf0;color:#2a2018;border:3px dashed var(--tc);padding:8px 6px;text-align:center;display:flex;flex-direction:column;align-items:center;gap:3px;font-size:11px}.stamp b{font-size:12px}.stamp small{opacity:.8}.stamp em{font-style:normal;font-size:9px;color:var(--tc)}
+.stamp.got{border-style:solid;box-shadow:3px 3px 0 var(--tc)}.stamp.locked .ci{filter:grayscale(1) opacity(.35)}.stamp.locked{color:#7a6a5a}
+.pbanner{display:flex;align-items:center;gap:10px;background:linear-gradient(90deg,var(--pd),var(--pm));border:3px solid var(--pl);padding:8px 10px}.pbanner h2{margin:0}
+.club .pitem{display:flex;align-items:center;gap:10px;text-align:left;flex-wrap:wrap}.club .pitem>div{flex:1;min-width:140px}.club .pitem small{display:block}
+.club .grid.huntpins{grid-template-columns:repeat(auto-fill,minmax(150px,1fr))}.club .huntpins .card.got{border-color:#5fb36a}.pincoll{display:flex;flex-wrap:wrap;gap:4px}
+.club .row .btn .ci{margin-right:4px}
+.times{background:#f4f1ea;color:#1a1a22;padding:12px;border:4px solid #141a2e;font-family:Georgia,'Times New Roman',serif}.times header{text-align:center;border-bottom:3px double #141a2e;margin-bottom:8px}
+.times header h2{display:block;font-family:Silkscreen,monospace;font-size:26px;letter-spacing:2px;color:#141a2e;margin:2px 0}.times .mast{display:flex;justify-content:space-between;font-size:11px;border-top:1px solid #141a2e;padding:3px 0;gap:6px;flex-wrap:wrap}
+.times article{padding:6px 0;border-bottom:1px solid #c9c3b8}.times article p{margin:4px 0;font-size:13px;line-height:1.4}.times .how{font-size:12px;color:#5a3a78;font-weight:bold}
+.times .tag{font-family:Silkscreen,monospace;font-size:9px;background:#141a2e;color:#f2cc68;padding:1px 5px}.times h3,.times h4{margin:4px 0;color:#141a2e;font-size:16px}.times .lead h3{font-size:21px}.times .small{color:#5a5a5a}
+.times .cols{column-width:240px;column-gap:16px}.times .cols article{break-inside:avoid}
+@media (max-height:430px){.sbpage{grid-template-columns:repeat(auto-fill,minmax(130px,1fr))}.times header h2{font-size:20px}.times .lead h3{font-size:17px}}

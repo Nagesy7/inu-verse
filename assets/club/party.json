@@ -1,0 +1,28 @@
+{
+"sprites": {
+"post_jacaranda": [
+0,
+0,
+24,
+56
+],
+"booth_jacaranda": [
+24,
+0,
+84,
+72
+],
+"post_summerlights": [
+108,
+0,
+24,
+56
+],
+"booth_summerlights": [
+132,
+0,
+84,
+72
+]
+}
+}

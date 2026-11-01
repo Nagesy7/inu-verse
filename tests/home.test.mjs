@@ -12,7 +12,7 @@ const LAYOUT = { wall: 2, floor: 1, items: [{ uid: 'a', id: 'sofa', x: 1, y: 1, 
 
 test('homeshare: ids/keys, layout cleaning (known items, bounds, no overlaps), chat filter on entries', () => {
   const sh = HS.newShare(); assert.match(sh.id, HS.HOME_RE); assert.match(sh.key, /^[0-9a-f]{32}$/); assert.notEqual(HS.newShare().id, sh.id);
-  const s = { plots: {} }; assert.equal(HS.myHomePlot(s), null); const a = HS.ensureShare(s); assert.equal(HS.ensureShare(s), a, 'stable once made');
+  const s = { plots: {} }; assert.equal(HS.myHomePlot(s), 'kennel', 'no plot yet: your Kennel is your home'); const a = HS.ensureShare(s); assert.equal(HS.ensureShare(s), a, 'stable once made');
   const l = HS.cleanLayout({ wall: 99, floor: -1, items: [...LAYOUT.items, { id: 'sofa', x: 1, y: 1, rot: 0 }, { id: 'nope', x: 0, y: 0 }, { id: 'chair', x: 9.5, y: 0 }, { id: 'bed', x: 9, y: 0, rot: 0 }, { id: 'chair', x: 9, y: 6, rot: 7 }] });
   assert.deepEqual(l.items.map((i) => [i.id, i.x, i.y, i.rot]), [['sofa', 1, 1, 0], ['rug', 1, 3, 0], ['lamp', 1, 3, 0], ['chair', 9, 6, 3]], 'overlap/unknown/fractional/out of bounds dropped; rug + lamp on different layers ok');
   assert.equal(l.wall, 0); assert.equal(l.floor, 0); assert.equal(HS.cleanLayout(null), null); assert.equal(HS.cleanLayout({ items: 'x' }), null);

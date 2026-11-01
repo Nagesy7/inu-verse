@@ -66,6 +66,9 @@ const SET_ITEMS = [ // [set, cat, draw, name, w, h, color, layer]
 const PRICE = { beds: [140, 90000], sofas: [110, 70000], tables: [70, 50000], lamps: [35, 25000], rugs: [55, 35000], 'wall art': [40, 30000], plants: [25, 15000], kitchen: [160, 100000], 'baby & pup': [90, 60000] };
 for (const [set, cat, draw, name, w, h, color, layer] of SET_ITEMS) { const store = FURN_STORES.cosy.sets.includes(set) ? 'cosy' : 'royal', id = (set + '_' + name).toLowerCase().replace(/[^a-z0-9]+/g, '_');
   FURNITURE[id] = { name, w, h, color, layer: layer || 'obj', draw, set, cat, store, ...(store === 'cosy' ? { price: PRICE[cat][0] } : { price: Math.round(PRICE[cat][0] * 2), kibble: PRICE[cat][1] }) }; }
+// Monthly party keepsakes (src/club/parties.js): free, one per party per year, not sold anywhere, can't be sold or traded.
+FURNITURE.jaca_lantern = { name: 'Jacaranda Lantern', w: 1, h: 1, price: 0, color: '#9a6ae0', layer: 'obj', draw: 'paperlantern', party: 'jacaranda', store: 'party' };
+FURNITURE.star_garland = { name: 'Starlight Garland', w: 2, h: 1, price: 0, color: '#ffd27a', layer: 'obj', draw: 'garland', party: 'summerlights', store: 'party' };
 export const storeItems = (store) => Object.entries(FURNITURE).filter(([, d]) => d.store === store);
 export const WALLS = [
   { name: 'Plain Cream', price: 0, color: '#f3e6cf', trim: '#d8c3a0' },

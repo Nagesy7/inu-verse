@@ -2,6 +2,7 @@ import { ensureWardrobe } from './outfits.js';
 import { normalizeCoat } from './game.js';
 import { ensurePacks } from './packs.js';
 import { ensureMall } from './mall.js';
+import { migrateSave, SAVE_V } from './club/state.js';
 export const SAVE_KEY = 'inuverse.save.v1';
 export function save(state, storage) {
   storage.setItem(SAVE_KEY, JSON.stringify(state));
@@ -12,9 +13,9 @@ export function load(storage) {
     const raw = storage.getItem(SAVE_KEY);
     if (!raw) return null;
     const s = JSON.parse(raw);
-    if (!s || s.v !== 1 || !s.player || typeof s.bones !== 'number') return null;
+    if (!s || !(s.v === 1 || s.v === SAVE_V) || !s.player || typeof s.bones !== 'number') return null;
     s.plots ||= {}; s.inventory ||= {}; s.tokens ||= []; s.stats ||= { shifts: 0, bonesEarned: 0, served: 0 };
-    s.player.coat = normalizeCoat(s.player.coat); ensureWardrobe(s); ensurePacks(s); ensureMall(s);
+    s.player.coat = normalizeCoat(s.player.coat); ensureWardrobe(s); ensurePacks(s); ensureMall(s); migrateSave(s); // v1 -> v2 adds the club slice (kennel, stamps, pins, parties)
     return s;
   } catch { return null; }
 }
