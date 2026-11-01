@@ -77,7 +77,7 @@ export const SQUARE = { pools: { x: 19, y: 81 }, burn: { x: 28.5, y: 81 }, quest
 export { LOTS } from './biz.js';
 import { BOOTH } from './club/parties.js';
 import { LOTS as BIZ_LOTS } from './biz.js';
-import { SIM_SOLIDS, SIM_SPOTS } from './sim/place.js'; // Paw Audit Bureau desk, Barkley Precinct kiosk, Greenpaw Rangers station (src/sim/**)
+import { SIM_SOLIDS, SIM_SPOTS } from './sim/place.js'; import { shardSpot } from './huntshard.js'; // Paw Audit Bureau desk, Barkley Precinct kiosk, Greenpaw Rangers station (src/sim/**)
 export function buildMap() {
   const g = Array.from({ length: MAP_H }, () => new Array(MAP_W).fill(T.GRASS));
   const fill = (x0, y0, w, h, t) => { for (let y = y0; y < y0 + h; y++) for (let x = x0; x < x0 + w; x++) if (g[y] && g[y][x] !== undefined) g[y][x] = t; };
@@ -172,6 +172,7 @@ export function interactables(state) {
   list.push({ kind: 'shuttle', id: 'shuttle', name: 'Arcade Districts: fast travel', tx: 61, ty: 58 }); // signpost by the districts gate (districts.js)
   for (const g of GAME_DOORS) list.push({ kind: 'gamedoor', id: g.id, name: g.name, tx: g.door.tx, ty: g.door.ty });
   list.push({ kind: 'community', id: COMMUNITY.id, name: COMMUNITY.name, tx: COMMUNITY.x, ty: COMMUNITY.y + 1 });
+  list.push(shardSpot()); // Kibble Hunt hidden Golden Bowl shard (huntshard.js); never listed by the guide
   list.push({ kind: 'matchmaker', id: 'matchmaker', name: 'Park Matchmaker', tx: MATCHMAKER.x, ty: MATCHMAKER.y + 1 });
   list.push({ kind: 'square', id: 'pools', name: 'Pools Monument · Weekly Pool Board', tx: Math.round(SQUARE.pools.x), ty: SQUARE.pools.y + 2 });
   list.push({ kind: 'square', id: 'burn', name: 'Burn Festival Monument', tx: Math.round(SQUARE.burn.x), ty: SQUARE.burn.y + 2 });

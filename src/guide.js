@@ -46,7 +46,7 @@ export function nearestWalkable(tx, ty, r = 6) { tx = Math.round(tx); ty = Math.
 export function places(state) {
   const out = [], seen = new Set();
   for (const it of interactables(state)) {
-    if (it.kind === 'stall') continue; const key = it.kind + ':' + it.id; if (seen.has(key)) continue; seen.add(key);
+    if (it.kind === 'stall' || it.kind === 'shard') continue; const key = it.kind + ':' + it.id; if (seen.has(key)) continue; seen.add(key);
     const r = rect(RECTS[it.id]) || { fx: it.tx + 0.5, fy: it.ty - 0.5 };
     out.push({ id: it.id, kind: it.kind, name: NICE[it.id] || it.name, group: groupOf(it), featured: FEATURED.includes(it.id), tx: it.tx, ty: it.ty, fx: r.fx, fy: r.fy, keywords: KEYWORDS[it.id] || '' });
   }

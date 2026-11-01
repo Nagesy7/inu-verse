@@ -25,7 +25,7 @@ test('places registry covers every door/building and every interactable, all rea
   for (const g of GAME_DOORS) assert.ok(ids.has('gamedoor:' + g.id), g.id); assert.ok(ids.has('arcade:' + ARCADE.id));
   for (const p of PLOTS) assert.ok(ids.has('plot:' + p.id)); for (const h of NPC_HOMES) assert.ok(ids.has('visit:' + h.id)); for (const f of FIELDS) assert.ok(ids.has('field:' + f.id));
   for (const id of ['leaders', 'board', 'pools', 'burn', 'quests', 'bb1', 'bb2', 'barn', 'market', 'chapel']) assert.ok(P.some((p) => p.id === id), id);
-  for (const it of interactables(s)) if (it.kind !== 'stall') assert.ok(ids.has(it.kind + ':' + it.id), 'interactable ' + it.id);
+  for (const it of interactables(s)) if (it.kind !== 'stall' && it.kind !== 'shard') assert.ok(ids.has(it.kind + ':' + it.id), 'interactable ' + it.id); // the Kibble Hunt shard is hidden on purpose (huntshard.test.mjs)
   for (const p of P) { assert.ok(GD.GROUPS.includes(p.group), p.id); assert.equal(isSolid(p.tx, p.ty), false, 'stand tile ' + p.id); assert.ok(findPath(4, 19, p.tx, p.ty), 'reach ' + p.id); }
 });
 test('tour steps all resolve to a place (or the player) and cover the requested topics', () => {
