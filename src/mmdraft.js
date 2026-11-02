@@ -68,8 +68,10 @@ export function parseDraft(hashOrSearch) {
   let ticker = clean(p.get('ticker'), 20).toUpperCase().replace(/^\$/, '').replace(/[^A-Z0-9]/g, '').slice(0, LIMITS.ticker);
   let name = clean(p.get('name'), LIMITS.name);
   if (B58_RUN.test(name)) { name = name.replace(B58_RUN, '').trim(); notes.push('Removed an address from the name.'); } B58_RUN.lastIndex = 0;
-  if (!name) name = sister.name; if (!ticker) ticker = sister.ticker;
-  if (ticker === 'KIBBLE' || ticker === 'INU') { ticker = sister.ticker; notes.push('Ticker reset: $KIBBLE / Inu tickers belong to Inu, not the Cabal.'); }
+  if (ticker === 'KIBBLE' || ticker === 'INU') { ticker = ''; notes.push('Ticker reset: $KIBBLE / Inu tickers belong to Inu, not the Cabal.'); }
+  // A draft is a NEW coin: it may never copy the parent's name or ticker (copycat protection).
+  if (!name || name.toLowerCase() === sister.name.toLowerCase()) { if (name) notes.push(`Name changed: a draft can't reuse "${sister.name}".`); name = `${sister.name} Meme`; }
+  if (!ticker || ticker === sister.ticker) { if (ticker) notes.push(`Ticker changed: a draft can't reuse $${sister.ticker}.`); ticker = (sister.ticker + 'MEME').slice(0, LIMITS.ticker); }
   const g = guardText(clean(p.get('desc') ?? p.get('description'), LIMITS.desc * 2), { sister, ticker });
   const desc = g.text.slice(0, LIMITS.desc);
   if (g.removed.length) notes.push(`Removed from the description: ${g.removed.slice(0, 6).join(', ')}${g.removed.length > 6 ? '…' : ''} (other coins, addresses or price promises).`);
