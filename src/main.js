@@ -8,6 +8,8 @@ import { price, marketCap, progress, fmtPrice } from './curve.js';
 import { save, load } from './save.js';
 import { OUTFITS, SLOTS, SLOT_NAMES, buyOutfit, equipOutfit, unequipSlot, ensureWardrobe } from './outfits.js';
 import { mulberry32 } from './rng.js';
+import { track as vaTrack, withRef, autoTrackLinks, KIBBLE_PAGE, MAKER } from './va.js';
+autoTrackLinks();
 import { spawnNpcs, updateNpc, NPC_OUTFITS } from './npc.js';
 import { npcHome, installHomeScene, HOME_OX, HOME_OY } from './homes.js';
 import { drawShiba, drawFurniture, drawRoom, drawMenuIcon, drawBoneIcon, drawEmblem, GOLD } from './art.js';
@@ -433,8 +435,12 @@ function openArcade() { stamp('arcade'); const url = arcadeUrl(), touch = matchM
   ov.querySelector('#arc-frame').src = url; ov.querySelector('#arc-tab').href = url; ov.hidden = false; arcadeOpen = true; setTimeout(() => ov.querySelector('#arc-frame').focus(), 300); }
 // Rescue Station / Trainer Gate: open Inu Rescue / Inu Quest with the signed-in wallet (public address only; never a session).
 function gameDoorUrl(id) { const g = GAME_DOORS.find((d) => d.id === id), w = state?.walletAddr, q = new URLSearchParams();
-  if (/^[1-9A-HJ-NP-Za-km-z]{32,44}$/.test(w || '')) q.set('wallet', w); if (DEMO) q.set('demo', '1'); q.set('from', 'inu-verse'); q.set('spawn', id); return g.url + '?' + q.toString(); }
-function openGameDoor(id) { const url = gameDoorUrl(id), g = GAME_DOORS.find((d) => d.id === id); keys.clear(); const w = window.open(url, '_blank', 'noopener');
+  if (/^[1-9A-HJ-NP-Za-km-z]{32,44}$/.test(w || '')) q.set('wallet', w); if (DEMO) q.set('demo', '1'); q.set('from', 'inu-verse'); q.set('spawn', id);
+  if (id === 'kibblepay') { q.set('utm_source', 'inu-verse'); q.set('utm_medium', 'door'); q.set('utm_campaign', 'funnel'); }
+  return g.url + '?' + q.toString(); }
+/** Door analytics: the door id only (never the wallet that rides in the URL). */
+function trackDoor(id, via) { vaTrack('game_door', { door: id, via }); if (id === 'kibblepay') vaTrack('kibble_page_click', { from: 'door', via }); }
+function openGameDoor(id) { const url = gameDoorUrl(id), g = GAME_DOORS.find((d) => d.id === id); keys.clear(); trackDoor(id, 'menu'); const w = window.open(url, '_blank', 'noopener');
   toast(w ? `${g.name} opened in a new tab${/wallet=/.test(url) ? ' with your wallet' : ''}` : 'Allow pop-ups to open ' + g.name, w ? 'good' : 'bad');
   if (id === 'rescue') onboardEngage('rescue', 'use');
   if (id === 'quest') onboardEngage('quest', 'use');
@@ -1024,6 +1030,7 @@ function enterDoor(d) { lastDoor = d; keys.clear(); stopWalk(); player.v = { x: 
 // External games: same-tab navigation (a movement event is not a user gesture, so window.open would be popup-blocked).
 // Your spot is saved one tile outside the door, so coming back (browser Back) puts you outside, not in the doorway.
 function enterExternal(d) { const url = d.kind === 'arcade' ? arcadeUrl() : gameDoorUrl(d.id), name = d.name.replace(/^.*\((.*)\)$/, '$1');
+  trackDoor(d.kind === 'arcade' ? 'arcade' : d.id, 'walk');
   if (d.kind === 'arcade') onboardEngage('arcade', 'use');
   else if (d.id === 'rescue') onboardEngage('rescue', 'use');
   else if (d.id === 'quest') onboardEngage('quest', 'use');
@@ -1721,7 +1728,8 @@ function renderLaunch() {
   if (tab === 'kibble') body.innerHTML = `${head}<div class="card rcoin" style="text-align:left"><h3 style="margin:0">$KIBBLE <span class="small">official · Solana ${K0.program} · mint authority renounced</span></h3>
      <div class="small">Contract address (only this one is real):</div><div class="ca"><code id="kib-ca">${K0.mint}</code><button class="btn alt" data-copy="${K0.mint}">Copy</button></div>
      ${statBox(K0.mint)}<div class="kibsplit"><b>Creator fee split</b>${WL.splitHtml(WL.KIBBLE_SPLIT)}</div>${vfSlot(K0.mint)}${cleanSlot(K0.mint)}<div id="kibsign"></div>${panel.sign ? '' : '<div class="row" style="justify-content:flex-start;margin:2px 0"><button class="btn tiny ghost" id="kib-signopen">Creator: opt $KIBBLE in to Verified Launch</button></div>'}<div class="small" id="kib-src">Live from DexScreener, refreshed every minute. Shows "unavailable" if the feed is down.</div>
-     <div class="row" style="justify-content:flex-start">${link(RC.PUMP_COIN(K0.mint), 'View on pump.fun', 'btn green')}${link(RC.DEX_URL(K0.mint), 'DexScreener chart', 'btn ghost')}</div></div>${NFA}`;
+     <div class="row" style="justify-content:flex-start">${link(RC.PUMP_COIN(K0.mint), 'View on pump.fun', 'btn green')}${link(RC.DEX_URL(K0.mint), 'DexScreener chart', 'btn ghost')}</div>
+     <div class="row" style="justify-content:flex-start"><a class="btn alt" href="${withRef(KIBBLE_PAGE, 'launch-hall-panel')}" target="_blank" rel="noopener" data-va="kibble_page_click" data-va-from="lh-panel">$KIBBLE home ↗</a><a class="btn alt" href="${withRef(MAKER, 'launch-hall-panel')}" target="_blank" rel="noopener" data-va="maker_click" data-va-from="lh-panel">🎨 Make a meme ↗</a></div></div>${NFA}`;
   else if (tab === 'launch') body.innerHTML = `${head}<div id="noext" class="noext"><div class="small">Loading launcher…</div></div><details class="card" style="text-align:left"><summary><b>Prefer pump.fun's own page (any pair)? Step-by-step guide</b></summary>
      <p class="small">Inu Verse never creates, holds or signs tokens. You launch on pump.fun with your own wallet; pump.fun shows you every fee and step before you sign.</p>
      <ol class="small steps"><li>Open pump.fun's create page (button below) and connect Phantom there.</li>

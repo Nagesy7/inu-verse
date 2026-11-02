@@ -41,7 +41,10 @@ html{scroll-padding-top:10px}
 .glabel{border:2px dashed #d84a54;color:#f3d7d7;padding:6px 10px;font-size:12px;margin-top:6px}.share label{display:flex;gap:8px;align-items:flex-start;font-size:13px;margin-top:6px}
 .btn.sel{background:var(--gold);color:var(--ink)}
 a{color:var(--goldl)}
-</style></head><body>
+</style>
+<script>window.va=window.va||function(){(window.vaq=window.vaq||[]).push(arguments)};window.va('beforeSend',function(e){try{var u=new URL(e.url);u.hash='';Array.from(u.searchParams.keys()).forEach(function(k){if(!/^(utm_(source|medium|campaign|content|term)|ref|open)$/.test(k))u.searchParams.delete(k)});e.url=u.toString()}catch(_){}return e});</script>
+<script defer src="/_vercel/insights/script.js"></script>
+</head><body>
 <div class="wrap">
 <header><div><h1 class="px">LAUNCH HALL</h1><div class="sub px">Draft from Meme Maker · nothing is launched or listed from this page</div></div>
 <a class="btn ghost" id="lh-open" href="/?open=launch">Launch Hall in Inu Verse ↗</a></header>
@@ -57,6 +60,8 @@ a{color:var(--goldl)}
 <div class="toast" id="toast" role="status"></div>
 <script type="module">
 import * as MD from './src/mmdraft.js';
+import { track, withRef, autoTrackLinks } from './src/va.js';
+autoTrackLinks();
 const $ = (s) => document.querySelector(s);
 const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 const toast = (t) => { const el = $('#toast'); el.textContent = t; el.classList.add('on'); clearTimeout(el._t); el._t = setTimeout(() => el.classList.remove('on'), 2200); };
@@ -68,7 +73,7 @@ globalThis.__lhDraft = () => ({ ok: res.ok, reason: res.reason, notes: res.notes
 function notesHtml(n) { return n?.length ? `<div class="notes"><b>Safety checks</b><ul>${n.map((x) => `<li>${esc(x)}</li>`).join('')}</ul></div>` : ''; }
 function refused() {
   const msg = res.reason === 'empty' ? 'No draft in this link. Open the Cabal Meme Maker, make a sister meme, and tap <b>Send to Launch Hall</b>.' : esc(res.notes[0] || 'This draft cannot be used.');
-  $('#app').innerHTML = `<h2 class="px" style="margin:0 0 8px;font-size:15px;color:var(--goldl)">No draft to show</h2><p>${msg}</p><div class="row"><a class="btn" href="${MD.MAKER_URL}">Open the Meme Maker</a><a class="btn ghost" href="/?open=launch">Launch Hall in Inu Verse</a></div>`;
+  $('#app').innerHTML = `<h2 class="px" style="margin:0 0 8px;font-size:15px;color:var(--goldl)">No draft to show</h2><p>${msg}</p><div class="row"><a class="btn" href="${withRef(MD.MAKER_URL, 'launch-hall')}" data-va="maker_click" data-va-from="lh-no-draft">Open the Meme Maker</a><a class="btn ghost" href="/?open=launch">Launch Hall in Inu Verse</a></div>`;
 }
 const srcText = () => S.imgFrom === 'maker' ? 'Your meme, sent from the maker (kept in this tab only)' : S.imgFrom === 'preset' ? 'Preset art from the meme maker' : `${esc(S.d.coin.name)} art (open from the maker's button for your exact meme)`;
 function render() {
@@ -82,7 +87,7 @@ function render() {
     ${f('Description', d.desc ? esc(d.desc) : '<span class="plan">(none)</span>', d.desc || '')}
     ${f('Parent coin', `<b>$${esc(d.coin.ticker)}</b> · ${esc(d.coin.name)}<br><code>${esc(d.coin.mint)}</code><div class="plan">${d.parentPair ? `🧬 Pair of pairs: ${d.parentPair.chain.map(esc).join(' → ')}. CA from the verified pair registry; it can't be changed from a link.` : "Locked to this " + (MD.SISTERS[d.sister].side === 'crime' ? 'side' : 'sister') + "'s own coin. It can't be changed from a link."}</div>`, d.coin.mint)}
     ${d.reward != null ? f('Holder reward', `<b>${esc(d.reward)}%</b> <span class="plan">planned. The Launch Hall doesn't set or enforce this; nothing is set on-chain here.</span>`, '') : ''}
-    <div class="row"><button class="btn green" id="d-sheet">Copy launch sheet</button><a class="btn" id="d-pump" href="https://pump.fun/create" target="_blank" rel="noopener noreferrer">Open pump.fun create ↗</a><a class="btn ghost" id="d-back" href="${esc(d.back)}">← Back to Meme Maker</a></div>
+    <div class="row"><button class="btn green" id="d-sheet">Copy launch sheet</button><a class="btn" id="d-pump" data-va="lh_pump_click" data-va-from="lh-draft" href="https://pump.fun/create" target="_blank" rel="noopener noreferrer">Open pump.fun create ↗</a><a class="btn ghost" id="d-back" href="${esc(d.back)}" data-va="maker_click" data-va-from="lh-back">← Back to Meme Maker</a></div>
     ${notesHtml(res.notes)}</div></div>
   <div class="card"><h3 class="px">Launching it yourself (optional)</h3><ol>
     <li>Download the image and copy the launch sheet (buttons above).</li>
@@ -130,7 +135,7 @@ async function loadTop() {
     const rows = MD.topCreators(j);
     el.className = ''; el.innerHTML = `<div class="tops">${rows.map((t) => `<div class="top" style="--acc2:${esc(t.color)}"><span class="chip px"><i style="background:${esc(t.color)}"></i>$${esc(t.ticker)} · ${esc(t.name)}${t.parent ? ` · pair of $${esc(t.parent)}` : ''}</span>
       <div class="who">${t.top ? esc(t.top.name) : t.meme ? 'No named creator yet' : 'No creator yet'}</div><div class="plan">${t.top ? `${t.top.points} pts this week` : t.meme ? 'Anonymous memes only so far: add your name in the maker to be listed' : 'Be the first: make a meme and download or post it.'}${t.meme ? ` · top meme: “${esc(t.meme.headline || '…')}” by ${esc(t.meme.creator)}` : ''}</div></div>`).join('')}</div>
-      <div class="row"><a class="btn ghost tiny" href="${MD.MAKER_URL}#leaderboard">Full leaderboard in the Meme Maker ↗</a></div>
+      <div class="row"><a class="btn ghost tiny" href="${withRef(MD.MAKER_URL, 'launch-hall')}#leaderboard" data-va="maker_click" data-va-from="lh-leaderboard">Full leaderboard in the Meme Maker ↗</a></div>
       <div class="plan" style="margin-top:6px">Anonymous download + Post-to-X counts from the Cabal Meme Maker. Resets Monday 00:00 Sydney. Just for fun: no prizes, no money. NFA.</div>`;
     globalThis.__lhTop = rows;
   } catch { el.textContent = 'Leaderboard unavailable right now.'; }
@@ -220,6 +225,7 @@ function toAnchor(force) { if (!ANCHOR.test(location.hash) || (anchorDone && !fo
 loadGallery();
 loadTop();
 addEventListener('hashchange', () => { if (ANCHOR.test(location.hash)) { anchorDone = false; return toAnchor(true); } location.reload(); });
+{ const q = new URLSearchParams(location.search); track('lh_draft_open', res.ok ? { coin: S.d.parentPair?.id || S.d.sister || '', side: S.d.sister === 'CRIME' ? 'crime' : 'cabal', src: S.d.fromPairBuilder ? 'pairs' : 'meme', handoff: !!S.d.handoff, ref: q.get('utm_source') || (document.referrer ? 'referrer' : 'direct') } : { result: 'refused', ref: q.get('utm_source') || 'direct' }); }
 if (!res.ok) refused(); else { render(); handoff(); document.title = `Launch Hall · Draft: ${S.d.name} ($${S.d.ticker})`; }
 </script>
 </body></html>
