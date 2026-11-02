@@ -6,7 +6,7 @@ test('BTC draft: fields kept, parent locked to $BTC', () => { const r = P({ sist
 test('ETH draft pairs with $ETH only', () => { const r = P({ sister: 'ETH' }); assert.equal(r.draft.coin.mint, 'CXWNzqBE98SSmkGgHogJZd9vjsLdgaMAFpVfV22ypump'); assert.equal(r.draft.name, 'Extra Thick Hoe Meme'); assert.equal(r.draft.ticker, 'ETHMEME'); });
 test('a parent / CA in the link can never override the sister coin', () => { const r = P({ sister: 'BTC', parent: MD.KIBBLE_MINT, ca: 'CXWNzqBE98SSmkGgHogJZd9vjsLdgaMAFpVfV22ypump' });
   assert.equal(r.draft.coin.ticker, 'BTC'); assert.equal(r.notes.filter((n) => /Ignored/.test(n)).length, 2); });
-test('pending sisters, Inu and $KIBBLE are refused', () => { for (const s of ['SOL', 'XRP', 'XLM', 'GOLD', 'FOO']) assert.equal(P({ sister: s }).reason, 'pending');
+test('pending sisters, Inu and $KIBBLE are refused', () => { for (const s of ['SOL', 'XLM', 'GOLD', 'FOO']) assert.equal(P({ sister: s }).reason, 'pending');
   assert.equal(P({ sister: 'KIBBLE' }).reason, 'inu'); assert.equal(P({ family: 'inu', sister: 'BTC' }).reason, 'inu'); assert.equal(MD.parseDraft('').reason, 'empty'); });
 test('description: foreign CAs, tickers and price promises removed; own coin kept', () => { const r = P({ sister: 'BTC', ticker: 'JR', desc: `$BTC and $JR, 100x guaranteed $ETH ${MD.KIBBLE_MINT} to the moon, risk-free C5xph2yL6gMdxmuLGxJBkGpmuDFfyi5fqkBNhvL6pump` });
   assert.ok(!/ETH|4VE9|100x|guarantee|moon|risk/i.test(r.draft.desc), r.draft.desc); assert.ok(/\$BTC/.test(r.draft.desc) && /\$JR/.test(r.draft.desc) && /C5xph2/.test(r.draft.desc)); });
@@ -40,7 +40,7 @@ const FX = MD.buildPairRegistry([
 const PF = (f) => MD.parseDraft(new URL(MD.draftUrl('https://x.test/launch-draft.html', f)).hash, { pairs: FX });
 test('pair registry: chains to a sister only; orphans, locked mints, Inu parents dropped', () => {
   assert.deepEqual([...FX.keys()], ['BTCJR', 'BTCJR2']); assert.equal(FX.get('BTCJR2').root, 'BTC'); assert.equal(FX.get('BTCJR2').depth, 2);
-  assert.equal(MD.PAIRS.length, 0); assert.equal(MD.buildPairRegistry().size, 0); });
+  assert.equal(MD.PAIRS.length, 6); assert.equal(MD.buildPairRegistry().size, 6); });
 test('pair-of-pairs: parent id resolves its CA from the registry only', () => {
   const r = PF({ sister: 'BTC', parent: 'BTCJR2', name: 'Triple Jr', ticker: 'JR3', desc: 'for $JRJR and $BTC holders, $ETH nope' });
   assert.equal(r.ok, true); assert.equal(r.draft.coin.mint, 'TestJrJr22222222222222222222222222222222'); assert.equal(r.draft.coin.ticker, 'JRJR');
@@ -68,3 +68,26 @@ test('$CRIME is its own side: exact mint only, never crosses with the Cabal sist
   assert.equal(c.draft.coin.mint, CR); assert.notEqual(c.draft.ticker, 'CRIME');
   assert.equal(P({ sister: 'BTC', ticker: 'CRIME' }).draft.ticker, 'BTCMEME', 'no parent ticker from another side either');
 });
+
+// Verified pairs (real, on-chain-checked 2026-11-02): $BTC eco + $CRIME pairs, resolved from the registry only.
+test('verified pairs: registry has the 6 real pairs under the right roots, XRP is a cabal sister', () => {
+  const R = MD.buildPairRegistry();
+  assert.deepEqual([...R.keys()].sort(), ['BNB', 'ETF', 'LTC', 'MLC', 'MONEKO', 'XMR']);
+  for (const k of ['LTC', 'BNB', 'ETF']) assert.equal(R.get(k).root, 'BTC');
+  for (const k of ['MLC', 'MONEKO', 'XMR']) assert.equal(R.get(k).root, 'CRIME');
+  assert.equal(R.get('LTC').mint, 'DffdPtAKvnP91k9Ct6QvZ8TwVvWbJ6CxRtGNGNh9pump'); assert.equal(R.get('MLC').mint, 'GaCewzuGZ4U3shAmiLnqXMAN8WX4X7QRdJb3vy8ppump');
+  assert.equal(MD.SISTERS.XRP.mint, '83WuTBUf1vMDShCZyMD2PrDbd5ZY9DZVQd6vpfy1pump'); assert.equal(MD.SISTERS.XRP.side, 'cabal');
+  const x = P({ sister: 'XRP', family: 'cabal', name: 'Ripe Bestie', ticker: 'RIPE' }); assert.equal(x.ok, true); assert.equal(x.draft.coin.ticker, 'XRP');
+  assert.equal(P({ sister: 'XRP', family: 'crime' }).reason, 'side-mismatch'); });
+test('verified pairs: a pair meme (sister=root, parent=id) pairs with the pair coin, strict sides', () => {
+  const l = P({ sister: 'BTC', family: 'cabal', parent: 'LTC', name: 'Little Sister Energy', ticker: 'LSE', desc: 'little $LTC energy, not $BTC or $CRIME' });
+  assert.equal(l.ok, true); assert.equal(l.draft.coin.mint, 'DffdPtAKvnP91k9Ct6QvZ8TwVvWbJ6CxRtGNGNh9pump'); assert.deepEqual(l.draft.parentPair.chain, ['$BTC', '$LTC']);
+  assert.ok(/\$LTC/.test(l.draft.desc) && !/\$CRIME/.test(l.draft.desc), l.draft.desc); assert.equal(l.draft.image, 'https://cabal-meme-maker.vercel.app/assets/cabal/ltc.jpg');
+  const m = P({ sister: 'CRIME', family: 'crime', parent: 'MLC', name: 'Spin Cycle', ticker: 'SPIN' }); assert.equal(m.ok, true); assert.equal(m.draft.coin.ticker, 'MLC');
+  assert.equal(P({ sister: 'BTC', family: 'cabal', parent: 'MLC' }).reason, 'unregistered-parent', 'a $CRIME pair can never sit under $BTC');
+  assert.equal(P({ sister: 'CRIME', family: 'cabal', parent: 'MLC' }).reason, 'side-mismatch');
+  assert.equal(P({ sister: 'BTC', parent: 'LTC', ticker: 'LTC' }).draft.ticker, 'LTCMEME', 'copycat ticker blocked');
+  assert.equal(P({ sister: 'BTC', parent: 'BTC', ticker: 'MONEKO' }).draft.ticker, 'BTCMEME', 'all registry tickers are reserved'); });
+test('leaderboard: verified pair boards are shown (own coin only), unknown ids dropped', () => {
+  const t = MD.topCreators({ boards: [{ sister: 'LTC', topCreator: { name: 'z', points: 3 }, memes: [{ headline: 'little $LTC, big $BTC', score: 3, creator: 'z' }] }, { sister: 'FAKE', memes: [] }] });
+  assert.deepEqual(t.map((x) => x.sister), ['LTC']); assert.equal(t[0].parent, 'BTC'); assert.ok(/\$LTC/.test(t[0].meme.headline) && !/\$BTC/.test(t[0].meme.headline)); });

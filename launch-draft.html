@@ -126,7 +126,7 @@ async function loadTop() {
   try {
     const r = await fetch(`${MD.KIBBLE_API}/api/cabal?op=leaderboard&limit=1`); const j = await r.json(); if (!j.ok) throw 0;
     const rows = MD.topCreators(j);
-    el.className = ''; el.innerHTML = `<div class="tops">${rows.map((t) => `<div class="top" style="--acc2:${esc(t.color)}"><span class="chip px"><i style="background:${esc(t.color)}"></i>$${esc(t.ticker)} · ${esc(t.name)}</span>
+    el.className = ''; el.innerHTML = `<div class="tops">${rows.map((t) => `<div class="top" style="--acc2:${esc(t.color)}"><span class="chip px"><i style="background:${esc(t.color)}"></i>$${esc(t.ticker)} · ${esc(t.name)}${t.parent ? ` · pair of $${esc(t.parent)}` : ''}</span>
       <div class="who">${t.top ? esc(t.top.name) : 'No creator yet'}</div><div class="plan">${t.top ? `${t.top.points} pts this week` : 'Be the first: make a meme and download or post it.'}${t.meme ? ` · top meme: “${esc(t.meme.headline || '…')}” by ${esc(t.meme.creator)}` : ''}</div></div>`).join('')}</div>
       <div class="row"><a class="btn ghost tiny" href="${MD.MAKER_URL}#leaderboard">Full leaderboard in the Meme Maker ↗</a></div>
       <div class="plan" style="margin-top:6px">Anonymous download + Post-to-X counts from the Cabal Meme Maker. Resets Monday 00:00 Sydney. Just for fun: no prizes, no money. NFA.</div>`;
@@ -135,7 +135,7 @@ async function loadTop() {
 }
 
 // ---- Draft gallery (opt-in share, upvotes once per device per day, moderator hide). Ideas only, NFA. ----
-const GAL_SISTERS = ['BTC', 'ETH', 'CRIME'];
+const GAL_SISTERS = ['BTC', 'ETH', 'XRP', 'CRIME'];
 const GAL_LABEL = 'Draft ideas from the community. NOT launched coins, not listed, not endorsed. No CAs. Not financial advice.';
 const G = { sort: 'top', entries: [], admin: false };
 function deviceId() {
@@ -183,7 +183,7 @@ async function loadGallery() {
     G.entries = j.entries || []; if (G.admin && G.sort === 'top') G.entries.sort((a, b) => b.votes - a.votes);
     $('#lh-gal-label').innerHTML = `<b>Ideas only.</b> ${esc(j.label || GAL_LABEL)}`;
     el.className = ''; el.innerHTML = G.entries.length ? `<div class="gal">${G.entries.map(galCard).join('')}</div><div class="plan" style="margin-top:6px">${esc(j.rules || 'One upvote per device per draft per day (Sydney). NFA.')}</div>`
-      : '<div class="plan">No shared drafts yet. Make a $BTC, $ETH or $CRIME meme in the maker, send it here, and tap Share to gallery.</div>';
+      : '<div class="plan">No shared drafts yet. Make a $BTC, $ETH, $XRP or $CRIME meme (or one of their verified pairs) in the maker, send it here, and tap Share to gallery.</div>';
     globalThis.__lhGallery = G.entries;
     el.querySelectorAll('[data-gvote]').forEach((b) => b.onclick = () => upvote(b));
     el.querySelectorAll('[data-ghide]').forEach((b) => b.onclick = () => hide(b.dataset.ghide, b.dataset.h === '1'));

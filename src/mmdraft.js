@@ -18,14 +18,27 @@ export const SISTERS = Object.freeze({
   BTC: Object.freeze({ id: 'BTC', name: 'Big Titty Coin', ticker: 'BTC', mint: 'C5xph2yL6gMdxmuLGxJBkGpmuDFfyi5fqkBNhvL6pump', color: '#f7931a', art: MAKER_ORIGIN + '/assets/btc-mascot.jpg', side: 'cabal' }),
   ETH: Object.freeze({ id: 'ETH', name: 'Extra Thick Hoe', ticker: 'ETH', mint: 'CXWNzqBE98SSmkGgHogJZd9vjsLdgaMAFpVfV22ypump', color: '#627eea', art: MAKER_ORIGIN + '/assets/eth-mascot.png', side: 'cabal' }),
   CRIME: Object.freeze({ id: 'CRIME', name: 'CRIME', ticker: 'CRIME', mint: 'BN4Z5NtntHhu6p3atEqkeAVi8Bn9Ri2QTv8FD7iupump', color: '#ff6a13', art: MAKER_ORIGIN + '/assets/crime/crime-logo.jpg', side: 'crime' }),
+  // XRP "Xtra Ripe Peaches": verified 2026-11-02 — created by slingoor's own pump.fun wallet (5YRg…Uzij), pool quoted in $BTC.
+  XRP: Object.freeze({ id: 'XRP', name: 'Xtra Ripe Peaches', ticker: 'XRP', mint: '83WuTBUf1vMDShCZyMD2PrDbd5ZY9DZVQd6vpfy1pump', color: '#00aa9e', art: MAKER_ORIGIN + '/assets/xrp-mascot.jpg', side: 'cabal' }),
 });
 export const KIBBLE_MINT = '4VE9sy4fEMJdZ6i7MkYPbnqDJd2oqzJQmg44WJ3opump';
 
 // Pair-of-pairs: a REGISTERED pair can be the parent of a new draft. This list mirrors the child pairs in the Cabal Meme
 // Maker's config/pairs.json and is filled ONLY with real, on-chain-verified CAs supplied by Zachary (never from a link,
 // never guessed). Row: { id:'BTCJR', name:'Big Titty Junior', ticker:'BTCJR', ca:'<real mint>', parent:'BTC' | '<pair id>' }.
-// A draft link may name a parent by id (parent=BTCJR); the CA always comes from here. Empty until a real pair exists.
-export const PAIRS = Object.freeze([]);
+// A draft link may name a parent by id (parent=BTCJR); the CA always comes from here.
+// Verified 2026-11-02 (pump.fun + DexScreener: name/symbol match AND the pool is quoted in the parent; created/posted by the side's lead):
+//   $BTC eco (slingoor): LTC + BNB (x.com/slingoorio/status/2113790547596804269), ETF (x.com/slingoorio/status/2115942982801342696)
+//   $CRIME (Armoski):    MLC (x.com/Armoskii/status/2116812119861764374), MONEKO (…/2116954028118856123), XMR (bag screenshot …/2116569307622826058)
+const A = (f) => MAKER_ORIGIN + '/assets/' + f;
+export const PAIRS = Object.freeze([
+  { id: 'LTC', name: 'Little Titty Coin', ticker: 'LTC', ca: 'DffdPtAKvnP91k9Ct6QvZ8TwVvWbJ6CxRtGNGNh9pump', parent: 'BTC', art: A('cabal/ltc.jpg'), color: '#3b8cff' },
+  { id: 'BNB', name: 'Big Natural Boobs', ticker: 'BNB', ca: '7x4EfRQCFG1id7YZDNMbfcaZPMiaoNCZy6vTtXXmpump', parent: 'BTC', art: A('cabal/bnb.jpg'), color: '#f3ba2f' },
+  { id: 'ETF', name: 'Enormous Titty Faucet', ticker: 'ETF', ca: '2orqEGSdkm5BMmhdM8TpKCpACk32a3Zaj3Lef7ceqsc6', parent: 'BTC', art: A('cabal/etf.jpg'), color: '#8fb3c9' },
+  { id: 'MLC', name: 'Money Laundering Coin', ticker: 'MLC', ca: 'GaCewzuGZ4U3shAmiLnqXMAN8WX4X7QRdJb3vy8ppump', parent: 'CRIME', art: A('crime/mlc.jpg'), color: '#ff7a1a' },
+  { id: 'MONEKO', name: 'MONEKO', ticker: 'MONEKO', ca: 'CEwESmPYdTZwmwbgyEuRCAfyFGUfHgFfDJYuDJYGpump', parent: 'CRIME', art: A('crime/moneko.jpg'), color: '#ff5a1f' },
+  { id: 'XMR', name: 'Xtra Massive Rear', ticker: 'XMR', ca: 'ELKXSq9wSdVickfiHChDJEU2WTERJfNbMmVi1tdRpump', parent: 'CRIME', art: A('crime/xmr.jpg'), color: '#ff6a13' },
+].map(Object.freeze));
 const B58_FULL = /^[1-9A-HJ-NP-Za-km-z]{32,44}$/;
 /** Validates registry rows: chain must end at a verified sister, CA base58 + unique, no locked mints/tickers reused. */
 export function buildPairRegistry(rows = PAIRS) {
@@ -39,7 +52,8 @@ export function buildPairRegistry(rows = PAIRS) {
       const pid = String(r.parent || '').toUpperCase(); const par = SISTERS[pid] ? { root: pid, depth: 0, chain: [SISTERS[pid].ticker] } : out.get(pid); if (!par) continue;
       const ticker = String(r.ticker || '').replace(/^\$/, '').toUpperCase(); const ca = String(r.ca || '');
       if (!/^[A-Z0-9]{2,10}$/.test(ticker) || lockedT.has(ticker) || !B58_FULL.test(ca) || locked.has(ca) || [...out.values()].some((x) => x.mint === ca || x.ticker === ticker)) continue;
-      out.set(id, Object.freeze({ id, name: clean(r.name, 32) || ticker, ticker, mint: ca, parent: pid, root: par.root, depth: par.depth + 1, chain: [...par.chain, ticker] }));
+      const art = typeof r.art === 'string' && r.art.startsWith(MAKER_ORIGIN + '/assets/') ? r.art : null, color = /^#[0-9a-f]{6}$/i.test(r.color || '') ? r.color : null;
+      out.set(id, Object.freeze({ id, name: clean(r.name, 32) || ticker, ticker, mint: ca, parent: pid, root: par.root, depth: par.depth + 1, chain: [...par.chain, ticker], art, color }));
       added = true;
     }
   }
@@ -91,7 +105,7 @@ export function parseDraft(hashOrSearch, { pairs = pairReg() } = {}) {
   if (fam === 'inu' || sid === 'KIBBLE' || sid === 'INU') return { ok: false, reason: 'inu', notes: ['Inu / $KIBBLE memes are not sent to the Launch Hall draft desk yet.'] };
   if (!sid) return { ok: false, reason: 'empty', notes };
   const sister = SISTERS[sid];
-  if (!sister) return { ok: false, reason: 'pending', notes: ['That coin is not verified in the Launch Hall yet, so no draft can be paired with it. Only $BTC, $ETH and $CRIME drafts are accepted for now.'] };
+  if (!sister) return { ok: false, reason: 'pending', notes: ['That coin is not verified in the Launch Hall yet, so no draft can be paired with it. Only $BTC, $ETH, $XRP and $CRIME drafts (and their verified pairs) are accepted for now.'] };
   // Strict sides: a Cabal meme can't pair with $CRIME and a Crime Cat meme can't pair with a sister.
   if (famRaw && famRaw !== sister.side) return { ok: false, reason: 'side-mismatch', notes: [`A ${famRaw === 'crime' ? 'Crime Cat' : famRaw === 'cabal' ? 'Cabal' : clean(famRaw, 12)} meme can't be paired with $${sister.ticker}. Each side pairs only with its own coin.`] };
   // The parent coin is the sister's own, or a pair REGISTERED under her (looked up by id; its CA comes from the registry).
@@ -122,7 +136,7 @@ export function parseDraft(hashOrSearch, { pairs = pairReg() } = {}) {
   return { ok: true, notes, draft: {
     v: VERSION, sister: sister.id, coin, parentPair: reg ? { id: reg.id, depth: reg.depth, chain: reg.chain.map((t) => '$' + t) } : null,
     name, ticker, desc, reward, kit: clean(p.get('kit'), LIMITS.kit), fromPairBuilder: p.get('src') === 'pairs' || reward != null,
-    image: img || sister.art, imageSource: img ? 'preset' : 'sister-art', back: safeBackUrl(p.get('from')), handoff } };
+    image: img || reg?.art || sister.art, imageSource: img ? 'preset' : 'sister-art', back: safeBackUrl(p.get('from')), handoff } };
 }
 
 /** Builds a draft link (used by tests and by the meme maker snippet, which mirrors this). */
@@ -138,10 +152,11 @@ export const KIBBLE_API = 'https://kibble-pay.vercel.app';
 export function topCreators(lb) {
   const out = [];
   for (const b of lb?.boards || []) {
-    const s = SISTERS[String(b?.sister || '').toUpperCase()]; if (!s) continue;
+    const id = String(b?.sister || '').toUpperCase(), pr = pairReg().get(id);
+    const s = SISTERS[id] || (pr ? { id: pr.id, ticker: pr.ticker, name: pr.name, mint: pr.mint, color: pr.color || SISTERS[pr.root].color, parent: pr.parent } : null); if (!s) continue;
     const top = b.topCreator && clean(b.topCreator.name, 24) ? { name: clean(b.topCreator.name, 24), points: Math.max(0, Number(b.topCreator.points) || 0) } : null;
     const m = b.memes?.[0]; const meme = m ? { headline: guardText(clean(m.headline, 60), { sister: s }).text, score: Math.max(0, Number(m.score) || 0), creator: clean(m.creator, 24) || 'anon' } : null;
-    out.push({ sister: s.id, ticker: s.ticker, name: s.name, color: s.color, top, meme });
+    out.push({ sister: s.id, ticker: s.ticker, name: s.name, color: s.color, parent: s.parent || null, top, meme });
   }
   return out;
 }
