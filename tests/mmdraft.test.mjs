@@ -1,0 +1,24 @@
+import test from 'node:test'; import assert from 'node:assert/strict';
+import * as MD from '../src/mmdraft.js';
+const P = (f) => MD.parseDraft(new URL(MD.draftUrl('https://inu-verse-tawny.vercel.app/launch-draft.html', f)).hash);
+test('BTC draft: fields kept, parent locked to $BTC', () => { const r = P({ sister: 'BTC', name: 'Big Titty Junior', ticker: 'btcjr', desc: 'gm from the Cabal', reward: '5', src: 'pairs' });
+  assert.equal(r.ok, true); assert.equal(r.draft.coin.mint, 'C5xph2yL6gMdxmuLGxJBkGpmuDFfyi5fqkBNhvL6pump'); assert.equal(r.draft.ticker, 'BTCJR'); assert.equal(r.draft.reward, 5); assert.equal(r.draft.fromPairBuilder, true); });
+test('ETH draft pairs with $ETH only', () => { const r = P({ sister: 'ETH' }); assert.equal(r.draft.coin.mint, 'CXWNzqBE98SSmkGgHogJZd9vjsLdgaMAFpVfV22ypump'); assert.equal(r.draft.name, 'Extra Thick Hoe'); assert.equal(r.draft.ticker, 'ETH'); });
+test('a parent / CA in the link can never override the sister coin', () => { const r = P({ sister: 'BTC', parent: MD.KIBBLE_MINT, ca: 'CXWNzqBE98SSmkGgHogJZd9vjsLdgaMAFpVfV22ypump' });
+  assert.equal(r.draft.coin.ticker, 'BTC'); assert.equal(r.notes.filter((n) => /Ignored/.test(n)).length, 2); });
+test('pending sisters, Inu and $KIBBLE are refused', () => { for (const s of ['SOL', 'XRP', 'XLM', 'GOLD', 'FOO']) assert.equal(P({ sister: s }).reason, 'pending');
+  assert.equal(P({ sister: 'KIBBLE' }).reason, 'inu'); assert.equal(P({ family: 'inu', sister: 'BTC' }).reason, 'inu'); assert.equal(MD.parseDraft('').reason, 'empty'); });
+test('description: foreign CAs, tickers and price promises removed; own coin kept', () => { const r = P({ sister: 'BTC', ticker: 'JR', desc: `$BTC and $JR, 100x guaranteed $ETH ${MD.KIBBLE_MINT} to the moon, risk-free C5xph2yL6gMdxmuLGxJBkGpmuDFfyi5fqkBNhvL6pump` });
+  assert.ok(!/ETH|4VE9|100x|guarantee|moon|risk/i.test(r.draft.desc), r.draft.desc); assert.ok(/\$BTC/.test(r.draft.desc) && /\$JR/.test(r.draft.desc) && /C5xph2/.test(r.draft.desc)); });
+test('ticker $KIBBLE is reset; name/ticker limits; html stripped', () => { const r = P({ sister: 'ETH', ticker: 'KIBBLE', name: '<b>x</b>'.repeat(20) });
+  assert.equal(r.draft.ticker, 'ETH'); assert.ok(r.draft.name.length <= 32 && !/[<>]/.test(r.draft.name)); assert.equal(P({ sister: 'ETH', ticker: 'ABCDEFGHIJKLMN' }).draft.ticker.length, 10); });
+test('images: only maker-hosted /assets art by URL; data URLs validated', () => {
+  assert.equal(P({ sister: 'BTC', img: 'https://evil.example/x.png' }).draft.image, MD.SISTERS.BTC.art);
+  assert.equal(P({ sister: 'BTC', img: 'https://cabal-meme-maker.vercel.app/assets/eth-mascot.png' }).draft.imageSource, 'preset');
+  assert.equal(MD.safeImageUrl('https://cabal-meme-maker.vercel.app/assets/../x.png'), null);
+  assert.ok(MD.safeDataUrl('data:image/png;base64,iVBORw0KGgo=')); assert.equal(MD.safeDataUrl('data:text/html;base64,PGI+'), null); assert.equal(MD.safeDataUrl('javascript:alert(1)'), null); });
+test('origins + back link', () => { assert.ok(MD.isMakerOrigin('https://cabal-meme-maker.vercel.app')); assert.ok(MD.isMakerOrigin('https://cabal-meme-maker-abc123-prosper33.vercel.app'));
+  assert.ok(!MD.isMakerOrigin('https://cabal-meme-maker.vercel.app.evil.com')); assert.ok(!MD.isMakerOrigin('https://evil.vercel.app'));
+  assert.equal(P({ sister: 'BTC', from: 'https://evil.example/' }).draft.back, MD.MAKER_URL); assert.equal(P({ sister: 'BTC', from: 'https://cabal-meme-maker.vercel.app/#k=BTC&t=x' }).draft.back, 'https://cabal-meme-maker.vercel.app/#k=BTC&t=x'); });
+test('reward clamps to 0..100; launch sheet is NFA', () => { assert.equal(P({ sister: 'BTC', reward: '250' }).draft.reward, 100); assert.equal(P({ sister: 'BTC', reward: '-3' }).draft.reward, null);
+  assert.match(MD.launchSheet(P({ sister: 'BTC', reward: 2 }).draft), /NFA/); });
