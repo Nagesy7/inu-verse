@@ -25,6 +25,8 @@ header h1{margin:0;font-size:22px;color:var(--goldl)}header .sub{font-size:12px;
 .btn{font:12px Silkscreen,monospace;display:inline-flex;align-items:center;gap:6px;padding:9px 12px;border:2px solid var(--gold);background:var(--gold);color:var(--ink);cursor:pointer;text-decoration:none;min-height:40px}
 .btn.ghost{background:transparent;color:var(--cream)}.btn.green{background:var(--green);border-color:#7fe0a0;color:#fff}.btn.tiny{padding:3px 7px;min-height:0;font-size:10px}
 .btn:disabled{opacity:.5;cursor:not-allowed}
+@media (pointer:coarse){.btn.tiny{min-height:34px;padding:6px 10px;font-size:11px}}
+html{scroll-padding-top:10px}
 .row{display:flex;flex-wrap:wrap;gap:8px;margin:12px 0 0}
 .card{border:2px solid var(--goldd);background:#141c33;padding:10px 12px;margin-top:14px;font-size:14px}.card h3{margin:0 0 6px;font-size:13px;color:var(--goldl)}
 .card ol{margin:4px 0;padding-left:20px}.card code{word-break:break-all}.card li{margin:3px 0}
@@ -127,11 +129,12 @@ async function loadTop() {
     const r = await fetch(`${MD.KIBBLE_API}/api/cabal?op=leaderboard&limit=1`); const j = await r.json(); if (!j.ok) throw 0;
     const rows = MD.topCreators(j);
     el.className = ''; el.innerHTML = `<div class="tops">${rows.map((t) => `<div class="top" style="--acc2:${esc(t.color)}"><span class="chip px"><i style="background:${esc(t.color)}"></i>$${esc(t.ticker)} · ${esc(t.name)}${t.parent ? ` · pair of $${esc(t.parent)}` : ''}</span>
-      <div class="who">${t.top ? esc(t.top.name) : 'No creator yet'}</div><div class="plan">${t.top ? `${t.top.points} pts this week` : 'Be the first: make a meme and download or post it.'}${t.meme ? ` · top meme: “${esc(t.meme.headline || '…')}” by ${esc(t.meme.creator)}` : ''}</div></div>`).join('')}</div>
+      <div class="who">${t.top ? esc(t.top.name) : t.meme ? 'No named creator yet' : 'No creator yet'}</div><div class="plan">${t.top ? `${t.top.points} pts this week` : t.meme ? 'Anonymous memes only so far: add your name in the maker to be listed' : 'Be the first: make a meme and download or post it.'}${t.meme ? ` · top meme: “${esc(t.meme.headline || '…')}” by ${esc(t.meme.creator)}` : ''}</div></div>`).join('')}</div>
       <div class="row"><a class="btn ghost tiny" href="${MD.MAKER_URL}#leaderboard">Full leaderboard in the Meme Maker ↗</a></div>
       <div class="plan" style="margin-top:6px">Anonymous download + Post-to-X counts from the Cabal Meme Maker. Resets Monday 00:00 Sydney. Just for fun: no prizes, no money. NFA.</div>`;
     globalThis.__lhTop = rows;
   } catch { el.textContent = 'Leaderboard unavailable right now.'; }
+  toAnchor();
 }
 
 // ---- Draft gallery (opt-in share, upvotes once per device per day, moderator hide). Ideas only, NFA. ----
@@ -191,6 +194,7 @@ async function loadGallery() {
     if (G.admin && e.status === 401) { G.admin = false; try { sessionStorage.removeItem('lh.admin'); } catch {} toast('Moderator token not accepted'); return loadGallery(); }
     el.textContent = 'Gallery unavailable right now.';
   }
+  toAnchor();
 }
 async function upvote(b) {
   const id = b.dataset.gvote; b.disabled = true;
@@ -207,9 +211,15 @@ $('#lh-mod').onclick = () => {
   const t = prompt('Moderator token (kept in this tab only):'); if (!t) return;
   try { sessionStorage.setItem('lh.admin', t.trim()); } catch {} G.admin = true; $('#lh-mod').textContent = 'Exit moderator'; loadGallery();
 };
+// #lh-top / #lh-gallery are in-page anchors (not drafts): scroll to them once their async content has loaded,
+// and don't reload the page when one is clicked. Any other hash change is a new draft link, so reload for it.
+const ANCHOR = /^#lh-(top|gallery)$/;
+let anchorDone = false;
+function toAnchor(force) { if (!ANCHOR.test(location.hash) || (anchorDone && !force)) return; const el = document.getElementById(location.hash.slice(1)); if (!el) return;
+  requestAnimationFrame(() => el.scrollIntoView({ block: 'start', behavior: 'auto' })); if (!force && !$('#lh-top-body.plan') && !$('#lh-gal-body.plan')) anchorDone = true; }
 loadGallery();
 loadTop();
-addEventListener('hashchange', () => location.reload());
+addEventListener('hashchange', () => { if (ANCHOR.test(location.hash)) { anchorDone = false; return toAnchor(true); } location.reload(); });
 if (!res.ok) refused(); else { render(); handoff(); document.title = `Launch Hall · Draft: ${S.d.name} ($${S.d.ticker})`; }
 </script>
 </body></html>

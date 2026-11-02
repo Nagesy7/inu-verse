@@ -5,6 +5,15 @@
 // no MC in the formula. Bones never go negative (an unpaid day charges nothing and counts toward closing).
 import { DISTRICTS, CABINETS } from './districts.js';
 
+// RELEASE FLAG: OFF by default. Nothing in the app imports this module yet, and while the flag is off every state-changing
+// call below is a no-op (no save writes, no Bones charged, nothing rendered). Turn on only once Zachary approves the release.
+// Tests opt in with setDistrictRentEnabled(true).
+export const DISTRICT_RENT_DEFAULT = false;
+let ENABLED = DISTRICT_RENT_DEFAULT;
+export const districtRentEnabled = () => ENABLED;
+export function setDistrictRentEnabled(on) { ENABLED = on === true; return ENABLED; }
+const OFF = Object.freeze({ ok: false, off: true, reason: 'District rent is not released yet' });
+
 export const DEPOSIT_DAYS = 2; // same as biz.js LEASE_DEPOSIT
 export const UNPAID_CLOSE = 3; // same as biz.js unpaid limit
 export const POOL_SHARE = 0; // Zachary 2 Nov 2026: no 10% skim; district rent is a pure sink
@@ -21,7 +30,7 @@ export const LEASE_COPY = 'Cosmetic booth only. Cabinets stay free. Bones never 
 export const deposit = (cls) => (BOOTHS[cls] ? BOOTHS[cls].rent * DEPOSIT_DAYS : null);
 const hasLive = (d) => CABINETS.some((c) => c.district === d && c.live);
 
-export function ensureDistrictRent(s) { s.districtRent ||= { lease: null, spent: 0, history: [] }; return s.districtRent; }
+export function ensureDistrictRent(s) { if (!ENABLED) return null; s.districtRent ||= { lease: null, spent: 0, history: [] }; return s.districtRent; }
 // Kiosk / venue banner only where the district has at least one live cabinet (ambience-only mode is not approved yet).
 export function offered(cls, district) { const B = BOOTHS[cls]; if (!B || !DISTRICTS.some((d) => d.id === district)) return false; if (!B.districts.includes(district)) return false; return !B.needsLive || hasLive(district); }
 export function offers(district) { return BOOTH_IDS.filter((c) => offered(c, district)).map((c) => BOOTHS[c]); }
@@ -29,6 +38,7 @@ export function offers(district) { return BOOTH_IDS.filter((c) => offered(c, dis
 export function rentWarn(cls, bonesEarnedYesterday = 0, otherDailyRent = 0) { const B = BOOTHS[cls]; if (!B) return false; return otherDailyRent + B.rent > Math.max(40, 0.5 * (Number(bonesEarnedYesterday) || 0)); }
 
 export function leaseBooth(s, cls, district, day) {
+  if (!ENABLED) return OFF;
   const r = ensureDistrictRent(s), B = BOOTHS[cls];
   if (!B) return { ok: false, reason: 'Unknown booth' };
   if (!offered(cls, district)) return { ok: false, reason: 'Not offered in this district' };
@@ -38,9 +48,10 @@ export function leaseBooth(s, cls, district, day) {
   r.lease = { cls, district, rent: B.rent, since: day, paidThrough: day + DEPOSIT_DAYS, unpaid: 0 };
   return { ok: true, cost, lease: r.lease };
 }
-export function endLease(s, why = 'ended') { const r = ensureDistrictRent(s); if (!r.lease) return { ok: false }; const l = r.lease; r.lease = null; r.history.unshift({ ...l, why }); r.history.length = Math.min(r.history.length, 10); return { ok: true, closed: l }; }
+export function endLease(s, why = 'ended') { if (!ENABLED) return OFF; const r = ensureDistrictRent(s); if (!r.lease) return { ok: false }; const l = r.lease; r.lease = null; r.history.unshift({ ...l, why }); r.history.length = Math.min(r.history.length, 10); return { ok: true, closed: l }; }
 // Call once per in-game day (day = the day being settled). Deposit covers the first DEPOSIT_DAYS days.
 export function tickDay(s, day) {
+  if (!ENABLED) return null;
   const r = ensureDistrictRent(s), l = r.lease; if (!l) return null;
   if (day < l.paidThrough) return { paid: 0, covered: true };
   if ((s.bones || 0) >= l.rent) { s.bones -= l.rent; r.spent += l.rent; l.paidThrough = day + 1; l.unpaid = 0; return { paid: l.rent }; }
@@ -49,4 +60,4 @@ export function tickDay(s, day) {
   return { paid: 0, unpaid: l.unpaid };
 }
 // Cosmetic read for renderers: what booth (if any) the player shows in a district. Never gates doors or cabinets.
-export function boothIn(s, district) { const l = s.districtRent?.lease; return l && l.district === district ? BOOTHS[l.cls] : null; }
+export function boothIn(s, district) { if (!ENABLED) return null; const l = s.districtRent?.lease; return l && l.district === district ? BOOTHS[l.cls] : null; }

@@ -3,6 +3,7 @@ import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import * as R from '../src/district-rent.js';
 import * as D from '../src/districts.js';
+R.setDistrictRentEnabled(true); // these tests cover the logic itself; the release flag is off by default (see district-rent-off.test.mjs)
 
 const S = (bones = 500) => ({ bones });
 test('approved table: 15/35/50/80 Bones per day, deposit 2 days, close after 3 unpaid, one lease, no skim', () => {
