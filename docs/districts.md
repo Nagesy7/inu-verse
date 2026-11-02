@@ -49,3 +49,18 @@ The whole street is one continuous road. Each district has its own kiosk (fast t
 - Places lists "Arcade Districts (gate + fast travel)" under Games. You can search for district names, "cabinets" or "shiba scuffle", and the guide can walk you there.
 - The tour has an "Arcade Districts" step right after the Inu Arcade step.
 - Storefront titles sit low on the facade: venue banners are right above the cabinet plaque, and booth marquees are right above the door. That keeps them below the top bar at zoom 2 on 844x390 and 667x375. `titleRect()` in `src/districtart.js` is the source, and a test checks every storefront against it.
+
+## District booth rent (Bones) — approved by Zachary, 2 Nov 2026
+Logic lives in `src/district-rent.js` (pure module, tests in `tests/district-rent.test.mjs`). It isn't wired into the UI or save tick yet.
+
+| Booth class | Where | Rent / in-game day | Deposit (2 days) |
+|---|---|---|---|
+| `row_plaque` | Arcade Row sidewalk nameplate | 15 Bones | 30 |
+| `row_booth` | Arcade Row booth skin slot (not a cabinet) | 35 Bones | 70 |
+| `district_kiosk` | Arena / FUD Field / Stadium / Parkour / Race Park kiosk flair, only where a cabinet is live | 50 Bones | 100 |
+| `district_venue_skin` | Venue banner / facade tint, only where a cabinet is live | 80 Bones | 160 |
+
+- One active lease per player. After 3 unpaid days the lease closes. Bones never go negative.
+- **No pool skim.** District rent is a pure Bones sink and no 10% goes to a Top Business or Top Booth pool. This differs from the biz lots, which keep `BIZ_POOL_SHARE`.
+- Booths are cosmetic only. Cabinets and doors stay free. Booths are not a score or prize modifier, never involve $KIBBLE, and no MC goes into the formula.
+- Growth ladder v1.1 (MC $50K/$100K/$250K/$500K/$1M, cosmetics only) was also signed off by Zachary on 2 Nov 2026. Its tier contents live in the World Grower's `growth-map-v1.md` and are not in this repo yet.
