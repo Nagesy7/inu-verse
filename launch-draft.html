@@ -68,7 +68,7 @@ function render() {
   <div><h2 class="px" style="margin:0 0 6px;font-size:15px;color:var(--goldl)">Draft from Meme Maker</h2>
     ${f('Coin name', esc(d.name), d.name, 'big')}${f('Ticker', '$' + esc(d.ticker), d.ticker, 'big')}
     ${f('Description', d.desc ? esc(d.desc) : '<span class="plan">(none)</span>', d.desc || '')}
-    ${f('Parent coin', `<b>$${esc(d.coin.ticker)}</b> · ${esc(d.coin.name)}<br><code>${esc(d.coin.mint)}</code><div class="plan">Locked to this sister's own coin. It can't be changed from a link.</div>`, d.coin.mint)}
+    ${f('Parent coin', `<b>$${esc(d.coin.ticker)}</b> · ${esc(d.coin.name)}<br><code>${esc(d.coin.mint)}</code><div class="plan">${d.parentPair ? `🧬 Pair of pairs: ${d.parentPair.chain.map(esc).join(' → ')}. CA from the verified pair registry; it can't be changed from a link.` : "Locked to this sister's own coin. It can't be changed from a link."}</div>`, d.coin.mint)}
     ${d.reward != null ? f('Holder reward', `<b>${esc(d.reward)}%</b> <span class="plan">planned. The Launch Hall doesn't set or enforce this; nothing is set on-chain here.</span>`, '') : ''}
     <div class="row"><button class="btn green" id="d-sheet">Copy launch sheet</button><a class="btn" id="d-pump" href="https://pump.fun/create" target="_blank" rel="noopener noreferrer">Open pump.fun create ↗</a><a class="btn ghost" id="d-back" href="${esc(d.back)}">← Back to Meme Maker</a></div>
     ${notesHtml(res.notes)}</div></div>

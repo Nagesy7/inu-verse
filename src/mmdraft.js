@@ -17,6 +17,32 @@ export const SISTERS = Object.freeze({
   ETH: Object.freeze({ id: 'ETH', name: 'Extra Thick Hoe', ticker: 'ETH', mint: 'CXWNzqBE98SSmkGgHogJZd9vjsLdgaMAFpVfV22ypump', color: '#627eea', art: MAKER_ORIGIN + '/assets/eth-mascot.png' }),
 });
 export const KIBBLE_MINT = '4VE9sy4fEMJdZ6i7MkYPbnqDJd2oqzJQmg44WJ3opump';
+
+// Pair-of-pairs: a REGISTERED pair can be the parent of a new draft. This list mirrors the child pairs in the Cabal Meme
+// Maker's config/pairs.json and is filled ONLY with real, on-chain-verified CAs supplied by Zachary (never from a link,
+// never guessed). Row: { id:'BTCJR', name:'Big Titty Junior', ticker:'BTCJR', ca:'<real mint>', parent:'BTC' | '<pair id>' }.
+// A draft link may name a parent by id (parent=BTCJR); the CA always comes from here. Empty until a real pair exists.
+export const PAIRS = Object.freeze([]);
+const B58_FULL = /^[1-9A-HJ-NP-Za-km-z]{32,44}$/;
+/** Validates registry rows: chain must end at a verified sister, CA base58 + unique, no locked mints/tickers reused. */
+export function buildPairRegistry(rows = PAIRS) {
+  const out = new Map(), locked = new Set([KIBBLE_MINT, ...Object.values(SISTERS).map((x) => x.mint)]);
+  const lockedT = new Set(['KIBBLE', 'INU', 'SOL', 'XRP', 'XLM', 'GOLD', ...Object.keys(SISTERS)]);
+  const list = Array.isArray(rows) ? rows : [];
+  let added = true;
+  while (added) { added = false; // a child is accepted only after its parent (blocks cycles + orphans)
+    for (const r of list) {
+      const id = String(r?.id || '').toUpperCase(); if (!/^[A-Z0-9]{2,10}$/.test(id) || out.has(id) || SISTERS[id]) continue;
+      const pid = String(r.parent || '').toUpperCase(); const par = SISTERS[pid] ? { root: pid, depth: 0, chain: [SISTERS[pid].ticker] } : out.get(pid); if (!par) continue;
+      const ticker = String(r.ticker || '').replace(/^\$/, '').toUpperCase(); const ca = String(r.ca || '');
+      if (!/^[A-Z0-9]{2,10}$/.test(ticker) || lockedT.has(ticker) || !B58_FULL.test(ca) || locked.has(ca) || [...out.values()].some((x) => x.mint === ca || x.ticker === ticker)) continue;
+      out.set(id, Object.freeze({ id, name: clean(r.name, 32) || ticker, ticker, mint: ca, parent: pid, root: par.root, depth: par.depth + 1, chain: [...par.chain, ticker] }));
+      added = true;
+    }
+  }
+  return out;
+}
+let PAIR_REG = null; const pairReg = () => (PAIR_REG ??= buildPairRegistry());
 export const LIMITS = { name: 32, ticker: 10, desc: 500, kit: 40 };
 export const MAX_IMAGE_CHARS = 8_000_000; // ~6 MB PNG as a data URL
 
@@ -28,9 +54,9 @@ const PROMISE_RE = /\b(guaranteed?|guarantees|risk[\s-]?free|can'?t lose|cannot 
 const clean = (s, max) => String(s ?? '').replace(/[\u0000-\u001f\u007f<>]/g, ' ').replace(/\s{2,}/g, ' ').trim().slice(0, max);
 
 /** Strips foreign CAs, foreign $TICKERs and price promises. Returns { text, removed:[...] }. */
-export function guardText(raw, { sister, ticker }) {
-  const removed = []; const own = new Set(['$' + sister.ticker.toUpperCase()]); if (ticker) own.add('$' + ticker.toUpperCase());
-  let t = String(raw ?? '').replace(B58_RUN, (m) => { if (m === sister.mint) return m; removed.push(m.length > 12 ? `${m.slice(0, 4)}…${m.slice(-4)}` : m); return ''; });
+export function guardText(raw, { sister, ticker, also = null }) {
+  const removed = []; const own = new Set(['$' + sister.ticker.toUpperCase()]); if (ticker) own.add('$' + ticker.toUpperCase()); if (also) own.add('$' + also.ticker.toUpperCase());
+  let t = String(raw ?? '').replace(B58_RUN, (m) => { if (m === sister.mint || (also && m === also.mint)) return m; removed.push(m.length > 12 ? `${m.slice(0, 4)}…${m.slice(-4)}` : m); return ''; });
   t = t.replace(TICKER_RE, (m) => { if (own.has(m.toUpperCase())) return m; removed.push(m); return ''; });
   t = t.replace(PROMISE_RE, (m) => { removed.push(m.trim()); return ''; });
   return { text: t.replace(/[ \t]{2,}/g, ' ').replace(/\s+([.,!?])/g, '$1').trim(), removed };
@@ -55,7 +81,7 @@ function readParams(hashOrSearch) {
  * Parses + validates a draft. Returns { ok:true, draft, notes:[…] } or { ok:false, reason, notes }.
  * draft = { sister, coin:{ticker,name,mint}, name, ticker, desc, reward|null, kit, image, imageSource, back, handoff, fromPairBuilder }
  */
-export function parseDraft(hashOrSearch) {
+export function parseDraft(hashOrSearch, { pairs = pairReg() } = {}) {
   const p = readParams(hashOrSearch), notes = [];
   const fam = (p.get('family') || 'cabal').toLowerCase();
   const sid = (p.get('sister') || p.get('k') || '').toUpperCase().replace(/^\$/, '');
@@ -63,16 +89,24 @@ export function parseDraft(hashOrSearch) {
   if (!sid) return { ok: false, reason: 'empty', notes };
   const sister = SISTERS[sid];
   if (!sister) return { ok: false, reason: 'pending', notes: ['That sister\'s coin is not verified in the Launch Hall yet, so no draft can be paired with it. Only $BTC and $ETH drafts are accepted for now.'] };
-  // The parent coin is always the sister's own. A different CA/ticker in the link is ignored on purpose.
-  for (const k of ['parent', 'ca', 'mint', 'pair']) { const v = (p.get(k) || '').trim(); if (v && v !== sister.mint && v.toUpperCase().replace(/^\$/, '') !== sister.ticker) notes.push(`Ignored "${k}" in the link: ${sister.name} drafts always pair with $${sister.ticker}.`); }
+  // The parent coin is the sister's own, or a pair REGISTERED under her (looked up by id; its CA comes from the registry).
+  // A CA/ticker/unknown id in the link never changes the parent.
+  const pv = (p.get('parent') || '').trim().toUpperCase().replace(/^\$/, '');
+  const reg = pv && !B58_FULL.test(pv) && pairs.get(pv) && pairs.get(pv).root === sister.id ? pairs.get(pv) : null;
+  if (pv && !reg && !B58_FULL.test(p.get('parent').trim()) && pv !== sister.ticker && !SISTERS[pv] && pv !== 'KIBBLE' && /^[A-Z0-9]{2,10}$/.test(pv))
+    return { ok: false, reason: 'unregistered-parent', notes: [`"$${clean(pv, 10)}" is not a registered $${sister.ticker} pair in the Launch Hall yet, so this pair-of-pairs draft can't be paired. Only pairs whose real CA Zachary has verified can be parents (nothing is read from the link).`] };
+  const coin = reg ? { ticker: reg.ticker, name: reg.name, mint: reg.mint } : { ticker: sister.ticker, name: sister.name, mint: sister.mint };
+  for (const k of ['parent', 'ca', 'mint', 'pair']) { const v = (p.get(k) || '').trim(); if (k === 'parent' && reg) continue;
+    if (v && v !== coin.mint && v.toUpperCase().replace(/^\$/, '') !== coin.ticker) notes.push(`Ignored "${k}" in the link: ${k === 'parent' && pv && !B58_FULL.test(pv) ? `"${clean(v, 12)}" is not a registered $${sister.ticker} pair, so ` : ''}this draft pairs with $${coin.ticker}${reg ? ' (registry)' : ''}.`); }
   let ticker = clean(p.get('ticker'), 20).toUpperCase().replace(/^\$/, '').replace(/[^A-Z0-9]/g, '').slice(0, LIMITS.ticker);
   let name = clean(p.get('name'), LIMITS.name);
   if (B58_RUN.test(name)) { name = name.replace(B58_RUN, '').trim(); notes.push('Removed an address from the name.'); } B58_RUN.lastIndex = 0;
   if (ticker === 'KIBBLE' || ticker === 'INU') { ticker = ''; notes.push('Ticker reset: $KIBBLE / Inu tickers belong to Inu, not the Cabal.'); }
   // A draft is a NEW coin: it may never copy the parent's name or ticker (copycat protection).
-  if (!name || name.toLowerCase() === sister.name.toLowerCase()) { if (name) notes.push(`Name changed: a draft can't reuse "${sister.name}".`); name = `${sister.name} Meme`; }
-  if (!ticker || ticker === sister.ticker) { if (ticker) notes.push(`Ticker changed: a draft can't reuse $${sister.ticker}.`); ticker = (sister.ticker + 'MEME').slice(0, LIMITS.ticker); }
-  const g = guardText(clean(p.get('desc') ?? p.get('description'), LIMITS.desc * 2), { sister, ticker });
+  const takenN = new Set([sister.name, coin.name].map((x) => x.toLowerCase())), takenT = new Set([sister.ticker, coin.ticker, ...[...pairs.values()].map((x) => x.ticker)]);
+  if (!name || takenN.has(name.toLowerCase())) { if (name) notes.push(`Name changed: a draft can't reuse "${name}".`); name = `${coin.name} Meme`.slice(0, LIMITS.name); }
+  if (!ticker || takenT.has(ticker)) { if (ticker) notes.push(`Ticker changed: a draft can't reuse $${ticker}.`); ticker = (coin.ticker + 'MEME').slice(0, LIMITS.ticker); if (takenT.has(ticker)) ticker = (coin.ticker.slice(0, 7) + 'PR').slice(0, LIMITS.ticker); }
+  const g = guardText(clean(p.get('desc') ?? p.get('description'), LIMITS.desc * 2), { sister: coin, ticker, also: reg ? sister : null });
   const desc = g.text.slice(0, LIMITS.desc);
   if (g.removed.length) notes.push(`Removed from the description: ${g.removed.slice(0, 6).join(', ')}${g.removed.length > 6 ? '…' : ''} (other coins, addresses or price promises).`);
   let reward = null; const rr = p.get('reward');
@@ -81,7 +115,7 @@ export function parseDraft(hashOrSearch) {
   if (imgParam && !img) notes.push('Ignored an image link that is not hosted by the meme maker.');
   const handoff = /^[A-Za-z0-9_-]{6,40}$/.test(p.get('handoff') || '') ? p.get('handoff') : null;
   return { ok: true, notes, draft: {
-    v: VERSION, sister: sister.id, coin: { ticker: sister.ticker, name: sister.name, mint: sister.mint },
+    v: VERSION, sister: sister.id, coin, parentPair: reg ? { id: reg.id, depth: reg.depth, chain: reg.chain.map((t) => '$' + t) } : null,
     name, ticker, desc, reward, kit: clean(p.get('kit'), LIMITS.kit), fromPairBuilder: p.get('src') === 'pairs' || reward != null,
     image: img || sister.art, imageSource: img ? 'preset' : 'sister-art', back: safeBackUrl(p.get('from')), handoff } };
 }
