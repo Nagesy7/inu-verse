@@ -72,13 +72,13 @@ const srcText = () => S.imgFrom === 'maker' ? 'Your meme, sent from the maker (k
 function render() {
   const d = S.d; document.documentElement.style.setProperty('--acc', MD.SISTERS[d.sister].color);
   const f = (label, v, copyVal, cls = '') => `<div class="field"><b>${label}</b><div class="v ${cls}">${v}</div>${copyVal ? `<button class="btn tiny ghost" data-copy="${esc(copyVal)}">Copy</button>` : '<span></span>'}</div>`;
-  $('#app').innerHTML = `<div class="row" style="margin:0 0 12px"><span class="chip px"><i></i>Cabal · ${esc(d.coin.name)} · $${esc(d.coin.ticker)}</span>${d.fromPairBuilder ? '<span class="chip px">🧬 Pair Builder</span>' : '<span class="chip px">Meme export</span>'}${d.kit ? `<span class="chip">Kit: ${esc(d.kit)}</span>` : ''}</div>
+  $('#app').innerHTML = `<div class="row" style="margin:0 0 12px"><span class="chip px"><i></i>${MD.SISTERS[d.sister].side === 'crime' ? 'Crime Cat (fan-made)' : 'Cabal'} · ${esc(d.coin.name)} · $${esc(d.coin.ticker)}</span>${d.fromPairBuilder ? '<span class="chip px">🧬 Pair Builder</span>' : '<span class="chip px">Meme export</span>'}${d.kit ? `<span class="chip">Kit: ${esc(d.kit)}</span>` : ''}</div>
   <div class="grid"><div><div class="art"><img id="d-img" src="${esc(S.img)}" alt="Meme image for ${esc(d.name)}" crossorigin="anonymous"><div class="src" id="d-src">${srcText()}</div></div>
     <div class="row"><button class="btn" id="d-dl">⬇ Download image</button></div></div>
   <div><h2 class="px" style="margin:0 0 6px;font-size:15px;color:var(--goldl)">Draft from Meme Maker</h2>
     ${f('Coin name', esc(d.name), d.name, 'big')}${f('Ticker', '$' + esc(d.ticker), d.ticker, 'big')}
     ${f('Description', d.desc ? esc(d.desc) : '<span class="plan">(none)</span>', d.desc || '')}
-    ${f('Parent coin', `<b>$${esc(d.coin.ticker)}</b> · ${esc(d.coin.name)}<br><code>${esc(d.coin.mint)}</code><div class="plan">${d.parentPair ? `🧬 Pair of pairs: ${d.parentPair.chain.map(esc).join(' → ')}. CA from the verified pair registry; it can't be changed from a link.` : "Locked to this sister's own coin. It can't be changed from a link."}</div>`, d.coin.mint)}
+    ${f('Parent coin', `<b>$${esc(d.coin.ticker)}</b> · ${esc(d.coin.name)}<br><code>${esc(d.coin.mint)}</code><div class="plan">${d.parentPair ? `🧬 Pair of pairs: ${d.parentPair.chain.map(esc).join(' → ')}. CA from the verified pair registry; it can't be changed from a link.` : "Locked to this " + (MD.SISTERS[d.sister].side === 'crime' ? 'side' : 'sister') + "'s own coin. It can't be changed from a link."}</div>`, d.coin.mint)}
     ${d.reward != null ? f('Holder reward', `<b>${esc(d.reward)}%</b> <span class="plan">planned. The Launch Hall doesn't set or enforce this; nothing is set on-chain here.</span>`, '') : ''}
     <div class="row"><button class="btn green" id="d-sheet">Copy launch sheet</button><a class="btn" id="d-pump" href="https://pump.fun/create" target="_blank" rel="noopener noreferrer">Open pump.fun create ↗</a><a class="btn ghost" id="d-back" href="${esc(d.back)}">← Back to Meme Maker</a></div>
     ${notesHtml(res.notes)}</div></div>
@@ -87,9 +87,9 @@ function render() {
     <li>Open pump.fun's own create page, connect your own wallet, and paste the name, ticker and description.</li>
     <li>Pair it only with <b>$${esc(d.coin.ticker)}</b>: under the pool pair choose <b>Custom</b> and paste <code>${esc(d.coin.mint)}</code>, then check the address. If pump.fun doesn't offer $${esc(d.coin.ticker)} as a pair, don't pair it with anything else.</li>
     <li>Afterwards you can register your coin on the <a href="/?open=launch">Launch Hall Coin board</a>. Listing and Verified Launch badges are checked separately and are never automatic from a draft.</li></ol>
-    <div class="plan">This page never connects a wallet or signs anything. Nothing leaves this tab unless you choose <b>Share to gallery</b> below (opt-in: only the name, ticker, description, sister and a small copy of the image).</div></div>
+    <div class="plan">This page never connects a wallet or signs anything. Nothing leaves this tab unless you choose <b>Share to gallery</b> below (opt-in: only the name, ticker, description, parent coin and a small copy of the image).</div></div>
   ${GAL_SISTERS.includes(d.sister) ? `<div class="card share" id="d-share"><h3 class="px">🖼️ Share to the draft gallery (optional)</h3>
-    <div class="plan">Shares <b>${esc(d.name)}</b> ($${esc(d.ticker)}), the description, the sister ($${esc(d.sister)}) and a small JPEG of the image to a public list of community <b>ideas</b>. No CA, no wallet, no launch. Contract addresses, price talk and rude words are stripped. Moderators can hide anything.</div>
+    <div class="plan">Shares <b>${esc(d.name)}</b> ($${esc(d.ticker)}), the description, the parent ($${esc(d.sister)}) and a small JPEG of the image to a public list of community <b>ideas</b>. No CA, no wallet, no launch. Contract addresses, price talk and rude words are stripped. Moderators can hide anything.</div>
     <label><input type="checkbox" id="d-share-ok"> I understand this is public and it's an idea, not a launched coin. NFA.</label>
     <div class="row"><button class="btn" id="d-share-btn" disabled>Share to gallery</button></div><div class="plan" id="d-share-msg"></div></div>` : ''}`;
   document.querySelectorAll('[data-copy]').forEach((b) => b.onclick = () => copy(b.dataset.copy));
@@ -135,7 +135,7 @@ async function loadTop() {
 }
 
 // ---- Draft gallery (opt-in share, upvotes once per device per day, moderator hide). Ideas only, NFA. ----
-const GAL_SISTERS = ['BTC', 'ETH'];
+const GAL_SISTERS = ['BTC', 'ETH', 'CRIME'];
 const GAL_LABEL = 'Draft ideas from the community. NOT launched coins, not listed, not endorsed. No CAs. Not financial advice.';
 const G = { sort: 'top', entries: [], admin: false };
 function deviceId() {
@@ -183,7 +183,7 @@ async function loadGallery() {
     G.entries = j.entries || []; if (G.admin && G.sort === 'top') G.entries.sort((a, b) => b.votes - a.votes);
     $('#lh-gal-label').innerHTML = `<b>Ideas only.</b> ${esc(j.label || GAL_LABEL)}`;
     el.className = ''; el.innerHTML = G.entries.length ? `<div class="gal">${G.entries.map(galCard).join('')}</div><div class="plan" style="margin-top:6px">${esc(j.rules || 'One upvote per device per draft per day (Sydney). NFA.')}</div>`
-      : '<div class="plan">No shared drafts yet. Make a $BTC or $ETH meme in the maker, send it here, and tap Share to gallery.</div>';
+      : '<div class="plan">No shared drafts yet. Make a $BTC, $ETH or $CRIME meme in the maker, send it here, and tap Share to gallery.</div>';
     globalThis.__lhGallery = G.entries;
     el.querySelectorAll('[data-gvote]').forEach((b) => b.onclick = () => upvote(b));
     el.querySelectorAll('[data-ghide]').forEach((b) => b.onclick = () => hide(b.dataset.ghide, b.dataset.h === '1'));

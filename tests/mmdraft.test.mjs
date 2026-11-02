@@ -53,3 +53,18 @@ test('pair-of-pairs: CA / unknown id / wrong sister in the link fall back to the
   assert.equal(P({ sister: 'BTC', parent: 'BTCJR' }).reason, 'unregistered-parent'); assert.equal(P({ sister: 'BTC', parent: '$BTC' }).draft.coin.ticker, 'BTC'); });
 test('pair-of-pairs copycat: cannot reuse the parent pair name/ticker', () => { const r = PF({ sister: 'BTC', parent: 'BTCJR', name: 'big titty junior', ticker: 'BTCJR' });
   assert.equal(r.draft.name, 'Big Titty Junior Meme'); assert.equal(r.draft.ticker, 'BTCJRMEME'); });
+test('$CRIME is its own side: exact mint only, never crosses with the Cabal sisters or Inu', () => {
+  const CR = 'BN4Z5NtntHhu6p3atEqkeAVi8Bn9Ri2QTv8FD7iupump';
+  const r = P({ sister: 'CRIME', family: 'crime', name: 'Crime Kitten', ticker: 'ckit', desc: 'a $CRIME kid, not $BTC or $KIBBLE', kit: 'Crime Cat', img: 'https://cabal-meme-maker.vercel.app/assets/crime/crime-logo.jpg' });
+  assert.equal(r.ok, true); assert.equal(r.draft.coin.mint, CR); assert.equal(r.draft.coin.ticker, 'CRIME'); assert.equal(r.draft.imageSource, 'preset');
+  assert.ok(/\$CRIME/.test(r.draft.desc) && !/\$BTC|\$KIBBLE/.test(r.draft.desc), r.draft.desc);
+  assert.equal(P({ sister: 'CRIME' }).draft.image, MD.SISTERS.CRIME.art);
+  // cross-side links refused both ways
+  assert.equal(P({ sister: 'CRIME', family: 'cabal' }).reason, 'side-mismatch');
+  assert.equal(P({ sister: 'BTC', family: 'crime' }).reason, 'side-mismatch');
+  assert.equal(P({ sister: 'CRIME', family: 'inu' }).reason, 'inu');
+  // a link can't swap the CRIME parent (copycat CA / ticker) and CRIME can't be reused as a draft ticker
+  const c = P({ sister: 'CRIME', family: 'crime', ca: '7M3gExampleCopycatCAxxxxxxxxxxxxxxxxxxxxpump', ticker: 'CRIME' });
+  assert.equal(c.draft.coin.mint, CR); assert.notEqual(c.draft.ticker, 'CRIME');
+  assert.equal(P({ sister: 'BTC', ticker: 'CRIME' }).draft.ticker, 'BTCMEME', 'no parent ticker from another side either');
+});
