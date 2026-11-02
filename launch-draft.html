@@ -33,6 +33,11 @@ header h1{margin:0;font-size:22px;color:var(--goldl)}header .sub{font-size:12px;
 .plan{font-size:11px;color:#b9b08e}
 .tops{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:10px}.top{border:2px solid var(--acc2,var(--gold));background:#141c33;padding:8px 10px}.top .who{font-size:18px;color:var(--goldl);font-weight:700}
 .toast{position:fixed;left:50%;bottom:18px;transform:translateX(-50%);background:var(--ink);border:2px solid var(--gold);padding:8px 14px;font-size:13px;opacity:0;transition:opacity .2s;pointer-events:none}.toast.on{opacity:1}
+.gal{display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:10px;margin-top:10px}.gi{border:2px solid var(--acc2,var(--gold));background:#141c33;display:flex;flex-direction:column}
+.gi img{width:100%;aspect-ratio:1;object-fit:cover;display:block;background:#000}.gi .b{padding:8px 10px;flex:1;display:flex;flex-direction:column;gap:4px}.gi .nm{font-weight:700;color:var(--goldl)}.gi .ds{font-size:12px;color:#e9dcae;word-break:break-word}
+.gi .ft{display:flex;align-items:center;justify-content:space-between;gap:6px;margin-top:auto}.gi.hid{opacity:.45}.idea{display:inline-block;font-size:10px;padding:1px 6px;border:1px solid #d84a54;color:#f3d7d7;background:#2a1020}
+.glabel{border:2px dashed #d84a54;color:#f3d7d7;padding:6px 10px;font-size:12px;margin-top:6px}.share label{display:flex;gap:8px;align-items:flex-start;font-size:13px;margin-top:6px}
+.btn.sel{background:var(--gold);color:var(--ink)}
 a{color:var(--goldl)}
 </style></head><body>
 <div class="wrap">
@@ -40,6 +45,11 @@ a{color:var(--goldl)}
 <a class="btn ghost" id="lh-open" href="/?open=launch">Launch Hall in Inu Verse ↗</a></header>
 <main id="app" class="frame" aria-live="polite"><p>Loading your draft…</p><noscript><p>This page needs JavaScript.</p></noscript></main>
 <section class="frame" id="lh-top" style="margin-top:14px" aria-labelledby="lh-top-h"><h2 class="px" id="lh-top-h" style="margin:0 0 8px;font-size:14px;color:var(--goldl)">👑 Top Cabal meme creators this week</h2><div id="lh-top-body" class="plan">Loading…</div></section>
+<section class="frame" id="lh-gallery" style="margin-top:14px" aria-labelledby="lh-gal-h"><h2 class="px" id="lh-gal-h" style="margin:0 0 4px;font-size:14px;color:var(--goldl)">🖼️ Draft gallery · community ideas</h2>
+<div class="glabel" id="lh-gal-label"><b>Ideas only.</b> Draft ideas from the community. NOT launched coins, not listed, not endorsed. No CAs. Not financial advice.</div>
+<div class="row" role="group" aria-label="Sort gallery"><button class="btn tiny ghost sel" data-gsort="top">Top</button><button class="btn tiny ghost" data-gsort="new">New</button></div>
+<div id="lh-gal-body" class="plan" style="margin-top:8px">Loading…</div>
+<div class="row" style="justify-content:flex-end"><button class="btn tiny ghost" id="lh-mod">Moderator</button></div></section>
 <div class="nfa"><b>NFA.</b> Not financial advice and no price promises. A draft is just a meme plus a name idea. Launching a coin is done by you, in your own wallet, on pump.fun's own page, and costs real SOL. Memecoins can go to zero. Always check the contract address.</div>
 </div>
 <div class="toast" id="toast" role="status"></div>
@@ -77,10 +87,15 @@ function render() {
     <li>Open pump.fun's own create page, connect your own wallet, and paste the name, ticker and description.</li>
     <li>Pair it only with <b>$${esc(d.coin.ticker)}</b>: under the pool pair choose <b>Custom</b> and paste <code>${esc(d.coin.mint)}</code>, then check the address. If pump.fun doesn't offer $${esc(d.coin.ticker)} as a pair, don't pair it with anything else.</li>
     <li>Afterwards you can register your coin on the <a href="/?open=launch">Launch Hall Coin board</a>. Listing and Verified Launch badges are checked separately and are never automatic from a draft.</li></ol>
-    <div class="plan">This page never connects a wallet, signs anything, uploads your image or adds anything to a public list. The draft stays in this browser tab.</div></div>`;
+    <div class="plan">This page never connects a wallet or signs anything. Nothing leaves this tab unless you choose <b>Share to gallery</b> below (opt-in: only the name, ticker, description, sister and a small copy of the image).</div></div>
+  ${GAL_SISTERS.includes(d.sister) ? `<div class="card share" id="d-share"><h3 class="px">🖼️ Share to the draft gallery (optional)</h3>
+    <div class="plan">Shares <b>${esc(d.name)}</b> ($${esc(d.ticker)}), the description, the sister ($${esc(d.sister)}) and a small JPEG of the image to a public list of community <b>ideas</b>. No CA, no wallet, no launch. Contract addresses, price talk and rude words are stripped. Moderators can hide anything.</div>
+    <label><input type="checkbox" id="d-share-ok"> I understand this is public and it's an idea, not a launched coin. NFA.</label>
+    <div class="row"><button class="btn" id="d-share-btn" disabled>Share to gallery</button></div><div class="plan" id="d-share-msg"></div></div>` : ''}`;
   document.querySelectorAll('[data-copy]').forEach((b) => b.onclick = () => copy(b.dataset.copy));
   $('#d-sheet').onclick = () => copy(MD.launchSheet(d), 'Launch sheet copied');
   $('#d-dl').onclick = download;
+  const ok = $('#d-share-ok'); if (ok) { ok.onchange = () => { $('#d-share-btn').disabled = !ok.checked; }; $('#d-share-btn').onclick = shareToGallery; }
 }
 function setImage(u, from) { S.img = u; S.imgFrom = from; const im = $('#d-img'); if (im) { im.removeAttribute('crossorigin'); im.src = u; } const s = $('#d-src'); if (s) s.textContent = srcText(); }
 async function download() {
@@ -118,6 +133,81 @@ async function loadTop() {
     globalThis.__lhTop = rows;
   } catch { el.textContent = 'Leaderboard unavailable right now.'; }
 }
+
+// ---- Draft gallery (opt-in share, upvotes once per device per day, moderator hide). Ideas only, NFA. ----
+const GAL_SISTERS = ['BTC', 'ETH'];
+const GAL_LABEL = 'Draft ideas from the community. NOT launched coins, not listed, not endorsed. No CAs. Not financial advice.';
+const G = { sort: 'top', entries: [], admin: false };
+function deviceId() {
+  try { let d = localStorage.getItem('lh.device'); if (!/^[A-Za-z0-9_-]{12,64}$/.test(d || '')) { const a = new Uint8Array(16); crypto.getRandomValues(a); d = btoa(String.fromCharCode(...a)).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, ''); localStorage.setItem('lh.device', d); } return d; }
+  catch { return (globalThis.__lhDev ||= 'tab' + Math.random().toString(36).slice(2, 14)); }
+}
+async function galApi(op, body, headers = {}) {
+  const r = await fetch(`${MD.KIBBLE_API}/api/cabal?op=${op}${body ? '' : '&_=' + Date.now()}`, body ? { method: 'POST', body: JSON.stringify({ op, ...body }), headers: { 'content-type': 'text/plain;charset=UTF-8', ...headers } } : {});
+  let j = {}; try { j = await r.json(); } catch {} if (!r.ok || j.ok === false) { const e = new Error(j.reason || j.error || `HTTP ${r.status}`); e.status = r.status; throw e; } return j;
+}
+/** Re-encodes the draft image as a small JPEG (≤ ~200 KB) in the browser. */
+async function smallJpeg(src) {
+  const blob = await (await fetch(src, { mode: 'cors' })).blob(); const bmp = await createImageBitmap(blob);
+  for (const max of [640, 512, 420, 320]) for (const q of [0.85, 0.72, 0.6]) {
+    const k = Math.min(1, max / Math.max(bmp.width, bmp.height)), c = document.createElement('canvas');
+    c.width = Math.round(bmp.width * k); c.height = Math.round(bmp.height * k); c.getContext('2d').drawImage(bmp, 0, 0, c.width, c.height);
+    const u = c.toDataURL('image/jpeg', q); if ((u.length - 23) * 0.75 <= 200000) return u;
+  }
+  throw new Error('image too large');
+}
+async function shareToGallery() {
+  const btn = $('#d-share-btn'), msg = $('#d-share-msg'), d = S.d; btn.disabled = true; msg.textContent = 'Shrinking the image and sharing…';
+  try {
+    const image = await smallJpeg(S.img);
+    const j = await galApi('gallery-submit', { sister: d.sister, name: d.name, ticker: d.ticker, desc: d.desc || '', image, device: deviceId() });
+    msg.innerHTML = `Shared as an idea: <b>${esc(j.entry.name)}</b> ($${esc(j.entry.ticker)}).${j.removed?.length ? ` Removed from the text: ${j.removed.map(esc).join(', ')}.` : ''}`;
+    globalThis.__lhShared = j.entry; toast('Shared to the draft gallery'); G.sort = 'new'; loadGallery();
+  } catch (e) { msg.textContent = `Not shared: ${e.message}`; btn.disabled = false; }
+}
+const votedKey = (id) => `lh.gv.${new Date().toLocaleDateString('en-CA', { timeZone: 'Australia/Sydney' })}.${id}`;
+const safeImg = (u) => (typeof u === 'string' && u.startsWith(MD.KIBBLE_API + '/api/cabal?op=gallery-img&id=')) ? u : '';
+function galCard(e) {
+  const col = MD.SISTERS[e.sister]?.color || '#d4a640', voted = (() => { try { return !!localStorage.getItem(votedKey(e.id)); } catch { return false; } })();
+  return `<article class="gi${e.hidden ? ' hid' : ''}" style="--acc2:${esc(col)}" data-id="${esc(e.id)}"><img loading="lazy" src="${esc(safeImg(e.img))}" alt="Draft idea image: ${esc(e.name)}">
+    <div class="b"><span class="idea px">IDEA · NOT LAUNCHED</span><div class="nm">${esc(e.name)} <span class="plan">$${esc(e.ticker)}</span></div>
+    <div class="plan">Would pair with $${esc(e.sister)}</div>${e.desc ? `<div class="ds">${esc(e.desc)}</div>` : ''}
+    <div class="ft"><button class="btn tiny${voted ? '' : ' ghost'}" data-gvote="${esc(e.id)}" ${voted ? 'disabled' : ''} aria-label="Upvote ${esc(e.name)}">▲ ${Number(e.votes) || 0}</button>
+    ${G.admin ? `<button class="btn tiny ghost" data-ghide="${esc(e.id)}" data-h="${e.hidden ? 0 : 1}">${e.hidden ? 'Unhide' : 'Hide'}</button>` : ''}</div></div></article>`;
+}
+async function loadGallery() {
+  const el = $('#lh-gal-body'); if (!el) return;
+  document.querySelectorAll('[data-gsort]').forEach((b) => b.classList.toggle('sel', b.dataset.gsort === G.sort));
+  try {
+    const j = G.admin ? await galApi('gallery-admin', {}, { authorization: `Bearer ${sessionStorage.getItem('lh.admin') || ''}` }) : await galApi(`gallery&sort=${G.sort}`);
+    G.entries = j.entries || []; if (G.admin && G.sort === 'top') G.entries.sort((a, b) => b.votes - a.votes);
+    $('#lh-gal-label').innerHTML = `<b>Ideas only.</b> ${esc(j.label || GAL_LABEL)}`;
+    el.className = ''; el.innerHTML = G.entries.length ? `<div class="gal">${G.entries.map(galCard).join('')}</div><div class="plan" style="margin-top:6px">${esc(j.rules || 'One upvote per device per draft per day (Sydney). NFA.')}</div>`
+      : '<div class="plan">No shared drafts yet. Make a $BTC or $ETH meme in the maker, send it here, and tap Share to gallery.</div>';
+    globalThis.__lhGallery = G.entries;
+    el.querySelectorAll('[data-gvote]').forEach((b) => b.onclick = () => upvote(b));
+    el.querySelectorAll('[data-ghide]').forEach((b) => b.onclick = () => hide(b.dataset.ghide, b.dataset.h === '1'));
+  } catch (e) {
+    if (G.admin && e.status === 401) { G.admin = false; try { sessionStorage.removeItem('lh.admin'); } catch {} toast('Moderator token not accepted'); return loadGallery(); }
+    el.textContent = 'Gallery unavailable right now.';
+  }
+}
+async function upvote(b) {
+  const id = b.dataset.gvote; b.disabled = true;
+  try { const j = await galApi('gallery-vote', { id, device: deviceId() }); b.textContent = `▲ ${j.votes}`; b.classList.remove('ghost'); try { localStorage.setItem(votedKey(id), '1'); } catch {} toast('Upvoted'); }
+  catch (e) { toast(e.message); if (e.status === 409) { try { localStorage.setItem(votedKey(id), '1'); } catch {} } else b.disabled = false; }
+}
+async function hide(id, hidden) {
+  try { await galApi('gallery-hide', { id, hidden }, { authorization: `Bearer ${sessionStorage.getItem('lh.admin') || ''}` }); toast(hidden ? 'Hidden' : 'Visible again'); loadGallery(); }
+  catch (e) { toast(e.message); }
+}
+document.querySelectorAll('[data-gsort]').forEach((b) => b.onclick = () => { G.sort = b.dataset.gsort; loadGallery(); });
+$('#lh-mod').onclick = () => {
+  if (G.admin) { G.admin = false; try { sessionStorage.removeItem('lh.admin'); } catch {} $('#lh-mod').textContent = 'Moderator'; return loadGallery(); }
+  const t = prompt('Moderator token (kept in this tab only):'); if (!t) return;
+  try { sessionStorage.setItem('lh.admin', t.trim()); } catch {} G.admin = true; $('#lh-mod').textContent = 'Exit moderator'; loadGallery();
+};
+loadGallery();
 loadTop();
 addEventListener('hashchange', () => location.reload());
 if (!res.ok) refused(); else { render(); handoff(); document.title = `Launch Hall · Draft: ${S.d.name} ($${S.d.ticker})`; }
