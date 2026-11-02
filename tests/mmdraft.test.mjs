@@ -24,3 +24,9 @@ test('reward clamps to 0..100; launch sheet is NFA', () => { assert.equal(P({ si
   assert.match(MD.launchSheet(P({ sister: 'BTC', reward: 2 }).draft), /NFA/); });
 test('copycat protection: parent name/ticker cannot be reused', () => { const r = P({ sister: 'BTC', name: 'big titty coin', ticker: '$BTC' });
   assert.equal(r.draft.name, 'Big Titty Coin Meme'); assert.equal(r.draft.ticker, 'BTCMEME'); assert.equal(r.notes.length, 2); });
+test('leaderboard: top creator per verified sister only, text cleaned', () => {
+  const lb = { boards: [{ sister: 'BTC', topCreator: { name: '<b>zach</b>', points: 7 }, memes: [{ headline: 'gm $ETH 100x guaranteed', score: 7, creator: 'zach' }] },
+    { sister: 'ETH', topCreator: null, memes: [] }, { sister: 'SOL', topCreator: { name: 'x', points: 1 }, memes: [] }] };
+  const t = MD.topCreators(lb);
+  assert.deepEqual(t.map((x) => x.sister), ['BTC', 'ETH']); assert.ok(!/[<>]/.test(t[0].top.name)); assert.ok(!/ETH|100x|guarantee/i.test(t[0].meme.headline), t[0].meme.headline);
+  assert.equal(t[1].top, null); assert.deepEqual(MD.topCreators(null), []); });

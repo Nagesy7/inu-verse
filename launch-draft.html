@@ -31,6 +31,7 @@ header h1{margin:0;font-size:22px;color:var(--goldl)}header .sub{font-size:12px;
 .nfa{border:2px solid #d84a54;background:#2a1020;color:#f3d7d7;padding:8px 10px;margin-top:14px;font-size:13px}
 .notes{border:2px dashed var(--goldd);padding:6px 10px;margin-top:10px;font-size:12px;color:#e9dcae}.notes ul{margin:2px 0;padding-left:18px}
 .plan{font-size:11px;color:#b9b08e}
+.tops{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:10px}.top{border:2px solid var(--acc2,var(--gold));background:#141c33;padding:8px 10px}.top .who{font-size:18px;color:var(--goldl);font-weight:700}
 .toast{position:fixed;left:50%;bottom:18px;transform:translateX(-50%);background:var(--ink);border:2px solid var(--gold);padding:8px 14px;font-size:13px;opacity:0;transition:opacity .2s;pointer-events:none}.toast.on{opacity:1}
 a{color:var(--goldl)}
 </style></head><body>
@@ -38,6 +39,7 @@ a{color:var(--goldl)}
 <header><div><h1 class="px">LAUNCH HALL</h1><div class="sub px">Draft from Meme Maker · nothing is launched or listed from this page</div></div>
 <a class="btn ghost" id="lh-open" href="/?open=launch">Launch Hall in Inu Verse ↗</a></header>
 <main id="app" class="frame" aria-live="polite"><p>Loading your draft…</p><noscript><p>This page needs JavaScript.</p></noscript></main>
+<section class="frame" id="lh-top" style="margin-top:14px" aria-labelledby="lh-top-h"><h2 class="px" id="lh-top-h" style="margin:0 0 8px;font-size:14px;color:var(--goldl)">👑 Top Cabal meme creators this week</h2><div id="lh-top-body" class="plan">Loading…</div></section>
 <div class="nfa"><b>NFA.</b> Not financial advice and no price promises. A draft is just a meme plus a name idea. Launching a coin is done by you, in your own wallet, on pump.fun's own page, and costs real SOL. Memecoins can go to zero. Always check the contract address.</div>
 </div>
 <div class="toast" id="toast" role="status"></div>
@@ -103,6 +105,20 @@ function handoff() {
   });
   let n = 0; const ping = () => { if (S.got || n++ > 75) return; for (const o of targets) { try { op.postMessage({ type: 'lh-draft-ready', v: 1, id }, o); } catch {} } setTimeout(ping, 400); }; ping();
 }
+// Weekly leaderboard from the Cabal Meme Maker (read-only fetch; anonymous counts, no prizes, NFA).
+async function loadTop() {
+  const el = $('#lh-top-body'); if (!el) return;
+  try {
+    const r = await fetch(`${MD.KIBBLE_API}/api/cabal?op=leaderboard&limit=1`); const j = await r.json(); if (!j.ok) throw 0;
+    const rows = MD.topCreators(j);
+    el.className = ''; el.innerHTML = `<div class="tops">${rows.map((t) => `<div class="top" style="--acc2:${esc(t.color)}"><span class="chip px"><i style="background:${esc(t.color)}"></i>$${esc(t.ticker)} · ${esc(t.name)}</span>
+      <div class="who">${t.top ? esc(t.top.name) : 'No creator yet'}</div><div class="plan">${t.top ? `${t.top.points} pts this week` : 'Be the first: make a meme and download or post it.'}${t.meme ? ` · top meme: “${esc(t.meme.headline || '…')}” by ${esc(t.meme.creator)}` : ''}</div></div>`).join('')}</div>
+      <div class="row"><a class="btn ghost tiny" href="${MD.MAKER_URL}#leaderboard">Full leaderboard in the Meme Maker ↗</a></div>
+      <div class="plan" style="margin-top:6px">Anonymous download + Post-to-X counts from the Cabal Meme Maker. Resets Monday 00:00 Sydney. Just for fun: no prizes, no money. NFA.</div>`;
+    globalThis.__lhTop = rows;
+  } catch { el.textContent = 'Leaderboard unavailable right now.'; }
+}
+loadTop();
 addEventListener('hashchange', () => location.reload());
 if (!res.ok) refused(); else { render(); handoff(); document.title = `Launch Hall · Draft: ${S.d.name} ($${S.d.ticker})`; }
 </script>

@@ -93,6 +93,20 @@ export function draftUrl(base, f) {
   return `${base.replace(/#.*$/, '')}#${q.toString()}`;
 }
 
+// Kibble Pay API (read-only here): the Cabal Meme Maker's weekly leaderboard (anonymous counts, no money, NFA).
+export const KIBBLE_API = 'https://kibble-pay.vercel.app';
+/** Top creator + top meme per verified sister from GET /api/cabal?op=leaderboard. Pure; unknown sisters are dropped. */
+export function topCreators(lb) {
+  const out = [];
+  for (const b of lb?.boards || []) {
+    const s = SISTERS[String(b?.sister || '').toUpperCase()]; if (!s) continue;
+    const top = b.topCreator && clean(b.topCreator.name, 24) ? { name: clean(b.topCreator.name, 24), points: Math.max(0, Number(b.topCreator.points) || 0) } : null;
+    const m = b.memes?.[0]; const meme = m ? { headline: guardText(clean(m.headline, 60), { sister: s }).text, score: Math.max(0, Number(m.score) || 0), creator: clean(m.creator, 24) || 'anon' } : null;
+    out.push({ sister: s.id, ticker: s.ticker, name: s.name, color: s.color, top, meme });
+  }
+  return out;
+}
+
 /** Plain-text launch sheet for copy/paste into pump.fun's own create page. */
 export function launchSheet(d) {
   return [`Name: ${d.name}`, `Ticker: ${d.ticker}`, `Description: ${d.desc || '(none)'}`, `Parent coin: $${d.coin.ticker} (${d.coin.name}) ${d.coin.mint}`,
