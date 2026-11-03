@@ -41,6 +41,14 @@ html{scroll-padding-top:10px}
 .glabel{border:2px dashed #d84a54;color:#f3d7d7;padding:6px 10px;font-size:12px;margin-top:6px}.share label{display:flex;gap:8px;align-items:flex-start;font-size:13px;margin-top:6px}
 .btn.sel{background:var(--gold);color:var(--ink)}
 a{color:var(--goldl)}
+.propack h4{margin:12px 0 4px;font-size:12px;color:var(--goldl)}.pp-price{font-size:12px;color:var(--cream);margin-left:6px}.pp-prop{font-size:9px;background:#5a1f1f;border-color:#e07f7f}
+.pp-list{margin:6px 0 10px 18px;padding:0}.pp-ctl{display:grid;gap:6px;margin:8px 0}.pp-row{display:flex;flex-wrap:wrap;gap:8px;align-items:center}.pp-row>b{min-width:62px;font-size:12px}
+.pp-row input[type=text],.pp-row input:not([type]),.pp-row select{background:var(--navy);color:var(--cream);border:1px solid var(--navy3);padding:6px 8px;font:13px system-ui;min-width:0;flex:1 1 150px}
+.pp-row label input[type=radio]{margin:0 4px 0 0}.pp-prev{display:flex;flex-wrap:wrap;gap:10px;align-items:flex-end;margin:10px 0}.pp-prev figure{margin:0}.pp-prev figcaption{font-size:11px;opacity:.75}
+.pp-prev canvas{display:block;border:1px solid var(--navy3);background:#000;max-width:100%}.pp-logo{width:220px;height:220px}.pp-logo.sm{width:112px;height:112px}.pp-prev .wide{flex:1 1 100%}.pp-prev .wide canvas{width:100%;height:auto}
+.pp-prev .mid{flex:1 1 300px}.pp-prev .mid canvas{width:100%;height:auto}#pp-cl{max-width:260px}.pp-buy{border-top:1px dashed var(--navy3);margin-top:10px;padding-top:8px}
+.pp-steps{margin:6px 0 8px 18px;padding:0}.pp-steps li{margin:6px 0}.pp-steps .done{opacity:.8}.pp-kv{display:grid;grid-template-columns:auto 1fr auto;gap:4px 8px;align-items:center;font-size:12px;margin:6px 0}
+.pp-kv code{word-break:break-all}.pp-kv .sm{font-size:10px}.good{color:#9be8b4}.bad{color:#ff9d9d}
 </style>
 <script>window.va=window.va||function(){(window.vaq=window.vaq||[]).push(arguments)};window.va('beforeSend',function(e){try{var u=new URL(e.url);u.hash='';Array.from(u.searchParams.keys()).forEach(function(k){if(!/^(utm_(source|medium|campaign|content|term)|ref|open)$/.test(k))u.searchParams.delete(k)});e.url=u.toString()}catch(_){}return e});</script>
 <script defer src="/_vercel/insights/script.js"></script>
@@ -61,6 +69,7 @@ a{color:var(--goldl)}
 <script type="module">
 import * as MD from './src/mmdraft.js';
 import { track, withRef, autoTrackLinks } from './src/va.js';
+import { mountProPack } from './src/propackui.js';
 autoTrackLinks();
 const $ = (s) => document.querySelector(s);
 const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
@@ -98,7 +107,8 @@ function render() {
     <li>Open pump.fun's own create page, connect your own wallet, and paste the name, ticker and description.</li>
     <li>Pair it only with <b>$${esc(d.coin.ticker)}</b>: under the pool pair choose <b>Custom</b> and paste <code>${esc(d.coin.mint)}</code>, then check the address. If pump.fun doesn't offer $${esc(d.coin.ticker)} as a pair, don't pair it with anything else.</li>
     <li>Afterwards you can register your coin on the <a href="/?open=launch">Launch Hall Coin board</a>. Listing and Verified Launch badges are checked separately and are never automatic from a draft.</li></ol>
-    <div class="plan">This page never connects a wallet or signs anything. Nothing leaves this tab unless you choose <b>Share to gallery</b> below (opt-in: only the name, ticker, description, parent coin and a small copy of the image).</div></div>
+    <div class="plan">This page never connects a wallet or signs anything unless you choose the optional <b>Launch Pro Pack</b> below (one free signed message, no transaction). Nothing leaves this tab unless you choose <b>Share to gallery</b> below (opt-in: only the name, ticker, description, parent coin and a small copy of the image).</div></div>
+  <div class="card propack" id="d-propack"></div>
   ${GAL_SISTERS.includes(d.sister) ? `<div class="card share" id="d-share"><h3 class="px">🖼️ Share to the draft gallery (optional)</h3>
     <div class="plan">Shares <b>${esc(d.name)}</b> ($${esc(d.ticker)}), the description, the parent ($${esc(d.sister)}) and a small JPEG of the image to a public list of community <b>ideas</b>. No CA, no wallet, no launch. Contract addresses, price talk and rude words are stripped. Moderators can hide anything.</div>
     <label><input type="checkbox" id="d-share-ok"> I understand this is public and it's an idea, not a launched coin. NFA.</label>
@@ -106,9 +116,10 @@ function render() {
   document.querySelectorAll('[data-copy]').forEach((b) => b.onclick = () => copy(b.dataset.copy));
   $('#d-sheet').onclick = () => copy(MD.launchSheet(d), 'Launch sheet copied');
   $('#d-dl').onclick = download;
+  S.pp = mountProPack($('#d-propack'), { d, getImg: () => S.img, api: API, track, toast, copy });
   const ok = $('#d-share-ok'); if (ok) { ok.onchange = () => { $('#d-share-btn').disabled = !ok.checked; }; $('#d-share-btn').onclick = shareToGallery; }
 }
-function setImage(u, from) { S.img = u; S.imgFrom = from; const im = $('#d-img'); if (im) { im.removeAttribute('crossorigin'); im.src = u; } const s = $('#d-src'); if (s) s.textContent = srcText(); }
+function setImage(u, from) { S.img = u; S.imgFrom = from; S.pp?.refresh(); const im = $('#d-img'); if (im) { im.removeAttribute('crossorigin'); im.src = u; } const s = $('#d-src'); if (s) s.textContent = srcText(); }
 async function download() {
   const d = S.d, name = `${d.ticker.toLowerCase()}-${d.sister.toLowerCase()}-draft`;
   try { let href = S.img, rev = null, ext = (S.img.match(/^data:image\/(\w+)/) || [])[1] || (S.img.split('.').pop() || 'png');
