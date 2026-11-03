@@ -44,3 +44,12 @@ test('overScenery: ghost labels avoid buildings and plaza decor, open paving is 
   assert.equal(overScenery(KIBBLE_PLAZA.statue.x * TILE + 2, KIBBLE_PLAZA.statue.y * TILE + 2, 20, 10), true, 'statue');
   assert.equal(overScenery(22 * TILE + 2, 50 * TILE + 2, 20, 10), false, 'open plaza paving');
 });
+
+test('wallet pill: hidden while the menu drawer or any panel/modal is open, its own dropdown is not a modal', () => {
+  const inWallet = el('w-drop'); inWallet.closest = (sel) => (sel.includes('#inu-wallet') ? {} : null);
+  assert.equal(modalOpen(fakeDoc({ '[role="dialog"]': [inWallet] })), false);
+  const d = fakeDoc({ x: [] }); syncChat(d, { innerHeight: 390 }); const css = d.byId['chatdodge-css'].textContent;
+  assert.ok(!/body\.modal-open #inu-wallet/.test(css), 'title screen keeps the pill');
+  for (const c of ['inworld.modal-open', 'drawer-open', 'menu-open']) for (const w of ['#inu-wallet', '#inu-profile-badge']) assert.ok(css.includes(`body.${c} ${w}`), c + w);
+  assert.match(css, /#inu-profile-badge\{visibility:hidden!important;pointer-events:none!important\}/);
+});
