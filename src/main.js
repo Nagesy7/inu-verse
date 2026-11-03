@@ -51,6 +51,8 @@ import * as RD from './raidui.js';
 import { eventAt as raidEventAt } from './bossraid.js';
 import { KENNEL_TAG } from './art.js';
 import { KIBBLE_PLAZA } from './world.js';
+import * as FB from './fishbook.js';
+import { renderFishbook } from './fishbookui.js';
 import { ensureFarm, tickFarm, seasonOf, marketHour, rollFarmWeek, catchUp, fishCatch, WEEK_DAYS } from './farm.js';
 import { ensureBiz, bizHour, bizDay, rollBizWeek, rivalAt as bizRivalAt } from './biz.js';
 import * as IN from './interiors.js';
@@ -385,8 +387,14 @@ addEventListener('pointerdown', () => initAudio(), { once: true });
 document.addEventListener('pointerdown', (e) => { if (e.target.closest('button,.btn,.coat,[data-buy],[data-inv]')) { initAudio(); uiClick(); } });
 let hourIdx = 0; const fish = { state: 'idle', t: 0, biteAt: 0 };
 const gameDay = () => Math.floor((state.clockSec || 0) / DAY_LEN), hourKey = () => Math.floor((state.clockSec || 0) / (DAY_LEN / 24));
-function farmCtx() { const day = gameDay(); return { enterShop: (lot) => enterShop(lot), onHarvest: () => ENG.addSeasonXp(state, 'farm', day), state, body: $('#panel-body'), toast, hud, persist, rerender: () => { if (panel) openPanel(panel.kind, panel); }, season: seasonOf(day), rain: amb.rain > 0.3, day, hourKey: hourKey(), weekFrac: ((state.clockSec / DAY_LEN) % WEEK_DAYS) / WEEK_DAYS, fish,
-  cast: () => { fish.state = 'wait'; fish.t = 0; fish.biteAt = 1.2 + rng() * 2.5; }, reel: () => { if (fish.state !== 'bite') { fish.state = 'idle'; return { ok: false, reason: 'Too early — it swam off' }; } const r = fishCatch(state, rng(), fish.t); fish.state = 'idle'; if (r.ok) toast(`Caught a ${r.item === 'koi' ? 'GOLDEN KOI!' : r.item}!`, 'good'); if (r.ok && r.item === 'koi') FEEDUI.report('koi'); if (r.ok && EVX.ev.id === 'derby' && spotAt(Math.floor(state.player.x / 32), Math.floor(state.player.y / 32)) === 'pond') evResult(EVR.addProgress(state, EVX.ev, 'fish')); return r; } }; }
+function farmCtx() { const day = gameDay(); return { enterShop: (lot) => enterShop(lot), onHarvest: () => ENG.addSeasonXp(state, 'farm', day), state, body: $('#panel-body'), toast, hud, persist, rerender: () => { if (panel) openPanel(panel.kind, panel); }, season: seasonOf(day), rain: amb.rain > 0.3, day, hourKey: hourKey(), weekFrac: ((state.clockSec / DAY_LEN) % WEEK_DAYS) / WEEK_DAYS, fish, openBook: () => openPanel('fishbook'), bookSeen: (() => { const m = FB.summary(state); return `${m.seen}/${m.total}`; })(),
+  cast: () => { fish.state = 'wait'; fish.t = 0; fish.biteAt = 1.2 + rng() * 2.5; }, reel: () => { if (fish.state !== 'bite') { fish.state = 'idle'; return { ok: false, reason: 'Too early — it swam off' }; } const reaction = fish.t, r = fishCatch(state, rng(), reaction); fish.state = 'idle'; if (r.ok) bookCatch(r.item, reaction); if (r.ok && r.item === 'koi') FEEDUI.report('koi'); if (r.ok && EVX.ev.id === 'derby' && spotAt(Math.floor(state.player.x / 32), Math.floor(state.player.y / 32)) === 'pond') evResult(EVR.addProgress(state, EVX.ev, 'fish')); return r; } }; }
+// Fish Book: which species bit (time / weather / season), its size, first-catch + record + set toasts. Cosmetic only.
+function bookCatch(good, reaction) { const env = { night: dayPhase(time + dayOffset).label === 'night', rain: (amb?.rain || 0) > 0.3, season: seasonOf(gameDay()) };
+  const sp = FB.pickSpecies(good, rng(), env); if (!sp) { toast(`Caught a ${good}!`, 'good'); return; } const size = FB.rollSize(sp, rng(), reaction), rec = FB.recordCatch(state, sp.id, size);
+  toast(`Caught a ${sp.rarity === 'legendary' || sp.rarity === 'rare' ? sp.name.toUpperCase() + '!' : sp.name} · ${size} cm${rec.first ? ' · NEW in your Fish Book!' : rec.record ? ' · new record!' : ''}`, 'good');
+  for (const p of rec.sets) toast(`Fish Book set complete: ${p.badge} ${p.name}! Title “${p.title}” unlocked${FB.SETS[p.id].trophy ? ' + home trophy' : ''}.`, 'good'); }
+globalThis.__fishbook = { FB, catch: (good, reaction = 0.3) => bookCatch(good, reaction) };
 function farmTick(dt) { const day = gameDay(); tickFarm(state, dt, { season: seasonOf(day), rain: amb.rain > 0.3 }); ensureFarm(state).lastReal = Date.now();
   if (fish.state === 'wait') { fish.t += dt; if (fish.t >= fish.biteAt) { fish.state = 'bite'; fish.t = 0; blip(1200); if (panel?.kind === 'farm' && panel.id === 'pond') openPanel('farm', panel); } } else if (fish.state === 'bite') { fish.t += dt; if (fish.t > 1.5) { fish.state = 'idle'; if (panel?.kind === 'farm' && panel.id === 'pond') { toast('It got away!'); openPanel('farm', panel); } } }
   const hk = hourKey(); while (hourIdx < hk) { hourIdx++; marketHour(state); const r = bizHour(state, hourIdx % 24, rng, state.spouse?.helps === 'biz' ? 2 : 0);
@@ -601,6 +609,7 @@ $('#btn-mute').onclick = () => { initAudio(); toggleMute(); };
 $('#btn-emote').onclick = () => toggleEmotes(); $('#btn-emo').addEventListener('click', (e) => { e.stopPropagation(); initAudio(); if (state && (mode === 'world' || mode === 'room')) wheel.toggle(); }); $('#btn-emote').textContent = 'Actions'; $('#btn-emote').title = 'Sit, dance, wave… (G)';
 document.addEventListener('pointerdown', () => { ACT.still = 0; }, true);
 $('#btn-photo').onclick = () => togglePhoto();
+$('#btn-fishbook').onclick = () => { initAudio(); uiClick?.(); openPanel('fishbook'); };
 $('#btn-engage').onclick = () => { initAudio(); uiClick?.(); openPanel('engage'); };
 { const sc = $('#streak-chip'), go = () => { initAudio(); uiClick?.(); openPanel('fly5', { tab: 'streak' }); }; sc.onclick = go; sc.onkeydown = (e) => { if (e.key === 'Enter' || e.key === ' ') go(); }; }
 $('#btn-pools').onclick = () => { initAudio(); uiClick?.(); openPanel('city', { tab: 'pools' }); };
@@ -837,7 +846,7 @@ function renderWorld() {
   const view = { x0: -ox, y0: -oy, x1: -ox + vw, y1: -oy + vh };
   drawGroundLife(ctx, amb, phase, view); drawAliveGround(ctx, ALIVE, view, phase); feel.drawGround(ctx);
   if (player.clickMark && player.pw.pts.length) drawMark(ctx, player.clickMark, time);
-  const actors = [MWd.crierActor(time, artKey), ...npcs.map((n, i) => ({ ...n, npc: true, idx: i, badge: badgeOf(packOfName(state, n.name)) })), ...(drive ? [] : [{ x: state.player.x, y: state.player.y, coat: state.player.coat, outfit: state.wardrobe.equipped, face: player.face, phase: player.phase, moving: player.moving, name: state.player.name, me: true, badge: badgeOf(myPack(state)), emote: player.emote, act: ACT.act, art: artKey(state.player.coat, state.wardrobe.equipped), profile: hasCustomLook(state) ? myProfile() : null }]), ...streetPups(), ...presActors(), ...petActors(), ...crewActors(), ...pupActors(), ...MPL.actors(view, state.player), ...dogWalkActors(view, walkNow(), artKey), ...stepFolk(view), ...mascotActors(state, time)];
+  const actors = [MWd.crierActor(time, artKey), ...npcs.map((n, i) => ({ ...n, npc: true, idx: i, badge: badgeOf(packOfName(state, n.name)) })), ...(drive ? [] : [{ x: state.player.x, y: state.player.y, coat: state.player.coat, outfit: state.wardrobe.equipped, face: player.face, phase: player.phase, moving: player.moving, name: FB.titleOf(state) ? `${state.player.name} «${FB.titleOf(state)}»` : state.player.name, me: true, badge: badgeOf(myPack(state)), emote: player.emote, act: ACT.act, art: artKey(state.player.coat, state.wardrobe.equipped), profile: hasCustomLook(state) ? myProfile() : null }]), ...streetPups(), ...presActors(), ...petActors(), ...crewActors(), ...pupActors(), ...MPL.actors(view, state.player), ...dogWalkActors(view, walkNow(), artKey), ...stepFolk(view), ...mascotActors(state, time)];
   // one depth-sorted list: static props (culled), dynamic props and actors, by ground y
   const L = -ox - 200, Rt = -ox + vw + 200, Tp = -oy - 60, Bt = -oy + vh + 400, list = [];
   for (const p of mapImg.props) if (p.y > Tp && p.y < Bt) list.push(p);
@@ -1176,6 +1185,7 @@ function openPanel(kind, opts = {}) {
   if (kind === 'club-times') return renderTimes(clubCtx());
   if (kind === 'field') return renderField(farmCtx(), opts.i);
   if (kind === 'farm') return renderFarm(farmCtx(), opts.id);
+  if (kind === 'fishbook') return renderFishbook({ state, body, toast, persist });
   if (kind === 'lot') return renderLot(farmCtx(), opts.id);
   if (kind === 'bizboard') return renderBizBoard(farmCtx());
   if (kind === 'friend') return renderFriend(relCtx(), opts.name);
