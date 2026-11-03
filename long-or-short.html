@@ -99,11 +99,9 @@ footer{color:var(--muted);font-size:13px;margin-top:18px}
   <div class="stat"><b id="s-streak">0</b><small>Streak</small></div>
   <div class="stat"><b id="s-mult">×1</b><small>Multiplier</small></div>
   <div class="stat"><b id="s-hit">—</b><small>Hit rate</small></div>
-  <div class="stat name"><small>Caller name</small><input id="name" maxlength="18" placeholder="Pick a name" autocomplete="off"></div>
+  <div class="stat name"><small>Caller name</small><form id="nameform" style="display:flex;gap:6px;margin:0"><input id="name" maxlength="18" placeholder="Pick a name to play" autocomplete="off"><button class="btn tiny" id="namebtn" type="submit">Join</button></form><small id="namemsg" style="text-transform:none;letter-spacing:0;font-weight:700"></small></div>
 </section>
-<div class="debugbar" id="debugbar" hidden>DEBUG (?debug=1) — 20s window enabled. End price for debug calls:
-  <button class="btn tiny ghost" data-force="up">Force +1%</button><button class="btn tiny ghost" data-force="down">Force −1%</button><button class="btn tiny ghost sel" data-force="">Live price</button>
-  <button class="btn tiny ghost" id="dbg-reset">Reset my data</button></div>
+<div class="debugbar" id="debugbar" hidden></div>
 
 <nav class="tabs" id="tabs"><a href="#lineup" data-tab="lineup">Today's lineup</a><a href="#calls" data-tab="calls">My calls</a><a href="#board" data-tab="board">Leaderboard</a><a href="#sponsor" data-tab="sponsor">Get your coin in</a></nav>
 
@@ -112,7 +110,7 @@ footer{color:var(--muted);font-size:13px;margin-top:18px}
   <p class="hint">Pick <b>Long</b> (price ends higher) or <b>Short</b> (price ends lower) for each coin. The price is locked when you call and checked again when the window ends. Correct calls score Bones; every correct call in a row adds ×0.25 to your multiplier (up to ×3). A wrong call resets the streak; an unchanged price is a push.</p>
   <div class="wins" id="wins"><b style="font-size:13px;color:var(--muted)">Window:</b></div>
   <div class="coins" id="coins"></div>
-  <p class="hint" style="margin-top:10px" id="src">Prices: DexScreener public API (read-only), refreshed every 30s.</p>
+  <p class="hint" style="margin-top:10px" id="src">Prices: DexScreener public API (read-only), locked by the server.</p>
 </section>
 
 <section class="frame" data-pane="calls" hidden>
@@ -126,8 +124,8 @@ footer{color:var(--muted);font-size:13px;margin-top:18px}
   <h2>Leaderboard</h2>
   <div class="wins" id="lbtabs"><button class="btn tiny sel" data-lb="day">Daily</button><button class="btn tiny ghost" data-lb="week">Weekly</button><button class="btn tiny ghost" data-lb="hof">🏆 Hall of Fame (best streak)</button></div>
   <div class="prize">🎁 Top weekly callers may win Kennel Chest prizes that are reviewed and paid by hand. Free to play. Not financial advice. No purchase or stake needed.</div>
-  <table class="lb"><thead><tr><th>#</th><th>Caller</th><th style="text-align:right" id="lb-col">Bones today</th></tr></thead><tbody id="lb"></tbody></table>
-  <p class="hint">Preview: your row is real (saved in this browser only). Other names are <b>sample callers</b> so the board isn't empty; the live board needs a server. Daily resets 00:00 UTC, weekly on Monday 00:00 UTC.</p>
+  <div id="lb-me"></div><table class="lb"><thead><tr><th>#</th><th>Caller</th><th style="text-align:right" id="lb-col">Bones today</th></tr></thead><tbody id="lb"></tbody></table>
+  <p class="hint" id="lb-foot">Scores come from the server: prices are locked and checked by the server, never by your browser. Calls count on the day their window ends. Daily resets 00:00 UTC, weekly on Monday 00:00 UTC.</p>
 </section>
 
 <section class="frame" data-pane="sponsor" hidden>
@@ -166,90 +164,90 @@ footer{color:var(--muted);font-size:13px;margin-top:18px}
 <script type="module">
 import * as LS from './src/longshort.js';
 const $ = (s, r = document) => r.querySelector(s), $$ = (s, r = document) => [...r.querySelectorAll(s)];
-const q = new URLSearchParams(location.search), DEBUG = q.has('debug');
+const API = '/api/longshort', q = new URLSearchParams(location.search), WANT_DEBUG = q.has('debug');
 const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 const short = (m) => m ? m.slice(0, 4) + '…' + m.slice(-4) : '';
-let state = LS.load(localStorage), prices = {}, pricesAt = 0, win = '1h', lb = 'day', force = '', lastResolved = [];
-// Debug only: preview a filled sponsored slot with ?debug=1&sponsor=<mint>. Shows only that exact mint.
-const SPONSOR = DEBUG && q.get('sponsor') ? { mint: q.get('sponsor'), symbol: q.get('sym') || null } : LS.SPONSORED_SLOT;
-const lineup = LS.lineupFor(SPONSOR);
+let firstMe = true, token = localStorage.getItem('longshort.token') || '', me = null, line = null, win = '1h', lb = 'day', lastResolved = [], seen = new Set();
+let skew = 0; const srvNow = () => Date.now() + skew; // countdowns follow the server clock, not the phone's
+async function api(method, op, body, query = '') { const r = await fetch(API + '?op=' + op + query, { method, headers: { 'content-type': 'application/json', ...(token ? { authorization: 'Bearer ' + token } : {}) }, body: body ? JSON.stringify({ op, ...body }) : undefined });
+  let j = null; try { j = await r.json(); } catch {} if (j?.serverNow) skew = j.serverNow - Date.now(); if (!r.ok) throw Object.assign(new Error(j?.error || ('HTTP ' + r.status)), { status: r.status, body: j }); return j; }
 $('#chest').textContent = LS.SPONSOR_CHEST;
-$('#day').textContent = LS.dayKey(Date.now()) + ' UTC';
-$('#name').value = state.name || '';
-$('#name').addEventListener('input', (e) => { state.name = LS.cleanName(e.target.value); LS.save(localStorage, state); renderBoard(); });
 $('#badges').innerHTML = LS.BADGES.map((b) => `<div class="badge"><b>💎 ${esc(b.name)}</b><small>${esc(b.how)}</small><div><span class="chip soon" style="margin-top:6px">Coming soon</span></div></div>`).join('');
-const winsList = () => [...Object.keys(LS.WINDOWS), ...(DEBUG ? [LS.DEBUG_WINDOW.id] : [])];
-function renderWins() { $('#wins').innerHTML = '<b style="font-size:13px;color:var(--muted)">Window:</b>' + winsList().map((w) => `<button class="btn tiny ${w === win ? 'sel' : 'ghost'}" data-win="${w}">${w}${w === '20s' ? ' (debug)' : ''}</button>`).join(''); }
+const msg = (t, bad) => { const el = $('#namemsg'); el.textContent = t || ''; el.style.color = bad ? 'var(--danger)' : 'var(--muted)'; };
+$('#nameform').addEventListener('submit', async (e) => { e.preventDefault(); const name = $('#name').value.trim(); if (!name) return msg('Pick a name first.', true);
+  try { if (!token) { const r = await api('POST', 'register', { name }); token = r.token; localStorage.setItem('longshort.token', token); me = r.player; msg('You\'re in. Make your calls!'); }
+    else { me = (await api('POST', 'name', { name })).player; msg('Name saved.'); } render(); renderBoard(); }
+  catch (err) { msg(err.message + (err.body?.suggest ? ` Try "${err.body.suggest}".` : ''), true); } });
+function renderWins() { const ws = line?.windows || ['1h', '24h']; if (!ws.includes(win)) win = ws[0];
+  $('#wins').innerHTML = '<b style="font-size:13px;color:var(--muted)">Window:</b>' + ws.map((w) => `<button class="btn tiny ${w === win ? 'sel' : 'ghost'}" data-win="${w}">${w}${w === '20s' ? ' (local debug)' : ''}</button>`).join(''); }
 $('#wins').addEventListener('click', (e) => { const b = e.target.closest('[data-win]'); if (b) { win = b.dataset.win; renderWins(); renderCoins(); } });
-const left = (t) => { const s = Math.max(0, Math.round((t - Date.now()) / 1000)); const h = Math.floor(s / 3600), m = Math.floor((s % 3600) / 60), x = s % 60; return h ? `${h}h ${String(m).padStart(2, '0')}m` : `${m}:${String(x).padStart(2, '0')}`; };
+const left = (t) => { const s = Math.max(0, Math.round((t - srvNow()) / 1000)); const h = Math.floor(s / 3600), m = Math.floor((s % 3600) / 60), x = s % 60; return s === 0 ? 'checking…' : h ? `${h}h ${String(m).padStart(2, '0')}m` : `${m}:${String(x).padStart(2, '0')}`; };
 const chg = (v, l) => v == null ? '' : `<span class="${v > 0 ? 'up' : v < 0 ? 'dn' : ''}">${l} ${v > 0 ? '+' : ''}${v}%</span>`;
 function renderCoins() {
-  $('#coins').innerHTML = lineup.map((c) => {
+  if (!line) { $('#coins').innerHTML = '<p class="hint">Loading today\'s lineup…</p>'; return; }
+  $('#coins').innerHTML = line.lineup.map((c) => {
     if (c.sponsored && c.open) return `<div class="coin isspons"><div class="hd"><div class="dot" style="background:${c.color}">AD</div><div class="nm"><b>Your coin here</b><small>Sponsored slot · open</small></div></div>
       <div><span class="chip spons">Sponsored</span></div><div class="hint" style="margin:0">Sponsored coin of the day: 0.3 SOL/day. Only the exact sponsored mint is ever shown here.</div>
       <div class="acts" style="grid-template-columns:1fr"><a class="btn ghost tiny" href="#sponsor" data-tab="sponsor">Get your coin in the lineup →</a></div></div>`;
-    const p = prices[c.mint], open = state.calls.find((k) => !k.result && k.mint === c.mint && k.win === win);
-    const sym = c.symbol || p?.symbol || '???';
-    return `<div class="coin ${c.sponsored ? 'isspons' : ''}" data-mint="${esc(c.mint)}"><div class="hd"><div class="dot" style="background:${c.color}">${esc(sym.replace('$', '').slice(0, 3))}</div>
-      <div class="nm"><b>$${esc(sym.replace('$', ''))}</b>${c.always ? ' <span class="chip">Always in</span>' : ''}${c.sponsored ? ' <span class="chip spons">Sponsored</span>' : ''}<small>${esc(c.name || p?.name || '')} · <a href="https://dexscreener.com/solana/${esc(c.mint)}" target="_blank" rel="noopener" title="${esc(c.mint)}">${short(c.mint)}</a></small></div></div>
-      <div class="px">${p ? LS.fmtPrice(p.price) : (pricesAt ? 'No price' : 'Loading…')}</div><div class="chg">${p ? chg(p.change1h, '1h') + ' · ' + chg(p.change24h, '24h') : '&nbsp;'}</div>
+    const p = c.quote, open = me?.calls.find((k) => !k.result && k.mint === c.mint && k.win === win), sym = (c.symbol || '???').replace('$', '');
+    return `<div class="coin ${c.sponsored ? 'isspons' : ''}" data-mint="${esc(c.mint)}"><div class="hd"><div class="dot" style="background:${esc(c.color)}">${esc(sym.slice(0, 3))}</div>
+      <div class="nm"><b>$${esc(sym)}</b>${c.always ? ' <span class="chip">Always in</span>' : ''}${c.sponsored ? ' <span class="chip spons">Sponsored</span>' : ''}<small>${esc(c.name || '')} · <a href="https://dexscreener.com/solana/${esc(c.mint)}" target="_blank" rel="noopener" title="${esc(c.mint)}">${short(c.mint)}</a></small></div></div>
+      <div class="px">${p ? LS.fmtPrice(p.price) : 'No price'}</div><div class="chg">${p ? chg(p.change1h, '1h') + ' · ' + chg(p.change24h, '24h') : '&nbsp;'}</div>
       ${open ? `<div class="open">Called <b>${open.side.toUpperCase()}</b> at ${LS.fmtPrice(open.lockPrice)} · resolves in <span data-left="${open.endsAt}">${left(open.endsAt)}</span>${open.debug ? ' <span class="chip dbg">debug</span>' : ''}</div>`
         : `<div class="acts"><button class="btn long" data-call="long" data-mint="${esc(c.mint)}" ${p ? '' : 'disabled'}>▲ Long</button><button class="btn short" data-call="short" data-mint="${esc(c.mint)}" ${p ? '' : 'disabled'}>▼ Short</button></div>`}</div>`;
   }).join('');
 }
-$('#coins').addEventListener('click', (e) => {
+$('#coins').addEventListener('click', async (e) => {
   const b = e.target.closest('[data-call]'); if (!b) return;
-  const coin = lineup.find((c) => c.mint === b.dataset.mint), p = prices[coin.mint];
-  try { LS.makeCall(state, { coin: { ...coin, symbol: (coin.symbol || p?.symbol || '').replace('$', '') }, side: b.dataset.call, win, price: p?.price, debug: DEBUG }); LS.save(localStorage, state); } catch (err) { alert(err.message); }
-  render();
+  if (!token) { msg('Pick a caller name and press Join to play (free, no wallet needed).', true); $('#name').focus(); scrollTo({ top: 0, behavior: 'smooth' }); return; }
+  b.disabled = true; try { const r = await api('POST', 'call', { mint: b.dataset.mint, side: b.dataset.call, win }); me = r.player; } catch (err) { toast(err.message); } render();
 });
+function toast(t) { const el = $('#src'); el.textContent = '⚠ ' + t; el.style.color = 'var(--danger)'; setTimeout(() => { el.style.color = ''; }, 4000); }
 function callRow(c) {
   const mv = c.move == null ? '' : ` → ${LS.fmtPrice(c.endPrice)} (${c.move > 0 ? '+' : ''}${(c.move * 100).toFixed(2)}%)`;
-  const res = c.result ? `<span class="chip ${c.result}">${{ win: 'Correct', miss: 'Missed', push: 'Push' }[c.result]}</span>` : `<span class="chip">ends in <span data-left="${c.endsAt}">${left(c.endsAt)}</span></span>`;
+  const res = c.result ? `<span class="chip ${c.result === 'void' ? 'push' : c.result}">${{ win: 'Correct', miss: 'Missed', push: 'Push', void: 'Void (no price)' }[c.result]}</span>` : `<span class="chip">ends in <span data-left="${c.endsAt}">${left(c.endsAt)}</span></span>`;
   return `<div class="callrow ${c.result || ''}"><span class="sd ${c.side}">${c.side === 'long' ? '▲ LONG' : '▼ SHORT'}</span>
-    <div><b>$${esc(c.symbol)}</b> · ${c.win} window ${c.sponsored ? '<span class="chip spons">Sponsored</span>' : ''} ${c.debug ? '<span class="chip dbg">debug</span>' : ''}<br><span class="chg">Locked ${LS.fmtPrice(c.lockPrice)}${mv}</span> ${res}</div>
+    <div><b>$${esc(c.symbol)}</b> · ${esc(c.win)} window ${c.sponsored ? '<span class="chip spons">Sponsored</span>' : ''} ${c.debug ? '<span class="chip dbg">debug · not on boards</span>' : ''}<br><span class="chg">Locked ${LS.fmtPrice(c.lockPrice)}${mv}</span> ${res}</div>
     <div class="bn ${c.bones ? '' : 'z'}">${c.result ? `+${c.bones || 0} 🦴${c.mult > 1 ? `<br><small>×${c.mult}</small>` : ''}` : '…'}</div></div>`;
 }
 function renderCalls() {
-  const open = state.calls.filter((c) => !c.result).sort((a, b) => a.endsAt - b.endsAt), done = state.calls.filter((c) => c.result).sort((a, b) => b.resolvedAt - a.resolvedAt).slice(0, 30);
-  $('#open-list').innerHTML = open.map(callRow).join('') || '<p class="hint">No open calls. Pick Long or Short on today\'s lineup.</p>';
+  const calls = me?.calls || [], open = calls.filter((c) => !c.result).sort((a, b) => a.endsAt - b.endsAt), done = calls.filter((c) => c.result).sort((a, b) => b.resolvedAt - a.resolvedAt).slice(0, 30);
+  $('#open-list').innerHTML = open.map(callRow).join('') || `<p class="hint">${token ? 'No open calls. Pick Long or Short on today\'s lineup.' : 'Pick a caller name and press Join to start.'}</p>`;
   $('#done-list').innerHTML = done.map(callRow).join('') || '<p class="hint">Nothing resolved yet.</p>';
   const got = lastResolved.reduce((s, c) => s + (c.bones || 0), 0);
-  $('#resolved-banner').innerHTML = lastResolved.length ? `<div class="banner">🦴 ${lastResolved.length} call${lastResolved.length > 1 ? 's' : ''} resolved: +${got} Bones. Streak ${state.streak} (next correct call ×${LS.multiplier(state.streak)}).</div>` : '';
+  $('#resolved-banner').innerHTML = lastResolved.length ? `<div class="banner">🦴 ${lastResolved.length} call${lastResolved.length > 1 ? 's' : ''} resolved: +${got} Bones. Streak ${me.streak} (next correct call ×${me.mult}).</div>` : '';
   $('[data-tab="calls"]').textContent = 'My calls' + (open.length ? ` (${open.length})` : '');
 }
-function renderBoard() {
-  const rows = LS.board(state, lb); $('#lb-col').textContent = { day: 'Bones today', week: 'Bones this week', hof: 'Best streak' }[lb];
-  $('#lb').innerHTML = rows.map((r) => `<tr class="r ${r.me ? 'me' : ''}"><td><span class="rk ${r.rank <= 3 ? 'g' + r.rank : ''}">${r.rank}</span></td><td>${esc(r.name)} ${r.me ? '<span class="chip">You</span>' : '<span class="chip soon">sample</span>'}</td><td>${r.score}${lb === 'hof' ? ' 🔥' : ' 🦴'}</td></tr>`).join('');
+async function renderBoard() {
+  $('#lb-col').textContent = { day: 'Bones today', week: 'Bones this week', hof: 'Best streak' }[lb];
   $$('#lbtabs [data-lb]').forEach((b) => b.className = 'btn tiny ' + (b.dataset.lb === lb ? 'sel' : 'ghost'));
+  let r; try { r = await api('GET', 'board', null, '&period=' + lb); } catch (e) { $('#lb').innerHTML = `<tr><td colspan="3" class="hint">Leaderboard unavailable (${esc(e.message)}).</td></tr>`; return; }
+  $('#lb').innerHTML = r.rows.map((x) => `<tr class="r ${x.me ? 'me' : ''}"><td><span class="rk ${x.rank <= 3 ? 'g' + x.rank : ''}">${x.rank}</span></td><td>${esc(x.name)} ${x.me ? '<span class="chip">You</span>' : ''}${x.calls ? ` <small class="chg">${x.wins}/${x.calls} correct</small>` : ''}</td><td>${x.score}${lb === 'hof' ? ' 🔥' : ' 🦴'}</td></tr>`).join('')
+    || `<tr><td colspan="3" class="hint">No scores yet ${lb === 'day' ? 'today' : lb === 'week' ? 'this week' : ''}. Be the first caller on the board.</td></tr>`;
+  $('#lb-me').innerHTML = r.me && !r.rows.some((x) => x.me) ? `<p class="hint">You're #${r.me.rank} with ${r.me.score}.</p>` : '';
 }
 $('#lbtabs').addEventListener('click', (e) => { const b = e.target.closest('[data-lb]'); if (b) { lb = b.dataset.lb; renderBoard(); } });
-function renderStats() { const s = LS.stats(state); $('#s-today').textContent = s.today; $('#s-week').textContent = s.week; $('#s-streak').textContent = s.streak + (s.best ? ` (best ${s.best})` : ''); $('#s-mult').textContent = '×' + s.mult; $('#s-hit').textContent = s.hit == null ? '—' : s.hit + '%'; }
-function render() { renderCoins(); renderCalls(); renderBoard(); renderStats(); }
+function renderStats() { $('#s-today').textContent = me ? todayBones() : 0; $('#s-week').textContent = me ? weekBones() : 0; $('#s-streak').textContent = me ? me.streak + (me.best ? ` (best ${me.best})` : '') : 0;
+  $('#s-mult').textContent = '×' + (me?.mult || 1); $('#s-hit').textContent = me?.hit == null ? '—' : me.hit + '%'; }
+const todayBones = () => me.calls.filter((c) => c.result && !c.debug && LS.dayKey(c.endsAt) === LS.dayKey(srvNow())).reduce((s, c) => s + (c.bones || 0), 0);
+const weekBones = () => me.calls.filter((c) => c.result && !c.debug && LS.weekKey(c.endsAt) === LS.weekKey(srvNow())).reduce((s, c) => s + (c.bones || 0), 0);
+function render() { renderCoins(); renderCalls(); renderStats(); if (me) { $('#name').value ||= me.name; $('#namebtn').textContent = 'Save'; } }
 function tab() { const t = (location.hash || '#lineup').slice(1); const ok = ['lineup', 'calls', 'board', 'sponsor'].includes(t) ? t : 'lineup';
-  $$('[data-pane]').forEach((p) => p.hidden = p.dataset.pane !== ok); $$('#tabs a').forEach((a) => a.classList.toggle('on', a.dataset.tab === ok)); if (ok === 'calls') lastResolvedSeen(); }
-let seenTimer; function lastResolvedSeen() { clearTimeout(seenTimer); seenTimer = setTimeout(() => { lastResolved = []; }, 60_000); }
+  $$('[data-pane]').forEach((p) => p.hidden = p.dataset.pane !== ok); $$('#tabs a').forEach((a) => a.classList.toggle('on', a.dataset.tab === ok)); if (ok === 'board') renderBoard(); }
 addEventListener('hashchange', tab);
-async function refresh() {
-  try { const got = await LS.fetchPrices(lineup.map((c) => c.mint)); for (const [m, v] of Object.entries(got)) if (v) prices[m] = v; pricesAt = Date.now(); $('#src').textContent = 'Prices: DexScreener public API (read-only), updated ' + new Date(pricesAt).toLocaleTimeString() + '. Each coin uses its deepest pool for that exact mint.'; }
-  catch (e) { $('#src').textContent = 'Prices unavailable right now (' + e.message + '). Calls open again when prices load.'; }
-}
-let busy = false;
-async function settle() {
-  const d = LS.due(state); if (!d.length || busy) return; busy = true;
-  if (Date.now() - pricesAt > 10_000) await refresh();
-  const now = Date.now(), got = [];
-  for (const c of d) { let end = prices[c.mint]?.price; if (c.debug && force) end = c.lockPrice * (force === 'up' ? 1.01 : 0.99); if (end > 0) { LS.resolveCall(state, c, end, now); got.push(c); } }
-  busy = false; if (got.length) { lastResolved = got; LS.save(localStorage, state); render(); }
-}
-if (DEBUG) { $('#debugbar').hidden = false;
-  $('#debugbar').addEventListener('click', (e) => { const b = e.target.closest('[data-force]'); if (b) { force = b.dataset.force; $$('#debugbar [data-force]').forEach((x) => x.classList.toggle('sel', x === b)); }
-    if (e.target.id === 'dbg-reset') { state = LS.emptyState(); LS.save(localStorage, state); lastResolved = []; $('#name').value = ''; render(); } });
-  window.__ls = { get state() { return state; }, settle, refresh };
-}
-renderWins(); tab(); render(); await refresh(); render(); await settle();
-setInterval(() => { $$('[data-left]').forEach((el) => el.textContent = left(+el.dataset.left)); settle(); }, 1000);
-setInterval(async () => { await refresh(); renderCoins(); }, 30_000);
+async function loadLineup() { try { line = await api('GET', 'lineup'); $('#day').textContent = line.day + ' UTC';
+    $('#src').textContent = line.priceError ? 'Prices unavailable right now. Calls open again when prices load.' : `Prices: ${line.mock ? 'LOCAL MOCK prices (server-side, debug only)' : 'DexScreener public API (read-only)'}, read by the server at ${new Date(line.updatedAt).toLocaleTimeString()}. The server locks your price when you call.`;
+    const dbg = $('#debugbar'); dbg.hidden = !(line.debug || WANT_DEBUG);
+    dbg.textContent = line.debug ? `LOCAL DEBUG (server flag LS_LOCAL_DEBUG=1, never on Vercel): 20s window enabled${line.mock ? ', server-side mock prices' : ''}. Debug calls never reach the leaderboards.` : 'Debug was requested, but the server has debug windows switched off (expected on any deployed site).';
+  } catch (e) { $('#src').textContent = 'Long or Short server unreachable (' + e.message + ').'; } renderWins(); renderCoins(); }
+async function loadMe() { if (!token) return; try { const r = await api('GET', 'me'); const fresh = r.player.calls.filter((c) => c.result && !seen.has(c.id));
+    fresh.forEach((c) => seen.add(c.id)); if (fresh.length && !firstMe) lastResolved = fresh; firstMe = false; me = r.player; render(); if (fresh.length) renderBoard(); }
+  catch (e) { if (e.status === 401) { token = ''; localStorage.removeItem('longshort.token'); me = null; render(); } } }
+tab(); renderCoins(); await loadLineup(); await loadMe(); render();
+setInterval(() => { $$('[data-left]').forEach((el) => el.textContent = left(+el.dataset.left)); }, 1000);
+setInterval(() => { const soon = me?.calls.some((c) => !c.result && c.endsAt - srvNow() < 30_000); if (soon) loadMe(); }, 4000);
+setInterval(async () => { await loadLineup(); await loadMe(); }, 30_000);
+window.__ls = { get me() { return me; }, loadMe, loadLineup };
 </script>
 <script defer src="/_vercel/insights/script.js"></script>
 <script>/* paid_link_click: product + where it was clicked, never wallet data */(function(){window.va=window.va||function(){(window.vaq=window.vaq||[]).push(arguments)};var c=function(v){return String(v||'').toLowerCase().replace(/[^a-z0-9-]/g,'').slice(0,40)};document.addEventListener('click',function(e){var a=e.target&&e.target.closest&&e.target.closest('[data-paid]');if(a)window.va('event',{name:'paid_link_click',data:{product:c(a.getAttribute('data-paid')),from:c(a.getAttribute('data-paid-from')),site:'inu-verse'}})},true)})();</script>

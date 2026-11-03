@@ -19,10 +19,15 @@ export const LINEUP = Object.freeze([
 // Sponsored coin of the day. mint:null = open slot (placeholder, nothing to call).
 // Strict pairing rule: a sponsored slot shows ONLY that exact mint — never a lookalike pair or fallback.
 export const SPONSORED_SLOT = Object.freeze({ id: 'SPONSORED', symbol: null, name: null, mint: null, color: '#2F9C8F', sponsored: true });
+// Hand-reviewed sponsor schedule (committed config, one entry per UTC day). Empty = the slot shows as open.
+// Example: { day: '2026-11-10', mint: '<exact mint>', symbol: 'TICKER', name: 'Coin name' }
+export const SPONSOR_SCHEDULE = Object.freeze([]);
+export function sponsorFor(day, schedule = SPONSOR_SCHEDULE) { return schedule.find((s) => s && s.day === day) || SPONSORED_SLOT; }
 
 export const WINDOWS = Object.freeze({ '1h': 3600_000, '24h': 86_400_000 });
 export const DEBUG_WINDOW = Object.freeze({ id: '20s', ms: 20_000 });
 export const BASE_BONES = Object.freeze({ '1h': 10, '24h': 25, '20s': 10 });
+export const SIDES = Object.freeze(['long', 'short']);
 export const MAX_MULT = 3;
 
 /** Streak multiplier: x1 at streak 0, +0.25 per consecutive correct call, capped at x3. */
@@ -71,7 +76,9 @@ export function makeCall(state, { coin, side, win, price, now = Date.now(), debu
 
 /** Resolve one call against the end price. Correct → Bones × streak multiplier; wrong → streak resets; flat → push (no Bones, streak kept). */
 export function resolveCall(state, call, endPrice, now = Date.now()) {
-  if (call.result || now < call.endsAt || !(endPrice > 0)) return call;
+  if (call.result || now < call.endsAt) return call;
+  if (endPrice === 'void') { call.result = 'void'; call.bones = 0; call.mult = 1; call.resolvedAt = now; return call; } // no usable end price: no Bones, streak kept
+  if (!(endPrice > 0)) return call;
   const move = (endPrice - call.lockPrice) / call.lockPrice;
   const dir = Math.abs(move) < 1e-9 ? 'flat' : move > 0 ? 'up' : 'down';
   call.endPrice = endPrice; call.move = move; call.resolvedAt = now;
@@ -90,21 +97,9 @@ export function bonesIn(state, period, now = Date.now()) {
   return state.calls.filter((c) => c.result && k(c.resolvedAt) === key).reduce((s, c) => s + (c.bones || 0), 0);
 }
 export function stats(state, now = Date.now()) {
-  const done = state.calls.filter((c) => c.result && c.result !== 'push');
+  const done = state.calls.filter((c) => c.result === 'win' || c.result === 'miss');
   const wins = done.filter((c) => c.result === 'win').length;
   return { today: bonesIn(state, 'day', now), week: bonesIn(state, 'week', now), total: state.calls.reduce((s, c) => s + (c.bones || 0), 0), wins, calls: done.length, hit: done.length ? Math.round((100 * wins) / done.length) : null, streak: state.streak, best: state.bestStreak, mult: multiplier(state.streak) };
-}
-
-// Preview-only sample rivals so the boards are not empty. Clearly labelled in the UI; a real board needs a backend.
-export const SAMPLE_CALLERS = Object.freeze([
-  { name: 'ShibaSage', day: 180, week: 940, best: 11 }, { name: 'BoneCollector', day: 145, week: 760, best: 9 },
-  { name: 'PumpPup', day: 120, week: 610, best: 7 }, { name: 'KennelKing', day: 95, week: 505, best: 8 },
-  { name: 'Dogeson', day: 60, week: 330, best: 5 }, { name: 'WoofWhale', day: 35, week: 210, best: 4 },
-]);
-export function board(state, period, now = Date.now(), sample = SAMPLE_CALLERS) {
-  const me = { name: state.name || 'You', me: true, day: bonesIn(state, 'day', now), week: bonesIn(state, 'week', now), best: state.bestStreak };
-  const key = period === 'hof' ? 'best' : period === 'week' ? 'week' : 'day';
-  return [...sample.map((s) => ({ ...s, sample: true })), me].sort((a, b) => b[key] - a[key] || (a.me ? -1 : 1)).map((r, i) => ({ ...r, rank: i + 1, score: r[key] }));
 }
 
 export const BADGES = Object.freeze([

@@ -41,12 +41,11 @@ test('longshort: debug window only with debug flag; no price = no call', () => {
   assert.throws(() => LS.makeCall(st, { coin: coin('x'), side: 'long', win: '1h', price: 0 }), /price/);
   assert.throws(() => LS.makeCall(st, { coin: coin('x'), side: 'up', win: '1h', price: 1 }), /side/);
 });
-test('longshort: daily / weekly boards and hall of fame', () => {
-  const st = LS.emptyState(); st.name = 'Zed'; const mon = Date.UTC(2026, 10, 2, 5), tue = Date.UTC(2026, 10, 3, 5);
-  st.calls.push({ result: 'win', bones: 40, resolvedAt: mon }, { result: 'win', bones: 15, resolvedAt: tue }); st.bestStreak = 12;
-  assert.equal(LS.bonesIn(st, 'day', tue), 15); assert.equal(LS.bonesIn(st, 'week', tue), 55);
-  assert.equal(LS.weekKey(Date.UTC(2026, 10, 8, 23)), '2026-11-02');
-  const hof = LS.board(st, 'hof', tue); assert.equal(hof[0].me, true); assert.equal(hof[0].name, 'Zed');
+test('longshort: week / day keys (UTC, Monday weeks); void keeps the streak', () => {
+  assert.equal(LS.weekKey(Date.UTC(2026, 10, 8, 23)), '2026-11-02'); assert.equal(LS.dayKey(Date.UTC(2026, 10, 3, 5)), '2026-11-03');
+  const st = LS.emptyState(); st.streak = 3; const c = LS.makeCall(st, { coin: coin(), side: 'long', win: '1h', price: 1, now: 0 });
+  LS.resolveCall(st, c, 'void', 3600_000); assert.equal(c.result, 'void'); assert.equal(st.streak, 3); assert.equal(c.bones, 0);
+  assert.equal(LS.SAMPLE_CALLERS, undefined, 'no fake leaderboard names');
 });
 test('longshort: page carries the legal copy, no stake/wager flow, sponsor + For devs paid link', () => {
   const html = readFileSync(new URL('../long-or-short.html', import.meta.url), 'utf8');
@@ -54,5 +53,7 @@ test('longshort: page carries the legal copy, no stake/wager flow, sponsor + For
   assert.match(html, /Top weekly callers may win Kennel Chest prizes that are reviewed and paid by hand/);
   assert.match(html, /data-paid="for-devs" data-paid-from="longshort-sponsor"/);
   assert.match(html, /0\.3 SOL/); assert.equal(LS.SPONSOR_CHEST, '7rPVPVBi8sDAcLNkEK6zdEnreeK3SV56ARaXzhnRUNRg');
-  assert.doesNotMatch(html + readFileSync(new URL('../src/longshort.js', import.meta.url), 'utf8'), /signTransaction|sendTransaction|wager amount|place bet/i);
+  const all = html + readFileSync(new URL('../src/longshort.js', import.meta.url), 'utf8') + readFileSync(new URL('../api/longshort.js', import.meta.url), 'utf8') + readFileSync(new URL('../api/_lib/longshort.js', import.meta.url), 'utf8');
+  assert.doesNotMatch(all, /signTransaction|sendTransaction|wager amount|place bet|sample callers/i);
+  assert.match(html, /\/api\/longshort/);
 });
