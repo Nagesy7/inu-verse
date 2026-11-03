@@ -12,11 +12,11 @@ const rec = (name, n, extra = {}) => JSON.stringify({ kh: 'SECRET_HASH_' + name,
 const get = (h, query) => new Promise((done) => { const res = { headers: {}, setHeader(k, v) { this.headers[k] = v; }, end(b) { done({ code: this.statusCode, body: b ? JSON.parse(b) : null, raw: b }); } };
   h({ method: 'GET', url: '/api/home?featured=1', query, headers: { 'x-forwarded-for': '1.1.1.1' } }, res); });
 const mk = (t0 = Date.UTC(2026, 10, 3, 2)) => { let t = t0; const kv = memoryKv(() => t); return { kv, h: makeHandler({ env: {}, kv, now: () => t, sleep: async () => {} }), set: (v) => { t = v; }, now: () => t }; };
-const seed = async (kv) => { await kv.set('home:v1:haaaaaaaaaaaa', rec('Kabosu', 5)); await kv.set('home:v1:hbbbbbbbbbbbb', rec('Shiba', 3)); await kv.set('home:v1:hcccccccccccc', rec('Doge', 9));
+const seed = async (kv) => { await kv.set('home:v1:haaaaaaaaaaaa', rec('Biscuit', 5)); await kv.set('home:v1:hbbbbbbbbbbbb', rec('Shiba', 3)); await kv.set('home:v1:hcccccccccccc', rec('Doge', 9));
   await kv.set('home:v1:hdddddddddddd', rec('KeeperTest', 20)); await kv.set('home:v1:heeeeeeeeeeee', rec('Tiny', 2)); await kv.set('book:v1:haaaaaaaaaaaa', JSON.stringify([{ n: 'a', t: 'hi' }])); };
 
 test('isRealHome: >=3 items, has a name, never Keeper* test homes', () => {
-  assert.equal(F.isRealHome(JSON.parse(rec('Kabosu', 3))), true); assert.equal(F.isRealHome(JSON.parse(rec('Kabosu', 2))), false);
+  assert.equal(F.isRealHome(JSON.parse(rec('Biscuit', 3))), true); assert.equal(F.isRealHome(JSON.parse(rec('Biscuit', 2))), false);
   assert.equal(F.isRealHome(JSON.parse(rec('KeeperTest', 30))), false); assert.equal(F.isRealHome(JSON.parse(rec('keeper2', 30))), false);
   assert.equal(F.isRealHome(JSON.parse(rec('', 30))), false); assert.equal(F.isRealHome(null), false);
 });
@@ -65,4 +65,25 @@ test('plaza signboard + interactable + menu entry are wired', () => {
   const main = fs.readFileSync('src/main.js', 'utf8'); assert.ok(main.includes("it.kind === 'featured'") && main.includes("$('#btn-featured')"));
   assert.ok(fs.readFileSync('src/hudmenu.js', 'utf8').includes("'btn-featured'")); assert.ok(fs.readFileSync('index.html', 'utf8').includes('id="btn-featured"'));
   assert.ok(fs.readFileSync('src/render.js', 'utf8').includes("'FEATURED HOME'"));
+});
+
+test('agent / test homes are never featured: default name Kabosu, or only the starter kit + a couple of pieces', () => {
+  assert.match(fs.readFileSync(new URL('../src/creator.js', import.meta.url), 'utf8'), new RegExp(`name: '${F.DEFAULT_NAME}'`), 'DEFAULT_NAME matches the creator default');
+  assert.match(fs.readFileSync(new URL('../src/club/state.js', import.meta.url), 'utf8'), /STARTER_KENNEL = \[\['kennel', 1, 1\], \['bowl', 3, 2\], \['rug', 5, 3\], \['plant', 9, 0\]\]/, 'STARTER matches the Kennel kit');
+  const kit = F.STARTER.map(([id, x, y]) => ({ id, x, y, rot: 0 }));
+  const live = { name: 'Kabosu', layout: { items: [...kit, { id: 'jaca_lantern', x: 4, y: 3 }] } }; // the live 3 Nov pick (hizo71vjz5x0c)
+  assert.equal(F.isRealHome(live), false); assert.equal(F.isRealHome({ ...live, name: 'kabosu' }), false);
+  assert.equal(F.customItems(live), 1); assert.equal(F.isRealHome({ ...live, name: 'Biscuit' }), false, 'starter kit + 1 piece is not a showcase');
+  const decorated = { name: 'Biscuit', layout: { items: [...kit, { id: 'sofa', x: 5, y: 5 }, { id: 'tv', x: 5, y: 0 }, { id: 'lamp', x: 8, y: 0 }] } };
+  assert.equal(F.customItems(decorated), 3); assert.equal(F.isRealHome(decorated), true);
+  assert.equal(F.customItems({ layout: { items: [{ id: 'kennel', x: 6, y: 6 }] } }), 1, 'a moved starter piece counts');
+  assert.equal(F.pickFeatured('2026-11-03', [{ id: 'hizo71vjz5x0c', ...live }]), null);
+});
+
+test('the mistaken 3 Nov "Kabosu featured" + test-batch arrival lines are hidden; a later Kabosu event shows', async () => {
+  const FD = await import('../src/feed.js'), before = Date.parse('2026-11-03T03:56:00Z'), after = Date.parse('2026-11-04T00:00:00Z');
+  assert.equal(FD.cleanEvent({ k: 'featured', n: 'Kabosu', t: before }, before + 1), null);
+  assert.equal(FD.cleanEvent({ k: 'arrive', n: 'Kabosu', t: before }, before + 1), null);
+  assert.ok(FD.cleanEvent({ k: 'koi', n: 'Kabosu', t: before }, before + 1), 'other kinds untouched');
+  assert.ok(FD.cleanEvent({ k: 'arrive', n: 'Kabosu', t: after }, after + 1));
 });

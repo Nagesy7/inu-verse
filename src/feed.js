@@ -45,8 +45,9 @@ export function feedName(raw) { if (typeof raw !== 'string') return null; const 
 // localStorage inuverse.test = 1) still records presence for the Friends list but never posts "arrived", never shows as a ghost
 // and never posts client events.
 export const TEST_NAME_RE = /^keeper/i;
-export const LEGACY_TEST = Object.freeze([{ n: 'tora', before: Date.parse('2026-11-03T04:20:00Z') }, { n: 'mochi', before: Date.parse('2026-11-03T04:20:00Z') }]);
-export function isTestName(n, t = Infinity) { if (typeof n !== 'string') return false; if (TEST_NAME_RE.test(n.trim())) return true; const k = n.trim().toLowerCase(); return LEGACY_TEST.some((x) => x.n === k && Number(t) < x.before); }
+export const LEGACY_TEST = Object.freeze([{ n: 'tora', before: Date.parse('2026-11-03T04:20:00Z') }, { n: 'mochi', before: Date.parse('2026-11-03T04:20:00Z') },
+  { n: 'kabosu', k: ['arrive', 'featured'], before: Date.parse('2026-11-03T04:20:00Z') }]); // the agent-published default-name home (featured by mistake) + the same test batch's arrival
+export function isTestName(n, t = Infinity, kind = null) { if (typeof n !== 'string') return false; if (TEST_NAME_RE.test(n.trim())) return true; const k = n.trim().toLowerCase(); return LEGACY_TEST.some((x) => x.n === k && Number(t) < x.before && (!x.k || (kind && x.k.includes(kind)))); }
 export function testRun(win = globalThis, ls = null) { try { if (win?.navigator?.webdriver) return true; } catch {} try { return (ls || win?.localStorage)?.getItem('inuverse.test') === '1'; } catch { return false; } }
 // extra field per type: plot number 1-8, guestbook owner name; others carry nothing
 export function cleanExtra(k, x) {
@@ -61,7 +62,7 @@ export function cleanEvent(e, now = Date.now()) {
   if (!e || typeof e !== 'object' || !isEventType(e.k)) return null;
   const n = feedName(e.n); if (!n) return null; const x = cleanExtra(e.k, e.x); if (x == null) return null;
   const t = Number(e.t); if (!Number.isFinite(t) || t > now + 60_000 || now - t > FEED.TTL_S * 1000) return null;
-  if (isTestName(n, t) || (e.k === 'guestbook' && isTestName(x, t))) return null; // test / proof names never show
+  if (isTestName(n, t, e.k) || (e.k === 'guestbook' && isTestName(x, t, e.k))) return null; // test / proof names never show
   return { i: typeof e.i === 'string' && /^[0-9a-f]{6,16}$/.test(e.i) ? e.i : String(Math.floor(t)).slice(-8), k: e.k, n, x, t, v: EVENT_TYPES[e.k].src === 'server' ? 1 : 0 };
 }
 export function eventText(e) { const c = cleanEvent(e, e?.t ?? Date.now()); return c ? EVENT_TYPES[c.k].text(c.n, c.x) : null; }

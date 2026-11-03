@@ -1,10 +1,17 @@
-// Featured Home of the Day: one REAL published home (>= 3 furniture pieces, not a test home named Keeper*), picked
+// Featured Home of the Day: one REAL published home (>= 3 pieces the owner placed beyond the starter kit, not a test home named
+// Keeper*, not the creator's default name Kabosu), picked
 // deterministically per Australia/Sydney calendar day from the existing /api/home store, shown on a plaza signboard and in
 // Menu → Explore with a Visit button. Only the owner's public display name is shown. The server picks once per day (cached in
 // Upstash), and posts one real feed line ("X's home is today's Featured Home") the first time a day's pick is made.
 // Pure helpers (shared by api/home.js, the client and tests) + a tiny fetch client. No Bones, no $KIBBLE, no payments.
 export const MIN_ITEMS = 3;
 export const TEST_NAME = /^keeper/i; // internal test homes (KeeperTest, Keeper2…) never get featured
+export const DEFAULT_NAME = 'Kabosu'; // the character creator's default name (src/creator.js): never personalised = agent / test runs, not a showcase
+// every new Kennel/home starts with this kit (src/club/state.js STARTER_KENNEL); those pieces at their starting spots don't count
+export const STARTER = Object.freeze([['kennel', 1, 1], ['bowl', 3, 2], ['rug', 5, 3], ['plant', 9, 0]]);
+const isStarter = (it) => STARTER.some(([id, x, y]) => it && it.id === id && it.x === x && it.y === y);
+// pieces the owner actually placed (starter kit at its starting spot excluded)
+export const customItems = (rec) => (Array.isArray(rec?.layout?.items) ? rec.layout.items.filter((it) => !isStarter(it)).length : 0);
 export const HOME_KEY_RE = /^home:v1:(h[0-9a-z]{12})$/;
 const SYD = (() => { try { return new Intl.DateTimeFormat('en-CA', { timeZone: 'Australia/Sydney', year: 'numeric', month: '2-digit', day: '2-digit' }); } catch { return null; } })();
 export function sydneyDay(nowMs = Date.now()) { const p = {}; for (const x of SYD.formatToParts(new Date(nowMs))) p[x.type] = x.value; return `${p.year}-${p.month}-${p.day}`; }
@@ -12,8 +19,7 @@ const h32 = (s) => { let h = 2166136261; for (const c of String(s)) h = Math.imu
 // a stored home record (api/home.js home:v1:<id>) that is real enough to feature
 export function isRealHome(rec) {
   if (!rec || typeof rec !== 'object') return false; const name = typeof rec.name === 'string' ? rec.name.trim() : '';
-  const items = Array.isArray(rec.layout?.items) ? rec.layout.items.length : 0;
-  return !!name && !TEST_NAME.test(name) && items >= MIN_ITEMS;
+  return !!name && !TEST_NAME.test(name) && name.toLowerCase() !== DEFAULT_NAME.toLowerCase() && customItems(rec) >= MIN_ITEMS;
 }
 // deterministic: same day + same candidate set -> same home, whatever order the store listed them in
 export function pickFeatured(day, homes) { const c = homes.filter((h) => h && typeof h.id === 'string' && isRealHome(h)).sort((a, b) => (a.id < b.id ? -1 : a.id > b.id ? 1 : 0)); if (!c.length) return null; return c[h32('featured|' + day) % c.length]; }
