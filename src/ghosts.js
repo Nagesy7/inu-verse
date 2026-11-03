@@ -39,6 +39,9 @@ const addDecor = (x, y, w = 1, h = 1) => { for (let a = 0; a < w; a++) for (let 
 addDecor(PZ.statue.x, PZ.statue.y, PZ.statue.w, 2); addDecor(PZ.news.x, PZ.news.y, 1, 2); addDecor(PZ.crier.x, PZ.crier.y); addDecor(PZ.firepit.x, PZ.firepit.y); addDecor(PZ.wall.x, PZ.wall.y, PZ.wall.w, 2); addDecor(PZ.raid.x, PZ.raid.y, PZ.raid.w, 2);
 // extra decor tiles from the client (street lamps, signs); clears the cache
 export function addBlockers(tiles) { for (const [x, y] of tiles || []) addDecor(x, y); TILES.clear(); }
+// does a world-px rect touch a building / sign / statue tile (solid or decor)? used to keep ghost name labels off building signs
+export function overScenery(x, y, w, h) { const x0 = Math.floor(x / TILE), x1 = Math.floor((x + w - 1) / TILE), y0 = Math.floor(y / TILE), y1 = Math.floor((y + h - 1) / TILE);
+  for (let ty = y0; ty <= y1; ty++) for (let tx = x0; tx <= x1; tx++) if (isSolid(tx, ty) || DECOR.has(ty * 1000 + tx)) return true; return false; }
 export const blockedBelow = (tx, ty, reach = 2) => { for (let dy = 1; dy <= reach; dy++) for (let dx = -1; dx <= 1; dx++) { const x = tx + dx, y = ty + dy; if (isSolid(x, y) || DECOR.has(y * 1000 + x)) return true; } return DECOR.has(ty * 1000 + tx); };
 export function spotTiles(id, r = GHOST.RADIUS) { if (TILES.has(id)) return TILES.get(id); const s = SPOTS[id], all = [];
   if (s) for (let dy = -r; dy <= r; dy++) for (let dx = -r; dx <= r; dx++) { const tx = s.tx + dx, ty = s.ty + dy; if (!isSolid(tx, ty) && MAP[ty]?.[tx] !== T.ROAD) all.push([tx, ty]); } // never idle in the road
@@ -87,8 +90,10 @@ export function createGhosts({ sprite = null, rm = () => false, now = () => Date
   };
   const SUB = 'recent visitor', LABEL_MS = 400;
   const bobOf = (g) => (rm() ? 0 : Math.sin(g.ph * 2.2) * 2);
-  function placeLabel(g, top, tw, blocked) { const tries = [[0, 'above'], [0, 'below'], [-(tw / 2 + 12), 'above'], [tw / 2 + 12, 'above']];
-    for (const [dx, where] of tries) { const y = where === 'below' ? g.y + 8 : top; if (!blocked || !blocked(g.x + dx - tw / 2, y, tw, 14)) return [dx, where]; } return null; }
+  // first pass: clear of HUD buttons AND of building fronts / signs / statues (solid or decor tiles); second pass: clear of the HUD only
+  function placeLabel(g, top, tw, blocked) { const tries = [[0, 'above'], [0, 'below'], [-(tw / 2 + 12), 'above'], [tw / 2 + 12, 'above'], [-(tw / 2 + 12), 'below'], [tw / 2 + 12, 'below']];
+    for (const strict of [true, false]) for (const [dx, where] of tries) { const x = g.x + dx - tw / 2, y = where === 'below' ? g.y + 8 : top;
+      if (blocked && blocked(x, y, tw, 14)) continue; if (strict && overScenery(x, y, tw, 14)) continue; return [dx, where]; } return null; }
   function spr(coat, face) { const k = coat + '|' + face; let cv = cache.get(k); if (!cv) { cv = sprite(coat, face); if (cv) { try { cv = tint(cv); } catch {} cache.set(k, cv); } } return cv; }
   // sprite: translucent, pale blue with a baked soft glow outline, gentle float bob (none in reduced motion), a faint pulsing halo on
   // the ground instead of a shadow. The name label is drawn separately in labels() so props can never cover it.

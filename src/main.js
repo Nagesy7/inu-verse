@@ -95,7 +95,7 @@ import { nearestSpot, spotAt as seatAt, seatPose, SPOT_NAME, SPOTS } from './sit
 import { mountWheel } from './actionwheel.js';
 import { WORKER_JOB, JOBS as JOB_DEFS, ensureJobs, rankOf } from './jobs.js';
 import { renderFriend, renderChapel, renderFurnStore } from './relui.js';
-import { prerenderMap, dynamicProps, buildingsReady } from './render.js';
+import { prerenderMap, dynamicProps, buildingsReady, artOverhang } from './render.js';
 import { N, SCALE, drawWater } from './tiles.js';
 import { feel } from './feel.js';
 import { faceTalk, faceReact } from './face.js';
@@ -113,6 +113,7 @@ import { createMultiplayer } from './multiplayer.js';
 import { createFeed } from './feed.js';
 import { createGhosts, spotAt, addBlockers as ghostBlockers } from './ghosts.js';
 import { LAMP_TILES } from './ambient.js';
+import { syncChat } from './chatdodge.js'; // chat bar hides under panels / modals, event banner sits above it
 import * as EVR from './events.js'; import { createEvents, ensureChip as evChip, updateChip as evChipUpdate, maybeBanner as evBanner, panelHtml as evPanelHtml, drawGear } from './eventsui.js'; // Alive phase 5: daily world events
 import * as TF from './townsfolk.js'; // Alive phase 3: wandering background townsfolk (NPC only)
 import { createTrading, renderTrade, TRADE_CSS } from './tradeui.js';
@@ -160,7 +161,7 @@ function snapWeather() { const w = skyWx(); amb.rain = amb.rainTarget = w.rain; 
 // ---- Alive phase 3: townsfolk on the shared sky clock (src/townsfolk.js). Pooled, culled to the camera, capped bubbles. ----
 const TFS = TF.makeTownsfolk(), FOLKQ = { shift: 0, lastT: 0 };
 // ---- Alive phase 5: one featured world event per Sydney day (src/events.js + src/eventsui.js). Cosmetic keepsakes only. ----
-const EVX = createEvents({ search: location.search }); let EVVIEW = null; globalThis.__events = EVX;
+const EVX = createEvents({ search: location.search }); let EVVIEW = null, chatSyncT = 0; globalThis.__events = EVX;
 const folkBase = () => (SKYS.pinH != null ? TF.folkSec(SKYS.pinH) + time : TF.folkSec(dayPhase(time + dayOffset).hour)); // a pinned ?tod= still lets them walk
 const folkSecNow = () => folkBase() + FOLKQ.shift;
 const folkWx = () => (amb.rain > 0.3 ? 'rain' : (amb.cloud || 0) > 0.5 ? 'cloudy' : 'clear');
@@ -2288,6 +2289,7 @@ function frame(now) {
   MPL.step(dt); // live multiplayer (no-op when not configured)
   feedSound(dt);
   if (mode === 'world') { GH.step(dt); stepEvents(dt); }
+  if ((chatSyncT -= dt) <= 0) { chatSyncT = 0.2; syncChat(document, window); }
   if (JOYS && state && (joyT -= dt) <= 0) { joyT = 0.5; const want = joyPref(state); if (want !== JOYS.on) { JOYS.set(want); joyApi.onChange?.(); } } // saved / cloud-loaded Joystick setting
   if (PAD.connected) PAD.poll(dt); // controllers: zero work unless one is plugged in
   if (mode === 'world') { updateWorld(dt); renderWorld(); drawSceneBars(); }
@@ -2308,7 +2310,7 @@ function ghostSprite(coat, face) { const c = document.createElement('canvas'); c
 const GH = createGhosts({ sprite: ghostSprite, rm: () => reducedMotion() });
 const FEEDUI = createFeed({ onData: (S) => GH.set(S.ghosts, liveNames()) });
 let feedSpot = null; globalThis.__feed = { ui: FEEDUI, ghosts: GH };
-ghostBlockers(LAMP_TILES); // street lamps count as decor a ghost should not stand behind
+ghostBlockers(LAMP_TILES); buildingsReady.then(() => ghostBlockers(artOverhang())); // street lamps count as decor a ghost should not stand behind
 // screen-space HUD rects (CSS px), refreshed at most every 600 ms; used to keep ghost labels out from under buttons / chips
 const HUDR = { t: 0, rects: [] }, HUD_SEL = '#hud > *, #zoomctl, #tbtns > *, #btn-menu, #stick, #minimap-wrap, #feed-tick, #inu-profile-badge, #prompt, #ev-banner, #pres-banner, #crier-banner, [class*="wallet"]';
 function hudCovers(x, y, w, h) { const n = performance.now(); if (n - HUDR.t > 600) { HUDR.t = n; HUDR.rects = [];

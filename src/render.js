@@ -165,6 +165,12 @@ function legacyNpcHouse(c, h) { const I = NPC_INTERIORS[h.id]; house(c, h.x * TI
 export const BIMG = {};
 export const buildingsReady = typeof Image === 'undefined' ? Promise.resolve() : fetch('assets/buildings/manifest.json').then((r) => r.json()).then((m) => Promise.all(m.buildings.map((b) => new Promise((res) => {
   const im = new Image(); im.onload = () => { BIMG[b.id] = im; res(); }; im.onerror = () => res(); im.src = 'assets/buildings/' + b.file; })))).catch(() => {});
+// tiles above each footprint that its (bottom-aligned, taller) art covers: roofs and signs a ghost / ghost name must not sit on
+export function artOverhang() { const out = [];
+  for (const b of [...BUILDINGS, ...MALL_BUILDINGS, CLUBHOUSE, { ...LEADERS, id: 'leaders' }]) { const im = b && BIMG[b.id]; if (!im) continue;
+    const k = Math.max(1, Math.floor((b.w * TILE) / im.width)), w = im.width * k, h = im.height * k, x0 = b.x * TILE + Math.round((b.w * TILE - w) / 2), top = (b.y + b.h) * TILE - h;
+    for (let ty = Math.floor(top / TILE); ty < b.y; ty++) for (let tx = Math.floor(x0 / TILE); tx <= Math.floor((x0 + w - 1) / TILE); tx++) out.push([tx, ty]); }
+  return out; }
 const HOUSE_ART = { h1: 'house_1', h2: 'house_2', h3: 'house_3', h4: 'house_4' };
 // draw a building image bottom-aligned on footprint (fx,fy,fw,fh in tiles); returns false if art missing
 function drawBuildingArt(c, id, fx, fy, fw, fh) {
