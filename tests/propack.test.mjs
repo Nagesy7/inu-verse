@@ -61,9 +61,9 @@ test('readme + files list; analytics props carry no wallet data', () => {
   assert.equal(PP.PRICE_FALLBACK.priceFinal, true); assert.equal(PP.PRICE_FALLBACK.refundFinal, true); assert.equal(PP.PRICE_FALLBACK.sol, 0.25);
 });
 
-test('Launch Bundle: PROPOSAL 0.65 SOL fallback, proposal refund wording, ops per product, side link to the maker', () => {
+test('Launch Bundle: final 0.65 SOL fallback, final refund wording, ops per product, side link to the maker', () => {
   const B = PP.BUNDLE_FALLBACK;
-  assert.equal(B.sol, 0.65); assert.equal(B.separately, 0.75); assert.equal(B.priceFinal, false); assert.equal(B.refundFinal, false);
+  assert.equal(B.sol, 0.65); assert.equal(B.separately, 0.75); assert.equal(B.priceFinal, true); assert.equal(B.refundFinal, true);
   assert.match(B.refund, /Pro Pack part is non-refundable once it's unlocked.*0\.5 SOL by hand/);
   assert.deepEqual(PP.opsFor('bundle'), { message: 'bundle-message', order: 'bundle-order', check: 'bundle-pay-check', status: 'bundle-status', config: 'bundle-config' });
   assert.equal(PP.opsFor('propack').check, 'propack-pay-check'); assert.equal(PP.opsFor(undefined).order, 'propack-order');

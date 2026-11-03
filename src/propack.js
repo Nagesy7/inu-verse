@@ -5,8 +5,8 @@
 // Not financial advice: it's a design pack, not a launch, a listing or an endorsement.
 export const PRICE_FALLBACK = { sol: 0.25, priceFinal: true, refundFinal: true, payToLabel: 'Sponsor Chest',
   refund: "No refunds once the pack is unlocked. If the payment doesn't unlock it, we refund by hand." };
-// 🎁 Launch Bundle = this Pro Pack + a 7-day Basic sponsored side in the Cabal Meme Maker, one order, one payment (PROPOSAL price).
-export const BUNDLE_FALLBACK = { sol: 0.65, separately: 0.75, priceFinal: false, refundFinal: false, payToLabel: 'Sponsor Chest',
+// 🎁 Launch Bundle = this Pro Pack + a 7-day Basic sponsored side in the Cabal Meme Maker, one order, one payment (final price, approved by Zachary 3 Nov 2026).
+export const BUNDLE_FALLBACK = { sol: 0.65, separately: 0.75, priceFinal: true, refundFinal: true, payToLabel: 'Sponsor Chest',
   refund: "The Pro Pack part is non-refundable once it's unlocked. If your sponsored side is rejected, we refund 0.5 SOL by hand." };
 /** Ops per product (same router). */
 export const opsFor = (kind) => (kind === 'bundle'
