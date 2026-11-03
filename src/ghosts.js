@@ -6,7 +6,7 @@
 import { feedName } from './feed.js';
 import { isSolid, MAP, T, TILE, KIBBLE_PLAZA, FOUNTAIN, ARCADE, BANK, POND, MARKET, BARN, CHAPEL, MATCHMAKER, PLOTS } from './world.js';
 
-export const GHOST = { MAX: 8, ONLINE_MS: 10 * 60_000, TTL_MS: 24 * 3600_000, RADIUS: 3, SPEED: 26, ALPHA: 0.42 };
+export const GHOST = { MAX: 8, ONLINE_MS: 10 * 60_000, TTL_MS: 24 * 3600_000, RADIUS: 3, SPEED: 26, ALPHA: 0.5 };
 const at = (tx, ty, name) => ({ tx, ty, name });
 // Named outdoor spots (tile anchors). The client reports the nearest one; the server only accepts these ids.
 export const SPOTS = Object.freeze({

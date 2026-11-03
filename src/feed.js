@@ -86,6 +86,7 @@ export function createFeed({ f = (...a) => globalThis.fetch(...a), doc = globalT
     const el = doc.createElement('div'); el.id = 'feed-tick'; el.hidden = true; el.setAttribute('role', 'status'); el.setAttribute('aria-live', 'polite'); el.setAttribute('aria-label', 'Town news: real things other players just did');
     el.innerHTML = '<div class="ft-row"><i class="ft-pip"></i><span class="ft-line"></span><button class="ft-col" aria-label="Collapse town news">–</button></div><ul class="ft-list" hidden></ul>';
     el.querySelector('.ft-row').onclick = (e) => { if (e.target.closest('.ft-col')) { e.stopPropagation(); S.collapsed = !S.collapsed; S.open = false; try { ls?.setItem(K_COLLAPSED, S.collapsed ? '1' : '0'); } catch {} render(); return; } if (S.collapsed) { S.collapsed = false; try { ls?.setItem(K_COLLAPSED, '0'); } catch {} } else S.open = !S.open; render(); };
+    el.querySelector('.ft-list').onclick = () => { S.open = false; render(); }; // tap the open list to close it
     doc.body.appendChild(el); S.el = el; }
   let shownKey = '';
   function render() { build(); const el = S.el; if (!el) return; const t = now(), evs = S.events.filter((e) => t - e.t < FEED.TTL_S * 1000);
