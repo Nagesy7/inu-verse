@@ -12,11 +12,11 @@ const rec = (name, n, extra = {}) => JSON.stringify({ kh: 'SECRET_HASH_' + name,
 const get = (h, query) => new Promise((done) => { const res = { headers: {}, setHeader(k, v) { this.headers[k] = v; }, end(b) { done({ code: this.statusCode, body: b ? JSON.parse(b) : null, raw: b }); } };
   h({ method: 'GET', url: '/api/home?featured=1', query, headers: { 'x-forwarded-for': '1.1.1.1' } }, res); });
 const mk = (t0 = Date.UTC(2026, 10, 3, 2)) => { let t = t0; const kv = memoryKv(() => t); return { kv, h: makeHandler({ env: {}, kv, now: () => t, sleep: async () => {} }), set: (v) => { t = v; }, now: () => t }; };
-const seed = async (kv) => { await kv.set('home:v1:haaaaaaaaaaaa', rec('Biscuit', 5)); await kv.set('home:v1:hbbbbbbbbbbbb', rec('Shiba', 3)); await kv.set('home:v1:hcccccccccccc', rec('Doge', 9));
+const seed = async (kv) => { await kv.set('home:v1:haaaaaaaaaaaa', rec('Natto', 5)); await kv.set('home:v1:hbbbbbbbbbbbb', rec('Shiba', 3)); await kv.set('home:v1:hcccccccccccc', rec('Doge', 9));
   await kv.set('home:v1:hdddddddddddd', rec('KeeperTest', 20)); await kv.set('home:v1:heeeeeeeeeeee', rec('Tiny', 2)); await kv.set('book:v1:haaaaaaaaaaaa', JSON.stringify([{ n: 'a', t: 'hi' }])); };
 
 test('isRealHome: >=3 items, has a name, never Keeper* test homes', () => {
-  assert.equal(F.isRealHome(JSON.parse(rec('Biscuit', 3))), true); assert.equal(F.isRealHome(JSON.parse(rec('Biscuit', 2))), false);
+  assert.equal(F.isRealHome(JSON.parse(rec('Natto', 3))), true); assert.equal(F.isRealHome(JSON.parse(rec('Natto', 2))), false);
   assert.equal(F.isRealHome(JSON.parse(rec('KeeperTest', 30))), false); assert.equal(F.isRealHome(JSON.parse(rec('keeper2', 30))), false);
   assert.equal(F.isRealHome(JSON.parse(rec('', 30))), false); assert.equal(F.isRealHome(null), false);
 });
@@ -73,8 +73,8 @@ test('agent / test homes are never featured: default name Kabosu, or only the st
   const kit = F.STARTER.map(([id, x, y]) => ({ id, x, y, rot: 0 }));
   const live = { name: 'Kabosu', layout: { items: [...kit, { id: 'jaca_lantern', x: 4, y: 3 }] } }; // the live 3 Nov pick (hizo71vjz5x0c)
   assert.equal(F.isRealHome(live), false); assert.equal(F.isRealHome({ ...live, name: 'kabosu' }), false);
-  assert.equal(F.customItems(live), 1); assert.equal(F.isRealHome({ ...live, name: 'Biscuit' }), false, 'starter kit + 1 piece is not a showcase');
-  const decorated = { name: 'Biscuit', layout: { items: [...kit, { id: 'sofa', x: 5, y: 5 }, { id: 'tv', x: 5, y: 0 }, { id: 'lamp', x: 8, y: 0 }] } };
+  assert.equal(F.customItems(live), 1); assert.equal(F.isRealHome({ ...live, name: 'Natto' }), false, 'starter kit + 1 piece is not a showcase');
+  const decorated = { name: 'Natto', layout: { items: [...kit, { id: 'sofa', x: 5, y: 5 }, { id: 'tv', x: 5, y: 0 }, { id: 'lamp', x: 8, y: 0 }] } };
   assert.equal(F.customItems(decorated), 3); assert.equal(F.isRealHome(decorated), true);
   assert.equal(F.customItems({ layout: { items: [{ id: 'kennel', x: 6, y: 6 }] } }), 1, 'a moved starter piece counts');
   assert.equal(F.pickFeatured('2026-11-03', [{ id: 'hizo71vjz5x0c', ...live }]), null);
@@ -86,4 +86,24 @@ test('the mistaken 3 Nov "Kabosu featured" + test-batch arrival lines are hidden
   assert.equal(FD.cleanEvent({ k: 'arrive', n: 'Kabosu', t: before }, before + 1), null);
   assert.ok(FD.cleanEvent({ k: 'koi', n: 'Kabosu', t: before }, before + 1), 'other kinds untouched');
   assert.ok(FD.cleanEvent({ k: 'arrive', n: 'Kabosu', t: after }, after + 1));
+});
+
+test('proof/agent homes: publishes from automated runs carry test:1 (stored, visitable, never featured, no feed line); known pre-flag agent homes excluded', async () => {
+  const HS = await import('../src/homeshare.js');
+  assert.equal(F.isRealHome({ ...JSON.parse(rec('Natto', 9)), test: 1 }), false);
+  for (const id of ['hlmn8dooxxj84', 'hizo71vjz5x0c']) { assert.equal(F.isRealHome(JSON.parse(rec('Natto', 9)), id), false, id); assert.equal(F.pickFeatured('2026-11-03', [{ id, ...JSON.parse(rec('Natto', 9)) }]), null); }
+  assert.equal(F.isRealHome(JSON.parse(rec('Natto', 9)), 'hzzzzzzzzzzzz'), true);
+  // client: the publish body carries test:1 only under automation
+  const sent = []; const api = HS.homeApi('', async (u, o) => { sent.push(JSON.parse(o.body)); return { ok: true, json: async () => ({ ok: true }) }; });
+  const share = HS.newShare(), had = Object.getOwnPropertyDescriptor(globalThis, 'navigator');
+  try { Object.defineProperty(globalThis, 'navigator', { value: { webdriver: true }, configurable: true }); await api.publish(share, 'Natto', { items: [] });
+    Object.defineProperty(globalThis, 'navigator', { value: { webdriver: false }, configurable: true }); await api.publish(share, 'Natto', { items: [] }); }
+  finally { if (had) Object.defineProperty(globalThis, 'navigator', had); else delete globalThis.navigator; }
+  assert.equal(sent[0].test, 1); assert.equal('test' in sent[1], false);
+  // server: stored with test, no "opened their home" line, featured skips it
+  const { kv, h, now } = mk(); const post = (body) => new Promise((done) => { const res = { headers: {}, setHeader() {}, end(b) { done({ code: this.statusCode, body: JSON.parse(b) }); } }; h({ method: 'POST', url: '/api/home', query: {}, headers: { 'x-forwarded-for': '2.2.2.2' }, body: JSON.stringify(body) }, res); });
+  const its = [{ id: 'sofa', x: 1, y: 1, rot: 0 }, { id: 'lamp', x: 3, y: 1, rot: 0 }, { id: 'tv', x: 5, y: 1, rot: 0 }];
+  assert.equal((await post({ op: 'publish', ...share, name: 'Natto', layout: { items: its }, test: 1 })).code, 200);
+  assert.equal(JSON.parse(await kv.get('home:v1:' + share.id)).test, 1); assert.equal((await readEvents(kv, now())).length, 0, 'no feed line for a proof home');
+  assert.equal((await get(h, { featured: '1' })).body.home, null, 'never featured');
 });

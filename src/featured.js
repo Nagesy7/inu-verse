@@ -5,6 +5,9 @@
 // Upstash), and posts one real feed line ("X's home is today's Featured Home") the first time a day's pick is made.
 // Pure helpers (shared by api/home.js, the client and tests) + a tiny fetch client. No Bones, no $KIBBLE, no payments.
 export const MIN_ITEMS = 3;
+// homes agents' proof runs published on the live store before publishes carried the test flag (never featured):
+//   hlmn8dooxxj84 "Biscuit" = scripts/r4-proof.mjs (Round 4, 18 Oct, bought sofa/rug/lamp/plant/table/tv); hizo71vjz5x0c "Kabosu" (1 Nov, starter kit + lantern)
+export const AGENT_HOME_IDS = Object.freeze(new Set(['hlmn8dooxxj84', 'hizo71vjz5x0c']));
 export const TEST_NAME = /^keeper/i; // internal test homes (KeeperTest, Keeper2…) never get featured
 export const DEFAULT_NAME = 'Kabosu'; // the character creator's default name (src/creator.js): never personalised = agent / test runs, not a showcase
 // every new Kennel/home starts with this kit (src/club/state.js STARTER_KENNEL); those pieces at their starting spots don't count
@@ -17,8 +20,8 @@ const SYD = (() => { try { return new Intl.DateTimeFormat('en-CA', { timeZone: '
 export function sydneyDay(nowMs = Date.now()) { const p = {}; for (const x of SYD.formatToParts(new Date(nowMs))) p[x.type] = x.value; return `${p.year}-${p.month}-${p.day}`; }
 const h32 = (s) => { let h = 2166136261; for (const c of String(s)) h = Math.imul(h ^ c.charCodeAt(0), 16777619); return h >>> 0; };
 // a stored home record (api/home.js home:v1:<id>) that is real enough to feature
-export function isRealHome(rec) {
-  if (!rec || typeof rec !== 'object') return false; const name = typeof rec.name === 'string' ? rec.name.trim() : '';
+export function isRealHome(rec, id = rec?.id) {
+  if (!rec || typeof rec !== 'object' || rec.test || (typeof id === 'string' && AGENT_HOME_IDS.has(id))) return false; /* test = published by an automated / proof run */ const name = typeof rec.name === 'string' ? rec.name.trim() : '';
   return !!name && !TEST_NAME.test(name) && name.toLowerCase() !== DEFAULT_NAME.toLowerCase() && customItems(rec) >= MIN_ITEMS;
 }
 // deterministic: same day + same candidate set -> same home, whatever order the store listed them in

@@ -56,7 +56,7 @@ export function makeHandler({ env = process.env, kv, now = () => Date.now(), sle
   // GET ?featured=1 -> { day, home: { id, name, items, updatedAt, signs } | null }. Owner public display name only.
   async function featured() {
     const day = sydneyDay(now()), ck = "home:featured:v1:" + day, show = async (id, rec) => ({ day, home: publicHome(id, rec, (await getJ("book:v1:" + id, [])).length) });
-    const cached = await getJ(ck, null); if (cached?.id) { const h = await getJ("home:v1:" + cached.id, null); if (isRealHome(h)) return show(cached.id, h); }
+    const cached = await getJ(ck, null); if (cached?.id) { const h = await getJ("home:v1:" + cached.id, null); if (isRealHome(h, cached.id)) return show(cached.id, h); }
     if (!store.scan) return { day, home: null };
     if (!(await store.setNX("home:featured:lock", "1", 20))) return { day, home: null, pending: true };
     try {
@@ -127,8 +127,9 @@ export function makeHandler({ env = process.env, kv, now = () => Date.now(), sle
         if (!(await store.setNX("home:rl:p:" + id, "1", PUBLISH_GAP_S))) return send(429, { error: "Saving too fast", retryAfter: PUBLISH_GAP_S });
         return await locked(id, async () => { const h = await getJ("home:v1:" + id, null); if (h && h.kh !== sha(b.key)) return send(403, { error: "not your home" });
           const fed = !!h?.fed || layout.items.length >= 3; // "opened their home" once, when it first has some furniture
-          const rec = { kh: sha(b.key), name: homeOwnerName(b.name), layout, updatedAt: new Date(now()).toISOString(), ...(fed ? { fed: true } : {}) };
-          await store.set("home:v1:" + id, JSON.stringify(rec), TTL_S); if (fed && !h?.fed) await feed({ k: "home", n: b.name }, "home:" + sha(salt + "|" + ipOf(req)).slice(0, 24)); return send(200, { ok: true, id, name: rec.name, items: layout.items.length, updatedAt: rec.updatedAt }); }); }
+          const test = !!b.test; // published by an automated / proof run: visitable, never featured, no feed line
+          const rec = { kh: sha(b.key), name: homeOwnerName(b.name), layout, updatedAt: new Date(now()).toISOString(), ...(fed ? { fed: true } : {}), ...(test ? { test: 1 } : {}) };
+          await store.set("home:v1:" + id, JSON.stringify(rec), TTL_S); if (fed && !h?.fed && !test) await feed({ k: "home", n: b.name }, "home:" + sha(salt + "|" + ipOf(req)).slice(0, 24)); return send(200, { ok: true, id, name: rec.name, items: layout.items.length, updatedAt: rec.updatedAt }); }); }
       if (b.op === "sign") { const e = cleanEntry(b.name, b.text); if (!e.ok) return send(400, { error: e.reason });
         const host = await getJ("home:v1:" + id, null); if (!host) return send(404, { error: "home not found" });
         const ip = sha(salt + "|" + ipOf(req)).slice(0, 24);

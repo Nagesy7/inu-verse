@@ -8,6 +8,7 @@
 // and are rate-limited by the server. Pure helpers (shared by the client, api/home.js and tests) + a tiny fetch client.
 import { FURNITURE, WALLS, FLOORS, ROOM_W, ROOM_H, canPlace } from './furniture.js';
 import { cleanChat, cleanName } from './mpshared.js';
+import { testRun } from './feed.js';
 
 export const HOME_RE = /^h[0-9a-z]{12}$/;
 export const validHomeId = (id) => typeof id === 'string' && HOME_RE.test(id);
@@ -44,7 +45,7 @@ export function homeApi(base = '', f = (...a) => globalThis.fetch(...a)) {
     const r = await f(`${base}/api/home${q}`, method === 'GET' ? { headers } : { method, headers, body: JSON.stringify(body) });
     let j = null; try { j = await r.json(); } catch {} if (!r.ok) { const e = new Error(j?.error || 'home ' + r.status); e.status = r.status; e.body = j; throw e; } return j; };
   return { get: (id) => call('GET', null, '?id=' + encodeURIComponent(id)),
-    publish: (share, name, layout) => call('POST', { op: 'publish', id: share.id, key: share.key, name, layout }),
+    publish: (share, name, layout) => call('POST', { op: 'publish', id: share.id, key: share.key, name, layout, ...(testRun() ? { test: 1 } : {}) }), // proof runs: never featured / announced
     sign: (id, name, text) => call('POST', { op: 'sign', id, name, text }),
     del: (share, entry) => call('POST', { op: 'del', id: share.id, key: share.key, entry }),
     book: (share) => call('POST', { op: 'book', id: share.id, key: share.key }),
