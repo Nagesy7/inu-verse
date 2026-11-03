@@ -93,6 +93,12 @@ input[type=checkbox],input[type=radio],input[type=range]{accent-color:var(--shib
 .pp-logo{width:220px;height:220px}.pp-logo.sm{width:112px;height:112px}.pp-prev .wide{flex:1 1 100%}.pp-prev .wide canvas{width:100%;height:auto}
 .pp-prev .mid{flex:1 1 300px}.pp-prev .mid canvas{width:100%;height:auto}#pp-cl{max-width:260px}
 .pp-buy{border-top:2px dashed var(--line);margin-top:12px;padding-top:10px}
+.pp-plans{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin:4px 0 10px}
+.pp-plan{display:flex;gap:8px;align-items:flex-start;border:2px solid var(--line);border-radius:14px;padding:10px 12px;background:rgba(255,255,255,.8);cursor:pointer}
+.pp-plan.on{border-color:var(--shiba);box-shadow:0 0 0 3px rgba(232,145,58,.18);background:#fff}
+.pp-plan input{margin-top:3px}.pp-plan .plan{display:block;margin-top:4px}.pp-amt{font-weight:900;color:var(--shibaD);white-space:nowrap}
+.pp-kit{border:2px dashed var(--shiba);border-radius:14px;padding:10px 12px;margin:10px 0;background:#FFF8EC}
+@media (max-width:600px){.pp-plans{grid-template-columns:1fr}}
 .pp-steps{margin:6px 0 8px 20px;padding:0}.pp-steps li{margin:6px 0}.pp-steps li::marker{color:var(--shiba);font-weight:900}.pp-steps .done{opacity:.8}
 .pp-kv{display:grid;grid-template-columns:auto 1fr auto;gap:4px 8px;align-items:center;font-size:12px;margin:6px 0;background:#fff;border:1.5px solid var(--line);border-radius:12px;padding:8px 10px}
 .pp-kv code{word-break:break-all}.pp-kv .sm{font-size:10px}.good{color:var(--okc);font-weight:800}.bad{color:var(--danger);font-weight:800}
@@ -164,7 +170,7 @@ function render() {
   document.querySelectorAll('[data-copy]').forEach((b) => b.onclick = () => copy(b.dataset.copy));
   $('#d-sheet').onclick = () => copy(MD.launchSheet(d), 'Launch sheet copied');
   $('#d-dl').onclick = download;
-  S.pp = mountProPack($('#d-propack'), { d, getImg: () => S.img, api: API, track, toast, copy });
+  S.pp = mountProPack($('#d-propack'), { d, getImg: () => S.img, api: API, maker: MD.MAKER_URL, track, toast, copy });
   const ok = $('#d-share-ok'); if (ok) { ok.onchange = () => { $('#d-share-btn').disabled = !ok.checked; }; $('#d-share-btn').onclick = shareToGallery; }
 }
 function setImage(u, from) { S.img = u; S.imgFrom = from; S.pp?.refresh(); const im = $('#d-img'); if (im) { im.removeAttribute('crossorigin'); im.src = u; } const s = $('#d-src'); if (s) s.textContent = srcText(); }

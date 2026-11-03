@@ -5,6 +5,17 @@
 // Not financial advice: it's a design pack, not a launch, a listing or an endorsement.
 export const PRICE_FALLBACK = { sol: 0.25, priceFinal: true, refundFinal: true, payToLabel: 'Sponsor Chest',
   refund: "No refunds once the pack is unlocked. If the payment doesn't unlock it, we refund by hand." };
+// 🎁 Launch Bundle = this Pro Pack + a 7-day Basic sponsored side in the Cabal Meme Maker, one order, one payment (final price, approved by Zachary 3 Nov 2026).
+export const BUNDLE_FALLBACK = { sol: 0.65, separately: 0.75, priceFinal: true, refundFinal: true, payToLabel: 'Sponsor Chest',
+  refund: "The Pro Pack part is non-refundable once it's unlocked. If your sponsored side is rejected, we refund 0.5 SOL by hand." };
+/** Ops per product (same router). */
+export const opsFor = (kind) => (kind === 'bundle'
+  ? { message: 'bundle-message', order: 'bundle-order', check: 'bundle-pay-check', status: 'bundle-status', config: 'bundle-config' }
+  : { message: 'propack-message', order: 'propack-order', check: 'propack-pay-check', status: 'propack-status', config: 'propack-config' });
+/** Where the buyer adds the coin for the bundle's sponsored side (the maker's #sponsor page). */
+export const bundleSideUrl = (maker, id) => `${String(maker || 'https://cabal-meme-maker.vercel.app/').replace(/\/?$/, '/')}#sponsor?bundle=${encodeURIComponent(String(id || ''))}`;
+/** Does the side part still need the buyer's coin? */
+export const kitNeedsCoin = (parts) => ['not-added', 'needs-details'].includes(parts?.kit?.status);
 export const LIMITS = { name: 32, ticker: 10, desc: 500 };
 export const FRAMES = Object.freeze([['ring', 'Coin ring'], ['tile', 'Framed tile'], ['clean', 'Clean full-bleed']]);
 export const FILES = Object.freeze(['logo-1000.png', 'logo-512.png', 'banner-x-1500x500.png', 'banner-1280x720.png', 'token-sheet.txt', 'token-sheet.html', 'launch-checklist.png', 'launch-checklist.txt', 'README.txt']);
