@@ -5,6 +5,7 @@
 // cleaned again here before they are shown.
 // Shared (pure) part: EVENT types + formatting, used by the API (validation) and the browser (rendering). UI: createFeed().
 import { cleanName } from './mpshared.js';
+import { GEAR, EVENTS, TRADER, TRADER_STOCK } from './events.js';
 
 export const FEED = {
   MAX: 50,                 // events kept (newest first)
@@ -26,6 +27,10 @@ export const EVENT_TYPES = Object.freeze({
   shop: { src: 'server', text: (n) => `${n} opened a shop in town` },
   guestbook: { src: 'server', text: (n, x) => `${n} signed ${x}'s guestbook` },
   arcade: { src: 'server', text: (n) => `${n} took #1 on the Inu Arcade weekly board` },
+  // daily world events (src/events.js): posted by the client only when it actually happened; the server checks today's Sydney event,
+  // the item and the area, once per name + item + day. Cosmetic keepsakes only, never Bones or KIBBLE.
+  trader: { src: 'client', text: (n, x) => `${n} bought a ${GEAR[x].name} from ${TRADER.title}` },
+  keepsake: { src: 'client', text: (n, x) => `${n} earned a ${GEAR[x].name} at the ${EVENTS[GEAR[x].ev].name}` },
 });
 export const CLIENT_TYPES = Object.freeze(Object.keys(EVENT_TYPES).filter((k) => EVENT_TYPES[k].src === 'client' && k !== 'arrive')); // 'arrive' comes from the visit handshake, never posted directly
 export const isEventType = (k) => typeof k === 'string' && Object.prototype.hasOwnProperty.call(EVENT_TYPES, k);
@@ -37,6 +42,8 @@ export function feedName(raw) { if (typeof raw !== 'string') return null; const 
 export function cleanExtra(k, x) {
   if (k === 'plot') { const m = /^p?([1-8])$/.exec(String(x ?? '')); return m ? m[1] : null; }
   if (k === 'guestbook') return feedName(x);
+  if (k === 'trader') return typeof x === 'string' && TRADER_STOCK.includes(x) ? x : null;
+  if (k === 'keepsake') return typeof x === 'string' && Object.prototype.hasOwnProperty.call(GEAR, x) && GEAR[x].price === 0 && EVENTS[GEAR[x].ev]?.keepsake === x ? x : null;
   return '';
 }
 // Server + client: one stored event -> safe public shape (or null). Only k, n, x, t, v survive: nothing else is ever sent.
@@ -75,7 +82,7 @@ export function createFeed({ f = (...a) => globalThis.fetch(...a), doc = globalT
   // visit session: hello once per name (the server issues sid; events carry it, never a name of the client's choosing)
   async function hello(L) { try { const j = await post({ op: 'hello', name: L.name, coat: L.coat, area: L.area || null }); if (j.sid) { S.sid = j.sid; S.sidName = L.name; S.lastArea = L.area || null; S.lastPing = now(); } take(j); } catch {} }
   async function ping(L) { S.lastPing = now(); S.lastArea = L.area || S.lastArea; try { take(await post({ op: 'ping', sid: S.sid, area: L.area || null, coat: L.coat })); } catch (e) { if (e.status === 404) S.sid = null; } }
-  async function report(type) { const L = S.getLocal?.(); if (!S.sid || !L || !CLIENT_TYPES.includes(type)) return false; try { take(await post({ op: 'event', sid: S.sid, type, area: L.area || null })); return true; } catch { return false; } }
+  async function report(type, x = '') { const L = S.getLocal?.(); if (!S.sid || !L || !CLIENT_TYPES.includes(type) || cleanExtra(type, x) == null) return false; try { take(await post({ op: 'event', sid: S.sid, type, area: L.area || null, ...(x ? { x } : {}) })); return true; } catch { return false; } }
   function tick() { const L = (() => { try { return S.getLocal?.(); } catch { return null; } })(), t = now(), vis = !doc || doc.visibilityState !== 'hidden';
     if (!L || !vis) return; if (!L.inWorld) { render(); return; }
     if (feedName(L.name) && (!S.sid || S.sidName !== L.name)) { if (t - (S.helloAt || 0) > 20_000) { S.helloAt = t; hello(L); } }

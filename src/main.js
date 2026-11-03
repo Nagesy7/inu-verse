@@ -109,7 +109,9 @@ import { makeDoorState, doorStep, doorExit, outsideOf } from './doors.js';
 import { isDoor, doorList, doorDir, COMMUNITY } from './world.js';
 import { createMultiplayer } from './multiplayer.js';
 import { createFeed } from './feed.js';
-import { createGhosts, spotAt } from './ghosts.js';
+import { createGhosts, spotAt, addBlockers as ghostBlockers } from './ghosts.js';
+import { LAMP_TILES } from './ambient.js';
+import * as EVR from './events.js'; import { createEvents, ensureChip as evChip, updateChip as evChipUpdate, maybeBanner as evBanner, panelHtml as evPanelHtml, drawGear } from './eventsui.js'; // Alive phase 5: daily world events
 import * as TF from './townsfolk.js'; // Alive phase 3: wandering background townsfolk (NPC only)
 import { createTrading, renderTrade, TRADE_CSS } from './tradeui.js';
 import { createJoystick, joyPref, JOY_KEY } from './joystick.js';
@@ -155,12 +157,14 @@ const skyWx = () => SKY.weatherVals(SKYS.wx || SKY.weatherKind(skyNow()));
 function snapWeather() { const w = skyWx(); amb.rain = amb.rainTarget = w.rain; amb.cloud = amb.cloudTarget = w.cloud; } // page load: start at the current weather (HUD and sky agree at once)
 // ---- Alive phase 3: townsfolk on the shared sky clock (src/townsfolk.js). Pooled, culled to the camera, capped bubbles. ----
 const TFS = TF.makeTownsfolk(), FOLKQ = { shift: 0, lastT: 0 };
+// ---- Alive phase 5: one featured world event per Sydney day (src/events.js + src/eventsui.js). Cosmetic keepsakes only. ----
+const EVX = createEvents({ search: location.search }); let EVVIEW = null; globalThis.__events = EVX;
 const folkBase = () => (SKYS.pinH != null ? TF.folkSec(SKYS.pinH) + time : TF.folkSec(dayPhase(time + dayOffset).hour)); // a pinned ?tod= still lets them walk
 const folkSecNow = () => folkBase() + FOLKQ.shift;
 const folkWx = () => (amb.rain > 0.3 ? 'rain' : (amb.cloud || 0) > 0.5 ? 'cloudy' : 'clear');
 function stepFolk(view) { const now = performance.now() / 1000, dt = Math.min(0.1, Math.max(0, now - (FOLKQ.lastT || now))); FOLKQ.lastT = now;
   return TF.stepTownsfolk(TFS, dt, { s: folkSecNow(), now: time, px: drive ? null : state.player.x, py: drive ? null : state.player.y, view, hour: dayPhase(time + dayOffset).hour, wx: folkWx(),
-    low: SKY.lowFx(SKYS.pool, { reduced: reducedMotion(), flag: SKYQ.low }), rm: reducedMotion(), rng, artKey, say: (id, text, t, force) => chatSay(id, text, t, { force }) }); }
+    low: SKY.lowFx(SKYS.pool, { reduced: reducedMotion(), flag: SKYQ.low }), rm: reducedMotion(), rng, artKey, say: (id, text, t, force) => chatSay(id, text, t, { force }), ev: EVX.ev.id }); }
 let vignette = null, miniBase = null;
 const keys = new Set();
 const touch = { x: 0, y: 0, id: null };
@@ -326,7 +330,7 @@ addEventListener('keydown', (e) => {
   if (k === 'escape') { if (panel) closePanel(); else if (build) exitBuild(); }
   if (mode === 'room' && !panel && (k === 'e' || k === 'enter')) { RP.act(); return; }
   if (mode === 'world' && !panel && (k === 'e' || k === 'enter') && carAction()) return;
-  if (mode === 'world' && !panel && (k === 'e' || k === 'enter')) { const it = nearestInteractable(state, state.player.x, state.player.y); const pup = nearPup(); if (pup && !it) petPup(pup); else if (it) interact(it); }
+  if (mode === 'world' && !panel && (k === 'e' || k === 'enter')) { const it = nearIt(state.player.x, state.player.y); const pup = nearPup(); if (pup && !it) petPup(pup); else if (it) interact(it); }
   if (mode === 'build' && k === 'r') rotateSel();
 });
 addEventListener('keyup', (e) => keys.delete(e.key.toLowerCase()));
@@ -376,13 +380,13 @@ function arrive() { const t = player.target, nt = player.npcT; player.target = n
   else if (!nt) { const tx = Math.floor(state.player.x / TILE), ty = Math.floor(state.player.y / TILE), d = doorsNow.find((q) => q.tx === tx && q.ty === ty); // a plain tap-walk that ends ON a door tile enters it
     if (d && doorReady()) { player.face = doorDir(d).face; enterDoor(d); } }
   else if (nt) { const pup = nearPup(); if (pup) nt.n.held = 0; if (pup) petPup(pup); else if (player.pw.replans++ < 3) planTo([Math.floor(nt.x / TILE), Math.floor(nt.y / TILE)], { npcT: nt, run: player.pw.run, mark: false }); } }
-$('#prompt').onclick = () => { if (mode === 'room') return RP.act(); const it = nearestInteractable(state, state.player.x, state.player.y); const pup = nearPup(); if (pup && !it) petPup(pup); else if (it) interact(it); };
+$('#prompt').onclick = () => { if (mode === 'room') return RP.act(); const it = nearIt(state.player.x, state.player.y); const pup = nearPup(); if (pup && !it) petPup(pup); else if (it) interact(it); };
 addEventListener('pointerdown', () => initAudio(), { once: true });
 document.addEventListener('pointerdown', (e) => { if (e.target.closest('button,.btn,.coat,[data-buy],[data-inv]')) { initAudio(); uiClick(); } });
 let hourIdx = 0; const fish = { state: 'idle', t: 0, biteAt: 0 };
 const gameDay = () => Math.floor((state.clockSec || 0) / DAY_LEN), hourKey = () => Math.floor((state.clockSec || 0) / (DAY_LEN / 24));
 function farmCtx() { const day = gameDay(); return { enterShop: (lot) => enterShop(lot), onHarvest: () => ENG.addSeasonXp(state, 'farm', day), state, body: $('#panel-body'), toast, hud, persist, rerender: () => { if (panel) openPanel(panel.kind, panel); }, season: seasonOf(day), rain: amb.rain > 0.3, day, hourKey: hourKey(), weekFrac: ((state.clockSec / DAY_LEN) % WEEK_DAYS) / WEEK_DAYS, fish,
-  cast: () => { fish.state = 'wait'; fish.t = 0; fish.biteAt = 1.2 + rng() * 2.5; }, reel: () => { if (fish.state !== 'bite') { fish.state = 'idle'; return { ok: false, reason: 'Too early — it swam off' }; } const r = fishCatch(state, rng(), fish.t); fish.state = 'idle'; if (r.ok) toast(`Caught a ${r.item === 'koi' ? 'GOLDEN KOI!' : r.item}!`, 'good'); if (r.ok && r.item === 'koi') FEEDUI.report('koi'); return r; } }; }
+  cast: () => { fish.state = 'wait'; fish.t = 0; fish.biteAt = 1.2 + rng() * 2.5; }, reel: () => { if (fish.state !== 'bite') { fish.state = 'idle'; return { ok: false, reason: 'Too early — it swam off' }; } const r = fishCatch(state, rng(), fish.t); fish.state = 'idle'; if (r.ok) toast(`Caught a ${r.item === 'koi' ? 'GOLDEN KOI!' : r.item}!`, 'good'); if (r.ok && r.item === 'koi') FEEDUI.report('koi'); if (r.ok && EVX.ev.id === 'derby' && spotAt(Math.floor(state.player.x / 32), Math.floor(state.player.y / 32)) === 'pond') evResult(EVR.addProgress(state, EVX.ev, 'fish')); return r; } }; }
 function farmTick(dt) { const day = gameDay(); tickFarm(state, dt, { season: seasonOf(day), rain: amb.rain > 0.3 }); ensureFarm(state).lastReal = Date.now();
   if (fish.state === 'wait') { fish.t += dt; if (fish.t >= fish.biteAt) { fish.state = 'bite'; fish.t = 0; blip(1200); if (panel?.kind === 'farm' && panel.id === 'pond') openPanel('farm', panel); } } else if (fish.state === 'bite') { fish.t += dt; if (fish.t > 1.5) { fish.state = 'idle'; if (panel?.kind === 'farm' && panel.id === 'pond') { toast('It got away!'); openPanel('farm', panel); } } }
   const hk = hourKey(); while (hourIdx < hk) { hourIdx++; marketHour(state); const r = bizHour(state, hourIdx % 24, rng, state.spouse?.helps === 'biz' ? 2 : 0);
@@ -534,7 +538,10 @@ const crew = makeCrew(); let adIdx = 0, adRot = 0, adT = 0, trend = []; globalTh
 function crewActors() { return crew.filter((w) => w.on).map((w) => ({ x: w.x, y: w.y, coat: w.coat, outfit: {}, face: w.face, phase: w.phase, moving: w.moving, name: w.name, worker: w, art: artKey(w.coat, {}) })); }
 function crewProps() { const out = []; for (const w of crew) { if (!w.on) continue; if (w.cones) out.push({ y: w.cones[0][1] * TILE, d: (x) => drawCones(x, w) }); if (w.truck) out.push({ y: w.y - 30, d: (x) => drawCar(x, w.x - 40, w.y - 36, { col: '#2f8a4a', kind: 'pickup', dir: w.face === 'left' ? 'west' : 'east' }) }); }
   return out; }
+// the trader cart wins over a field/sign under it (only within its small talk radius) so you can always trade
+function nearIt(x, y) { return !drive && EVX.nearTrader(x, y) ? null : nearestInteractable(state, x, y); }
 function nearPup() { for (const w of crew) if (w.on && Math.hypot(w.x - state.player.x, w.y - state.player.y) < 40) return { workerRef: w, name: w.name }; const pet = activePet(state); if (pet && !drive && Math.hypot(petF.x - state.player.x, petF.y - state.player.y) < 34) return { pet, name: pet.name }; if (presidentPresent(pres) && Math.hypot(pres.x - state.player.x, pres.y - state.player.y) < 40) return { president: true, name: 'President Inu' }; let b = null, bd = 36; for (const n of npcs) { const d = Math.hypot(n.x - state.player.x, n.y - state.player.y); if (d < bd) { bd = d; b = n; } }
+  if (!b && !drive && EVX.nearTrader(state.player.x, state.player.y)) return { trader: true, name: EVR.TRADER.name };
   if (!b && !drive) { const f = TF.nearestFolk(TFS, state.player.x, state.player.y); if (f) return { folk: f, name: f.folkName }; } return b; } // townsfolk: chat only, no rewards
 function presBanner(msg) { let b = document.getElementById('pres-banner'); if (!b) { b = document.createElement('div'); b.id = 'pres-banner'; b.style.cssText = 'position:fixed;left:50%;top:64px;transform:translateX(-50%);z-index:40;padding:10px 22px;background:#121a36;color:#f2cc68;border:3px solid #d4a640;font:14px Silkscreen,monospace;letter-spacing:1px;box-shadow:0 4px 0 #0008;pointer-events:none;text-align:center'; document.body.appendChild(b); }
   b.textContent = '★ ' + msg + ' ★'; b.hidden = false; clearTimeout(b._t); b._t = setTimeout(() => { b.hidden = true; }, 4500); }
@@ -546,7 +553,7 @@ function carAction() { // E/A: park (while driving) or hop into the parked car n
   const pk = parkedNear(); if (pk && !nearestInteractable(state, state.player.x, state.player.y)) { const car = carOf(state, pk.id); if (!car) { g.parked = null; return false; } drive = { car, v: 0, vx: 0, vy: 0, dir: pk.dir || 'east' }; state.player.x = pk.x; state.player.y = pk.y; g.parked = null; blip(520); return true; }
   return false; }
 function spawnCar(id) { const g = ensureGarage(state), car = carOf(state, id); if (!car) return; g.active = id; g.parked = null; drive = { car, v: 0, vx: 0, vy: 0, dir: 'east' }; closePanel(); toast(`Hop in! Drive with WASD/stick, H/B to honk, E/A to park.`, 'good'); persist(); }
-function petPup(n) { if (n.folk) { blip(880); feel.say(n.name, TF.talkTo(TFS, n.folk, { now: time, rng, hour: dayPhase(time + dayOffset).hour, wx: folkWx() }), textBlip); return; }
+function petPup(n) { if (n.trader) { blip(880); openPanel('event'); return; } if (n.folk) { blip(880); feel.say(n.name, TF.talkTo(TFS, n.folk, { ev: EVX.ev.id, now: time, rng, hour: dayPhase(time + dayOffset).hour, wx: folkWx() }), textBlip); return; }
   if (n.workerRef) { const w = n.workerRef; blip(880); if (w.chatted) { w.chatted = false; playJob(WORKER_JOB[w.job]); return; } w.chatted = true; feel.say(`${w.name} (${w.job})`, w.line + ' (talk again for an odd job)', textBlip); return; }
   if (n.pet) { petF.love = 2; blip(990); feel.say(n.pet.name, ['*happy noises*', '*nuzzles you*', '*purrs/chirps contentedly*', '*does a little spin*'][Math.floor(rng() * 4)], textBlip); return; }
   if (n.president) { if (pres.stage === 'visit') { const d = claimPresDrop(state, 'visit' + pres.n); if (d.ok) { toast(`President Inu gave you a free limited drop: ${d.drop.name}!`, 'good'); persist(); } } const r = presTalk(pres, state); pres.emote = { kind: 'heart', t: 2 }; blip(990); feel.say('President Inu', r.quote, textBlip); if (r.tip) { toast(`President Inu tipped you ${r.tip} bones!`, 'good'); hud(); persist(); } return; } n.wag = 1.2; n.path = []; blip(990); if (REL.PEOPLE[n.name]) { const r = REL.chat(state, n.name, gameDay()); if (r.gain) n.emote = { kind: 'heart', t: 2.2 }; persist(); openPanel('friend', { name: n.name }); if (r.scene) startScene(n.name, REL.SCENES[r.scene](n.name)); return; } feel.say(n.name, PUP_LINES[Math.floor(rng() * PUP_LINES.length)], textBlip); }
@@ -697,7 +704,7 @@ $('#panel-close').onclick = () => closePanel();
   pad.addEventListener('pointermove', (e) => { if (e.pointerId === touch.id) upd(e); });
   const end = (e) => { if (e.pointerId !== touch.id) return; touch.id = null; touch.x = touch.y = 0; touch.mag = 0; player.holdRun = false; knob.style.transform = ''; pad.classList.remove('on'); };
   pad.addEventListener('pointerup', end); pad.addEventListener('pointercancel', end);
-  const act = padAct = () => { globalThis.__actCount = (globalThis.__actCount || 0) + 1; if (feel.talking()) return feel.advance(); if (mode === 'room' && !panel) return RP.act(); if (mode !== 'world' || panel || !state) return; if (carAction()) return; const it = nearestInteractable(state, state.player.x, state.player.y); const sn = seatNear(itDist(it)); if (sn) return sitAt(sn); const pup = nearPup(); if (pup && !it) petPup(pup); else if (it) interact(it); };
+  const act = padAct = () => { globalThis.__actCount = (globalThis.__actCount || 0) + 1; if (feel.talking()) return feel.advance(); if (mode === 'room' && !panel) return RP.act(); if (mode !== 'world' || panel || !state) return; if (carAction()) return; const it = nearIt(state.player.x, state.player.y); const sn = !(!drive && EVX.nearTrader(state.player.x, state.player.y)) && seatNear(itDist(it)); if (sn) return sitAt(sn); const pup = nearPup(); if (pup && !it) petPup(pup); else if (it) interact(it); };
   $('#btn-a').addEventListener('pointerdown', (e) => { e.preventDefault(); initAudio(); act(); });
   $('#btn-b').addEventListener('pointerdown', (e) => { e.preventDefault(); initAudio(); if (mode === 'world' && !panel && state) { if (drive) return honk(); bork(); player.emote = { kind: 'bork', t: 1.2 }; emoteBubble('me', 'bork', time); } });
   $('#btn-menu')?.addEventListener('pointerdown', (e) => { e.preventDefault(); });
@@ -790,13 +797,14 @@ function updateWorld(dt) {
   cam.x += ((tc ? tc.x : p.x + fx * lead) - cam.x) * kk; cam.y += ((tc ? tc.y : p.y + fy * lead * 0.6) - cam.y) * kk;
   Object.assign(cam, clampCam(cam.x, cam.y, innerWidth / ZOOM, innerHeight / ZOOM, MAP_W * TILE, MAP_H * TILE));
   if (globalThis.__camLock) { cam.x = __camLock.x; cam.y = __camLock.y; } // debug/screenshot camera lock
-  const it = !panel && nearestInteractable(state, p.x, p.y);
+  const it = !panel && nearIt(p.x, p.y);
   const pr = $('#prompt');
   const pup = !panel && !it && nearPup(); // (President Inu counts as a pup to pet/talk to)
   const tch = COARSE.matches;
   const pk = !panel && !it && parkedNear(); let seat = null;
   if (drive) { pr.hidden = false; pr.innerHTML = `<kbd${hc()}>${hk('a', 'E')}</kbd>Park ${esc(CAR_MODELS[drive.car.model].name)} · <kbd${hc()}>${hk('b', 'H')}</kbd>Honk`; setA('PARK'); }
   else if (pk) { pr.hidden = false; pr.innerHTML = `<kbd${hc()}>${hk('a', 'E')}</kbd>Drive your ${esc(CAR_MODELS[carOf(state, pk.id)?.model]?.name || 'car')}`; setA('DRIVE'); }
+  else if (pup?.trader) { pr.hidden = false; pr.innerHTML = `<kbd${hc()}>${hk('a', 'E')}</kbd>Trade with ${esc(pup.name)}`; setA('TRADE'); }
   else if (pup?.workerRef) { pr.hidden = false; const v = pup.workerRef.chatted ? `Play ${JOB_DEFS[WORKER_JOB[pup.workerRef.job]].name} with` : 'Chat with'; pr.innerHTML = `<kbd${hc()}>${hk('a', 'E')}</kbd>${v} ${esc(pup.name)}`; setA('TALK'); }
   else if (pup) { pr.hidden = false; const v = pup.folk ? `Chat with ${esc(pup.name)}` : REL.PEOPLE[pup.name] && !pup.pet ? `Talk to ${esc(pup.name)} ${'♥'.repeat(REL.hearts(REL.ensureRel(state)[pup.name]))}` : `Pet ${esc(pup.name)}`; pr.innerHTML = PAD.padMode ? `<kbd${hc()}>${hk('a', 'E')}</kbd>${v}` : tch ? `<kbd class="ta">A</kbd>${v}` : `<kbd>E</kbd>${v} · <kbd>T</kbd> throw ball`; setA(pup.folk || (REL.PEOPLE[pup.name] && !pup.pet) ? 'TALK' : 'PET'); }
   else if ((seat = seatNear(itDist(it)))) { pr.hidden = false; const k = `<kbd${hc()}>${hk('a', 'E')}</kbd>`; pr.innerHTML = seat.sitting ? `${k}Stand up` : `${k}Sit on the ${SPOT_NAME[seat.spot.kind]}`; pr.dataset.target = 'seat:' + seat.spot.id; setA(seat.sitting ? 'UP' : 'SIT'); }
@@ -835,11 +843,14 @@ function renderWorld() {
   for (const p of dyn) if (!p.flat) list.push(p);
   for (const p of carProps(amb)) list.push(p);
   for (const p of GH.props(view, time)) list.push(p); // ghost recent visitors (src/ghosts.js)
+  EVVIEW = view; for (const p of EVX.props(view, time, { dark: phase.dark, s: state })) list.push(p); // daily event scenery (culled)
+  { const gid = !drive && state.evgear?.carry; if (gid) list.push({ y: state.player.y + 7, d: (c) => drawGear(c, gid, state.player.x, state.player.y, time, reducedMotion()) }); } // carried keepsake
   { const now = performance.now() / 1000, fdt = Math.min(0.1, Math.max(0, now - (CMP.lastT || now))); CMP.lastT = now; const rm = reducedMotion();
     IQC.stepRemotes(CMP.remotes, actors, fdt, { rm }); for (const F of CMP.remotes.values()) IQC.react(F, IQC.envFor(F, { rain: amb.rain, dark: phase.dark, others: [CMP.F, ...CMP.remotes.values()] }));
     for (const F of [CMP.F, ...CMP.remotes.values()]) if (F.c && F.x > L && F.x < Rt && F.y > Tp && F.y < Bt) list.push({ y: F.y + 2, d: (c) => IQC.drawFollower(c, F, time, { rm, fallback: IQC.drawFallbackPup }) }); }
   for (const p of sitProps(time, actors.filter((a) => a.act?.kind === 'sit'), reducedMotion())) if (p.y > Tp && p.y < Bt) list.push(p); // swings + café terrace
   for (const p of catProps(amb, view)) list.push(p); for (const p of leashProps(view, walkNow())) list.push(p);
+  { const ta = EVX.traderAt(); if (ta) { const dx = state.player.x - ta.x, dy = state.player.y - ta.y, near = Math.hypot(dx, dy) < 110; actors.push({ x: ta.x, y: ta.y, coat: EVR.TRADER.coat, outfit: EVR.TRADER.outfit, face: near ? (Math.abs(dx) > Math.abs(dy) ? (dx > 0 ? 'right' : 'left') : dy < 0 ? 'up' : 'down') : 'down', phase: 0, moving: false, name: EVR.TRADER.name, id: 'ev:trader', art: artKey(EVR.TRADER.coat, EVR.TRADER.outfit) }); } }
   for (const a of actors) if (a.x > L && a.x < Rt && a.y > Tp && a.y < Bt) list.push({ y: a.y + 6, a });
   list.sort((p, q) => p.y - q.y);
   for (const it of list) {
@@ -865,13 +876,15 @@ function renderWorld() {
     if (mm?.umbrella || a.umbrella) MWd.drawUmbrella(ctx, time, a.idx || 0); else if (mm?.zz && !a.emote) MWd.drawZz(ctx, time + (a.idx || 0)); if (a.crier) MWd.drawBell(ctx, time, crierRing > 0);
     if (a.emote) drawEmote(ctx, 0, a.name ? -14 : 0, a.emote.kind, time); else if (a.act && ICON_ACTIONS[a.act.kind] && time - a.act.t0 < ICON_ACTIONS[a.act.kind]) drawEmote(ctx, 0, a.name ? -14 : 0, a.act.kind, time); ctx.restore();
   }
-  feel.drawAir(ctx);
+  feel.drawAir(ctx); EVX.drawAir(ctx, view);
+  GH.labels(ctx, view, time, (wx, wy, w, h) => hudCovers((wx + ox) * ZOOM, (wy + oy) * ZOOM, w * ZOOM, h * ZOOM)); // ghost names above every prop, clear of HUD buttons
   drawChat(ctx, (id) => { if (id === MWd.CRIER_NAME) { const ca = MWd.crierActor(time, artKey); return { x: ca.x, y: ca.y - 62 }; } if (id === 'me') return drive ? null : { x: state.player.x, y: state.player.y - 60 }; const n = npcs.find((q) => q.name === id); return n ? { x: n.x, y: n.y - (n.pupScale ? 40 * n.pupScale + 10 : 60) - (n.badge || packOfName(state, n.name) ? 8 : 0) } : TF.folkAnchor(TFS, id) || MPL.anchor(id); }, time);
   drawSkyLife(ctx, amb, phase, view); drawAliveSky(ctx, ALIVE, view, phase);
-  const it = !panel && nearestInteractable(state, state.player.x, state.player.y); if (it) feel.bubble(ctx, (it.tx + 0.5) * TILE, (it.ty) * TILE - 6, time);
+  const it = !panel && nearIt(state.player.x, state.player.y); if (it) feel.bubble(ctx, (it.tx + 0.5) * TILE, (it.ty) * TILE - 6, time);
   guide.drawWorld(ctx, time, state.player);
   ctx.restore();
-  drawAtmosphere(ctx, amb, phase, { x: vw / 2 - ox, y: vh / 2 - oy }, vw, vh, () => lightsFor(state, phase, homeId()));
+  drawAtmosphere(ctx, amb, phase, { x: vw / 2 - ox, y: vh / 2 - oy }, vw, vh, () => { const L = lightsFor(state, phase, homeId()); for (const l of EVX.lights()) L.push(l); return L; });
+  evChipUpdate(evChip(document, () => { if (!panel) openPanel('event'); }), EVX.ev);
   SKY.updateSkyHud($('#clock'), { hour: phase.hour, tod: SKY.todOf(phase.hour), wx: amb.rain > 0.3 ? 'rain' : (amb.cloud || 0) > 0.5 ? 'cloudy' : 'clear', season: seasonOf(gameDay()) });
   if (!vignette || vignette.width !== SW || vignette.height !== SH) { vignette = document.createElement('canvas'); vignette.width = SW; vignette.height = SH; const v = vignette.getContext('2d'), g = v.createRadialGradient(SW / 2, SH / 2, SH * 0.45, SW / 2, SH / 2, SH * 1.05); g.addColorStop(0, 'rgba(18,26,54,0)'); g.addColorStop(1, 'rgba(12,16,34,0.38)'); v.fillStyle = g; v.fillRect(0, 0, SW, SH); }
   ctx.setTransform(dpr, 0, 0, dpr, 0, 0); MWd.drawWeather(ctx, time, SW, SH, { reduced: reducedMotion() }); ctx.drawImage(vignette, 0, 0);
@@ -1155,6 +1168,7 @@ function openPanel(kind, opts = {}) {
   if (!panel) { feel.fade(); uiOpen(); } panel = { kind, ...opts }; $('#panel').hidden = false; $('#prompt').hidden = true; keys.clear();
   const body = $('#panel-body'); body.onclick = null; const dg = $('#dialog'); if (dg) { dg.style.pointerEvents = 'none'; dg.style.visibility = 'hidden'; }
   if (kind !== 'onboard') maybeOfferOnboard(kind, opts);
+  if (kind === 'event') return renderEventPanel(body);
   if (kind === 'club-pups') return renderPups(clubCtx());
   if (kind === 'club-stamps') return renderStamps(clubCtx(), opts.page || 0);
   if (kind === 'club-party') return renderParty(clubCtx());
@@ -2262,7 +2276,7 @@ function frame(now) {
   }
   MPL.step(dt); // live multiplayer (no-op when not configured)
   feedSound(dt);
-  if (mode === 'world') GH.step(dt);
+  if (mode === 'world') { GH.step(dt); stepEvents(dt); }
   if (JOYS && state && (joyT -= dt) <= 0) { joyT = 0.5; const want = joyPref(state); if (want !== JOYS.on) { JOYS.set(want); joyApi.onChange?.(); } } // saved / cloud-loaded Joystick setting
   if (PAD.connected) PAD.poll(dt); // controllers: zero work unless one is plugged in
   if (mode === 'world') { updateWorld(dt); renderWorld(); drawSceneBars(); }
@@ -2283,6 +2297,29 @@ function ghostSprite(coat, face) { const c = document.createElement('canvas'); c
 const GH = createGhosts({ sprite: ghostSprite, rm: () => reducedMotion() });
 const FEEDUI = createFeed({ onData: (S) => GH.set(S.ghosts, liveNames()) });
 let feedSpot = null; globalThis.__feed = { ui: FEEDUI, ghosts: GH };
+ghostBlockers(LAMP_TILES); // street lamps count as decor a ghost should not stand behind
+// screen-space HUD rects (CSS px), refreshed at most every 600 ms; used to keep ghost labels out from under buttons / chips
+const HUDR = { t: 0, rects: [] }, HUD_SEL = '#hud > *, #zoomctl, #tbtns > *, #btn-menu, #stick, #minimap-wrap, #feed-tick, #inu-profile-badge, #prompt, #ev-banner, #pres-banner, #crier-banner, [class*="wallet"]';
+function hudCovers(x, y, w, h) { const n = performance.now(); if (n - HUDR.t > 600) { HUDR.t = n; HUDR.rects = [];
+    for (const el of document.querySelectorAll(HUD_SEL)) { if (el.hidden || !el.getClientRects().length) continue; const r = el.getBoundingClientRect(); if (r.width > 0 && r.height > 0 && r.width < innerWidth * 0.9) HUDR.rects.push([r.left - 2, r.top - 2, r.right + 2, r.bottom + 2]); } }
+  if (x < 0 || y < 0 || x + w > innerWidth || y + h > innerHeight) return true;
+  for (const [l, t, r, b] of HUDR.rects) if (x < r && x + w > l && y < b && y + h > t) return true; return false; }
+// daily world event: date check, participation (walk up to stalls / lanterns / beds), keepsake toasts + real feed posts
+let evInWorld = false;
+function stepEvents(dt) { if (!state) return; const changed = EVX.tick(); const inW = document.body.classList.contains('inworld');
+  if (inW && (!evInWorld || changed)) evBanner(document, EVX.ev, localStorage); evInWorld = inW; if (changed && panel?.kind === 'event') openPanel('event');
+  const res = EVX.step(dt, state, drive ? null : state.player.x, state.player.y, { low: SKY.lowFx(SKYS.pool, { reduced: reducedMotion(), flag: SKYQ.low }), rm: reducedMotion(), view: EVVIEW });
+  for (const r of res) evResult(r); }
+function evResult(r) { const ev = EVX.ev, g = ev.def.goal; if (!g || !r.counted) return; blip(r.earned ? 988 : 760);
+  if (r.earned) { const G = EVR.GEAR[r.earned]; toast(`${ev.def.name}: you earned the ${G.name}! A free keepsake, carried beside you (tap the ${ev.def.short} chip to change).`, 'good'); FEEDUI.report('keepsake', r.earned); }
+  else if (r.already) toast(`${ev.def.name}: all ${g.n} done! You already have the ${EVR.GEAR[r.already].name}.`, 'good');
+  else toast(`${ev.def.name}: ${g.verb} ${g.what} ${r.n}/${r.of}`, ''); persist(); if (panel?.kind === 'event') openPanel('event'); }
+function renderEventPanel(body) { const near = !drive && EVX.nearTrader(state.player.x, state.player.y); body.innerHTML = evPanelHtml(state, EVX.ev, { near, tomorrow: EVX.forced ? null : EVR.eventForDay(EVX.ev.dayNum + 1) });
+  body.onclick = (e) => { const b = e.target.closest('[data-ev]'); if (!b) return; const [op, a, c] = b.dataset.ev.split(':'), ev = EVX.ev, nr = !drive && EVX.nearTrader(state.player.x, state.player.y);
+    if (op === 'buy') { const r = EVR.traderBuy(state, ev, a, nr); if (!r.ok) { toast(r.reason, 'bad'); return; } toast(`You bought a ${EVR.GEAR[a].name} for ${r.cost} Bones. It floats beside you!`, 'good'); FEEDUI.report('trader', a); }
+    else if (op === 'swap') { const r = EVR.traderSwap(state, ev, a, c, nr); if (!r.ok) { toast(r.reason, 'bad'); return; } toast(`Swapped your ${EVR.GEAR[a].name} for a ${EVR.GEAR[c].name}.`, 'good'); }
+    else if (op === 'carry') EVR.carry(state, a || null);
+    blip(880); hud(); persist(); renderEventPanel(body); }; }
 if (!DEMO) FEEDUI.start(() => { if (!state || !document.body.classList.contains('inworld')) return null; if (mode === 'world') feedSpot = spotAt(Math.floor(state.player.x / 32), Math.floor(state.player.y / 32)) || feedSpot;
   GH.exclude(liveNames()); return { inWorld: true, name: state.player.name, coat: state.player.coat, area: feedSpot }; });
 // ---- Founding Five Thousand seat-open notice (ships with kibble-pay tracker; polls /api/tech) ----
