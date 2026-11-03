@@ -32,7 +32,10 @@ async function restoreEmbedded() { const cfg = await loadCfg(); if (!cfg.phantom
 export async function resumeAuth(c = {}) { ctx = { ...ctx, ...c }; try { await restoreEmbedded(); } catch {} }
 
 export async function mountNoExt(el, c = {}) {
-  injectCss(); root = el; ctx = c; render(); await loadCfg(); render();
+  injectCss(); root = el; ctx = c;
+  // Hub-hosted Launch Hall passes apiBase so /api/launch hits Verse without a Verse SIWS session.
+  if (c.apiBase != null) S.api = NX.apiClient(globalThis.fetch, String(c.apiBase).replace(/\/$/, ''));
+  render(); await loadCfg(); render();
   if (S.cfg.phantomAppId) restoreEmbedded().catch(() => {});
   else { const ext = NX.extensionWallet(); if (!S.wallet && ext.available() && ext.address) { S.wallet = ext; render(); } }
   if (S.wallet) refreshBalance();

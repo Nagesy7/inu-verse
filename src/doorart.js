@@ -41,13 +41,14 @@ function gate(c, g, t) { const x = g.x * TILE, y = g.y * TILE, w = g.w * TILE, h
   for (const lx of [x + dx - 24, x + dx + 56]) { R(c, lx - 1, y + h - 30, 2, 22, INK); R(c, lx - 5, y + h - 40, 10, 12, INK); R(c, lx - 4, y + h - 39, 8, 10, n ? '#ffe08a' : '#e8d8b0'); R(c, lx - 6, y + h - 42, 12, 3, INK); if (n) glow(c, lx, y + h - 34, 24, '#ffc860', 0.6); } // stone lanterns
   R(c, x + dx - 8, y + h, 48, 4, '#9aa4b0'); R(c, x + dx - 8, y + h + 4, 48, 1, INK); }
 function bank(c, g, t) { const x = g.x * TILE, y = g.y * TILE, w = g.w * TILE, h = g.h * TILE, dx = (g.door.tx - g.x) * TILE;
-  R(c, x - 4, y - 18, w + 8, h + 18, INK); R(c, x - 2, y - 16, w + 4, 12, '#e8dcc0'); // pediment
-  c.fillStyle = '#e8dcc0'; c.beginPath(); c.moveTo(x - 6, y - 16); c.lineTo(x + w / 2, y - 34); c.lineTo(x + w + 6, y - 16); c.closePath(); c.fill(); c.strokeStyle = INK; c.lineWidth = 2; c.stroke();
-  R(c, x + w / 2 - 7, y - 28, 14, 10, '#d4a640'); R(c, x + w / 2 - 3, y - 26, 6, 6, '#fff3b0');
-  R(c, x, y - 4, w, h + 4, '#d8ccb0'); R(c, x, y + 8, w, 14, '#1f2d5c'); txt(c, 'KIBBLE BANK', x + w / 2, y + 19, 10, '#ffd84a');
-  for (let i = 0; i < 5; i++) { const cx = x + 8 + i * ((w - 22) / 4); R(c, cx, y + 26, 8, h - 28, '#f4ead4'); R(c, cx - 2, y + 24, 12, 3, '#bfb294'); R(c, cx - 2, y + h - 4, 12, 3, '#bfb294'); R(c, cx + 2, y + 28, 1, h - 34, '#d4c8a8'); }
-  R(c, x + dx - 8, y + h - 30, 32, 30, INK); R(c, x + dx - 6, y + h - 28, 28, 28, '#5a3a1a'); R(c, x + dx + 7, y + h - 28, 2, 28, '#3a240e'); R(c, x + dx + 2, y + h - 14, 3, 3, '#f0c840'); R(c, x + dx + 11, y + h - 14, 3, 3, '#f0c840');
-  R(c, x - 6, y + h, w + 12, 4, '#bfb294'); const gl = 0.5 + 0.5 * Math.sin(t * 3); c.save(); c.globalAlpha = gl; R(c, x + w - 18, y + 10, 4, 4, '#fff'); c.restore(); }
+  R(c, x - 4, y - 18, w + 8, h + 18, INK); R(c, x - 2, y - 16, w + 4, 12, '#c8b890'); // serious stone pediment
+  c.fillStyle = '#d0c4a8'; c.beginPath(); c.moveTo(x - 6, y - 16); c.lineTo(x + w / 2, y - 38); c.lineTo(x + w + 6, y - 16); c.closePath(); c.fill(); c.strokeStyle = INK; c.lineWidth = 2; c.stroke();
+  R(c, x + w / 2 - 8, y - 32, 16, 12, '#1f2d5c'); R(c, x + w / 2 - 5, y - 29, 10, 8, '#d4a640'); R(c, x + w / 2 - 2, y - 26, 4, 4, '#fff3b0'); // vault seal
+  R(c, x, y - 4, w, h + 4, '#c8b890'); for (let r = y; r < y + h; r += 8) for (let xx = x; xx < x + w; xx += 16) R(c, xx, r, 14, 6, '#d8ccb0'); // rusticated stone
+  R(c, x, y + 6, w, 18, '#121a36'); txt(c, 'KIBBLE BANK', x + w / 2, y + 18, 10, '#ffd84a'); // serious navy band
+  for (let i = 0; i < 5; i++) { const cx = x + 8 + i * ((w - 22) / 4); R(c, cx, y + 28, 8, h - 30, '#e8dcc0'); R(c, cx - 2, y + 26, 12, 3, '#9a8a68'); R(c, cx - 2, y + h - 4, 12, 3, '#9a8a68'); R(c, cx + 2, y + 30, 1, h - 36, '#d4c8a8'); }
+  R(c, x + dx - 8, y + h - 30, 32, 30, INK); R(c, x + dx - 6, y + h - 28, 28, 28, '#2a1a10'); R(c, x + dx + 7, y + h - 28, 2, 28, '#1a1008'); R(c, x + dx + 2, y + h - 14, 3, 3, '#d4a640'); R(c, x + dx + 11, y + h - 14, 3, 3, '#d4a640');
+  R(c, x - 6, y + h, w + 12, 4, '#9a8a68'); const gl = 0.5 + 0.5 * Math.sin(t * 3); c.save(); c.globalAlpha = gl; R(c, x + w - 18, y + 10, 4, 4, '#fff'); c.restore(); }
 
 // New game buildings (Inu Empires, Ribbit Nugs, Meme Brawl, Kibble Pay): one themed pixel facade each, same crisp-rect style.
 const THEME = {

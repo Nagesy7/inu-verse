@@ -14,6 +14,7 @@ import { upstashStore } from "./coins.js";
 import { validateBuild, buildCreateTx, rpcDeps, explainSim, inspectTx, kit } from "./_lib/launchtx.js";
 import { validateMeta, pinataUpload, hostedUpload } from "./_lib/launchmeta.js";
 import { rpcUrl, redact, proxyRpc, rpcProvider } from "./_lib/rpc.js";
+import { applyCors } from "./_lib/cors.js";
 const { VersionedTransaction, PublicKey } = kit;
 export const PUBLIC_BASE = "https://inu-verse-tawny.vercel.app";
 const PUMP = "6EF8rrecthR5Dkzon8Nwu78hRvfCKubJ14M5uBEwF6P";
@@ -29,6 +30,7 @@ export function makeLaunchHandler({ env = process.env, store = upstashStore(env)
     try { const n = await store.incr(k); if (n === 1) await store.expire?.(k, 3700); return n > (limits[action] || 30); } catch { return false; } }
   return async function handler(req, res) {
     res.setHeader("x-rpc-provider", rpcProvider(env)); // "HL" | "custom" | "public": endpoint kind only, never the key
+    if (applyCors(req, res)) return; // hub (kibble-pay) Launch Hall: CORS preflight
     try {
       if (req.method === "OPTIONS") { res.statusCode = 204; return res.end(); }
       const q = req.query || Object.fromEntries(new URL(req.url, "http://x").searchParams);
