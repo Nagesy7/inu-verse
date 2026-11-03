@@ -413,7 +413,7 @@ body.short.landscape .launch.rboard{grid-template-columns:1fr 1.2fr}body.short .
 #crier-banner.mood-zoomies{border-color:#ffd84a}#crier-banner.mood-happy{border-color:#7ed957}#crier-banner.mood-grumpy{border-color:#8aa0c8}#crier-banner.mood-doghouse{border-color:#c8323c}
 .kmood-head{display:flex;align-items:center;gap:8px;font-size:14px}.kmood-dot{width:14px;height:14px;display:inline-block;border:2px solid #0c1022;box-shadow:0 0 8px currentColor}
 .dailybone .db-head{font-size:18px;margin:6px 0;letter-spacing:1px;border-bottom:3px double #8a6a2a;padding-bottom:6px}
-@media (max-height:420px){#crier-banner{top:calc(max(6px,env(safe-area-inset-top)) + 44px);padding:5px 12px}#crier-banner span{font-size:10px}.dailybone .db-head{font-size:15px}}
+@media (max-height:420px){#crier-banner{top:calc(max(8px,env(safe-area-inset-top)) + 50px);padding:5px 12px}#crier-banner span{font-size:10px}.dailybone .db-head{font-size:15px}}
 /* ---- Clean Launch badge ---- */
 .cl{margin:4px 0;border:2px solid #0c1022;background:#1b2346;font-size:10px}.cl summary{list-style:none;cursor:pointer;display:flex;flex-wrap:wrap;align-items:center;gap:4px;padding:3px 4px;min-height:28px}.cl summary::-webkit-details-marker{display:none}
 .cl-badge{display:inline-flex;align-items:center;gap:4px;padding:2px 6px;font:9px Silkscreen,monospace;color:#0c1022;background:#9aa3b8;border:2px solid #0c1022}.cl-badge i{font-style:normal;font-weight:bold}
@@ -745,3 +745,7 @@ body[data-guide] #crier-banner{top:calc(max(8px,env(safe-area-inset-top)) + 104p
 #sound-pop em{font-style:normal;text-align:right;color:var(--goldl)}#sound-pop .sp-now{margin-top:6px;color:var(--goldl);font-size:10px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 #audio-debug{position:fixed;left:50%;transform:translateX(-50%);bottom:calc(max(8px,env(safe-area-inset-bottom)) + 62px);z-index:59;margin:0;padding:6px 9px;background:#0c1022e6;border:2px solid var(--gold);color:#bff3c9;font:600 10px/1.35 ui-monospace,Menlo,monospace;white-space:pre;pointer-events:none;max-width:94vw;overflow:hidden}
 body:not(.inworld) #audio-debug{bottom:auto;top:8px}
+
+/* Phone landscape title screen: the shared Kibble Pay profile pill (bottom-left, inline-styled by kibble-pay) expanded over the
+   Connect Wallet pill and the legal footer. Park it in the empty strip of the left column just above the wallet pill. */
+body.short.landscape:not(.inworld) #inu-profile-badge{top:auto!important;bottom:calc(max(6px,env(safe-area-inset-bottom)) + 84px)!important;left:max(8px,env(safe-area-inset-left))!important;right:auto!important;transform:none!important;max-width:min(230px,38vw)!important}
