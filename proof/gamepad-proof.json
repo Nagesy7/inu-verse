@@ -1,0 +1,98 @@
+{
+ "served": true,
+ "door": "Pools Monument · Weekly Pool Board",
+ "beforePad": "AOPEN POOLS MONUMENT · WEEKLY POOL BOARD",
+ "ps": {
+  "toast": [
+   "🎮 PlayStation controller connected · ✕ select · ○ back · OPTIONS menu",
+   "Jacaranda Bloom Party is on! Find the Party Booth east of the avenue, or Menu → Club → Party & Pins."
+  ],
+  "prompt": "✕OPEN POOLS MONUMENT · WEEKLY POOL BOARD",
+  "body": "landscape short inworld pad-on pad-ps",
+  "kind": "ps"
+ },
+ "checks": [
+  "PASS PS toast with ✕ ○",
+  "PASS prompt shows ✕ for PS",
+  "PASS disconnect toast",
+  "PASS Xbox toast with A B",
+  "PASS prompt shows A for Xbox",
+  "PASS keyboard switches hints back",
+  "PASS Start opens the menu",
+  "PASS D-pad moves the menu highlight",
+  "PASS menu hint bar",
+  "PASS B closes the menu",
+  "PASS A activates the focused menu item (Garage panel)",
+  "PASS B closes the panel",
+  "PASS stick drift inside the deadzone does not move the player",
+  "PASS stick moved the player right",
+  "PASS stick release stops",
+  "PASS D-pad walks",
+  "PASS B exits chat input",
+  "PASS X opens action wheel, B closes it",
+  "PASS touch switches hints back",
+  "PASS no polling once unplugged"
+ ],
+ "unplugToast": "🎮 Controller disconnected",
+ "xb": {
+  "toast": [
+   "🎮 Xbox controller connected · A select · B back · ☰ menu"
+  ],
+  "prompt": "AOPEN POOLS MONUMENT · WEEKLY POOL BOARD",
+  "kind": "xbox"
+ },
+ "kbPrompt": "AOPEN POOLS MONUMENT · WEEKLY POOL BOARD",
+ "menuOpen": true,
+ "menuFocus": [
+  "w-guide",
+  "w-map",
+  "zin",
+  "btn-pups",
+  "btn-stamps",
+  "zout"
+ ],
+ "hintBar": "A\nSelect\nB\nBack\n✥\nMove",
+ "menuClosedByB": true,
+ "garageFocused": "btn-garage",
+ "panelAfterA": "garage",
+ "panelFocus": "panel-close",
+ "panelAfterB": null,
+ "move": {
+  "p0": {
+   "x": 624,
+   "y": 2694.4
+  },
+  "pD": {
+   "x": 624,
+   "y": 2694.4
+  },
+  "p1": {
+   "x": 665.9095467008663,
+   "y": 2701.0824340790164,
+   "moving": false
+  },
+  "p2": {
+   "x": 665.9095467008663,
+   "y": 2701.6124994437023
+  },
+  "dx": 42
+ },
+ "dpad": {
+  "dy": 54
+ },
+ "chat": {
+  "visible": true,
+  "disabled": false,
+  "focused": "mp-say",
+  "afterB": "body"
+ },
+ "wheel": true,
+ "wheelAfterB": false,
+ "touchBack": true,
+ "after": {
+  "connected": 0,
+  "polls": 906
+ },
+ "errors": [],
+ "fails": []
+}

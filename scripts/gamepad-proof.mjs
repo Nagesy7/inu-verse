@@ -20,6 +20,8 @@ await p.goto(BASE + '?tod=day&wx=clear'); await p.evaluate(() => { localStorage.
 log.served = await p.evaluate(async () => { const r = await fetch('/src/gamepad.js', { cache: 'no-store' }); return r.ok && (await r.text()).includes('createGamepad'); });
 await p.click('#start'); await p.waitForTimeout(2500);
 const clean = () => p.evaluate(() => { globalThis.__guide?.endTour?.('skipped'); document.querySelectorAll('#toast .toast,.guide-card,#tour,#obcard,#crier-banner').forEach((t) => t.remove()); });
+// the town-news ticker overlaps the interact prompt at 844x390 (pre-existing HUD layout); hide it only for the two prompt close-ups
+const hideTicker = (v) => p.evaluate((v) => { const t = document.getElementById('feed-tick'); if (t) t.style.visibility = v ? 'hidden' : ''; }, v);
 const tap = async (i, b, hold = 90) => { await p.evaluate(([i, b]) => __fp.btn(i, b, 1), [i, b]); await p.waitForTimeout(hold); await p.evaluate(([i, b]) => __fp.btn(i, b, 0), [i, b]); await p.waitForTimeout(160); };
 const nearDoor = () => p.evaluate(async () => { const Wd = await import('/src/world.js'), s = __inu.state, T = Wd.TILE || 32;
   const it = Wd.interactables(s).find((q) => q.kind === 'square') || Wd.interactables(s).find((q) => q.kind === 'kibble') || Wd.interactables(s)[0]; s.player.x = (it.tx + 0.5) * T; s.player.y = (it.ty + 1.2) * T; return it.name || it.id; });
@@ -29,14 +31,14 @@ log.beforePad = await p.evaluate(() => document.querySelector('#prompt')?.innerT
 await clean(); await p.evaluate((id) => __fp.plug(0, id), PS); await p.waitForTimeout(450);
 log.ps = await p.evaluate(() => ({ toast: [...document.querySelectorAll('#toast .toast')].map((t) => t.textContent), prompt: document.querySelector('#prompt')?.innerText, body: document.body.className, kind: __pad.kind }));
 ok(log.ps.toast.some((t) => /PlayStation controller connected · ✕ select · ○ back/.test(t)), 'PS toast with ✕ ○'); ok(/✕/.test(log.ps.prompt || ''), 'prompt shows ✕ for PS');
-await p.screenshot({ path: `${OUT}/gamepad-ps-connected.png` }); await p.waitForTimeout(2300); await clean(); await p.screenshot({ path: `${OUT}/gamepad-ps-prompt.png` });
+await p.screenshot({ path: `${OUT}/gamepad-ps-connected.png` }); await p.waitForTimeout(2300); await clean(); await hideTicker(true); await p.screenshot({ path: `${OUT}/gamepad-ps-prompt.png` }); await hideTicker(false);
 // 2) Swap to an Xbox pad (hot-plug: unplug PS, plug Xbox)
 await p.evaluate(() => __fp.unplug(0)); await p.waitForTimeout(300); log.unplugToast = await p.evaluate(() => [...document.querySelectorAll('#toast .toast')].map((t) => t.textContent).pop());
 ok(/Controller disconnected/.test(log.unplugToast || ''), 'disconnect toast');
 await clean(); await p.evaluate((id) => __fp.plug(1, id), XB); await p.waitForTimeout(450);
 log.xb = await p.evaluate(() => ({ toast: [...document.querySelectorAll('#toast .toast')].map((t) => t.textContent), prompt: document.querySelector('#prompt')?.innerText, kind: __pad.kind }));
 ok(log.xb.toast.some((t) => /Xbox controller connected · A select · B back/.test(t)), 'Xbox toast with A B'); ok(/^A/.test(log.xb.prompt || ''), 'prompt shows A for Xbox');
-await p.screenshot({ path: `${OUT}/gamepad-xbox-connected.png` }); await p.waitForTimeout(2300); await clean(); await p.screenshot({ path: `${OUT}/gamepad-xbox-prompt.png` });
+await p.screenshot({ path: `${OUT}/gamepad-xbox-connected.png` }); await p.waitForTimeout(2300); await clean(); await hideTicker(true); await p.screenshot({ path: `${OUT}/gamepad-xbox-prompt.png` }); await hideTicker(false);
 // 3) keyboard takes the hints back, pad input takes them again
 await p.keyboard.press('Shift'); await p.waitForTimeout(150); log.kbPrompt = await p.evaluate(() => document.querySelector('#prompt')?.innerText);
 ok(/^(E|A)/i.test(log.kbPrompt || '') && !(await p.evaluate(() => document.body.classList.contains('pad-on'))), 'keyboard switches hints back');
