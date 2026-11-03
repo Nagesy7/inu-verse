@@ -114,7 +114,8 @@ import { makeDoorState, doorStep, doorExit, outsideOf } from './doors.js';
 import { isDoor, doorList, doorDir, COMMUNITY } from './world.js';
 import { createMultiplayer } from './multiplayer.js';
 import { createFeed } from './feed.js';
-import { createGhosts, spotAt, addBlockers as ghostBlockers } from './ghosts.js';
+import { createGhosts, spotAt, spotTiles, addBlockers as ghostBlockers } from './ghosts.js';
+import * as DQ from './quests.js'; import * as DQUI from './questsui.js'; // daily townsfolk quests (Bones only, capped)
 import { LAMP_TILES } from './ambient.js';
 import { syncChat } from './chatdodge.js'; // chat bar hides under panels / modals, event banner sits above it
 import * as EVR from './events.js'; import { createEvents, ensureChip as evChip, updateChip as evChipUpdate, maybeBanner as evBanner, panelHtml as evPanelHtml, drawGear } from './eventsui.js'; // Alive phase 5: daily world events
@@ -394,7 +395,7 @@ document.addEventListener('pointerdown', (e) => { if (e.target.closest('button,.
 let hourIdx = 0; const fish = { state: 'idle', t: 0, biteAt: 0 };
 const gameDay = () => Math.floor((state.clockSec || 0) / DAY_LEN), hourKey = () => Math.floor((state.clockSec || 0) / (DAY_LEN / 24));
 function farmCtx() { const day = gameDay(); return { enterShop: (lot) => enterShop(lot), onHarvest: () => ENG.addSeasonXp(state, 'farm', day), state, body: $('#panel-body'), toast, hud, persist, rerender: () => { if (panel) openPanel(panel.kind, panel); }, season: seasonOf(day), rain: amb.rain > 0.3, day, hourKey: hourKey(), weekFrac: ((state.clockSec / DAY_LEN) % WEEK_DAYS) / WEEK_DAYS, fish, openBook: () => openPanel('fishbook'), bookSeen: (() => { const m = FB.summary(state); return `${m.seen}/${m.total}`; })(),
-  cast: () => { fish.state = 'wait'; fish.t = 0; fish.biteAt = 1.2 + rng() * 2.5; }, reel: () => { if (fish.state !== 'bite') { fish.state = 'idle'; return { ok: false, reason: 'Too early — it swam off' }; } const reaction = fish.t, r = fishCatch(state, rng(), reaction); fish.state = 'idle'; if (r.ok) bookCatch(r.item, reaction); if (r.ok && r.item === 'koi') FEEDUI.report('koi'); if (r.ok && EVX.ev.id === 'derby' && spotAt(Math.floor(state.player.x / 32), Math.floor(state.player.y / 32)) === 'pond') evResult(EVR.addProgress(state, EVX.ev, 'fish')); return r; } }; }
+  cast: () => { fish.state = 'wait'; fish.t = 0; fish.biteAt = 1.2 + rng() * 2.5; }, reel: () => { if (fish.state !== 'bite') { fish.state = 'idle'; return { ok: false, reason: 'Too early — it swam off' }; } const reaction = fish.t, r = fishCatch(state, rng(), reaction); fish.state = 'idle'; if (r.ok) bookCatch(r.item, reaction); if (r.ok && r.item === 'koi') FEEDUI.report('koi'); if (r.ok) dqNote('fish'); if (r.ok && EVX.ev.id === 'derby' && spotAt(Math.floor(state.player.x / 32), Math.floor(state.player.y / 32)) === 'pond') evResult(EVR.addProgress(state, EVX.ev, 'fish')); return r; } }; }
 // Fish Book: which species bit (time / weather / season), its size, first-catch + record + set toasts. Cosmetic only.
 function bookCatch(good, reaction) { const env = { night: dayPhase(time + dayOffset).label === 'night', rain: (amb?.rain || 0) > 0.3, season: seasonOf(gameDay()) };
   const sp = FB.pickSpecies(good, rng(), env); if (!sp) { toast(`Caught a ${good}!`, 'good'); return; } const size = FB.rollSize(sp, rng(), reaction), rec = FB.recordCatch(state, sp.id, size);
@@ -567,7 +568,7 @@ function carAction() { // E/A: park (while driving) or hop into the parked car n
   const pk = parkedNear(); if (pk && !nearestInteractable(state, state.player.x, state.player.y)) { const car = carOf(state, pk.id); if (!car) { g.parked = null; return false; } drive = { car, v: 0, vx: 0, vy: 0, dir: pk.dir || 'east' }; state.player.x = pk.x; state.player.y = pk.y; g.parked = null; blip(520); return true; }
   return false; }
 function spawnCar(id) { const g = ensureGarage(state), car = carOf(state, id); if (!car) return; g.active = id; g.parked = null; drive = { car, v: 0, vx: 0, vy: 0, dir: 'east' }; closePanel(); toast(`Hop in! Drive with WASD/stick, H/B to honk, E/A to park.`, 'good'); persist(); }
-function petPup(n) { if (n.trader) { blip(880); openPanel('event'); return; } if (n.folk) { blip(880); feel.say(n.name, TF.talkTo(TFS, n.folk, { ev: EVX.ev.id, now: time, rng, hour: dayPhase(time + dayOffset).hour, wx: folkWx() }), textBlip); return; }
+function petPup(n) { if (n.trader) { blip(880); dqNote('trader'); openPanel('event'); return; } if (n.folk) { blip(880); dqNote('talk', { name: n.name }); feel.say(n.name, TF.talkTo(TFS, n.folk, { ev: EVX.ev.id, now: time, rng, hour: dayPhase(time + dayOffset).hour, wx: folkWx() }), textBlip); return; }
   if (n.workerRef) { const w = n.workerRef; blip(880); if (w.chatted) { w.chatted = false; playJob(WORKER_JOB[w.job]); return; } w.chatted = true; feel.say(`${w.name} (${w.job})`, w.line + ' (talk again for an odd job)', textBlip); return; }
   if (n.pet) { petF.love = 2; blip(990); feel.say(n.pet.name, ['*happy noises*', '*nuzzles you*', '*purrs/chirps contentedly*', '*does a little spin*'][Math.floor(rng() * 4)], textBlip); return; }
   if (n.president) { if (pres.stage === 'visit') { const d = claimPresDrop(state, 'visit' + pres.n); if (d.ok) { toast(`President Inu gave you a free limited drop: ${d.drop.name}!`, 'good'); persist(); } } const r = presTalk(pres, state); pres.emote = { kind: 'heart', t: 2 }; blip(990); feel.say('President Inu', r.quote, textBlip); if (r.tip) { toast(`President Inu tipped you ${r.tip} bones!`, 'good'); hud(); persist(); } return; } n.wag = 1.2; n.path = []; blip(990); if (REL.PEOPLE[n.name]) { const r = REL.chat(state, n.name, gameDay()); if (r.gain) n.emote = { kind: 'heart', t: 2.2 }; persist(); openPanel('friend', { name: n.name }); if (r.scene) startScene(n.name, REL.SCENES[r.scene](n.name)); return; } feel.say(n.name, PUP_LINES[Math.floor(rng() * PUP_LINES.length)], textBlip); }
@@ -626,6 +627,7 @@ document.addEventListener('pointerdown', () => { ACT.still = 0; }, true);
 $('#btn-photo').onclick = () => togglePhoto();
 $('#btn-featured').onclick = () => { initAudio(); uiClick?.(); openPanel('featured'); };
 $('#btn-fishbook').onclick = () => { initAudio(); uiClick?.(); openPanel('fishbook'); };
+$('#btn-daily').onclick = () => { initAudio(); uiClick?.(); openPanel('dquests'); };
 $('#btn-engage').onclick = () => { initAudio(); uiClick?.(); openPanel('engage'); };
 { const sc = $('#streak-chip'), go = () => { initAudio(); uiClick?.(); openPanel('fly5', { tab: 'streak' }); }; sc.onclick = go; sc.onkeydown = (e) => { if (e.key === 'Enter' || e.key === ' ') go(); }; }
 $('#btn-pools').onclick = () => { initAudio(); uiClick?.(); openPanel('city', { tab: 'pools' }); };
@@ -870,6 +872,7 @@ function renderWorld() {
   for (const p of carProps(amb)) list.push(p);
   for (const p of GH.props(view, time)) list.push(p); // ghost recent visitors (src/ghosts.js)
   EVVIEW = view; for (const p of EVX.props(view, time, { dark: phase.dark, s: state })) list.push(p); // daily event scenery (culled)
+  { const D = dqDay(), Qs = DQ.ensure(state, D.day), fq = D.list.find((q) => q.kind === 'find' && !DQ.isDone(Qs, q)); for (const p of DQUI.props(view, time, { list: D.list, Qs, lost: fq && D.at[fq.id], rm: reducedMotion() })) list.push(p); }
   { const gid = !drive && state.evgear?.carry; if (gid) list.push({ y: state.player.y + 7, d: (c) => drawGear(c, gid, state.player.x, state.player.y, time, reducedMotion()) }); } // carried keepsake
   { const now = performance.now() / 1000, fdt = Math.min(0.1, Math.max(0, now - (CMP.lastT || now))); CMP.lastT = now; const rm = reducedMotion();
     IQC.stepRemotes(CMP.remotes, actors, fdt, { rm }); for (const F of CMP.remotes.values()) IQC.react(F, IQC.envFor(F, { rain: amb.rain, dark: phase.dark, others: [CMP.F, ...CMP.remotes.values()] }));
@@ -911,6 +914,7 @@ function renderWorld() {
   ctx.restore();
   drawAtmosphere(ctx, amb, phase, { x: vw / 2 - ox, y: vh / 2 - oy }, vw, vh, () => { const L = lightsFor(state, phase, homeId()); for (const l of EVX.lights()) L.push(l); return L; });
   evChipUpdate(evChip(document, () => { if (!panel) openPanel('event'); }), EVX.ev);
+  { const D = dqDay(); DQUI.updateChip(DQUI.ensureChip(document, () => { if (!panel) openPanel('dquests'); }), D.list, DQ.ensure(state, D.day)); }
   SKY.updateSkyHud($('#clock'), { hour: phase.hour, tod: SKY.todOf(phase.hour), wx: amb.rain > 0.3 ? 'rain' : (amb.cloud || 0) > 0.5 ? 'cloudy' : 'clear', season: seasonOf(gameDay()) });
   if (!vignette || vignette.width !== SW || vignette.height !== SH) { vignette = document.createElement('canvas'); vignette.width = SW; vignette.height = SH; const v = vignette.getContext('2d'), g = v.createRadialGradient(SW / 2, SH / 2, SH * 0.45, SW / 2, SH / 2, SH * 1.05); g.addColorStop(0, 'rgba(18,26,54,0)'); g.addColorStop(1, 'rgba(12,16,34,0.38)'); v.fillStyle = g; v.fillRect(0, 0, SW, SH); }
   ctx.setTransform(dpr, 0, 0, dpr, 0, 0); MWd.drawWeather(ctx, time, SW, SH, { reduced: reducedMotion() }); ctx.drawImage(vignette, 0, 0);
@@ -1183,6 +1187,7 @@ function interact(it, viaDoor = false) { if (!viaDoor && isWalkDoor(it)) { toast
   else if (it.kind === 'square') openPanel('fly5', { tab: it.id === 'pools' ? 'vip' : it.id === 'burn' ? 'burn' : it.id === 'quests' ? 'quests' : 'vip' });
   else if (it.kind === 'clubhouse') { if (myPack(state)) enterBuild('clubhouse', false); else openPanel('packs'); }
   else if (it.kind === 'kibble') kibbleSpot(it.id);
+  else if (it.kind === 'dquest') openPanel('dquests');
   else if (it.kind === 'shard') huntShard();
   else if (it.kind === 'community') { const w = window.open(COMMUNITY.url, '_blank', 'noopener'); toast(w ? 'Community board: Telegram opened in a new tab' : 'Allow pop-ups to open the Telegram link', w ? 'good' : 'bad'); }
 }
@@ -1196,6 +1201,7 @@ function openPanel(kind, opts = {}) {
   const body = $('#panel-body'); body.onclick = null; const dg = $('#dialog'); if (dg) { dg.style.pointerEvents = 'none'; dg.style.visibility = 'hidden'; }
   if (kind !== 'onboard') maybeOfferOnboard(kind, opts);
   if (kind === 'event') return renderEventPanel(body);
+  if (kind === 'dquests') return renderQuestPanel(body);
   if (kind === 'club-pups') return renderPups(clubCtx());
   if (kind === 'club-stamps') return renderStamps(clubCtx(), opts.page || 0);
   if (kind === 'club-party') return renderParty(clubCtx());
@@ -2336,7 +2342,7 @@ function ghostSprite(coat, face) { const c = document.createElement('canvas'); c
 const GH = createGhosts({ sprite: ghostSprite, rm: () => reducedMotion() });
 const FEEDUI = createFeed({ onData: (S) => GH.set(S.ghosts, liveNames()) });
 let feedSpot = null; globalThis.__feed = { ui: FEEDUI, ghosts: GH };
-ghostBlockers(LAMP_TILES); buildingsReady.then(() => ghostBlockers(artOverhang())); // street lamps count as decor a ghost should not stand behind
+ghostBlockers(LAMP_TILES); ghostBlockers([[DQUI.BOARD.x, DQUI.BOARD.y]]); buildingsReady.then(() => ghostBlockers(artOverhang())); // street lamps count as decor a ghost should not stand behind
 // screen-space HUD rects (CSS px), refreshed at most every 600 ms; used to keep ghost labels out from under buttons / chips
 const HUDR = { t: 0, rects: [] }, HUD_SEL = '#hud > *, #zoomctl, #tbtns > *, #btn-menu, #stick, #minimap-wrap, #feed-tick, #inu-profile-badge, #prompt, #ev-banner, #pres-banner, #crier-banner, [class*="wallet"]';
 function hudCovers(x, y, w, h) { const n = performance.now(); if (n - HUDR.t > 600) { HUDR.t = n; HUDR.rects = [];
@@ -2348,7 +2354,7 @@ let evInWorld = false;
 function stepEvents(dt) { if (!state) return; const changed = EVX.tick(); const inW = document.body.classList.contains('inworld');
   if (inW && (!evInWorld || changed)) evBanner(document, EVX.ev, localStorage); evInWorld = inW; if (changed && panel?.kind === 'event') openPanel('event');
   const res = EVX.step(dt, state, drive ? null : state.player.x, state.player.y, { low: SKY.lowFx(SKYS.pool, { reduced: reducedMotion(), flag: SKYQ.low }), rm: reducedMotion(), view: EVVIEW });
-  for (const r of res) evResult(r); }
+  for (const r of res) evResult(r); dqStep(dt); }
 function evResult(r) { const ev = EVX.ev, g = ev.def.goal; if (!g || !r.counted) return; blip(r.earned ? 988 : 760);
   if (r.earned) { const G = EVR.GEAR[r.earned]; toast(`${ev.def.name}: you earned the ${G.name}! A free keepsake, carried beside you (tap the ${ev.def.short} chip to change).`, 'good'); FEEDUI.report('keepsake', r.earned); }
   else if (r.already) toast(`${ev.def.name}: all ${g.n} done! You already have the ${EVR.GEAR[r.already].name}.`, 'good');
@@ -2359,6 +2365,24 @@ function renderEventPanel(body) { const near = !drive && EVX.nearTrader(state.pl
     else if (op === 'swap') { const r = EVR.traderSwap(state, ev, a, c, nr); if (!r.ok) { toast(r.reason, 'bad'); return; } toast(`Swapped your ${EVR.GEAR[a].name} for a ${EVR.GEAR[c].name}.`, 'good'); }
     else if (op === 'carry') EVR.carry(state, a || null);
     blip(880); hud(); persist(); renderEventPanel(body); }; }
+// ---- Daily Quests (src/quests.js): today's 3 townsfolk quests, their world targets, progress hooks, Bones via earnBones (capped) ----
+let DQD = null, dqT = 0;
+function dqDay() { const ev = EVX.ev, k = ev.day + '|' + ev.id; if (DQD?.k === k) return DQD; const list = DQ.questsFor(ev.day, ev.id), at = {};
+  for (const q of list) { if (q.kind === 'find') { const tiles = spotTiles(q.spot); if (tiles.length) { const [tx, ty] = tiles[q.seed % tiles.length]; at[q.id] = { x: (tx + 0.5) * TILE, y: (ty + 0.7) * TILE, r: 40 }; } }
+    if (q.kind === 'visit') { const it = interactables(state).find((i) => i.id === q.place); if (it) at[q.id] = { x: (it.tx + 0.5) * TILE, y: (it.ty + 0.5) * TILE, r: 56 }; } }
+  return (DQD = { k, day: ev.day, list, at }); }
+function dqNote(kind, data) { if (!state) return; const D = dqDay(); dqResults(DQ.note(state, D.day, D.list, kind, data)); }
+function dqStep(dt) { if (!state || mode !== 'world' || (dqT -= dt) > 0) return; dqT = 0.3; const D = dqDay(), Qs = DQ.ensure(state, D.day), px = state.player.x, py = state.player.y;
+  for (const q of D.list) { if (DQ.isDone(Qs, q)) continue; const a = D.at[q.id]; if (a && !drive && Math.hypot(a.x - px, a.y - py) < a.r) dqNote('near', { id: q.id });
+    if (q.kind === 'event' && EVX.ev.def.goal) { const p = EVR.progress(state, EVX.ev); if (p?.n) dqNote('event', { ev: EVX.ev.id, n: p.n }); } } }
+function dqResults(res) { if (!res.length) return;
+  for (const r of res) { blip(988); setTimeout(() => blip(1318), 120);
+    toast(`Quest done for ${r.q.giver}! ${r.pay.total ? `+${r.pay.total} Bones` : 'Daily quest Bones cap reached (' + DQ.QUEST_DAILY_CAP + ')'}${r.sticker ? ` · new sticker: ${r.sticker.icon} ${r.sticker.name}` : ''}${r.badge ? ' · Town Helper badge ' + r.badge : ''}`, 'good'); }
+  hud(); persist(); if (panel?.kind === 'dquests') renderQuestPanel($('#panel-body')); }
+function dqHint(q) { const near = { deliver: () => `Find ${q.to} around town and say hi`, find: () => `Look near ${DQ.FIND_SPOTS[q.spot]} for a sparkle`, fish: () => 'Fishing Pond, south of the park', visit: () => `Walk up to ${DQ.VISIT_PLACES[q.place]}`, greet: () => 'Walk up to any townsfolk and say hi (A)', event: () => `Today's ${EVX.ev.def.name}` }; return (near[q.kind] || (() => ''))(); }
+function renderQuestPanel(body) { const D = dqDay(); body.innerHTML = DQUI.panelHtml(state, D.day, D.list, { hint: dqHint });
+  body.onclick = (e) => { const b = e.target.closest('[data-dq]'); if (!b) return; const [op, a] = b.dataset.dq.split(':'); if (op === 'track') { DQ.ensure(state, D.day).track = +a; blip(880); persist(); hud(); renderQuestPanel(body); } }; }
+globalThis.__quests = { DQ, day: () => dqDay(), note: (k, d) => dqNote(k, d) };
 if (!DEMO) FEEDUI.start(() => { if (!state || !document.body.classList.contains('inworld')) return null; if (mode === 'world') feedSpot = spotAt(Math.floor(state.player.x / 32), Math.floor(state.player.y / 32)) || feedSpot;
   GH.exclude(liveNames()); return { inWorld: true, name: state.player.name, coat: state.player.coat, area: feedSpot }; });
 // ---- Founding Five Thousand seat-open notice (ships with kibble-pay tracker; polls /api/tech) ----
