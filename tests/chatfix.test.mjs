@@ -53,3 +53,12 @@ test('wallet pill: hidden while the menu drawer or any panel/modal is open, its 
   for (const c of ['inworld.modal-open', 'drawer-open', 'menu-open']) for (const w of ['#inu-wallet', '#inu-profile-badge']) assert.ok(css.includes(`body.${c} ${w}`), c + w);
   assert.match(css, /#inu-profile-badge\{visibility:hidden!important;pointer-events:none!important\}/);
 });
+
+test('wallet pill: steps aside while the players-online card (#mp-pop) is open, back when it closes', () => {
+  const pop = el('mp-pop', { vis: false }); const d = fakeDoc({ x: [pop] }), win = { innerHeight: 390 };
+  syncChat(d, win); assert.equal(d.cls.has('mppop-open'), false);
+  const css = d.byId['chatdodge-css'].textContent;
+  for (const w of ['#inu-wallet', '#inu-profile-badge']) assert.ok(css.includes(`body.inworld.mppop-open ${w}`), w);
+  pop.getClientRects = () => [1]; assert.equal(syncChat(d, win), false, 'the card is not a modal (chat bar stays)'); assert.equal(d.cls.has('mppop-open'), true);
+  pop.hidden = true; syncChat(d, win); assert.equal(d.cls.has('mppop-open'), false);
+});
