@@ -1,6 +1,6 @@
 import { treeProp, extraTreeProps, ALIVE, flagWave } from './alive.js';
 // Pixel-art world rendering: chunky gold-trimmed buildings, navy/gold palette.
-import { DOORS } from './world.js';
+import { DOORS, FEATURED_SIGN } from './world.js';
 import { TILE, MAP_W, MAP_H, MAP, T, BUILDINGS, PLOTS, NPC_HOMES, STALL_SLOTS, CLUBHOUSE, MALL_BUILDINGS, LEADERS, BRIDGES, DECOR } from './world.js';
 import { N, SCALE, PAL, buildGround, sprites, shadowEllipse, hash, mk, P } from './tiles.js';
 import { LAMP_TILES, unreadMail } from './ambient.js';
@@ -273,6 +273,9 @@ export function prerenderMap() {
     R(k, 0, 0, w, 20, INK); R(k, 1, 1, w - 2, 18, PAL.wood); R(k, 1, 1, w - 2, 2, PAL.woodL); R(k, 1, 17, w - 2, 2, PAL.woodD); for (const xx of [3, w - 5]) R(k, xx, 8, 2, 2, GOLD);
     k.font = `8px ${FONT}`; k.textAlign = 'center'; k.textBaseline = 'middle'; k.fillStyle = '#3a2210'; k.fillText(txt, w / 2, 11); k.fillStyle = '#fff1d0'; k.fillText(txt, w / 2, 10);
     props.push({ y: ty * TILE + 30, d: (c) => c.drawImage(cv, Math.round(tx * TILE), ty * TILE - 4) }); };
+  { const F = FEATURED_SIGN, x = F.x * TILE - 20, y = F.y * TILE - 18; // Featured Home of the Day board (Kibble Plaza)
+    props.push({ y: F.y * TILE + 30, d: (c) => { R(c, x + 30, y + 30, 4, 18, '#6a4422'); R(c, x - 2, y - 2, 76, 36, INK); R(c, x, y, 72, 32, '#2a4a8a'); R(c, x, y, 72, 2, GOLD); R(c, x, y + 30, 72, 2, GOLD_D);
+      pixelText(c, 'FEATURED HOME', x + 36, y + 11, 68, 6, GOLD_L); pixelText(c, 'OF THE DAY', x + 36, y + 23, 68, 5, '#fff'); } }); }
   signpost('MARKET ROW - TOKEN STALLS', 34, 5); signpost('SAKURA POND', 14.5, 2); signpost('SAKURA LANE', 2, 41); signpost('KIBBLE MALL DISTRICT', 9, 46); signpost('DEMO KIBBLE ONLY', 49, 46);
   // dealership + luxury showroom display cars on the forecourt (same model/scale as traffic)
   for (const [tx, ty, col, kind, dir] of [[50.2, 18.9, '#c8323c', 'sedan', 'east'], [58.8, 18.9, '#2f6fbd', 'coupe', 'west'], [45.4, 66.9, '#e3b341', 'limo', 'east'], [55.0, 66.9, '#141a2e', 'coupe', 'west']])

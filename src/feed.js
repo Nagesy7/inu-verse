@@ -27,6 +27,7 @@ export const EVENT_TYPES = Object.freeze({
   shop: { src: 'server', text: (n) => `${n} opened a shop in town` },
   guestbook: { src: 'server', text: (n, x) => `${n} signed ${x}'s guestbook` },
   arcade: { src: 'server', text: (n) => `${n} took #1 on the Inu Arcade weekly board` },
+  featured: { src: 'server', text: (n) => `${n}'s home is today's Featured Home — visit from the plaza signboard` },
   // daily world events (src/events.js): posted by the client only when it actually happened; the server checks today's Sydney event,
   // the item and the area, once per name + item + day. Cosmetic keepsakes only, never Bones or KIBBLE.
   trader: { src: 'client', text: (n, x) => `${n} bought a ${GEAR[x].name} from ${TRADER.title}` },

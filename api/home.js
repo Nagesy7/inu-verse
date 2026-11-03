@@ -2,6 +2,7 @@
 //   home:v1:<id>  { kh: sha256(owner key), name, layout, updatedAt }    90-day TTL, refreshed on every publish
 //   book:v1:<id>  [{ i, name, text, at }] newest first, max 50            90-day TTL
 // GET  ?id=<home id>                         -> { id, name, layout, updatedAt, book, count }   (404 if never published)
+// GET  ?featured=1                          -> { day, home: { id, name, items, updatedAt, signs } | null }  Featured Home of the Day
 // POST { op:"publish", id, key, name, layout } owner only (first publish claims the id; the server keeps only sha256(key))
 // POST { op:"sign", id, name, text }           anyone; same filter as chat (cleanChat/cleanName); rate limits per hashed IP:
 //                                              one entry per 15 s anywhere and one per home per 60 s (429 + retryAfter)
@@ -26,6 +27,7 @@ import { validHomeId, validPlotId, PLOT_IDS, cleanLayout, cleanEntry, homeOwnerN
 import { SHOP_RE, homeIdOf, cleanShopPayload, toWire } from "../src/interiors.js";
 import { makeTrades, kpSessionWallet } from "./_lib/trades.js";
 import { appendEvent } from "./_lib/feed.js";
+import { sydneyDay, isRealHome, pickFeatured, publicHome, HOME_KEY_RE } from "../src/featured.js";
 
 export const TTL_S = 90 * 86400, SIGN_GAP_S = 15, SIGN_HOME_GAP_S = 60, PUBLISH_GAP_S = 2, SHOP_GAP_S = 3, SHOP_IP_GAP_S = 1, SHOP_BODY_MAX = 4096;
 const sha = (s) => createHash("sha256").update(String(s)).digest("hex");
@@ -51,6 +53,25 @@ export function makeHandler({ env = process.env, kv, now = () => Date.now(), sle
     if (!w) { w = await who(token); if (!w || !B58.test(w)) return null; await store.set(ck, w, 300); }
     return B58.test(w) ? w : null;
   }
+  // GET ?featured=1 -> { day, home: { id, name, items, updatedAt, signs } | null }. Owner public display name only.
+  async function featured() {
+    const day = sydneyDay(now()), ck = "home:featured:v1:" + day, show = async (id, rec) => ({ day, home: publicHome(id, rec, (await getJ("book:v1:" + id, [])).length) });
+    const cached = await getJ(ck, null); if (cached?.id) { const h = await getJ("home:v1:" + cached.id, null); if (isRealHome(h)) return show(cached.id, h); }
+    if (!store.scan) return { day, home: null };
+    if (!(await store.setNX("home:featured:lock", "1", 20))) return { day, home: null, pending: true };
+    try {
+      const homes = []; let cur = "0", pages = 0;
+      do { const [next, keys] = await store.scan(cur, "home:v1:*", 500); cur = next; const ids = keys.map((k) => HOME_KEY_RE.exec(k)?.[1]).filter(Boolean);
+        for (let i = 0; i < ids.length; i += 100) { const part = ids.slice(i, i + 100), raws = store.mget ? await store.mget(part.map((id) => "home:v1:" + id)) : await Promise.all(part.map((id) => store.get("home:v1:" + id)));
+          part.forEach((id, j) => { try { const r = JSON.parse(raws[j] || "null"); if (r) homes.push({ id, ...r }); } catch {} }); }
+      } while (cur !== "0" && ++pages < 40);
+      const pick = pickFeatured(day, homes); if (!pick) return { day, home: null };
+      const fresh = await store.setNX(ck, JSON.stringify({ id: pick.id, at: now() }), 2 * 86400);
+      if (!fresh) await store.set(ck, JSON.stringify({ id: pick.id, at: now() }), 2 * 86400); // the cached pick went away (unpublished / expired): re-pick
+      if (fresh) await feed({ k: "featured", n: pick.name });
+      return show(pick.id, pick);
+    } finally { try { await store.del("home:featured:lock"); } catch {} }
+  }
   return async function handler(req, res) {
     res.setHeader("access-control-allow-origin", "*"); res.setHeader("access-control-allow-headers", "content-type, authorization"); res.setHeader("content-type", "application/json"); res.setHeader("cache-control", "no-store");
     const send = (code, o) => { res.statusCode = code; res.end(JSON.stringify(o)); };
@@ -64,6 +85,8 @@ export function makeHandler({ env = process.env, kv, now = () => Date.now(), sle
         const me = await walletOf(req); const plots = {};
         for (const id of PLOT_IDS) { const r = await getJ("plot:v1:" + id, null); plots[id] = r && B58.test(r.w || "") ? { short: shortW(r.w), name: r.name || null, at: r.at || null, mine: !!(me && r.w === me) } : null; }
         return send(200, { plots }); }
+      // Featured Home of the Day (src/featured.js): one real published home per Sydney day, picked once and cached.
+      if (req.method === "GET" && (req.query?.featured ?? new URL(req.url, "http://x").searchParams.get("featured")) != null) return send(200, await featured());
       if (req.method === "GET") { const id = String((req.query?.id) ?? new URL(req.url, "http://x").searchParams.get("id") ?? "");
         if (!validHomeId(id)) return send(400, { error: "bad home id" });
         const h = await getJ("home:v1:" + id, null); if (!h) return send(404, { error: "This home hasn't been opened to visitors yet." });

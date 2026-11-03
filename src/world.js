@@ -59,6 +59,7 @@ export const ORCHARD = [[49, 88], [52, 88], [55, 88], [58, 88], [50, 91], [53, 9
 export const CHAPEL = { id: 'chapel', name: 'Park Chapel', x: 21, y: 80, w: 7, h: 5 };
 export const FARM_SIGNS = { farmboard: { x: 34, y: 87 }, bizboard: { x: 47, y: 78 } };
 export const MATCHMAKER = { x: 15, y: 79 }; // park board west of the chapel
+export const FEATURED_SIGN = { x: 34, y: 48 }; // Featured Home of the Day signboard on Kibble Plaza (src/featured.js)
 export const ARCADE = { id: 'arcade', name: 'Inu Arcade', x: 57, y: 50, w: 6, h: 6, door: { tx: 59, ty: 56 }, url: 'https://inu-arcade.vercel.app/' }; // east edge of the Mall plaza; front door opens onto the plaza walkway
 // doors to the other Inu games (open with the signed-in wallet passed through as ?wallet=<address>)
 export const GAME_DOORS = [
@@ -174,6 +175,7 @@ export function interactables(state) {
   list.push({ kind: 'community', id: COMMUNITY.id, name: COMMUNITY.name, tx: COMMUNITY.x, ty: COMMUNITY.y + 1 });
   list.push(shardSpot()); // Kibble Hunt hidden Golden Bowl shard (huntshard.js); never listed by the guide
   list.push({ kind: 'matchmaker', id: 'matchmaker', name: 'Park Matchmaker', tx: MATCHMAKER.x, ty: MATCHMAKER.y + 1 });
+  list.push({ kind: 'featured', id: 'featured', name: 'Featured Home of the Day', tx: FEATURED_SIGN.x, ty: FEATURED_SIGN.y + 1 });
   list.push({ kind: 'square', id: 'pools', name: 'Pools Monument · Weekly Pool Board', tx: Math.round(SQUARE.pools.x), ty: SQUARE.pools.y + 2 });
   list.push({ kind: 'square', id: 'burn', name: 'Burn Festival Monument', tx: Math.round(SQUARE.burn.x), ty: SQUARE.burn.y + 2 });
   list.push({ kind: 'square', id: 'quests', name: 'Quest Board', tx: Math.round(SQUARE.quest.x), ty: SQUARE.quest.y + 1 });

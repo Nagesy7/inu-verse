@@ -52,6 +52,7 @@ import { eventAt as raidEventAt } from './bossraid.js';
 import { KENNEL_TAG } from './art.js';
 import { KIBBLE_PLAZA } from './world.js';
 import * as FB from './fishbook.js';
+import { fetchFeatured, featuredHtml, sydneyDay as sydneyDayF } from './featured.js';
 import { renderFishbook } from './fishbookui.js';
 import { ensureFarm, tickFarm, seasonOf, marketHour, rollFarmWeek, catchUp, fishCatch, WEEK_DAYS } from './farm.js';
 import { ensureBiz, bizHour, bizDay, rollBizWeek, rivalAt as bizRivalAt } from './biz.js';
@@ -621,6 +622,7 @@ $('#btn-mute').onclick = () => { initAudio(); toggleMute(); };
 $('#btn-emote').onclick = () => toggleEmotes(); $('#btn-emo').addEventListener('click', (e) => { e.stopPropagation(); initAudio(); if (state && (mode === 'world' || mode === 'room')) wheel.toggle(); }); $('#btn-emote').textContent = 'Actions'; $('#btn-emote').title = 'Sit, dance, wave… (G)';
 document.addEventListener('pointerdown', () => { ACT.still = 0; }, true);
 $('#btn-photo').onclick = () => togglePhoto();
+$('#btn-featured').onclick = () => { initAudio(); uiClick?.(); openPanel('featured'); };
 $('#btn-fishbook').onclick = () => { initAudio(); uiClick?.(); openPanel('fishbook'); };
 $('#btn-engage').onclick = () => { initAudio(); uiClick?.(); openPanel('engage'); };
 { const sc = $('#streak-chip'), go = () => { initAudio(); uiClick?.(); openPanel('fly5', { tab: 'streak' }); }; sc.onclick = go; sc.onkeydown = (e) => { if (e.key === 'Enter' || e.key === ' ') go(); }; }
@@ -1174,6 +1176,7 @@ function interact(it, viaDoor = false) { if (!viaDoor && isWalkDoor(it)) { toast
   else if (it.kind === 'gamedoor') openGameDoor(it.id);
   else if (it.kind === 'bank') openPanel('bank');
   else if (it.kind === 'matchmaker') openPanel('matchmaker');
+  else if (it.kind === 'featured') openPanel('featured');
   else if (it.kind === 'square' && it.id === 'pools') openPanel('city', { tab: 'pools' }); // Pools Monument -> Weekly Pool Board (live)
   else if (it.kind === 'square') openPanel('fly5', { tab: it.id === 'pools' ? 'vip' : it.id === 'burn' ? 'burn' : it.id === 'quests' ? 'quests' : 'vip' });
   else if (it.kind === 'clubhouse') { if (myPack(state)) enterBuild('clubhouse', false); else openPanel('packs'); }
@@ -1198,6 +1201,7 @@ function openPanel(kind, opts = {}) {
   if (kind === 'field') return renderField(farmCtx(), opts.i);
   if (kind === 'farm') return renderFarm(farmCtx(), opts.id);
   if (kind === 'fishbook') return renderFishbook({ state, body, toast, persist });
+  if (kind === 'featured') return renderFeatured(body);
   if (kind === 'lot') return renderLot(farmCtx(), opts.id);
   if (kind === 'bizboard') return renderBizBoard(farmCtx());
   if (kind === 'friend') return renderFriend(relCtx(), opts.name);
@@ -1298,6 +1302,15 @@ function renderGarage() { const body = $('#panel-body'), g = ensureGarage(state)
     else if (t.dataset.home) { g.active = t.dataset.home; persist(); renderGarage(); }
     else if (t.dataset.walk) { st.active = st.active === t.dataset.walk ? null : t.dataset.walk; persist(); renderGarage(); }
     else if (t.dataset.rename) { const n = prompt('New name?'); if (n) { renamePet(state, t.dataset.rename, n); persist(); renderGarage(); } } }; }
+// Featured Home of the Day (src/featured.js): signboard on Kibble Plaza + Menu → Explore. Visit reuses the shared-home walk-in.
+const FEAT = { data: null, loading: false, error: false };
+function renderFeatured(body, tries = 0) { if (panel?.kind !== 'featured') return; if (FEAT.data && FEAT.data.day !== sydneyDayF()) FEAT.data = null; body.innerHTML = featuredHtml(FEAT);
+  body.onclick = (e) => { const b = e.target.closest('[data-act]'); if (!b) return; if (b.dataset.act === 'retry') { FEAT.error = false; FEAT.data = null; renderFeatured(body); }
+    if (b.dataset.act === 'visit' && FEAT.data?.home) { const h = FEAT.data.home; closePanel(); setTimeout(() => visitShared(h.id, h.name), 60); } };
+  if (FEAT.data || FEAT.loading || FEAT.error) return; FEAT.loading = true; renderFeatured(body);
+  fetchFeatured().then((d) => { FEAT.data = d; if (d.pending && !d.home && tries < 2) { FEAT.data = null; FEAT.loading = false; return setTimeout(() => renderFeatured(body, tries + 1), 1500); } }).catch(() => { FEAT.error = true; })
+    .finally(() => { if (FEAT.data || FEAT.error) { FEAT.loading = false; renderFeatured(body); } }); }
+globalThis.__featured = FEAT;
 function closePanel() { doorExit(doorSt, time); if (panel?.viaDoor) feel.fade(); const dg = $('#dialog'); if (dg) { dg.style.pointerEvents = ''; dg.style.visibility = ''; }
   if (panel?.kind === 'cafe' && panel.shift && !panel.shift.settled && panel.shift.earned > 0) { finishShift(state, panel.shift); packAct('shift'); stamp('cafe-shift'); toast(`Shift ended early: +${panel.shift.paid} bones`, 'good'); onboardEngage('cafe', 'act'); hud(); persist(); }
   if (panel?.kind === 'cafe') CP.shiftEnded();

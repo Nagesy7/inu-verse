@@ -15,7 +15,7 @@ const mk = (f = async () => ({ ok: false })) => { let t = T0; const kv = memoryK
 const WALLET = '7xKXtg2CW87d97TXJSDpbD5jBkheTqA83TZRuJosgAsU';
 
 test('feed: only known event types are accepted, anywhere', async () => {
-  assert.deepEqual(Object.keys(FD.EVENT_TYPES).sort(), ['arcade', 'arrive', 'guestbook', 'home', 'keepsake', 'koi', 'plot', 'shop', 'trader']);
+  assert.deepEqual(Object.keys(FD.EVENT_TYPES).sort(), ['arcade', 'arrive', 'featured', 'guestbook', 'home', 'keepsake', 'koi', 'plot', 'shop', 'trader']);
   assert.deepEqual([...FD.CLIENT_TYPES].sort(), ['keepsake', 'koi', 'trader'], 'a browser may only report a rare koi catch or a daily-event keepsake / trader purchase (validated server-side)');
   for (const k of ['', 'jackpot', 'wager', 'kibble', 'burn', '__proto__', 'constructor', 'toString', null, 7]) { assert.equal(FD.isEventType(k), false, String(k)); assert.equal(FD.cleanEvent({ k, n: 'Rex', t: T0 }, T0), null); }
   const kv = memoryKv(() => T0);

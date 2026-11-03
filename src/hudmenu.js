@@ -1,7 +1,7 @@
 // Decluttered HUD: only the stick, the A button, a compact status strip and ONE menu button stay on screen.
 // Every other control is moved (with its existing handlers) into a single tidy drawer.
 export const DRAWER = [
-  ['Explore', ['w-guide', 'btn-quests', 'w-places', 'w-map', 'zoomctl']],
+  ['Explore', ['w-guide', 'btn-quests', 'w-places', 'w-map', 'btn-featured', 'zoomctl']],
   ['Club', ['btn-kennel', 'btn-pups', 'btn-stamps', 'btn-party', 'btn-times']],
   ['Me', ['btn-wardrobe', 'btn-garage', 'btn-companion', 'btn-pack', 'btn-engage', 'btn-fishbook', 'btn-pools']],
   ['Fun', ['btn-emote', 'dr-bork', 'btn-photo']],
