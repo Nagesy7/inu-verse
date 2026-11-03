@@ -73,3 +73,9 @@ test('browser: compact emote button opens the wheel, laugh plays, spam is limite
     await ctx.close(); } } finally { await b.close(); srv.close(); }
   assert.deepEqual(errs, []);
 });
+
+test('prompt/act agree: seated → A stands up even beside a pup; standing → pup before seat before building', () => {
+  const main = fs.readFileSync(new URL('../src/main.js', import.meta.url), 'utf8');
+  assert.match(main, /if \(sn\?\.sitting\) return sitAt\(sn\); const pup = nearPup\(\); if \(pup && !it\) petPup\(pup\); else if \(sn[^;]*\) sitAt\(sn\); else if \(it\) interact\(it\);/);
+  const i = (re) => main.search(re); assert.ok(i(/\(seat = seatNear\(itDist\(it\)\)\)\?\.sitting/) < i(/else if \(pup\?\.workerRef\)/) && i(/else if \(pup\?\.workerRef\)/) < i(/else if \(seat\) \{/));
+});
