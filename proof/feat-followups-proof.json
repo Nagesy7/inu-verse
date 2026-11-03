@@ -1,0 +1,136 @@
+{
+ "url": "https://inu-verse-tawny.vercel.app/",
+ "viewport": [
+  844,
+  390
+ ],
+ "checks": [
+  "PASS players-online card open, wallet pill clear/hidden (pill before [701.5625,62,134.4375,44], now null; body.mppop-open=true)",
+  "PASS card closed: wallet pill back [701.5625,62,134.4375,44]",
+  "PASS before: B draws live Pup7311 and ghost Hachi",
+  "PASS after block: Pup7311 not drawn (still on the card to unblock), ghost Hachi gone",
+  "PASS automation hellos carry test:1 (aborted here, nothing sent): [{\"tag\":\"A\",\"n\":\"Natto\",\"test\":1},{\"tag\":\"B\",\"n\":\"Hoshi\",\"test\":1}]",
+  "PASS live feed has no test lines: [\"AAA:arcade\"]",
+  "PASS open ticker list: [\"AAA took #1 on the Inu Arcade weekly board1h ago\"]",
+  "PASS toasts [[337,231,171,42],[231,279,383,42]] clear of the pup 394,95,56,100 (toast-low=true)",
+  "PASS featured pick is not an agent home: {\"day\":\"2026-11-03\",\"home\":null}",
+  "PASS no page errors "
+ ],
+ "feedPosts": [
+  {
+   "tag": "A",
+   "body": {
+    "op": "hello",
+    "name": "Natto",
+    "coat": "golden",
+    "area": "mainst",
+    "g": "Pup7311",
+    "test": 1
+   }
+  },
+  {
+   "tag": "B",
+   "body": {
+    "op": "hello",
+    "name": "Hoshi",
+    "coat": "golden",
+    "area": "plaza",
+    "g": "Pup7312",
+    "test": 1
+   }
+  }
+ ],
+ "walletBefore": {
+  "wallet": [
+   701.5625,
+   62,
+   134.4375,
+   44
+  ],
+  "badge": [
+   810,
+   112,
+   26,
+   26
+  ]
+ },
+ "wallet": {
+  "pop": [
+   536,
+   66,
+   300,
+   251.78125
+  ],
+  "wallet": null,
+  "badge": null,
+  "body": "landscape short mm-on inworld toast-low toast-one mppop-open"
+ },
+ "walletAfter": [
+  701.5625,
+  62,
+  134.4375,
+  44
+ ],
+ "preBlock": {
+  "actor": true,
+  "ghost": [
+   "Hachi"
+  ]
+ },
+ "postBlock": {
+  "actor": false,
+  "listed": true,
+  "ghost": []
+ },
+ "hellos": [
+  {
+   "tag": "A",
+   "n": "Natto",
+   "test": 1
+  },
+  {
+   "tag": "B",
+   "n": "Hoshi",
+   "test": 1
+  }
+ ],
+ "feed": {
+  "events": [
+   {
+    "i": "ae6b37380f",
+    "k": "arcade",
+    "n": "AAA",
+    "x": "",
+    "t": 1793676419743,
+    "v": 1
+   }
+  ],
+  "ghosts": []
+ },
+ "tickerList": [
+  "AAA took #1 on the Inu Arcade weekly board1h ago"
+ ],
+ "toasts": {
+  "body": "landscape short mm-on inworld toast-low",
+  "list": [
+   [
+    336.5,
+    231,
+    171,
+    41.5
+   ],
+   [
+    230.5,
+    278.5,
+    383,
+    41.5
+   ]
+  ]
+ },
+ "featured": {
+  "day": "2026-11-03",
+  "home": null
+ },
+ "signPrompt": "AUSE FEATURED HOME OF THE DAY",
+ "errors": []
+}
