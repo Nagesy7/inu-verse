@@ -794,3 +794,12 @@ body[data-pfr=film] #photo-frame::before{top:-4.1vmin}body[data-pfr=film] #photo
 .pt-grid .pt-lock{opacity:.5}.pt-grid .ft-card small{color:#5ff2e0}.pt-grid .pt-lock small,.pt-grid .ft-card.on small{color:inherit}
 /* phone landscape: the minimap shares the right column with the Kibble Pay profile badge (under the wallet pill); sit just left of the badge */
 @media (max-height:520px) and (orientation:landscape){body.mm-on.inworld #minimap-wrap{right:calc(max(8px,env(safe-area-inset-right)) + 40px)!important}}
+/* Town crier / president banner (phone landscape): centre slot under the prompt row, between the ticker column and the
+   minimap/wallet column; toasts start just under the banner (--banner-b from src/bannerfit.js) and only the newest shows */
+@media (orientation:landscape) and (max-height:500px){
+ body.inworld #pres-banner{top:calc(max(8px,env(safe-area-inset-top)) + 100px)!important;max-width:calc(100vw - 2 * max(176px,24vw + 16px));padding:6px 12px!important;font-size:10px!important;text-align:center}
+ body.inworld #crier-banner,body.inworld #toast{max-width:calc(100vw - 2 * max(176px,24vw + 16px))} /* ticker column ≤ min(200px,24vw); minimap/wallet column ≤ 162px */
+ body.inworld #crier-banner span{font-size:10px;line-height:1.3}
+ body.inworld.banner-up #toast{top:var(--banner-b)!important}
+ body.inworld.banner-up #toast .toast:nth-last-child(n+2){display:none}
+}

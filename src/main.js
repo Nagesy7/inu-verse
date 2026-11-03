@@ -122,7 +122,7 @@ import { createFeed } from './feed.js';
 import { createGhosts, spotAt, spotTiles, addBlockers as ghostBlockers } from './ghosts.js';
 import * as DQ from './quests.js'; import * as DQUI from './questsui.js'; // daily townsfolk quests (Bones only, capped)
 import { LAMP_TILES } from './ambient.js';
-import { syncChat } from './chatdodge.js'; // chat bar hides under panels / modals, event banner sits above it
+import { syncChat } from './chatdodge.js'; import { fitBanners } from './bannerfit.js'; // chat bar hides under panels / modals, event banner sits above it; crier / president banner: toasts stack under it at phone landscape
 import * as EVR from './events.js'; import { createEvents, ensureChip as evChip, updateChip as evChipUpdate, maybeBanner as evBanner, panelHtml as evPanelHtml, drawGear } from './eventsui.js'; // Alive phase 5: daily world events
 import * as TF from './townsfolk.js'; // Alive phase 3: wandering background townsfolk (NPC only)
 import { createTrading, renderTrade, TRADE_CSS } from './tradeui.js';
@@ -565,7 +565,7 @@ function nearPup() { for (const w of crew) if (w.on && Math.hypot(w.x - state.pl
   if (!b && !drive && EVX.nearTrader(state.player.x, state.player.y)) return { trader: true, name: EVR.TRADER.name };
   if (!b && !drive) { const f = TF.nearestFolk(TFS, state.player.x, state.player.y); if (f) return { folk: f, name: f.folkName }; } return b; } // townsfolk: chat only, no rewards
 function presBanner(msg) { let b = document.getElementById('pres-banner'); if (!b) { b = document.createElement('div'); b.id = 'pres-banner'; b.style.cssText = 'position:fixed;left:50%;top:64px;transform:translateX(-50%);z-index:40;padding:10px 22px;background:#121a36;color:#f2cc68;border:3px solid #d4a640;font:14px Silkscreen,monospace;letter-spacing:1px;box-shadow:0 4px 0 #0008;pointer-events:none;text-align:center'; document.body.appendChild(b); }
-  b.textContent = '★ ' + msg + ' ★'; b.hidden = false; clearTimeout(b._t); b._t = setTimeout(() => { b.hidden = true; }, 4500); }
+  b.textContent = '★ ' + msg + ' ★'; b.hidden = false; requestAnimationFrame(() => fitBanners(document, window)); clearTimeout(b._t); b._t = setTimeout(() => { b.hidden = true; }, 4500); }
 function honk() { if (honkT > 0) return; honkT = 0.5; blip(392); setTimeout(() => blip(330), 120); feel.say && null; player.emote = { kind: 'bork', t: 0.8, honk: true }; for (const n of npcs) if (Math.hypot(n.x - state.player.x, n.y - state.player.y) < 120) n.emote = { kind: 'wave', t: 1.2 }; }
 function parkedNear() { const g = ensureGarage(state), pk = g.parked; return pk && !drive && Math.hypot(pk.x - state.player.x, pk.y - state.player.y) < 48 ? pk : null; }
 function carAction() { // E/A: park (while driving) or hop into the parked car next to you
@@ -2379,7 +2379,7 @@ function frame(now) {
   MPL.step(dt); // live multiplayer (no-op when not configured)
   feedSound(dt);
   if (mode === 'world') { GH.step(dt); stepEvents(dt); }
-  if ((chatSyncT -= dt) <= 0) { chatSyncT = 0.2; syncChat(document, window); }
+  if ((chatSyncT -= dt) <= 0) { chatSyncT = 0.2; syncChat(document, window); fitBanners(document, window); }
   if (JOYS && state && (joyT -= dt) <= 0) { joyT = 0.5; const want = joyPref(state); if (want !== JOYS.on) { JOYS.set(want); joyApi.onChange?.(); } } // saved / cloud-loaded Joystick setting
   if (PAD.connected) PAD.poll(dt); // controllers: zero work unless one is plugged in
   if (mode === 'world') { updateWorld(dt); renderWorld(); drawSceneBars(); }
@@ -2453,7 +2453,7 @@ function moodTick(dt) { if (crierRing > 0) crierRing -= dt; crierNewsTick(); if 
 function announceMood(mood) { if (!MWd.shouldAnnounce(mood, { override: !!MOOD.forced })) return; const line = MWd.crierLine(mood); crierRing = 3; blip(988); setTimeout(() => blip(1318), 140);
   chatSay(MWd.CRIER_NAME, line, time, { force: true, life: 6 }); crierBanner(line); globalThis.__crierSaid = [...(globalThis.__crierSaid || []), mood]; }
 function crierBanner(line) { let b = document.getElementById('crier-banner'); if (!b) { b = document.createElement('div'); b.id = 'crier-banner'; b.setAttribute('role', 'status'); document.body.appendChild(b); }
-  b.innerHTML = `<b>${esc(MWd.CRIER_NAME)}</b><span>${esc(line)}</span>`; b.className = 'show mood-' + MWd.MW.mood; clearTimeout(b._t); b._t = setTimeout(() => { b.className = ''; }, 6000); }
+  b.innerHTML = `<b>${esc(MWd.CRIER_NAME)}</b><span>${esc(line)}</span>`; b.className = 'show mood-' + MWd.MW.mood; requestAnimationFrame(() => fitBanners(document, window)); clearTimeout(b._t); b._t = setTimeout(() => { b.className = ''; }, 6000); }
 // ---- Kibble Kennel mirror (cosmetics only; tier API owned by kibble-pay / Inu Empires keeper; contract: kibble-pay docs/KENNEL_API.md) ----
 const KEN = { override: KN.overrideTier(), flair: KN.overrideFlair(), peek: KN.peekWallet(), peeking: false, real: null, wall: null, wallet: null, show: KN.showMine(), at: 0 };
 function kennelMine() { return KN.myKennel({ override: KEN.override, overrideFlair: KEN.flair, real: KEN.real, show: KEN.show, peek: KEN.peeking }); }
