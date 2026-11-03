@@ -112,6 +112,7 @@ import { createGhosts, spotAt } from './ghosts.js';
 import * as TF from './townsfolk.js'; // Alive phase 3: wandering background townsfolk (NPC only)
 import { createTrading, renderTrade, TRADE_CSS } from './tradeui.js';
 import { createJoystick, joyPref, JOY_KEY } from './joystick.js';
+import { createGamepad } from './gamepad.js';
 import * as PAB from './sim/bureau.js'; // Paw Audit Bureau (Phase 1 sim layer): desk + Watchdogs + report panel
 import { ensureShare, myHomePlot, layoutOf, layoutKey, homeApi, cleanLayout, cleanEntry, validHomeId, validPlotId, GB } from './homeshare.js';
 import * as KM from './kibblemood.js';
@@ -162,7 +163,7 @@ function stepFolk(view) { const now = performance.now() / 1000, dt = Math.min(0.
 let vignette = null, miniBase = null;
 const keys = new Set();
 const touch = { x: 0, y: 0, id: null };
-let JOYS = null, joyT = 0; // optional joystick (src/joystick.js), built with the touch controls below
+let JOYS = null, joyT = 0, padAct = null; // optional joystick (src/joystick.js), built with the touch controls below
 const joyApi = { get: () => joyPref(state), set: (v) => { if (state) { state.settings ||= {}; state.settings.joystick = !!v; persist(); } try { localStorage.setItem(JOY_KEY, v ? '1' : '0'); } catch {} JOYS?.set(!!v); joyApi.onChange?.(); }, onChange: null };
 globalThis.__joy = joyApi;
 const COARSE = matchMedia('(pointer: coarse)');
@@ -682,7 +683,7 @@ $('#panel-close').onclick = () => closePanel();
   pad.addEventListener('pointermove', (e) => { if (e.pointerId === touch.id) upd(e); });
   const end = (e) => { if (e.pointerId !== touch.id) return; touch.id = null; touch.x = touch.y = 0; touch.mag = 0; player.holdRun = false; knob.style.transform = ''; pad.classList.remove('on'); };
   pad.addEventListener('pointerup', end); pad.addEventListener('pointercancel', end);
-  const act = () => { globalThis.__actCount = (globalThis.__actCount || 0) + 1; if (feel.talking()) return feel.advance(); if (mode === 'room' && !panel) return RP.act(); if (mode !== 'world' || panel || !state) return; if (carAction()) return; const it = nearestInteractable(state, state.player.x, state.player.y); const pup = nearPup(); if (pup && !it) petPup(pup); else if (it) interact(it); };
+  const act = padAct = () => { globalThis.__actCount = (globalThis.__actCount || 0) + 1; if (feel.talking()) return feel.advance(); if (mode === 'room' && !panel) return RP.act(); if (mode !== 'world' || panel || !state) return; if (carAction()) return; const it = nearestInteractable(state, state.player.x, state.player.y); const pup = nearPup(); if (pup && !it) petPup(pup); else if (it) interact(it); };
   $('#btn-a').addEventListener('pointerdown', (e) => { e.preventDefault(); initAudio(); act(); });
   $('#btn-b').addEventListener('pointerdown', (e) => { e.preventDefault(); initAudio(); if (mode === 'world' && !panel && state) { if (drive) return honk(); bork(); player.emote = { kind: 'bork', t: 1.2 }; emoteBubble('me', 'bork', time); } });
   $('#btn-menu')?.addEventListener('pointerdown', (e) => { e.preventDefault(); });
@@ -690,6 +691,21 @@ $('#panel-close').onclick = () => closePanel();
   JOYS = createJoystick({ touch, onA: act, onStart: initAudio, runTap: () => stickTap(performance.now()), setRun: (v) => { player.holdRun = v; },
     onB: () => { if (mode === 'world' && !panel && state) { if (drive) return honk(); bork(); player.emote = { kind: 'bork', t: 1.2 }; emoteBubble('me', 'bork', time); } } });
 }
+// Bluetooth/USB controllers (src/gamepad.js): polled from frame() only while a pad is connected. Same actions as E / the on-screen A + B.
+const PAD = createGamepad({ hooks: { touch, toast, blip: () => blip(1320),
+  setRun: (v) => { player.holdRun = v; },
+  onA: () => { initAudio(); padAct?.(); },
+  onB: () => { initAudio(); if (mode === 'world' && !panel && state) { if (drive) return honk(); bork(); player.emote = { kind: 'bork', t: 1.2 }; emoteBubble('me', 'bork', time); } },
+  onX: () => { if (state && (mode === 'world' || mode === 'room') && !panel && !drive) { ACT.still = 0; wheel.toggle(); } },
+  onY: () => { const i = document.getElementById('mp-say'); if (i && !i.disabled && i.getClientRects().length) { i.focus(); return; }
+    if (mode === 'world' && !panel && state && !drive) { const d = throwBall(amb, state.player, player.face, npcs); blip(660); if (d) toast(`${d.name} is fetching!`, 'good'); } },
+  onSelect: () => { if (mode === 'world' && !panel && guide) guide.openMap(); },
+  zoom: (d) => { if (mode === 'world' && !panel) setZoom(stepZoom(ZOOM, d)); },
+  menu: (v) => { const dr = document.getElementById('drawer'), b = document.getElementById('menu-btn'); if (dr && b && dr.hidden === v) { initAudio(); b.click(); } },
+} });
+globalThis.__pad = PAD; // dev/proof hook
+// prompt hint glyphs: controller glyph while a pad is the last input, else A (touch) / the keyboard key
+const hk = (b, kb) => PAD.glyph(b) || (COARSE.matches ? b.toUpperCase() : kb), hc = () => (PAD.padMode || COARSE.matches ? ' class="ta"' : '');
 
 // ---------------- World update ----------------
 function updateWorld(dt) {
@@ -765,11 +781,11 @@ function updateWorld(dt) {
   const pup = !panel && !it && nearPup(); // (President Inu counts as a pup to pet/talk to)
   const tch = COARSE.matches;
   const pk = !panel && !it && parkedNear();
-  if (drive) { pr.hidden = false; pr.innerHTML = `<kbd${tch ? ' class="ta"' : ''}>${tch ? 'A' : 'E'}</kbd>Park ${esc(CAR_MODELS[drive.car.model].name)} · <kbd${tch ? ' class="ta"' : ''}>${tch ? 'B' : 'H'}</kbd>Honk`; setA('PARK'); }
-  else if (pk) { pr.hidden = false; pr.innerHTML = `<kbd${tch ? ' class="ta"' : ''}>${tch ? 'A' : 'E'}</kbd>Drive your ${esc(CAR_MODELS[carOf(state, pk.id)?.model]?.name || 'car')}`; setA('DRIVE'); }
-  else if (pup?.workerRef) { pr.hidden = false; const v = pup.workerRef.chatted ? `Play ${JOB_DEFS[WORKER_JOB[pup.workerRef.job]].name} with` : 'Chat with'; pr.innerHTML = tch ? `<kbd class="ta">A</kbd>${v} ${esc(pup.name)}` : `<kbd>E</kbd>${v} ${esc(pup.name)}`; setA('TALK'); }
-  else if (pup) { pr.hidden = false; const v = pup.folk ? `Chat with ${esc(pup.name)}` : REL.PEOPLE[pup.name] && !pup.pet ? `Talk to ${esc(pup.name)} ${'♥'.repeat(REL.hearts(REL.ensureRel(state)[pup.name]))}` : `Pet ${esc(pup.name)}`; pr.innerHTML = tch ? `<kbd class="ta">A</kbd>${v}` : `<kbd>E</kbd>${v} · <kbd>T</kbd> throw ball`; setA(pup.folk || (REL.PEOPLE[pup.name] && !pup.pet) ? 'TALK' : 'PET'); }
-  else if (it) { pr.hidden = false; const verb = { community: 'Open', gamedoor: 'Play', bank: 'Enter', arcade: 'Play at', matchmaker: 'Browse', square: 'Open', building: 'Enter', plot: state.plots[it.id] ? 'Enter' : 'Inspect', visit: 'Visit', club: 'Visit', stall: 'View', clubhouse: myPack(state) ? 'Decorate' : 'Open', mall: 'Enter', field: 'Tend', farm: 'Use', lot: 'Visit', biz: 'Read', chapel: 'Enter', kibble: it.id === 'crier' ? 'Talk to' : it.id === 'kstatue' ? 'Look at' : 'Read' }[it.kind] || 'Use'; pr.innerHTML = isWalkDoor(it) ? `<kbd>${it.side === 'left' ? '▶' : it.side === 'right' ? '◀' : '▲'}</kbd>Walk in to ${verb === 'Enter' ? 'enter' : verb.toLowerCase()} ${esc(it.name)}` : `<kbd${tch ? ' class="ta"' : ''}>${tch ? 'A' : 'E'}</kbd>${verb} ${esc(it.name)}`; pr.dataset.target = it.id; setA(isWalkDoor(it) ? '' : verb.toUpperCase()); }
+  if (drive) { pr.hidden = false; pr.innerHTML = `<kbd${hc()}>${hk('a', 'E')}</kbd>Park ${esc(CAR_MODELS[drive.car.model].name)} · <kbd${hc()}>${hk('b', 'H')}</kbd>Honk`; setA('PARK'); }
+  else if (pk) { pr.hidden = false; pr.innerHTML = `<kbd${hc()}>${hk('a', 'E')}</kbd>Drive your ${esc(CAR_MODELS[carOf(state, pk.id)?.model]?.name || 'car')}`; setA('DRIVE'); }
+  else if (pup?.workerRef) { pr.hidden = false; const v = pup.workerRef.chatted ? `Play ${JOB_DEFS[WORKER_JOB[pup.workerRef.job]].name} with` : 'Chat with'; pr.innerHTML = `<kbd${hc()}>${hk('a', 'E')}</kbd>${v} ${esc(pup.name)}`; setA('TALK'); }
+  else if (pup) { pr.hidden = false; const v = pup.folk ? `Chat with ${esc(pup.name)}` : REL.PEOPLE[pup.name] && !pup.pet ? `Talk to ${esc(pup.name)} ${'♥'.repeat(REL.hearts(REL.ensureRel(state)[pup.name]))}` : `Pet ${esc(pup.name)}`; pr.innerHTML = PAD.padMode ? `<kbd${hc()}>${hk('a', 'E')}</kbd>${v}` : tch ? `<kbd class="ta">A</kbd>${v}` : `<kbd>E</kbd>${v} · <kbd>T</kbd> throw ball`; setA(pup.folk || (REL.PEOPLE[pup.name] && !pup.pet) ? 'TALK' : 'PET'); }
+  else if (it) { pr.hidden = false; const verb = { community: 'Open', gamedoor: 'Play', bank: 'Enter', arcade: 'Play at', matchmaker: 'Browse', square: 'Open', building: 'Enter', plot: state.plots[it.id] ? 'Enter' : 'Inspect', visit: 'Visit', club: 'Visit', stall: 'View', clubhouse: myPack(state) ? 'Decorate' : 'Open', mall: 'Enter', field: 'Tend', farm: 'Use', lot: 'Visit', biz: 'Read', chapel: 'Enter', kibble: it.id === 'crier' ? 'Talk to' : it.id === 'kstatue' ? 'Look at' : 'Read' }[it.kind] || 'Use'; pr.innerHTML = isWalkDoor(it) ? `<kbd>${it.side === 'left' ? '▶' : it.side === 'right' ? '◀' : '▲'}</kbd>Walk in to ${verb === 'Enter' ? 'enter' : verb.toLowerCase()} ${esc(it.name)}` : `<kbd${hc()}>${hk('a', 'E')}</kbd>${verb} ${esc(it.name)}`; pr.dataset.target = it.id; setA(isWalkDoor(it) ? '' : verb.toUpperCase()); }
   else { pr.hidden = true; setA(''); }
 }
 
@@ -1034,7 +1050,7 @@ function roomPortal(ex) { if (RP.R.busy) return; const r = resolveExit(ex, { out
   setTimeout(() => { RP.R.busy = false; mode = 'world'; Object.assign(state.player, { x: r.x, y: r.y }); player.face = r.face; player.v = { x: 0, y: 0 }; stopWalk(); doorExit(doorSt, time); gateSt.tile = Math.floor(r.y / TILE) * 1000 + Math.floor(r.x / TILE); gateSt.until = time + 0.8;
     cam.x = r.x; cam.y = r.y; $('#minimap-wrap').hidden = false; wayUi(true); persist(); }, 70); }
 function updateRoom(dt) { feel.step(dt); RP.update(dt); if (CP.on && CP.K.me && !panel && !player.moving && !ACT.act) { const s = CP.seatOf(CP.K.me.seat); if (s && Math.hypot(RP.R.p.x - (s.tx + 0.5) * 32, RP.R.p.y - (s.ty + 0.5) * 32) < 18) { player.face = s.face; startAction(ACT, 'sit', time); } } stepActor(ACT, dt, time, { moving: player.moving, busy: !!panel || feel.talking() });
-  const pr = $('#prompt'), tch = COARSE.matches, s = !panel && RP.nearSpot(); if (s) { pr.hidden = false; pr.innerHTML = `<kbd${tch ? ' class="ta"' : ''}>${tch ? 'A' : 'E'}</kbd>${esc(s.label || s.name)}`; setA((s.verb || 'USE').toUpperCase()); } else { pr.hidden = true; setA(''); } }
+  const pr = $('#prompt'), tch = COARSE.matches, s = !panel && RP.nearSpot(); if (s) { pr.hidden = false; pr.innerHTML = `<kbd${hc()}>${hk('a', 'E')}</kbd>${esc(s.label || s.name)}`; setA((s.verb || 'USE').toUpperCase()); } else { pr.hidden = true; setA(''); } }
 // test hooks for the door/portal walk-in e2e (scripts/doors-e2e.mjs): put the player somewhere with every door disarmed,
 // exactly like a real exit/spawn does (doorExit / preset portal tile), minus the cooldown so trials run fast.
 globalThis.__doorTest = {
@@ -1191,7 +1207,7 @@ function openPanel(kind, opts = {}) {
   else if (kind === 'dealer') renderDealer();
   else if (kind === 'pets') renderPets();
   else if (kind === 'garage') renderGarage();
-  else if (kind === 'help') body.innerHTML = `<h2>How to play</h2><ul><li>Walk with <b>WASD</b>/<b>arrows</b> or <b>click</b> anywhere.</li><li>Press <b>E</b> near doors and signs.</li><li>Earn <b>bones</b> serving orders at the Shiba Sips Café, or tap <b>Quests</b> to see place tasks — finish each task (not just visit / Got it) for Bones and optional inventory-only cosmetics.</li><li>Claim a plot (${PLOT_COST} bones), buy furniture at Paws & Pillows, decorate (R to rotate).</li><li>Buy clothes at <b>Fetch Fashion</b> and dress up in your <b>Wardrobe</b> (HUD button).</li><li>Launch Hall: create and trade <b>simulated</b> tokens paired with demo <b>$KIBBLE</b>. Nothing here is real money or on any blockchain.</li><li><b>Packs</b>: found or join a Pack (HUD button), chip in bones to the treasury, decorate the shared clubhouse north of Market Row and climb the Kibble Cup. Packs are simulated locally for now.</li><li>Visit Mochi, Kuro, Hana and Taro's homes on Sakura Lane.</li></ul><button class="btn red" id="reset">Reset save</button>`;
+  else if (kind === 'help') body.innerHTML = `<h2>How to play</h2><ul><li>Walk with <b>WASD</b>/<b>arrows</b> or <b>click</b> anywhere.</li><li>Press <b>E</b> near doors and signs.</li><li><b>Controller</b> (Bluetooth/USB PlayStation or Xbox pad): left stick / D-pad walk, ✕/A interact, ○/B back (Bork outside), □/X actions, △/Y chat, Options/☰ menu, L1·R1 / LB·RB zoom, R2/RT run. In menus the D-pad moves the highlight.</li><li>Earn <b>bones</b> serving orders at the Shiba Sips Café, or tap <b>Quests</b> to see place tasks — finish each task (not just visit / Got it) for Bones and optional inventory-only cosmetics.</li><li>Claim a plot (${PLOT_COST} bones), buy furniture at Paws & Pillows, decorate (R to rotate).</li><li>Buy clothes at <b>Fetch Fashion</b> and dress up in your <b>Wardrobe</b> (HUD button).</li><li>Launch Hall: create and trade <b>simulated</b> tokens paired with demo <b>$KIBBLE</b>. Nothing here is real money or on any blockchain.</li><li><b>Packs</b>: found or join a Pack (HUD button), chip in bones to the treasury, decorate the shared clubhouse north of Market Row and climb the Kibble Cup. Packs are simulated locally for now.</li><li>Visit Mochi, Kuro, Hana and Taro's homes on Sakura Lane.</li></ul><button class="btn red" id="reset">Reset save</button>`;
   if (kind === 'help') $('#reset').onclick = () => { if (confirm('Delete your local save?')) { localStorage.clear(); location.reload(); } };
 }
 // ---------- Car dealers, pet shop, garage ----------
@@ -2232,6 +2248,7 @@ function frame(now) {
   feedSound(dt);
   if (mode === 'world') GH.step(dt);
   if (JOYS && state && (joyT -= dt) <= 0) { joyT = 0.5; const want = joyPref(state); if (want !== JOYS.on) { JOYS.set(want); joyApi.onChange?.(); } } // saved / cloud-loaded Joystick setting
+  if (PAD.connected) PAD.poll(dt); // controllers: zero work unless one is plugged in
   if (mode === 'world') { updateWorld(dt); renderWorld(); drawSceneBars(); }
   else if (mode === 'room') { updateRoom(dt); RP.render(ctx, devicePixelRatio || 1); }
   else if (mode === 'build') { $('#prompt').hidden = true; renderBuild(); }
