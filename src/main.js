@@ -52,6 +52,7 @@ import { eventAt as raidEventAt } from './bossraid.js';
 import { KENNEL_TAG } from './art.js';
 import { KIBBLE_PLAZA } from './world.js';
 import * as FB from './fishbook.js';
+import * as FRD from './friends.js';
 import { fetchFeatured, featuredHtml, sydneyDay as sydneyDayF } from './featured.js';
 import { renderFishbook } from './fishbookui.js';
 import { ensureFarm, tickFarm, seasonOf, marketHour, rollFarmWeek, catchUp, fishCatch, WEEK_DAYS } from './farm.js';
@@ -625,6 +626,7 @@ $('#btn-mute').onclick = () => { initAudio(); toggleMute(); };
 $('#btn-emote').onclick = () => toggleEmotes(); $('#btn-emo').addEventListener('click', (e) => { e.stopPropagation(); initAudio(); if (state && (mode === 'world' || mode === 'room')) wheel.toggle(); }); $('#btn-emote').textContent = 'Actions'; $('#btn-emote').title = 'Sit, dance, wave… (G)';
 document.addEventListener('pointerdown', () => { ACT.still = 0; }, true);
 $('#btn-photo').onclick = () => togglePhoto();
+$('#btn-friends').onclick = () => { initAudio(); uiClick?.(); openPanel('friends'); };
 $('#btn-featured').onclick = () => { initAudio(); uiClick?.(); openPanel('featured'); };
 $('#btn-fishbook').onclick = () => { initAudio(); uiClick?.(); openPanel('fishbook'); };
 $('#btn-daily').onclick = () => { initAudio(); uiClick?.(); openPanel('dquests'); };
@@ -1210,6 +1212,7 @@ function openPanel(kind, opts = {}) {
   if (kind === 'farm') return renderFarm(farmCtx(), opts.id);
   if (kind === 'fishbook') return renderFishbook({ state, body, toast, persist });
   if (kind === 'featured') return renderFeatured(body);
+  if (kind === 'friends') return renderFriends(body);
   if (kind === 'lot') return renderLot(farmCtx(), opts.id);
   if (kind === 'bizboard') return renderBizBoard(farmCtx());
   if (kind === 'friend') return renderFriend(relCtx(), opts.name);
@@ -1310,6 +1313,33 @@ function renderGarage() { const body = $('#panel-body'), g = ensureGarage(state)
     else if (t.dataset.home) { g.active = t.dataset.home; persist(); renderGarage(); }
     else if (t.dataset.walk) { st.active = st.active === t.dataset.walk ? null : t.dataset.walk; persist(); renderGarage(); }
     else if (t.dataset.rename) { const n = prompt('New name?'); if (n) { renamePet(state, t.dataset.rename, n); persist(); renderGarage(); } } }; }
+// Friends list (src/friends.js): follow by public name, presence from live multiplayer + /api/feed?who, Join warps, block/unfollow.
+const FRS = { who: {}, at: 0, loading: false, error: false, seenOn: new Set() };
+async function refreshWho(force = false) { if (!state) return FRS.who; const names = FRD.ensureFriends(state).list.map((x) => x.n); if (!names.length) { FRS.who = {}; return FRS.who; }
+  if (!force && Date.now() - FRS.at < 15_000) return FRS.who; FRS.loading = true;
+  try { FRS.who = await FRD.fetchWho(names); FRS.error = false; } catch { FRS.error = true; } finally { FRS.loading = false; FRS.at = Date.now(); } return FRS.who; }
+const frHere = () => (MPL.status === 'online' ? MPL.players().filter((p) => !FRD.isBlocked(state, p.name)) : []);
+function followFromCard(n) { if (!state) return; const r = FRD.follow(state, n); toast(r.ok ? `Following ${r.n} ★ (Menu → Friends)` : r.why, r.ok ? 'good' : 'bad'); if (r.ok) { persist(); refreshWho(true); } }
+function renderFriends(body) { if (panel?.kind !== 'friends') return; if (!$('#fr-css')) { const st = document.createElement('style'); st.id = 'fr-css'; st.textContent = FRD.FRIENDS_CSS; document.head.appendChild(st); }
+  const keep = $('#fr-name')?.value || ''; body.innerHTML = FRD.friendsHtml(state, { here: frHere(), who: FRS.who, loading: FRS.loading, error: FRS.error, mp: MPL.status });
+  const inp = $('#fr-name'); if (inp) { inp.value = keep; inp.onkeydown = (e) => { e.stopPropagation(); if (e.key === 'Enter') { e.preventDefault(); body.querySelector('[data-act="add"]')?.click(); } }; }
+  body.onclick = (e) => { const b = e.target.closest('[data-act]'); if (!b) return; uiClick?.(); const a = b.dataset.act, fr = FRD.ensureFriends(state).list.find((x) => x.k === b.dataset.k), bl = FRD.ensureFriends(state).blocked.find((x) => x.k === b.dataset.k);
+    if (a === 'add' || a === 'follow') { const r = FRD.follow(state, a === 'add' ? $('#fr-name')?.value || '' : b.dataset.n); toast(r.ok ? `Following ${r.n} ★` : r.why, r.ok ? 'good' : 'bad'); if (r.ok) { if ($('#fr-name')) $('#fr-name').value = ''; persist(); refreshWho(true).then(() => renderFriends(body)); } }
+    else if (a === 'unfollow' && fr) { FRD.unfollow(state, fr.n); toast(`Unfollowed ${fr.n}.`); persist(); }
+    else if (a === 'block') { const n = fr?.n || b.dataset.n; if (!n) return; FRD.block(state, n); if (!MPL.isMuted(n)) MPL.toggleMute(n); toast(`Blocked ${n}: unfollowed and chat muted.`); persist(); }
+    else if (a === 'unblock' && bl) { FRD.unblock(state, bl.n); if (MPL.isMuted(bl.n)) MPL.toggleMute(bl.n); toast(`Unblocked ${bl.n}.`); persist(); }
+    else if (a === 'join' && fr) return joinFriend(fr);
+    renderFriends(body); };
+  if (!FRS.loading && Date.now() - FRS.at > 15_000) refreshWho().then(() => renderFriends(body)); }
+function joinFriend(fr) { const st = FRD.statusOf(fr, { here: frHere(), who: FRS.who }), t = FRD.joinTarget(st); if (!t) return toast(`${fr.n} isn't online right now.`, 'bad');
+  if (t.near) { closePanel(); stopWalk(); if (mode === 'room') Object.assign(RP.R.p, { x: t.px, y: t.py }); else Object.assign(state.player, { x: t.px, y: t.py }); return toast(`Joined ${fr.n} 👋`, 'good'); }
+  if (mode !== 'world') return toast(`${fr.n} is at ${t.name}. Head outside, then Join to warp there.`, '');
+  closePanel(); stopWalk(); feel.fade(); Object.assign(state.player, { x: (t.tx + 0.5) * TILE, y: (t.ty + 0.5) * TILE }); toast(`Warped to ${t.name} to join ${fr.n} 👋`, 'good'); }
+// light background check (every 90 s, tab visible, only with friends): toast once when a friend comes online
+setInterval(async () => { if (!state || document.hidden || !FRD.ensureFriends(state).list.length) return; const who = await refreshWho();
+  for (const fr of FRD.ensureFriends(state).list) { const on = FRD.statusOf(fr, { here: frHere(), who }).state; if ((on === 'online' || on === 'here') && !FRS.seenOn.has(fr.k)) { if (FRS.at && FRS.primed) toast(`${fr.n} is online 👋 (Menu → Friends → Join)`, 'good'); FRS.seenOn.add(fr.k); } else if (on === 'away' || on === 'offline') FRS.seenOn.delete(fr.k); }
+  FRS.primed = true; }, FRD.FR.POLL_MS);
+globalThis.__friends = { FRD, FRS, refreshWho, join: (n) => { const fr = FRD.ensureFriends(state).list.find((x) => x.k === FRD.keyOf(n)); return fr && joinFriend(fr); } };
 // Featured Home of the Day (src/featured.js): signboard on Kibble Plaza + Menu → Explore. Visit reuses the shared-home walk-in.
 const FEAT = { data: null, loading: false, error: false };
 function renderFeatured(body, tries = 0) { if (panel?.kind !== 'featured') return; if (FEAT.data && FEAT.data.day !== sydneyDayF()) FEAT.data = null; body.innerHTML = featuredHtml(FEAT);
@@ -2330,7 +2360,7 @@ function frame(now) {
   requestAnimationFrame(frame);
 }
 // Live multiplayer: other players in the same room ('city' while walking the world). Off unless /api/config has a realtimeUrl.
-const MPL = createMultiplayer({ toast, onActions: () => wheel.open(), onTrade: (w, name) => openPanel('trade', { short: w, name }), onVisit: (id, name, kind) => (kind === 'shop' ? visitShop(id, name) : visitShared(id, name)), now: () => time, getLocal: () => state && { h: sharedHomeId(), room: mode === 'world' ? 'city' : mode === 'room' && RP.id ? 'r-' + RP.id : null, roomName: mode === 'room' ? RP.sc?.name : null,
+const MPL = createMultiplayer({ toast, onFollow: (n) => followFromCard(n), isFollowing: (n) => !!state && FRD.isFollowing(state, n), onActions: () => wheel.open(), onTrade: (w, name) => openPanel('trade', { short: w, name }), onVisit: (id, name, kind) => (kind === 'shop' ? visitShop(id, name) : visitShared(id, name)), now: () => time, getLocal: () => state && { h: sharedHomeId(), room: mode === 'world' ? 'city' : mode === 'room' && RP.id ? 'r-' + RP.id : null, roomName: mode === 'room' ? RP.sc?.name : null,
   x: mode === 'room' ? RP.R.p.x : state.player.x, y: mode === 'room' ? RP.R.p.y : state.player.y, f: player.face, m: player.moving, r: player.running, d: !!drive, emote: player.emote, act: ACT.act, p: poseCodeOf(ACT),
   name: state.player.name, token: K.kp?.session || null, look: { coat: state.player.coat, eq: state.wardrobe.equipped, pl: cpLook(mpProfile()) }, cp: CMP.F.c && mode === 'world' && !drive ? IQC.wireOffset(CMP.F, state.player) : null } });
 // companion id + form ride in the look's pl.look (cpi/cpf); remote clients strip them before reading the Shiba look
@@ -2384,7 +2414,7 @@ function renderQuestPanel(body) { const D = dqDay(); body.innerHTML = DQUI.panel
   body.onclick = (e) => { const b = e.target.closest('[data-dq]'); if (!b) return; const [op, a] = b.dataset.dq.split(':'); if (op === 'track') { DQ.ensure(state, D.day).track = +a; blip(880); persist(); hud(); renderQuestPanel(body); } }; }
 globalThis.__quests = { DQ, day: () => dqDay(), note: (k, d) => dqNote(k, d) };
 if (!DEMO) FEEDUI.start(() => { if (!state || !document.body.classList.contains('inworld')) return null; if (mode === 'world') feedSpot = spotAt(Math.floor(state.player.x / 32), Math.floor(state.player.y / 32)) || feedSpot;
-  GH.exclude(liveNames()); return { inWorld: true, name: state.player.name, coat: state.player.coat, area: feedSpot }; });
+  GH.exclude(liveNames()); return { inWorld: true, name: state.player.name, coat: state.player.coat, area: feedSpot, guest: (() => { try { return localStorage.getItem('inuverse.mp.guest'); } catch { return null; } })() }; });
 // ---- Founding Five Thousand seat-open notice (ships with kibble-pay tracker; polls /api/tech) ----
 const FSN = FS.startFoundingNotice({ toast: (m, k) => toast(m, k), onShow: () => { try { blip(988); setTimeout(() => blip(1318), 120); } catch {} } });
 globalThis.__foundingSeats = () => FSN;
