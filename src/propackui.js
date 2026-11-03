@@ -8,18 +8,29 @@ const providerOf = (w = globalThis) => w.phantom?.solana || (w.solana?.isPhantom
 const b64 = (u8) => { let s = ''; for (const x of u8) s += String.fromCharCode(x); return btoa(s); };
 const short = (a) => (a ? `${a.slice(0, 4)}…${a.slice(-4)}` : '');
 
-export function mountProPack(root, { d, getImg, api, track = () => {}, toast = () => {}, copy = async () => {} }) {
+export function mountProPack(root, { d, getImg, api, maker = 'https://cabal-meme-maker.vercel.app/', track = () => {}, toast = () => {}, copy = async () => {} }) {
   if (!root || !PP.propackAllowed(d)) { if (root) root.remove(); return null; }
   const KEY = `lh.propack.v1.${d.ticker}.${d.coin.ticker}`;
   const S = { cfg: { ...PP.PRICE_FALLBACK }, img: null, imgSrc: '', from: 'draft', artErr: '', o: { frame: 'ring', zoom: 1.1, px: 0, py: 0, clean: true, badge: false },
-    soc: { web: '', x: '', tg: '' }, pk: null, order: null, busy: '', err: '', msg: '', previewed: false };
+    soc: { web: '', x: '', tg: '' }, pk: null, order: null, busy: '', err: '', msg: '', previewed: false,
+    kind: 'propack', bcfg: { ...PP.BUNDLE_FALLBACK }, bundleOn: false };
   try { Object.assign(S, { order: JSON.parse(localStorage.getItem(KEY) || 'null') }); } catch {}
   const call = async (op, body, q = '') => {
     const r = await fetch(`${api}/api/cabal?op=${op}${q}${body ? '' : '&_=' + Date.now()}`, body ? { method: 'POST', body: JSON.stringify({ op, ...body }), headers: { 'content-type': 'text/plain;charset=UTF-8' } } : {});
     let j = {}; try { j = await r.json(); } catch {} return { status: r.status, ...j };
   };
-  const save = () => { try { S.order ? localStorage.setItem(KEY, JSON.stringify({ id: S.order.id, key: S.order.key || null, sig: S.order.sig || null })) : localStorage.removeItem(KEY); } catch {} };
+  const save = () => { try { S.order ? localStorage.setItem(KEY, JSON.stringify({ id: S.order.id, key: S.order.key || null, sig: S.order.sig || null, kind: S.order.kind || 'propack' })) : localStorage.removeItem(KEY); } catch {} };
   const unlocked = () => !!S.order?.unlocked;
+  const kindNow = () => S.order?.kind || S.kind, isBundle = () => kindNow() === 'bundle', cfgNow = () => (isBundle() ? S.bcfg : S.cfg), ops = () => PP.opsFor(kindNow());
+  const sideUrl = () => PP.bundleSideUrl(maker, S.order?.id);
+  function kitHtml() {
+    const k = S.order?.parts?.kit; if (!k) return '';
+    const need = PP.kitNeedsCoin(S.order.parts);
+    return `<div class="pp-kit" id="pp-kit"><b>🎁 Sponsored side</b> <span id="pp-kit-status">${esc(k.label || k.status)}</span>
+      ${need ? `<div class="row"><a class="btn" id="pp-kit-add" href="${esc(sideUrl())}" target="_blank" rel="noopener">${S.order.unlocked ? 'Next: add your coin for the side ↗' : 'Already launched? Add your coin now ↗'}</a></div>
+      <div class="plan">In the Cabal Meme Maker: your coin's mint + your character art, signed with the same wallet (free). ${S.order.unlocked ? 'Not launched yet? Come back any time: your side is paid and waits for you.' : 'It goes to review once this bundle is paid.'}</div>` : ''}
+      <button class="btn tiny ghost" id="pp-kit-refresh">Refresh status</button></div>`;
+  }
 
   root.innerHTML = `<h3 class="px">🚀 Launch Pro Pack <span class="pp-price" id="pp-price"></span></h3>
   <div class="plan">Pro token art, banners, a pump.fun-ready field sheet and a launch checklist, built <b>in your browser</b> from this draft. Your art never leaves this tab. The preview below is free and watermarked.</div>
@@ -83,29 +94,34 @@ export function mountProPack(root, { d, getImg, api, track = () => {}, toast = (
 
   /* ---------- buy / unlock ---------- */
   function renderBuy() {
-    const c = S.cfg, o = S.order, p = o?.pay, busy = !!S.busy;
+    const c = cfgNow(), o = S.order, p = o?.pay, busy = !!S.busy;
     $('#pp-price').innerHTML = `${esc(c.sol)} SOL${c.priceFinal === false ? ' <span class="chip pp-prop">PROPOSAL price</span>' : ''}`;
     let h = '';
     if (unlocked()) {
-      h = `<div class="good"><b>✅ Paid and unlocked.</b> No watermark from here on.</div>
+      h = `<div class="good"><b>✅ Paid and unlocked.</b> No watermark from here on.${isBundle() ? ' Launch Bundle: your Pro Pack is ready below.' : ''}</div>
         <div class="row"><button class="btn green" id="pp-zip" ${busy ? 'disabled' : ''}>${S.busy === 'zip' ? 'Building zip…' : '⬇ Download clean zip'}</button>
         ${o.sig ? `<a class="btn ghost" href="https://solscan.io/tx/${esc(o.sig)}" target="_blank" rel="noopener noreferrer">Payment tx ↗</a>` : ''}</div>
-        <div class="plan">${PP.FILES.length} files: ${PP.FILES.map(esc).join(', ')}. Order ${esc(o.id)}.</div>`;
+        <div class="plan">${PP.FILES.length} files: ${PP.FILES.map(esc).join(', ')}. Order ${esc(o.id)}.</div>${isBundle() ? kitHtml() : ''}`;
     } else if (o?.id) {
-      h = `<ol class="pp-steps"><li class="done">Order signed (free) ✔ <span class="plan">Order ${esc(o.id)}</span></li>
+      h = `<ol class="pp-steps"><li class="done">${isBundle() ? '🎁 Launch Bundle order' : 'Order'} signed (free) ✔ <span class="plan">Order ${esc(o.id)}</span></li>
         <li><b>Pay ${esc(p?.sol ?? c.sol)} SOL</b> to the ${esc(p?.toLabel || c.payToLabel)} from the wallet you signed with${S.pk || o.wallet ? ` (${esc(short(S.pk || o.wallet))})` : ''}.
           ${p ? `<div class="row"><a class="btn" id="pp-solpay" href="${esc(p.solanaPay)}">Pay with Solana Pay ↗</a><button class="btn tiny ghost" data-ppc="${esc(p.solanaPay)}">Copy pay link</button></div>
           <div class="pp-kv"><span>To</span><code>${esc(p.to)}</code><button class="btn tiny ghost" data-ppc="${esc(p.to)}">Copy</button>
             <span>Amount</span><code>${esc(p.sol)} SOL</code><span></span>
             <span>Memo</span><code>${esc(p.memo)}</code><button class="btn tiny ghost" data-ppc="${esc(p.memo)}">Copy</button>
             <span>Reference</span><code class="sm">${esc(p.reference)}</code><span></span></div>` : ''}</li>
-        <li><button class="btn green" id="pp-check" ${busy ? 'disabled' : ''}>${S.busy === 'check' ? 'Checking…' : 'Check payment'}</button> <span class="plan">A read-only lookup. A verified payment unlocks the clean zip right away.</span></li></ol>
-        <button class="btn tiny ghost" id="pp-reset">Start over</button>`;
+        <li><button class="btn green" id="pp-check" ${busy ? 'disabled' : ''}>${S.busy === 'check' ? 'Checking…' : 'Check payment'}</button> <span class="plan">A read-only lookup. A verified payment unlocks the clean zip right away${isBundle() ? ' and sends your sponsored side to a manual review' : ''}.</span></li></ol>
+        ${isBundle() ? kitHtml() : ''}<button class="btn tiny ghost" id="pp-reset">Start over</button>`;
     } else {
-      const prov = providerOf();
-      h = `<ol class="pp-steps"><li>${S.pk ? `Connected: <code>${esc(short(S.pk))}</code>` : prov ? `<button class="btn" id="pp-connect" ${busy ? 'disabled' : ''}>Connect Phantom</button>` : `<a class="btn" href="https://phantom.app/ul/browse/${encodeURIComponent(location.href)}?ref=${encodeURIComponent(location.origin)}">Open in Phantom</a> <span class="plan">No Phantom found in this browser.</span>`}</li>
+      const prov = providerOf(), b = S.bcfg, pc = S.cfg;
+      if (S.bundleOn) h = `<div class="pp-plans" role="radiogroup" aria-label="What to buy">
+        <label class="pp-plan${S.kind === 'propack' ? ' on' : ''}"><input type="radio" name="pp-kind" value="propack" ${S.kind === 'propack' ? 'checked' : ''}><span><b>Pro Pack only</b> <span class="pp-amt">${esc(pc.sol)} SOL</span><span class="plan">The design pack above.</span></span></label>
+        <label class="pp-plan${S.kind === 'bundle' ? ' on' : ''}" id="pp-plan-bundle"><input type="radio" name="pp-kind" value="bundle" ${S.kind === 'bundle' ? 'checked' : ''}><span><b>🎁 Launch Bundle</b> <span class="pp-amt">${esc(b.sol)} SOL</span>${b.priceFinal === false ? ' <span class="chip pp-prop">PROPOSAL price</span>' : ''}
+          <span class="plan">This Pro Pack <b>+ a 7-day Basic sponsored side</b> in the Cabal Meme Maker${b.separately ? ` (${esc(b.separately)} SOL separately)` : ''}. One payment: the pack unlocks right away, the side goes live only after a manual approval. Needs your coin live on Solana; not launched yet? Add it later.</span></span></label></div>`;
+      h += `<ol class="pp-steps"><li>${S.pk ? `Connected: <code>${esc(short(S.pk))}</code>` : prov ? `<button class="btn" id="pp-connect" ${busy ? 'disabled' : ''}>Connect Phantom</button>` : `<a class="btn" href="https://phantom.app/ul/browse/${encodeURIComponent(location.href)}?ref=${encodeURIComponent(location.origin)}">Open in Phantom</a> <span class="plan">No Phantom found in this browser.</span>`}</li>
         <li><button class="btn green" id="pp-sign" ${S.pk && !busy ? '' : 'disabled'}>${S.busy === 'sign' ? 'Approve in Phantom…' : 'Sign order (free)'}</button> <span class="plan">A signed message, not a transaction: no funds move.</span></li>
         <li>Pay ${esc(c.sol)} SOL with Solana Pay, then Check payment.</li></ol>`;
+      if (isBundle()) h += `<div class="plan">🎁 Visibility on a sponsored side, not an endorsement. Inu / $KIBBLE stay free.</div>`;
     }
     h += `<div class="plan">${esc(c.refund)}${c.refundFinal === false ? ' <span class="chip pp-prop">PROPOSAL wording</span>' : ''} A design pack, not a launch, a listing or an endorsement. Not financial advice.</div>`;
     if (S.err) h += `<div class="plan bad" id="pp-err">${esc(S.err)}</div>`;
@@ -114,29 +130,34 @@ export function mountProPack(root, { d, getImg, api, track = () => {}, toast = (
     $('#pp-connect') && ($('#pp-connect').onclick = connect); $('#pp-sign') && ($('#pp-sign').onclick = order);
     $('#pp-check') && ($('#pp-check').onclick = check); $('#pp-zip') && ($('#pp-zip').onclick = zip);
     $('#pp-reset') && ($('#pp-reset').onclick = () => { S.order = null; S.err = S.msg = ''; save(); renderBuy(); });
+    root.querySelectorAll('input[name="pp-kind"]').forEach((r) => r.onchange = () => { S.kind = r.value; S.err = ''; track('propack_plan', { kind: S.kind }); renderBuy(); });
+    $('#pp-kit-refresh') && ($('#pp-kit-refresh').onclick = refreshStatus);
+    $('#pp-kit-add') && ($('#pp-kit-add').onclick = () => track('bundle_side_click', { from: 'lh-card', paid: !!S.order?.unlocked }));
     root.querySelectorAll('[data-ppc]').forEach((b) => b.onclick = () => copy(b.dataset.ppc, 'Copied'));
   }
   const fail = (e) => { S.err = /reject|cancel|denied/i.test(e?.message || '') ? 'You cancelled in Phantom. Nothing was signed.' : String(e?.message || e); };
   async function connect() { S.err = ''; try { const p = providerOf(); const r = await p.connect(); S.pk = (r?.publicKey || p.publicKey)?.toString() || null; } catch (e) { fail(e); } renderBuy(); }
   async function order() {
-    const p = providerOf(); if (!p || !S.pk) return; S.busy = 'sign'; S.err = S.msg = ''; renderBuy();
+    const p = providerOf(); if (!p || !S.pk) return; S.busy = 'sign'; S.err = S.msg = ''; renderBuy(); const kind = S.kind, op = PP.opsFor(kind);
     const body = { wallet: S.pk, ticker: d.ticker, name: d.name, side: d.side, parent: d.coin.ticker, issued: new Date().toISOString() };
     try {
-      const m = await call('propack-message', null, '&' + new URLSearchParams({ wallet: body.wallet, ticker: body.ticker, name: body.name, side: body.side, parent: body.parent, issued: body.issued }));
+      const m = await call(op.message, null, '&' + new URLSearchParams({ wallet: body.wallet, ticker: body.ticker, name: body.name, side: body.side, parent: body.parent, issued: body.issued }));
       if (!m.message) throw new Error(m.reason || 'server unavailable, try again');
       const out = await p.signMessage(new TextEncoder().encode(m.message), 'utf8'); const sig = out?.signature || out;
-      const r = await call('propack-order', { ...body, signature: b64(sig instanceof Uint8Array ? sig : new Uint8Array(sig)) });
+      const r = await call(op.order, { ...body, signature: b64(sig instanceof Uint8Array ? sig : new Uint8Array(sig)) });
       if (!r.ok) throw new Error(r.reason || r.error || 'order refused');
-      S.order = { id: r.id, pay: r.pay, wallet: S.pk }; save(); S.msg = r.note || ''; track('propack_order', { result: 'ok', side: d.side });
-    } catch (e) { fail(e); track('propack_order', { result: /cancel/i.test(S.err) ? 'cancel' : 'error' }); }
+      S.order = { id: r.id, pay: r.pay, wallet: S.pk, kind, parts: r.order?.parts || null }; save(); S.msg = r.note || ''; track('propack_order', { result: 'ok', side: d.side, kind });
+    } catch (e) { fail(e); track('propack_order', { result: /cancel/i.test(S.err) ? 'cancel' : 'error', kind }); }
     S.busy = ''; renderBuy();
   }
   async function check() {
     S.busy = 'check'; S.err = S.msg = ''; renderBuy();
-    try { const r = await call('propack-pay-check', { id: S.order.id });
-      if (r.unlocked) { Object.assign(S.order, { unlocked: true, key: r.key, sig: r.payment?.sig || null }); save(); S.msg = r.note || 'Unlocked.'; track('propack_pay_check', { result: 'unlocked' }); renderSheet(); draw(); }
-      else { S.err = r.reason || r.error || 'not found yet'; if (r.pay) S.order.pay = r.pay; track('propack_pay_check', { result: r.status === 429 ? 'ratelimited' : 'waiting' }); }
-    } catch (e) { fail(e); track('propack_pay_check', { result: 'error' }); }
+    const kind = kindNow();
+    try { const r = await call(ops().check, { id: S.order.id });
+      if (r.order?.parts) S.order.parts = r.order.parts;
+      if (r.unlocked) { Object.assign(S.order, { unlocked: true, key: r.key, sig: r.payment?.sig || null }); save(); S.msg = r.note || 'Unlocked.'; track('propack_pay_check', { result: 'unlocked', kind }); renderSheet(); draw(); }
+      else { S.err = r.reason || r.error || 'not found yet'; if (r.pay) S.order.pay = r.pay; track('propack_pay_check', { result: r.status === 429 ? 'ratelimited' : 'waiting', kind }); }
+    } catch (e) { fail(e); track('propack_pay_check', { result: 'error', kind }); }
     S.busy = ''; renderBuy();
   }
   async function zip() {
@@ -160,6 +181,13 @@ export function mountProPack(root, { d, getImg, api, track = () => {}, toast = (
     S.busy = ''; renderBuy();
   }
 
+  async function loadStatus() {
+    const st = await call(ops().status, null, '&' + new URLSearchParams({ id: S.order.id, ...(S.order.key ? { key: S.order.key } : {}) })).catch(() => null);
+    if (!st?.ok) { if (st?.status === 404) S.order = null; save(); return; }
+    S.order.unlocked = !!st.unlocked; S.order.pay = st.pay || S.order.pay; S.order.parts = st.order?.parts || S.order.parts || null; save();
+  }
+  async function refreshStatus() { S.err = ''; if (S.order?.id) await loadStatus(); renderSheet(); draw(); renderBuy(); }
+
   /* ---------- boot ---------- */
   $('#pp-contents').innerHTML = (S.cfg.contents || ['Pro token logo 512 + 1000 px', 'X banner 1500×500 + 1280×720 banner', 'pump.fun field sheet with copy buttons', 'One-page launch checklist', 'One clean zip']).map((t) => `<li>${esc(t)}</li>`).join('');
   renderSheet(); renderBuy(); setArt(getImg(), 'draft');
@@ -167,9 +195,9 @@ export function mountProPack(root, { d, getImg, api, track = () => {}, toast = (
   (async () => {
     const c = await call('propack-config').catch(() => null);
     if (c?.ok) { S.cfg = { ...S.cfg, ...c }; $('#pp-contents').innerHTML = c.contents.map((t) => `<li>${esc(t)}</li>`).join(''); }
-    if (S.order?.id) { const st = await call('propack-status', null, '&' + new URLSearchParams({ id: S.order.id, ...(S.order.key ? { key: S.order.key } : {}) })).catch(() => null);
-      if (!st?.ok) S.order = null; else { S.order.unlocked = !!st.unlocked; S.order.pay = st.pay || S.order.pay; if (!st.unlocked && st.order?.status === 'unlocked') S.order.unlocked = false; } save();
-      renderSheet(); draw(); }
+    const bc = await call('bundle-config').catch(() => null); // older backend without bundles: offer the Pro Pack only
+    if (bc?.ok) { S.bcfg = { ...S.bcfg, ...bc }; S.bundleOn = true; }
+    if (S.order?.id) { await loadStatus(); renderSheet(); draw(); }
     renderBuy();
   })();
   return { refresh: () => { if (S.from === 'draft') setArt(getImg(), 'draft'); } };

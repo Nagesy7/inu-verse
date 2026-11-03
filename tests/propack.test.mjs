@@ -60,3 +60,20 @@ test('readme + files list; analytics props carry no wallet data', () => {
   assert.deepEqual(cleanProps({ wallet: '7rPVPVBi8sDAcLNkEK6zdEnreeK3SV56ARaXzhnRUNRg', side: 'cabal', coin: 'BTC', result: 'unlocked' }), { side: 'cabal', coin: 'BTC', result: 'unlocked' });
   assert.equal(PP.PRICE_FALLBACK.priceFinal, true); assert.equal(PP.PRICE_FALLBACK.refundFinal, true); assert.equal(PP.PRICE_FALLBACK.sol, 0.25);
 });
+
+test('Launch Bundle: PROPOSAL 0.65 SOL fallback, proposal refund wording, ops per product, side link to the maker', () => {
+  const B = PP.BUNDLE_FALLBACK;
+  assert.equal(B.sol, 0.65); assert.equal(B.separately, 0.75); assert.equal(B.priceFinal, false); assert.equal(B.refundFinal, false);
+  assert.match(B.refund, /Pro Pack part is non-refundable once it's unlocked.*0\.5 SOL by hand/);
+  assert.deepEqual(PP.opsFor('bundle'), { message: 'bundle-message', order: 'bundle-order', check: 'bundle-pay-check', status: 'bundle-status', config: 'bundle-config' });
+  assert.equal(PP.opsFor('propack').check, 'propack-pay-check'); assert.equal(PP.opsFor(undefined).order, 'propack-order');
+  assert.equal(PP.bundleSideUrl('https://cabal-meme-maker.vercel.app/', 'a1b2c3d4e5f6'), 'https://cabal-meme-maker.vercel.app/#sponsor?bundle=a1b2c3d4e5f6');
+  assert.equal(PP.bundleSideUrl('http://localhost:4187', 'x y'), 'http://localhost:4187/#sponsor?bundle=x%20y');
+  assert.equal(PP.kitNeedsCoin({ kit: { status: 'needs-details' } }), true); assert.equal(PP.kitNeedsCoin({ kit: { status: 'not-added' } }), true);
+  assert.equal(PP.kitNeedsCoin({ kit: { status: 'in-review' } }), false); assert.equal(PP.kitNeedsCoin(null), false);
+  assert.equal(PP.propackAllowed({ ...D, side: 'inu' }), false, 'no bundle on Inu drafts either (the whole card is removed)');
+});
+test('Launch Bundle analytics props carry no wallet data', () => {
+  const p = cleanProps({ kind: 'bundle', paid: true, from: 'lh-card', wallet: '7rPVPVBi8sDAcLNkEK6zdEnreeK3SV56ARaXzhnRUNRg', x: '7rPVPVBi8sDAcLNkEK6zdEnreeK3SV56ARaXzhnRUNRg' });
+  assert.deepEqual(Object.keys(p).sort(), ['from', 'kind', 'paid']);
+});
