@@ -50,7 +50,7 @@ test('wheel: 11 actions still thumb-sized at 844x390 / 667x375; keys 1-9, 0, -',
   assert.match(fs.readFileSync(new URL('../src/actionwheel.js', import.meta.url), 'utf8'), /'1234567890-'/);
 });
 
-test('browser: compact emote button opens the wheel, laugh plays, spam is limited, A sits on a bench and stands up', { timeout: 120000 }, async () => {
+test('browser: compact emote button opens the wheel, laugh plays, spam is limited, A sits on a bench and stands up', { timeout: 180000 }, async () => {
   const srv = await serveRoot(); const b = await chromium.launch(); const errs = [];
   try { for (const vp of [{ width: 844, height: 390 }, { width: 667, height: 375 }]) {
     const ctx = await b.newContext({ viewport: vp, isMobile: true, hasTouch: true }), p = await ctx.newPage(); p.on('pageerror', (e) => errs.push(e.message));
@@ -61,17 +61,28 @@ test('browser: compact emote button opens the wheel, laugh plays, spam is limite
     assert.ok(r.emo[0] + r.emo[2] <= vp.width && r.emo[1] + r.emo[3] <= vp.height);
     await p.tap('#btn-emo'); await p.waitForTimeout(250); assert.ok(await p.evaluate(() => !document.getElementById('act-wheel').hidden), 'wheel open');
     await p.tap('[data-act=laugh]'); await p.waitForTimeout(150); assert.equal(await p.evaluate(() => __inu.emo.act?.kind), 'laugh');
-    const drops0 = await p.evaluate(() => globalThis.__emoteDrops); for (let i = 0; i < 4; i++) await p.evaluate(() => __inu.emote('heart'));
+    const drops0 = await p.evaluate(() => globalThis.__emoteDrops); const spamAt = await p.evaluate(() => { for (let i = 0; i < 4; i++) __inu.emote('heart'); return performance.now(); }); // one burst: the bucket can't refill between calls on a slow machine
     assert.ok(await p.evaluate(() => globalThis.__emoteDrops) > drops0, 'spam rate-limited');
-    await p.waitForTimeout(2200);
-    let sp = null; for (const id of ['b0', 'b2', 'b8', 'b12', 'b4', 'b10']) { // townsfolk wander: use the first bench with nobody on/next to it
-      const s0 = await p.evaluate((id) => { const s = __inu.emo.spots.find((q) => q.id === id); __inu.state.player.x = s.x; __inu.state.player.y = s.y + 12; return s; }, id); await p.waitForTimeout(250);
-      if (/Sit on the bench/.test(await p.evaluate(() => document.getElementById('prompt').textContent))) { sp = s0; break; } }
-    assert.ok(sp, 'a free bench offers "Sit on the bench"');
-    await p.tap('#btn-a'); await p.waitForTimeout(200);
+    // Deterministic bench check (no wall-clock races): the wandering pups are frozen in place, and the bench is one that no pup,
+    // worker or townsfolk will come near for the next 20 s (townsfolk follow a fixed day schedule, so it is predicted, not sampled).
+    // Every step then waits on game state (prompt target / action), never on a fixed delay, so a busy machine only makes it slower.
+    // sitting spends an emote token (1/s, burst 2, on the page's performance.now clock): wait until the spam above has refilled two
+    await p.waitForFunction((t) => performance.now() - t >= 2100, spamAt, { timeout: 15000 });
+    const sp = await p.evaluate(async () => { const TF = await import('/src/townsfolk.js'); for (const n of __inu.npcs) { n.path = []; n.moving = false; n.wait = 1e9; }
+      const far = (x, y, a, b, r) => Math.hypot(x - a, y - b) > r, sec = __inu.folk.sec(), o = {}, N = __inu.folk.T.F.length;
+      for (const id of ['b0', 'b2', 'b8', 'b12', 'b4', 'b10', 'b1', 'b3', 'b5', 'b6', 'b7', 'b9', 'b11', 'b13']) { const s = __inu.emo.spots.find((q) => q.id === id); if (!s) continue;
+        if (!__inu.npcs.every((n) => far(n.x, n.y, s.x, s.y, 120))) continue; if (!(globalThis.__crew || []).every((w) => !w.on || far(w.x, w.y, s.x, s.y, 120))) continue;
+        if (__inu.president?.on && !far(__inu.president.x, __inu.president.y, s.x, s.y, 160)) continue;
+        if (!__inu.folk.T.out.every((a) => far(a.x, a.y, s.x, s.y, 140))) continue; // also where they are right now (greeting holds / event-day gathering)
+        let ok = true; for (let i = 0; ok && i < N; i++) for (let t = -12; t <= 20; t += 0.5) { TF.folkAt(i, sec + t, o, globalThis.__events?.ev?.id); /* the same plan the game uses today (event days gather folk); -12 s covers greeting lag */ if (!o.hidden && Number.isFinite(o.x) && !far(o.x, o.y, s.x, s.y, 110)) { ok = false; break; } }
+        if (!ok) continue; __inu.state.player.x = s.x; __inu.state.player.y = s.y + 12; return s; } return null; });
+    assert.ok(sp, 'a bench nobody will walk past for 20 s');
+    await p.waitForFunction((id) => document.getElementById('prompt').dataset.target === 'seat:' + id && /Sit on the bench/.test(document.getElementById('prompt').textContent), sp.id, { timeout: 15000 });
+    await p.tap('#btn-a'); await p.waitForFunction(() => __inu.emo.act?.kind === 'sit', null, { timeout: 15000 }).catch(() => {});
     const st = await p.evaluate(() => ({ k: __inu.emo.act?.kind, spot: __inu.emo.act?.spot, x: __inu.state.player.x, y: __inu.state.player.y, pr: document.getElementById('prompt').textContent }));
-    assert.equal(st.k, 'sit'); assert.equal(st.spot, sp.id); assert.equal(st.x, sp.x); assert.equal(st.y, sp.y); assert.match(st.pr, /Stand up/);
-    await p.waitForTimeout(1100); await p.tap('#btn-a'); await p.waitForTimeout(150); assert.equal(await p.evaluate(() => __inu.emo.act), null, 'A again stands up');
+    assert.equal(st.k, 'sit'); assert.equal(st.spot, sp.id); assert.equal(st.x, sp.x); assert.equal(st.y, sp.y);
+    await p.waitForFunction(() => /Stand up/.test(document.getElementById('prompt').textContent), null, { timeout: 15000 }).catch(() => {}); assert.match(await p.evaluate(() => document.getElementById('prompt').textContent), /Stand up/);
+    await p.tap('#btn-a'); await p.waitForFunction(() => __inu.emo.act === null, null, { timeout: 15000 }).catch(() => {}); assert.equal(await p.evaluate(() => __inu.emo.act), null, 'A again stands up');
     await ctx.close(); } } finally { await b.close(); srv.close(); }
   assert.deepEqual(errs, []);
 });
