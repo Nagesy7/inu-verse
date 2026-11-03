@@ -19,14 +19,23 @@
   <strong style="color:#f2cc68">Launch Hall</strong>
   <span class="sp"></span>
   <a href="/">Play Inu Verse</a>
+  <a href="https://kibbleinu.com/for-devs.html?utm_source=inu-verse&amp;utm_medium=link" data-paid="for-devs" data-paid-from="hall-nav">🛠️ For devs</a>
 </header>
 <main class="wrap">
   <p class="hint">Wallet connect only — no Inu Verse username / SIWS sign-in to browse or launch.</p>
   <div id="hall"></div>
 </main>
+<footer class="wrap" style="color:#b9b08e;font-size:13px;padding-bottom:28px">
+  Launching here is free: you pay only pump.fun's own fees from your wallet.
+  Optional extras for devs (sponsored meme-maker sides, the Launch Pro Pack) are listed with their prices on
+  <a style="color:#f2cc68;font-weight:700" href="https://kibbleinu.com/for-devs.html?utm_source=inu-verse&amp;utm_medium=link" data-paid="for-devs" data-paid-from="hall-foot">For devs · launch with us</a>.
+  Players: <a style="color:#f2cc68;font-weight:700" href="https://kibbleinu.com/pay?utm_source=inu-verse&amp;utm_medium=link#shop-h" data-paid="shop" data-paid-from="hall-foot">cosmetics shop</a> ($KIBBLE is never needed to play). NFA.
+</footer>
 <script type="importmap">{"imports":{"@solana/web3.js":"https://esm.sh/@solana/web3.js@1.98.4"}}</script>
 <script type="module">
   import { bootHall } from './src/hallmain.js';
   bootHall(document.getElementById('hall'), { apiBase: '', verseHome: location.origin });
 </script>
+<script defer src="/_vercel/insights/script.js"></script>
+<script>/* paid_link_click: product + where it was clicked, never wallet data */(function(){window.va=window.va||function(){(window.vaq=window.vaq||[]).push(arguments)};var c=function(v){return String(v||'').toLowerCase().replace(/[^a-z0-9-]/g,'').slice(0,40)};document.addEventListener('click',function(e){var a=e.target&&e.target.closest&&e.target.closest('[data-paid]');if(a)window.va('event',{name:'paid_link_click',data:{product:c(a.getAttribute('data-paid')),from:c(a.getAttribute('data-paid-from')),site:'inu-verse'}})},true)})();</script>
 </body></html>
