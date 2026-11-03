@@ -788,3 +788,9 @@ body[data-pfr=film] #photo-frame::before{top:-4.1vmin}body[data-pfr=film] #photo
 #pm-flash{background:#fff;opacity:0;z-index:42}#pm-flash.on{animation:pmflash .35s ease-out}@keyframes pmflash{0%{opacity:.85}100%{opacity:0}}
 @media (max-width:620px){#photo-ui .pm-b span{display:none}}
 @media (prefers-reduced-motion:reduce){#photo-ui .pm-hint.fade{animation:none}#pm-flash.on{animation:none}}
+/* ===== feature batch #3: portal stones + minimap ===== */
+.map-legend .stone{background:#5ff2e0;transform:rotate(45deg) scale(.85)}
+#map-warp{font-size:10px;color:#5ff2e0;margin-top:3px;text-align:center}#map-warp[hidden]{display:none}
+.pt-grid .pt-lock{opacity:.5}.pt-grid .ft-card small{color:#5ff2e0}.pt-grid .pt-lock small,.pt-grid .ft-card.on small{color:inherit}
+/* phone landscape: the minimap shares the right column with the Kibble Pay profile badge (under the wallet pill); sit just left of the badge */
+@media (max-height:520px) and (orientation:landscape){body.mm-on.inworld #minimap-wrap{right:calc(max(8px,env(safe-area-inset-right)) + 40px)!important}}

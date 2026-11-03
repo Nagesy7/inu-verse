@@ -26,7 +26,7 @@ export function buildDrawer(doc = document, { bork, joystick } = {}) {
   dr.addEventListener('click', (e) => { if (e.target === dr) return open(false); const b = e.target.closest('button,a'); if (b && !STAY_OPEN.has(b.id) && b.id !== 'dr-close' && b.closest('.dr-grid')) setTimeout(() => open(false), 0); });
   extra['dr-bork'].onclick = () => bork?.();
   const mm = $('minimap-wrap'), key = 'inuverse.minimap', setMM = (v) => { doc.body.classList.toggle('mm-on', v); extra['dr-minimap'].textContent = `Minimap: ${v ? 'on' : 'off'}`; try { localStorage.setItem(key, v ? '1' : '0'); } catch {} };
-  let mmOn; try { mmOn = localStorage.getItem(key); } catch {} setMM(mmOn == null ? !matchMedia('(pointer: coarse)').matches : mmOn === '1'); extra['dr-minimap'].onclick = () => setMM(!doc.body.classList.contains('mm-on'));
+  let mmOn; try { mmOn = localStorage.getItem(key); } catch {} setMM(mmOn == null ? true : mmOn === '1'); extra['dr-minimap'].onclick = () => setMM(!doc.body.classList.contains('mm-on')); // feature batch #3: the minimap fits the phone HUD, so it starts on everywhere (toggle in the menu)
   if (joystick) { const jb = extra['dr-joy'], show = () => { const v = !!joystick.get(); jb.textContent = `Joystick controls: ${v ? 'on' : 'off'}`; jb.setAttribute('aria-checked', String(v)); };
     jb.onclick = () => { joystick.set(!joystick.get()); show(); }; joystick.onChange = show; show(); }
   doc.addEventListener('keydown', (e) => { if (e.key === 'Escape' && !dr.hidden) { open(false); e.stopPropagation(); } if (e.key === 'Tab' && doc.body.classList.contains('inworld')) { e.preventDefault(); open(dr.hidden); } }, true);

@@ -95,7 +95,8 @@ import { profileFromState, hasCustomLook, saveProfile, loadProfile, setProfileSt
 import { TRAITS } from './traits.js';
 import { drawProfileShiba, drawPoseFx } from './art.js';
 import { ACTIONS, makeActor, startAction, stepActor, poseAt, poseCodeOf, isAction, ICON_ACTIONS, makeEmoteLimiter, cancelAction } from './actions.js';
-import { nearestSpot, spotAt as seatAt, seatPose, SPOT_NAME, SPOTS } from './sitspots.js'; import { sitProps } from './sitart.js'; import * as PHM from './photomode.js'; // feature batch #2: photo mode // feature batch: emotes + sit spots
+import { nearestSpot, spotAt as seatAt, seatPose, SPOT_NAME, SPOTS } from './sitspots.js'; import { sitProps } from './sitart.js'; import * as PHM from './photomode.js'; // feature batch #2: photo mode
+import * as PT from './portals.js'; import * as MM from './minimap.js'; // feature batch #3: portal stones + low-CPU minimap // feature batch: emotes + sit spots
 import { mountWheel } from './actionwheel.js';
 import { WORKER_JOB, JOBS as JOB_DEFS, ensureJobs, rankOf } from './jobs.js';
 import { renderFriend, renderChapel, renderFurnStore } from './relui.js';
@@ -174,6 +175,7 @@ function stepFolk(view) { const now = performance.now() / 1000, dt = Math.min(0.
   return TF.stepTownsfolk(TFS, dt, { s: folkSecNow(), now: time, px: drive ? null : state.player.x, py: drive ? null : state.player.y, view, hour: dayPhase(time + dayOffset).hour, wx: folkWx(),
     low: SKY.lowFx(SKYS.pool, { reduced: reducedMotion(), flag: SKYQ.low }), rm: reducedMotion(), rng, artKey, say: (id, text, t, force) => chatSay(id, text, t, { force }), ev: EVX.ev.id }); }
 let vignette = null, miniBase = null;
+const PFOUND = PT.loadFound(); let ptAcc = 0; const MMC = MM.makeMiniClock(); let mmView = { sx: 0, sy: 0 }; // portal stones found on this device; minimap redraw clock + window
 const keys = new Set();
 const touch = { x: 0, y: 0, id: null };
 let JOYS = null, joyT = 0, padAct = null; // optional joystick (src/joystick.js), built with the touch controls below
@@ -356,7 +358,7 @@ cv.addEventListener('click', (e) => { if (photo) return; // photo mode: taps/dra
   } else if (mode === 'room' && !panel && !feel.talking()) RP.click(e.clientX, e.clientY, groundTap(performance.now()));
   else if (mode === 'build') { if (build.shop) shopClick(shopCell(e.clientX, e.clientY)); else buildClick(roomCell(e.clientX, e.clientY)); }
 });
-$('#minimap').addEventListener('click', (e) => { if (mode === 'world' && !panel) { if (guide) return guide.openMap(); const r = e.target.getBoundingClientRect(); clickWorldTile(Math.floor((e.clientX - r.left) / 2), Math.floor((e.clientY - r.top) / 2)); } });
+$('#minimap').addEventListener('click', (e) => { if (mode === 'world' && !panel) { if (guide) return guide.openMap(); const r = e.target.getBoundingClientRect(); const k = e.target.width / r.width, [tx, ty] = MM.tileAt((e.clientX - r.left) * k, (e.clientY - r.top) * k, mmView); clickWorldTile(tx, ty); } });
 // Tap/click-to-walk: A* (8-way, no corner cutting) + string-pulled legs. Tapping a building/door walks there and enters,
 // tapping an NPC walks up to them and talks; double-tap = run there. Keys / stick cancel it instantly.
 const solidT = (x, y) => isSolid(x, y);
@@ -490,7 +492,7 @@ function openGameDoor(id) { const url = gameDoorUrl(id), g = GAME_DOORS.find((d)
   if (id === 'rescue' || id === 'quest') maybeOfferOnboard(id, { id }); }
 globalThis.__doors = { url: gameDoorUrl, open: openGameDoor };
 // ---- onboarding tour + wayfinding (src/guide.js, src/guideui.js) ----
-const guide = createGuide({ state: () => state, mode: () => mode, toast: (m, k) => toast(m, k), panelOpen: () => !!panel, persist: () => persist(), miniBase: () => miniBase,
+const guide = createGuide({ state: () => state, mode: () => mode, toast: (m, k) => toast(m, k), panelOpen: () => !!panel, persist: () => persist(), miniBase: () => miniBase, portals: () => ({ stones: PT.STONES, found: PFOUND, here: PT.stoneNear(state.player.x, state.player.y) }), warp: (to, from) => warpTo(to, from),
   wallet: () => state?.walletAddr, saveProfile: () => { if (state && hasCustomLook(state)) saveProfile(state); },
   walk: (path) => { Object.assign(player.pw, { pts: path.slice(), goal: path[path.length - 1] || null, run: false, stuckT: 0, lastD: Infinity, replans: 0 }); player.path = player.pw.pts; player.target = null; player.npcT = null; player.clickMark = null; }, stopWalk: () => stopWalk(),
   openQuests: () => openPanel('onboard') });
@@ -731,7 +733,7 @@ $('#panel-close').onclick = () => closePanel();
   pad.addEventListener('pointermove', (e) => { if (e.pointerId === touch.id) upd(e); });
   const end = (e) => { if (e.pointerId !== touch.id) return; touch.id = null; touch.x = touch.y = 0; touch.mag = 0; player.holdRun = false; knob.style.transform = ''; pad.classList.remove('on'); };
   pad.addEventListener('pointerup', end); pad.addEventListener('pointercancel', end);
-  const act = padAct = () => { globalThis.__actCount = (globalThis.__actCount || 0) + 1; if (feel.talking()) return feel.advance(); if (mode === 'room' && !panel) return RP.act(); if (mode !== 'world' || panel || !state) return; if (carAction()) return; const it = nearIt(state.player.x, state.player.y); const sn = seatNear(itDist(it)); if (sn?.sitting) return sitAt(sn); const pup = nearPup(); if (pup && !it) petPup(pup); else if (sn && !(!drive && EVX.nearTrader(state.player.x, state.player.y))) sitAt(sn); else if (it) interact(it); }; // seated: A stands up; else pup/trader > seat > building (matches the prompt)
+  const act = padAct = () => { globalThis.__actCount = (globalThis.__actCount || 0) + 1; if (feel.talking()) return feel.advance(); if (mode === 'room' && !panel) return RP.act(); if (mode !== 'world' || panel || !state) return; if (carAction()) return; const it = nearIt(state.player.x, state.player.y); const stn = !nearPup() && stoneHere(); if (stn) return openPanel('portals', { from: stn.id }); /* portal stones sit 3+ tiles from seats + doors */ const sn = seatNear(itDist(it)); if (sn?.sitting) return sitAt(sn); const pup = nearPup(); if (pup && !it) petPup(pup); else if (sn && !(!drive && EVX.nearTrader(state.player.x, state.player.y))) sitAt(sn); else if (it) interact(it); }; // seated: A stands up; else pup/trader > seat > building (matches the prompt)
   $('#btn-a').addEventListener('pointerdown', (e) => { e.preventDefault(); initAudio(); act(); });
   $('#btn-b').addEventListener('pointerdown', (e) => { e.preventDefault(); initAudio(); if (mode === 'world' && !panel && state) { if (drive) return honk(); bork(); player.emote = { kind: 'bork', t: 1.2 }; emoteBubble('me', 'bork', time); } });
   $('#btn-menu')?.addEventListener('pointerdown', (e) => { e.preventDefault(); });
@@ -762,6 +764,7 @@ function updateWorld(dt) {
     if (keys.has('w') || keys.has('arrowup')) dy -= 1; if (keys.has('s') || keys.has('arrowdown')) dy += 1;
     if (keys.has('a') || keys.has('arrowleft')) dx -= 1; if (keys.has('d') || keys.has('arrowright')) dx += 1;
   }
+  if (!drive) portalTick(dt); // portal stones: discover by walking near
   if (photo && PHC) PHM.panKeys(PHC, keys, dt); // photo mode: keys pan the camera, the pup holds still
   const sx0 = !panel && !photo ? touch.x : 0, sy0 = !panel && !photo ? touch.y : 0;
   const inp = MOB.pickInput({ keys: { x: dx, y: dy }, stick: { x: sx0, y: sy0 }, stickMag: touch.mag || 0, shift: keys.has('shift'), holdRun: player.holdRun, path: player.pw.pts.length > 0, pathRun: player.pw.run });
@@ -834,6 +837,7 @@ function updateWorld(dt) {
   if (drive) { pr.hidden = false; pr.innerHTML = `<kbd${hc()}>${hk('a', 'E')}</kbd>Park ${esc(CAR_MODELS[drive.car.model].name)} · <kbd${hc()}>${hk('b', 'H')}</kbd>Honk`; setA('PARK'); }
   else if (pk) { pr.hidden = false; pr.innerHTML = `<kbd${hc()}>${hk('a', 'E')}</kbd>Drive your ${esc(CAR_MODELS[carOf(state, pk.id)?.model]?.name || 'car')}`; setA('DRIVE'); }
   else if ((seat = seatNear(itDist(it)))?.sitting) { pr.hidden = false; pr.innerHTML = `<kbd${hc()}>${hk('a', 'E')}</kbd>Stand up`; pr.dataset.target = 'seat:' + seat.spot.id; setA('UP'); }
+  else if (!pup && stoneHere()) { const stn = stoneHere(); pr.hidden = false; pr.innerHTML = `<kbd${hc()}>${hk('a', 'E')}</kbd>Portal stone: ${esc(stn.name)} · warp`; pr.dataset.target = 'portal:' + stn.id; setA('WARP'); }
   else if (pup?.trader) { pr.hidden = false; pr.innerHTML = `<kbd${hc()}>${hk('a', 'E')}</kbd>Trade with ${esc(pup.name)}`; setA('TRADE'); }
   else if (pup?.workerRef) { pr.hidden = false; const v = pup.workerRef.chatted ? `Play ${JOB_DEFS[WORKER_JOB[pup.workerRef.job]].name} with` : 'Chat with'; pr.innerHTML = `<kbd${hc()}>${hk('a', 'E')}</kbd>${v} ${esc(pup.name)}`; setA('TALK'); }
   else if (pup) { pr.hidden = false; const v = pup.folk ? `Chat with ${esc(pup.name)}` : REL.PEOPLE[pup.name] && !pup.pet ? `Talk to ${esc(pup.name)} ${'♥'.repeat(REL.hearts(REL.ensureRel(state)[pup.name]))}` : `Pet ${esc(pup.name)}`; pr.innerHTML = PAD.padMode ? `<kbd${hc()}>${hk('a', 'E')}</kbd>${v}` : tch ? `<kbd class="ta">A</kbd>${v}` : `<kbd>E</kbd>${v} · <kbd>T</kbd> throw ball`; setA(pup.folk || (REL.PEOPLE[pup.name] && !pup.pet) ? 'TALK' : 'PET'); }
@@ -879,6 +883,7 @@ function renderWorld() {
   { const now = performance.now() / 1000, fdt = Math.min(0.1, Math.max(0, now - (CMP.lastT || now))); CMP.lastT = now; const rm = reducedMotion();
     IQC.stepRemotes(CMP.remotes, actors, fdt, { rm }); for (const F of CMP.remotes.values()) IQC.react(F, IQC.envFor(F, { rain: amb.rain, dark: phase.dark, others: [CMP.F, ...CMP.remotes.values()] }));
     for (const F of [CMP.F, ...CMP.remotes.values()]) if (F.c && F.x > L && F.x < Rt && F.y > Tp && F.y < Bt) list.push({ y: F.y + 2, d: (c) => IQC.drawFollower(c, F, time, { rm, fallback: IQC.drawFallbackPup }) }); }
+  for (const p of PT.stoneProps(PFOUND, time, view, { rm: reducedMotion(), near: stoneHere() })) list.push(p); // portal stones
   for (const p of sitProps(time, actors.filter((a) => a.act?.kind === 'sit'), reducedMotion())) if (p.y > Tp && p.y < Bt) list.push(p); // swings + café terrace
   for (const p of catProps(amb, view)) list.push(p); for (const p of leashProps(view, walkNow())) list.push(p);
   { const ta = EVX.traderAt(); if (ta) { const dx = state.player.x - ta.x, dy = state.player.y - ta.y, near = Math.hypot(dx, dy) < 110; actors.push({ x: ta.x, y: ta.y, coat: EVR.TRADER.coat, outfit: EVR.TRADER.outfit, face: near ? (Math.abs(dx) > Math.abs(dy) ? (dx > 0 ? 'right' : 'left') : dy < 0 ? 'up' : 'down') : 'down', phase: 0, moving: false, name: EVR.TRADER.name, id: 'ev:trader', art: artKey(EVR.TRADER.coat, EVR.TRADER.outfit) }); } }
@@ -967,19 +972,38 @@ function streetPups() {
 
 // Arcade Districts on the town map: purple road stub + gate block at the hub gate east of the Arcade hall (minimap + full map)
 function drawDistrictsMark(b, s) { const g = DIS.HUB_GATE; b.fillStyle = '#141a2e'; b.fillRect((g.tx - 1) * s - 1, (g.ty - 1) * s - 1, 3 * s + 2, 3 * s + 2); b.fillStyle = '#6c4fd0'; b.fillRect((g.tx - 1) * s, (g.ty - 1) * s, 3 * s, 3 * s); b.fillStyle = '#ff5ad0'; b.fillRect(g.tx * s, g.ty * s, s, s); }
-function minimap(vx, vy, vw, vh) {
-  const m = $('#minimap').getContext('2d'), s = 2;
+function minimap(vx, vy, vw, vh) { // low CPU: base image pre-rendered once; throttled redraw (~8/s) of a player-centred window + POIs, skipped while hidden
+  const cvm = $('#minimap'), vis = document.body.classList.contains('mm-on') && !photo && !$('#minimap-wrap').hidden, ptx = state.player.x / TILE, pty = state.player.y / TILE;
+  if (!MMC.due(performance.now(), vis, `${Math.round(ptx * MM.S)},${Math.round(pty * MM.S)},${PFOUND.size}`)) return;
+  const m = cvm.getContext('2d'), s = MM.S; globalThis.__mmDraws = (globalThis.__mmDraws || 0) + 1;
   if (!miniBase) { miniBase = document.createElement('canvas'); miniBase.width = MAP_W * s; miniBase.height = MAP_H * s; const b = miniBase.getContext('2d');
     const col = { [T.GRASS]: '#52a349', [T.FLOWER]: '#62b05a', [T.ROAD]: '#4a4f63', [T.WALK]: '#dcd3bc', [T.PLAZA]: '#d6b383', [T.BUILDING]: '#e3b341', [T.WATER]: '#2f6cbd', [T.TREE]: '#2c7040', [T.PLOT]: '#a8764a', [T.HOME]: '#c8323c', [T.DIRT]: '#a8764a' };
     for (let y = 0; y < MAP_H; y++) for (let x = 0; x < MAP_W; x++) { b.fillStyle = col[MAP[y][x]]; b.fillRect(x * s, y * s, s, s); } drawDistrictsMark(b, s); }
-  m.drawImage(miniBase, 0, 0);
-  for (const p of PLOTS) if (state.plots[p.id]) { m.fillStyle = '#f2cc68'; m.fillRect(p.x * s, p.y * s, p.w * s, p.h * s); }
-  { const pk = myPack(state); m.fillStyle = pk ? pk.color : '#6a8a4a'; m.fillRect(CLUBHOUSE.x * s, CLUBHOUSE.y * s, CLUBHOUSE.w * s, CLUBHOUSE.h * s); }
-  if (vw) { m.strokeStyle = 'rgba(255,246,224,.85)'; m.lineWidth = 1; m.strokeRect(Math.round(vx / TILE * s) + 0.5, Math.round(vy / TILE * s) + 0.5, Math.round(vw / TILE * s), Math.round(vh / TILE * s)); }
-  { const g = DIS.HUB_GATE, on = reducedMotion() || Math.floor(time * 2) % 2; m.fillStyle = on ? '#ff5ad0' : '#ffd84a'; m.fillRect(g.tx * s + 1, g.ty * s - 2, 1, 6); m.fillRect(g.tx * s + 2, g.ty * s - 1, 1, 4); m.fillRect(g.tx * s + 3, g.ty * s, 1, 2); } // districts gate: east arrow
-  m.fillStyle = '#fff'; for (const n of npcs) m.fillRect(Math.round(n.x / TILE * s) - 1, Math.round(n.y / TILE * s) - 1, 2, 2);
-  const blink = Math.floor(time * 3) % 2; m.fillStyle = '#141a2e'; m.fillRect(Math.round(state.player.x / TILE * s) - 3, Math.round(state.player.y / TILE * s) - 3, 6, 6); m.fillStyle = blink ? '#ff5a5a' : '#ffd84a'; m.fillRect(Math.round(state.player.x / TILE * s) - 2, Math.round(state.player.y / TILE * s) - 2, 4, 4);
+  const V = mmView = MM.miniView(ptx, pty, MAP_W, MAP_H, s, cvm.width, cvm.height), X = (tx) => Math.round(tx * s - V.sx), Y = (ty) => Math.round(ty * s - V.sy);
+  m.imageSmoothingEnabled = false; m.drawImage(miniBase, V.sx, V.sy, cvm.width, cvm.height, 0, 0, cvm.width, cvm.height);
+  for (const p of PLOTS) if (state.plots[p.id]) { m.fillStyle = '#f2cc68'; m.fillRect(X(p.x), Y(p.y), p.w * s, p.h * s); }
+  { const pk = myPack(state); m.fillStyle = pk ? pk.color : '#6a8a4a'; m.fillRect(X(CLUBHOUSE.x), Y(CLUBHOUSE.y), CLUBHOUSE.w * s, CLUBHOUSE.h * s); }
+  if (vw) { m.strokeStyle = 'rgba(255,246,224,.85)'; m.lineWidth = 1; m.strokeRect(X(vx / TILE) + 0.5, Y(vy / TILE) + 0.5, Math.round(vw / TILE * s), Math.round(vh / TILE * s)); }
+  { const g = DIS.HUB_GATE; m.fillStyle = '#ff5ad0'; m.fillRect(X(g.tx) + 1, Y(g.ty) - 2, 1, 6); m.fillRect(X(g.tx) + 2, Y(g.ty) - 1, 1, 4); m.fillRect(X(g.tx) + 3, Y(g.ty), 1, 2); } // districts gate: east arrow
+  for (const st of PT.STONES) PT.drawStoneIcon(m, X(st.tx + 0.5), Y(st.ty + 0.5), 3, PFOUND.has(st.id)); // portal stones
+  if (guide?.guide) { const g = guide.guide; m.strokeStyle = '#4cf08a'; m.lineWidth = 2; m.strokeRect(X(g.tx) - 2, Y(g.ty) - 2, 6, 6); }
+  m.fillStyle = '#fff'; for (const n of npcs) m.fillRect(X(n.x / TILE) - 1, Y(n.y / TILE) - 1, 2, 2);
+  m.fillStyle = '#141a2e'; m.fillRect(X(ptx) - 4, Y(pty) - 4, 8, 8); m.fillStyle = '#ff5a5a'; m.fillRect(X(ptx) - 3, Y(pty) - 3, 6, 6); m.fillStyle = '#fff6e0'; m.fillRect(X(ptx) - 1, Y(pty) - 1, 2, 2);
 }
+// ---- portal stones (src/portals.js): walk near to discover (saved on this device), A at a stone to warp; always free ----
+function stoneHere() { if (!state || mode !== 'world' || drive || panel || photo) return null; const s = PT.stoneNear(state.player.x, state.player.y); return s; }
+function portalTick(dt) { ptAcc += dt; if (ptAcc < 0.25) return; ptAcc = 0; const s = PT.discover(PFOUND, state.player.x, state.player.y); if (!s) return;
+  PT.saveFound(PFOUND); globalThis.__portalFinds = (globalThis.__portalFinds || 0) + 1; blip(880); MMC.reset();
+  toast(PFOUND.size === 1 ? `Portal stone found: ${s.name}! Find another to warp between them (free).` : `Portal stone found: ${s.name} (${PFOUND.size}/${PT.STONES.length}). Tap A at any stone to warp.`, 'good'); }
+function renderPortals(fromId) { const body = $('#panel-body'), from = PT.BY_ID[fromId]; if (!from) return closePanel(); if (!PFOUND.has(from.id)) { PFOUND.add(from.id); PT.saveFound(PFOUND); }
+  const L = PT.warpList(PFOUND, from.id);
+  body.innerHTML = `<h2>Portal stone · ${esc(from.name)}</h2><p class="sub">Warp to any stone you've found. Free, any time.</p><div class="grid ft-grid pt-grid">${L.map((w) => w.here ? `<button class="card ft-card on" disabled><b>${esc(w.name)}</b><small>You are here</small></button>` : w.found ? `<button class="card ft-card" data-warp="${w.id}"><b>${esc(w.name)}</b><small>Warp ✦</small></button>` : `<button class="card ft-card pt-lock" disabled><b>???</b><small>Not found yet</small></button>`).join('')}</div>
+    <p class="small">${PFOUND.size}/${PT.STONES.length} stones found · saved on this device · the full map (minimap tap) shows them all</p>`;
+  body.onclick = (e) => { const b = e.target.closest('[data-warp]'); if (!b) return; uiClick(); warpTo(b.dataset.warp, from.id); }; }
+function warpTo(toId, fromId) { if (!PT.canWarp(PFOUND, fromId, toId)) return false; const to = PT.BY_ID[toId], a = PT.arrival(to);
+  if (panel) closePanel(); cancelAction(ACT); stopWalk(); keys.clear(); player.v = { x: 0, y: 0 }; if (!reducedMotion()) feel.fade(); blip(740);
+  Object.assign(state.player, { x: a.x, y: a.y }); player.face = 'down'; cam.x = a.x; cam.y = a.y; MMC.reset(); persist();
+  globalThis.__warps = (globalThis.__warps || 0) + 1; toast(`Warped to ${to.name} ✦`, 'good'); return true; }
 
 // ---------------- Interactions ----------------
 { const _say = feel.say; if (_say) feel.say = (who, line, ...r) => { faceTalk(String(who).split(' (')[0], Math.min(4, 1 + String(line || '').length / 25)); return _say.call(feel, who, line, ...r); }; }
@@ -1223,6 +1247,7 @@ function openPanel(kind, opts = {}) {
   if (kind === 'bank') return renderBank();
   if (kind === 'cabinet') return renderCabinet(opts.id);
   if (kind === 'fasttravel') return renderFastTravel(opts.from);
+  if (kind === 'portals') return renderPortals(opts.from);
   if (kind === 'companions') return renderCompanions(body, { state, getProfile: () => CMP.prof, status: CMP.status, signedIn: !DEMO && !!K.kp?.session, persist, toast, onChange: () => { const c = myCompanion(); if (c) IQC.resetFollower(CMP.F, state.player, c); else CMP.F.c = null; } });
   if (kind === 'bureau') return PAB.renderBureau(body, { drawShiba }, opts);
   if (kind === 'trade') { if (!document.getElementById('trade-css')) { const st = document.createElement('style'); st.id = 'trade-css'; st.textContent = TRADE_CSS; document.head.appendChild(st); }
@@ -2459,7 +2484,7 @@ cv.addEventListener('wheel', (e) => { if (mode !== 'world') return; e.preventDef
   cv.addEventListener('touchmove', (e) => { if (!pinch || e.touches.length !== 2) return; const d = dist(e.touches); if (photo) { photoZoom(d / pinch); pinch = d; return; } if (d / pinch > 1.35) { setZoom(stepZoom(ZOOM, 1)); pinch = d; } else if (pinch / d > 1.35) { setZoom(stepZoom(ZOOM, -1)); pinch = d; } }, { passive: true });
   cv.addEventListener('touchend', (e) => { if (e.touches.length < 2) pinch = null; }, { passive: true }); }
 document.getElementById('zin')?.addEventListener('click', () => setZoom(stepZoom(ZOOM, 1))); document.getElementById('zout')?.addEventListener('click', () => setZoom(stepZoom(ZOOM, -1)));
-window.__inu = { guide, photo: { get on() { return photo; }, get cam() { return PHC; }, toggle: () => togglePhoto(), ui: PHUI, PHM }, emo: { get act() { return ACT.act; }, action: (k) => doAction(k), seat: () => seatNear(), sit: (id) => { const sp = SPOTS.find((q) => q.id === id); if (sp) { state.player.x = sp.x; state.player.y = sp.y + 10; const sn = seatNear(); if (sn) sitAt(sn); } return ACT.act; }, spots: SPOTS, wheel }, audio: { debug: audioDebug, settings: audioSettings, area: () => sndArea }, open: (k, o) => openPanel(k, o), get time() { return time; }, get player() { return player; }, get zoom() { return ZOOM; }, setZoom, president: pres, presVisit: (k) => startVisit(pres, k, { dayLen: DAY_LEN }), setHour: (h) => { const w = SKY.skyWorldT(skyNow(), DAY_LEN); SKYS.pinH = null; SKYS.shift = timeForHour(h) - (((w % DAY_LEN) + DAY_LEN) % DAY_LEN); syncSky(); }, folk: { T: TFS, Q: FOLKQ, sec: () => folkSecNow(), at: (i, s) => TF.folkAt(i, s), setSec: (s) => { FOLKQ.shift = s - folkBase(); }, find: (name, doing) => { const i = TF.FOLK_NAMES.indexOf(name), o = {}; for (let s = 0; s < TF.FOLK_DAY; s += 2) { TF.folkAt(i, s, o); if (o.doing === doing) return { s, x: o.x, y: o.y }; } return null; } }, setRain: (r) => { SKYS.wx = r ? 'rain' : 'clear'; amb.rain = amb.rainTarget = amb.cloud = amb.cloudTarget = r ? 1 : 0; amb.weatherT = 999; }, sky: SKYS, get amb() { return amb; }, get npcs() { return npcs; }, get mood() { return { ...MOOD.current, shown: MWd.MW.mood }; }, emote: (k) => doEmote(k), cam, get state() { return state; }, get mode() { return mode; }, get panel() { return panel?.kind; }, get panelObj() { return panel; }, mp: MPL, club: { hunt: () => huntNow(), party: () => partyNow(), kennel: () => enterKennel(), room: (id, at) => enterRoom(id, at || null), get rp() { return RP; } } };
+window.__inu = { guide, portals: { PT, found: PFOUND, warp: (to, from) => warpTo(to, from), here: () => stoneHere(), get view() { return mmView; } }, photo: { get on() { return photo; }, get cam() { return PHC; }, toggle: () => togglePhoto(), ui: PHUI, PHM }, emo: { get act() { return ACT.act; }, action: (k) => doAction(k), seat: () => seatNear(), sit: (id) => { const sp = SPOTS.find((q) => q.id === id); if (sp) { state.player.x = sp.x; state.player.y = sp.y + 10; const sn = seatNear(); if (sn) sitAt(sn); } return ACT.act; }, spots: SPOTS, wheel }, audio: { debug: audioDebug, settings: audioSettings, area: () => sndArea }, open: (k, o) => openPanel(k, o), get time() { return time; }, get player() { return player; }, get zoom() { return ZOOM; }, setZoom, president: pres, presVisit: (k) => startVisit(pres, k, { dayLen: DAY_LEN }), setHour: (h) => { const w = SKY.skyWorldT(skyNow(), DAY_LEN); SKYS.pinH = null; SKYS.shift = timeForHour(h) - (((w % DAY_LEN) + DAY_LEN) % DAY_LEN); syncSky(); }, folk: { T: TFS, Q: FOLKQ, sec: () => folkSecNow(), at: (i, s) => TF.folkAt(i, s), setSec: (s) => { FOLKQ.shift = s - folkBase(); }, find: (name, doing) => { const i = TF.FOLK_NAMES.indexOf(name), o = {}; for (let s = 0; s < TF.FOLK_DAY; s += 2) { TF.folkAt(i, s, o); if (o.doing === doing) return { s, x: o.x, y: o.y }; } return null; } }, setRain: (r) => { SKYS.wx = r ? 'rain' : 'clear'; amb.rain = amb.rainTarget = amb.cloud = amb.cloudTarget = r ? 1 : 0; amb.weatherT = 999; }, sky: SKYS, get amb() { return amb; }, get npcs() { return npcs; }, get mood() { return { ...MOOD.current, shown: MWd.MW.mood }; }, emote: (k) => doEmote(k), cam, get state() { return state; }, get mode() { return mode; }, get panel() { return panel?.kind; }, get panelObj() { return panel; }, mp: MPL, club: { hunt: () => huntNow(), party: () => partyNow(), kennel: () => enterKennel(), room: (id, at) => enterRoom(id, at || null), get rp() { return RP; } } };
 // Inu Arcade inside the desktop overlay: its 🏠 button asks us to close the overlay instead of reloading.
 // framed Arcade (hall peek) -> Verse: ready / exit (close + inu:back-to-verse alias) / score. Origin pinned (districts.js). Score = toast only.
 addEventListener('message', (e) => { const m = DIS.arcadeMessage(e, new URL(ARCADE.url).origin); if (!m) return; globalThis.__arcadeMsgs = [...(globalThis.__arcadeMsgs || []).slice(-9), m];

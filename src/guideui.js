@@ -3,6 +3,7 @@
 import * as GD from './guide.js';
 import { TILE, MAP_W, MAP_H, isSolid } from './world.js';
 import { drawShiba, artKey } from './art.js';
+import { drawStoneIcon } from './portals.js';
 
 const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 const el = (html) => { const t = document.createElement('template'); t.innerHTML = html.trim(); return t.content.firstChild; };
@@ -16,7 +17,7 @@ export function createGuide(h) {
     <div class="trow"><span class="tstep"></span><span class="tsp"></span><button class="btn ghost" id="t-skip">Skip tour</button><button class="btn alt" id="t-back">Back</button><button class="btn" id="t-next">Next</button></div></div></div>`);
   const chip = el(`<div id="guidechip" hidden><b class="gname"></b><span class="gdist"></span><button class="btn green" id="g-walk">Walk me there</button><button class="btn ghost" id="g-clear" title="Stop guiding">✕</button></div>`);
   const pl = el(`<div id="places" class="overlay" hidden><div class="panel-card places-card"><button class="close" id="pl-close">×</button><h2>Places</h2><input id="pl-q" placeholder="Search: café, arcade, quest, VIP…" autocomplete="off"><div id="pl-list"></div></div></div>`);
-  const mp = el(`<div id="mapfull" class="overlay" hidden><div class="map-card"><div class="map-bar"><b>Inu Verse map</b><small>Tap a place (or any path) to get directions</small><button class="close" id="mp-close">×</button></div><canvas id="mapcv"></canvas><div class="map-legend"><i class="you"></i>You are here <i class="pin"></i>Places <i class="dest"></i>Destination</div></div></div>`);
+  const mp = el(`<div id="mapfull" class="overlay" hidden><div class="map-card"><div class="map-bar"><b>Inu Verse map</b><small>Tap a place (or any path) to get directions</small><button class="close" id="mp-close">×</button></div><canvas id="mapcv"></canvas><div class="map-legend"><i class="you"></i>You are here <i class="pin"></i>Places <i class="dest"></i>Destination <i class="stone"></i>Portal stone</div><div id="map-warp" hidden></div></div></div>`);
   for (const n of [way, tour, chip, pl, mp]) document.body.appendChild(n);
   const $ = (s) => document.querySelector(s);
   $('#w-guide').onclick = () => startTour(true); $('#w-quests').onclick = () => h.openQuests?.(); $('#w-places').onclick = openPlaces; $('#w-map').onclick = openMap;
@@ -54,10 +55,15 @@ export function createGuide(h) {
   function closePlaces() { pl.hidden = true; G.placesOpen = false; }
   function renderPlaces() { const s = h.state(); if (!s) return; const list = GD.searchPlaces(GD.places(s), $('#pl-q').value), px = s.player.x / TILE, py = s.player.y / TILE;
     $('#pl-list').innerHTML = list.length ? GD.grouped(list).map(([g, ps]) => `<h3>${esc(g)}</h3><div class="pl-grid">${ps.map((p) => `<button class="pl-item${p.featured ? ' feat' : ''}" data-place="${esc(p.id)}" data-kind="${esc(p.kind)}"><b>${p.featured ? '★ ' : ''}${esc(p.name)}</b><small>${Math.round(Math.hypot(p.tx - px, p.ty - py)) * 2} m</small></button>`).join('')}</div>`).join('') : '<p class="sub">No places match.</p>'; }
-  function openMap() { if (G.tour) endTour('skipped'); closePlaces(); mp.hidden = false; G.mapOpen = true; sizeMap(); }
+  function openMap() { if (G.tour) endTour('skipped'); closePlaces(); mp.hidden = false; G.mapOpen = true; sizeMap(); warpHint(); }
+  // portal stones (src/portals.js): standing at a found stone, tapping another found stone on the map warps you (free); otherwise a stone tap gives directions
+  function warpHint() { const P = h.portals?.(), w = $('#map-warp'); if (!w) return; const on = !!(P?.here && P.found.has(P.here.id)); w.hidden = !on; if (on) w.textContent = `✦ At ${P.here.name}: tap a glowing stone to warp there (free)`; }
+  function stonePick(tx, ty) { const P = h.portals?.(); if (!P) return false; let best = null, bd = 2.2; for (const st of P.stones) { const d = Math.hypot(st.tx + 0.5 - tx, st.ty + 0.5 - ty); if (d < bd) { bd = d; best = st; } } if (!best) return false;
+    if (P.here && P.found.has(P.here.id) && P.found.has(best.id) && best.id !== P.here.id) { closeMap(); h.warp(best.id, P.here.id); return true; }
+    closeMap(); setGuide({ id: 'stone-' + best.id, kind: 'stone', name: P.found.has(best.id) ? `Portal stone: ${best.name}` : 'Undiscovered portal stone', group: 'Pin', tx: best.tx, ty: best.ty + 1, fx: best.tx + 0.5, fy: best.ty + 0.5 }); return true; }
   function closeMap() { mp.hidden = true; G.mapOpen = false; }
   function sizeMap() { const cv = $('#mapcv'), s = Math.max(2, Math.floor(Math.min((innerHeight - 90) / MAP_H, (innerWidth - 40) / MAP_W) * devicePixelRatio)); cv.width = MAP_W * s; cv.height = MAP_H * s; cv.style.width = cv.width / devicePixelRatio + 'px'; cv.style.height = cv.height / devicePixelRatio + 'px'; }
-  function mapPick(tx, ty) { const s = h.state(); const list = GD.places(s); let p = GD.placeAt(list, tx, ty, 2.5);
+  function mapPick(tx, ty) { if (stonePick(tx, ty)) return; const s = h.state(); const list = GD.places(s); let p = GD.placeAt(list, tx, ty, 2.5);
     if (!p) { const w = GD.nearestWalkable(Math.floor(tx), Math.floor(ty), 2); if (w) p = { id: 'pin', kind: 'pin', name: 'Map pin', group: 'Pin', tx: w[0], ty: w[1], fx: w[0] + 0.5, fy: w[1] + 0.5 }; }
     if (p) { closeMap(); setGuide(p); } }
   function star(m, x, y, r, col) { m.fillStyle = col; m.beginPath(); for (let i = 0; i < 10; i++) { const a = -Math.PI / 2 + i * Math.PI / 5, rr = i % 2 ? r * 0.45 : r; m.lineTo(x + Math.cos(a) * rr, y + Math.sin(a) * rr); } m.closePath(); m.fill(); }
@@ -66,6 +72,7 @@ export function createGuide(h) {
     for (const p of list) { m.fillStyle = '#141a2e'; m.fillRect(p.fx * s - 4, p.fy * s - 4, 8, 8); m.fillStyle = p.group === 'Games' ? '#ff5ad0' : p.group === 'Prizes & Boards' ? '#ffd84a' : '#fff6e0'; m.fillRect(p.fx * s - 3, p.fy * s - 3, 6, 6); }
     for (const p of list) if (p.featured) { const b = 7 + Math.sin(t * 5) * 1.5; star(m, p.fx * s, p.fy * s, b + 3, '#141a2e'); star(m, p.fx * s, p.fy * s, b, '#ffd84a'); }
     for (const p of list) if (['Featured', 'Games', 'Prizes & Boards'].includes(p.group) || p.kind === 'mall' && p.id === 'mall' || p.id === 'cafe') { const label = (p.featured ? '★ ' : '') + p.name.replace(/ \(.*\)$/, ''); m.fillStyle = '#141a2e'; m.fillText(label, p.fx * s + 1, p.fy * s - 6); m.fillStyle = '#fff6e0'; m.fillText(label, p.fx * s, p.fy * s - 7); }
+    { const P = h.portals?.(); if (P) for (const st of P.stones) drawStoneIcon(m, (st.tx + 0.5) * s, (st.ty + 0.5) * s, Math.max(4, s * 0.9), P.found.has(st.id)); }
     if (G.guide) { const g = G.guide, b = 6 + Math.sin(t * 6) * 2; m.strokeStyle = '#4cf08a'; m.lineWidth = 3; m.beginPath(); m.arc((g.tx + 0.5) * s, (g.ty + 0.5) * s, b + 4, 0, 7); m.stroke(); }
     const px = st.player.x / TILE * s, py = st.player.y / TILE * s, r = 7 + Math.sin(t * 5) * 2; m.fillStyle = '#ff3a3a'; m.beginPath(); m.arc(px, py, r, 0, 7); m.fill(); m.strokeStyle = '#fff'; m.lineWidth = 2; m.stroke();
     m.fillStyle = '#141a2e'; m.fillText('YOU ARE HERE', px + 1, py - r - 3); m.fillStyle = '#ff8a8a'; m.fillText('YOU ARE HERE', px, py - r - 4); }
