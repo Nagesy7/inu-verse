@@ -109,7 +109,8 @@ input[type=checkbox],input[type=radio],input[type=range]{accent-color:var(--shib
 </head><body>
 <div class="wrap">
 <header><div class="lh-brand"><img class="lh-logo" src="assets/ui/kibble-token-192.png" alt="" width="64" height="64"><div><h1 class="px">Launch Hall</h1><div class="sub px">Draft from Meme Maker · nothing is launched or listed from this page</div><span class="lh-tag">🦴 Inu Verse · Kibble</span></div></div>
-<a class="btn ghost" id="lh-open" href="/?open=launch">Launch Hall in Inu Verse ↗</a></header>
+<a class="btn ghost" id="lh-open" href="/?open=launch">Launch Hall in Inu Verse ↗</a>
+<a class="btn ghost" id="lh-devs" href="https://kibbleinu.com/for-devs.html?utm_source=inu-verse&amp;utm_medium=link" data-paid="for-devs" data-paid-from="draft-nav">🛠️ For devs</a></header>
 <main id="app" class="frame" aria-live="polite"><p>Loading your draft…</p><noscript><p>This page needs JavaScript.</p></noscript></main>
 <section class="frame" id="lh-top" style="margin-top:14px" aria-labelledby="lh-top-h"><h2 class="px" id="lh-top-h" style="margin:0 0 8px;font-size:14px;color:var(--goldl)">👑 Top Cabal meme creators this week</h2><div id="lh-top-body" class="plan">Loading…</div></section>
 <section class="frame" id="lh-gallery" style="margin-top:14px" aria-labelledby="lh-gal-h"><h2 class="px" id="lh-gal-h" style="margin:0 0 4px;font-size:14px;color:var(--goldl)">🖼️ Draft gallery · community ideas</h2>
@@ -118,6 +119,9 @@ input[type=checkbox],input[type=radio],input[type=range]{accent-color:var(--shib
 <div id="lh-gal-body" class="plan" style="margin-top:8px">Loading…</div>
 <div class="row" style="justify-content:flex-end"><button class="btn tiny ghost" id="lh-mod">Moderator</button></div></section>
 <div class="nfa"><b>NFA.</b> Not financial advice and no price promises. A draft is just a meme plus a name idea. Launching a coin is done by you, in your own wallet, on pump.fun's own page, and costs real SOL. Memecoins can go to zero. Always check the contract address.</div>
+<section class="frame" id="lh-devs-strip" style="margin-top:14px" aria-labelledby="lh-devs-h"><h2 class="px" id="lh-devs-h" style="margin:0 0 6px;font-size:14px;color:var(--goldl)">🛠️ For devs · optional extras</h2>
+<p style="margin:0 0 10px">Drafts, the gallery and the Launch Hall are free. If you run a coin, two paid extras are on offer, each priced before you pay from your own wallet: the <b>Launch Pro Pack</b> (0.25 SOL, shows on this page once you have a draft) and a <b>sponsored side</b> in the Cabal Meme Maker. Paid visibility is not an endorsement.</p>
+<div class="row"><a class="btn tiny ghost" href="https://kibbleinu.com/for-devs.html?utm_source=inu-verse&amp;utm_medium=link" data-paid="for-devs" data-paid-from="draft-strip">All dev products and prices →</a><a class="btn tiny ghost" href="https://cabal-meme-maker.vercel.app/?utm_source=inu-verse&amp;utm_medium=link#sponsor" data-paid="sponsor" data-paid-from="draft-strip">Sponsored sides</a></div></section>
 </div>
 <div class="toast" id="toast" role="status"></div>
 <script type="module">
@@ -297,4 +301,5 @@ addEventListener('hashchange', () => { if (ANCHOR.test(location.hash)) { anchorD
 { const q = new URLSearchParams(location.search); track('lh_draft_open', res.ok ? { coin: S.d.parentPair?.id || S.d.sister || '', side: S.d.sister === 'CRIME' ? 'crime' : 'cabal', src: S.d.fromPairBuilder ? 'pairs' : 'meme', handoff: !!S.d.handoff, ref: q.get('utm_source') || (document.referrer ? 'referrer' : 'direct') } : { result: 'refused', ref: q.get('utm_source') || 'direct' }); }
 if (!res.ok) refused(); else { render(); handoff(); document.title = `Launch Hall · Draft: ${S.d.name} ($${S.d.ticker})`; }
 </script>
+<script>/* paid_link_click: product + where it was clicked, never wallet data */(function(){window.va=window.va||function(){(window.vaq=window.vaq||[]).push(arguments)};var c=function(v){return String(v||'').toLowerCase().replace(/[^a-z0-9-]/g,'').slice(0,40)};document.addEventListener('click',function(e){var a=e.target&&e.target.closest&&e.target.closest('[data-paid]');if(a)window.va('event',{name:'paid_link_click',data:{product:c(a.getAttribute('data-paid')),from:c(a.getAttribute('data-paid-from')),site:'inu-verse'}})},true)})();</script>
 </body></html>
