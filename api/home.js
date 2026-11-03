@@ -25,6 +25,7 @@ import { upstashKv, memoryKv } from "./_lib/kv.js";
 import { validHomeId, validPlotId, PLOT_IDS, cleanLayout, cleanEntry, homeOwnerName, GB } from "../src/homeshare.js";
 import { SHOP_RE, homeIdOf, cleanShopPayload, toWire } from "../src/interiors.js";
 import { makeTrades, kpSessionWallet } from "./_lib/trades.js";
+import { appendEvent } from "./_lib/feed.js";
 
 export const TTL_S = 90 * 86400, SIGN_GAP_S = 15, SIGN_HOME_GAP_S = 60, PUBLISH_GAP_S = 2, SHOP_GAP_S = 3, SHOP_IP_GAP_S = 1, SHOP_BODY_MAX = 4096;
 const sha = (s) => createHash("sha256").update(String(s)).digest("hex");
@@ -38,6 +39,9 @@ export function makeHandler({ env = process.env, kv, now = () => Date.now(), sle
   async function locked(id, fn) { const L = "home:lock:" + id; for (let i = 0; i < 20; i++) { if (await store.setNX(L, "1", 5)) { try { return await fn(); } finally { try { await store.del(L); } catch {} } } await sleep(100); } throw Object.assign(new Error("busy, try again"), { status: 503 }); }
   const trade = makeTrades({ store, now, env, sleep, ...(sessionWallet ? { sessionWallet } : {}), ...(verify ? { verify } : {}) });
   const owner = async (id, key) => { const h = await getJ("home:v1:" + id, null); return h && typeof key === "string" && key.length >= 16 && h.kh === sha(key) ? h : null; };
+  // Live activity feed (api/_lib/feed.js): server-recorded real events, best effort (a feed hiccup never breaks the action).
+  // Names go through the feed's own cleanName filter (a filtered name = no feed line); one feed line per IP / home per 10 min.
+  const feed = async (e, gate) => { try { if (gate && !(await store.setNX("feed:rl:" + gate, "1", 600))) return; await appendEvent(store, e, { now: now(), sleep }); } catch {} };
   const bearer = (req) => String(req.headers?.authorization || "").replace(/^Bearer\s+/i, "");
   const shortW = (w) => (w ? w.slice(0, 4) + "…" + w.slice(-4) : "");
   const B58 = /^[1-9A-HJ-NP-Za-km-z]{32,44}$/;
@@ -77,6 +81,7 @@ export function makeHandler({ env = process.env, kv, now = () => Date.now(), sle
           if (cur && cur.w !== w) return send(409, { error: "That plot already has an owner", short: shortW(cur.w), name: cur.name || null });
           const rec = { w, name: homeOwnerName(b.name), at: new Date(now()).toISOString() };
           await store.set("plot:v1:" + plotId, JSON.stringify(rec)); // permanent: one plot = one owner
+          await feed({ k: "plot", n: b.name, x: plotId });
           return send(200, { ok: true, plotId, short: shortW(w), name: rec.name });
         }); }
       if (b.op === "trade") { if (rawLen > SHOP_BODY_MAX) return send(413, { error: "too big" });
@@ -92,21 +97,23 @@ export function makeHandler({ env = process.env, kv, now = () => Date.now(), sle
         return await locked(sid, async () => { const cur = await getJ("shop:v1:" + sid, null), home = cur ? null : await getJ("home:v1:" + hid, null), kh = sha(b.key);
           if ((cur && cur.kh !== kh) || (!cur && home && home.kh !== kh)) return send(403, { error: "not your shop" });
           const rec = { kh, owner: homeOwnerName(b.owner), layout: toWire(c.layout), updatedAt: new Date(now()).toISOString() };
-          await store.set("shop:v1:" + sid, JSON.stringify(rec), TTL_S); return send(200, { ok: true, id: sid, items: c.layout.items.length, updatedAt: rec.updatedAt }); }); }
+          await store.set("shop:v1:" + sid, JSON.stringify(rec), TTL_S); if (!cur && c.layout.items.length) await feed({ k: "shop", n: b.owner }, "shop:" + ip); return send(200, { ok: true, id: sid, items: c.layout.items.length, updatedAt: rec.updatedAt }); }); }
       const id = String(b.id || ""); if (!validHomeId(id)) return send(400, { error: "bad home id" });
       if (b.op === "publish") { if (typeof b.key !== "string" || !/^[0-9a-f]{32}$/.test(b.key)) return send(400, { error: "bad key" });
         const layout = cleanLayout(b.layout); if (!layout) return send(400, { error: "bad layout" });
         if (!(await store.setNX("home:rl:p:" + id, "1", PUBLISH_GAP_S))) return send(429, { error: "Saving too fast", retryAfter: PUBLISH_GAP_S });
         return await locked(id, async () => { const h = await getJ("home:v1:" + id, null); if (h && h.kh !== sha(b.key)) return send(403, { error: "not your home" });
-          const rec = { kh: sha(b.key), name: homeOwnerName(b.name), layout, updatedAt: new Date(now()).toISOString() };
-          await store.set("home:v1:" + id, JSON.stringify(rec), TTL_S); return send(200, { ok: true, id, name: rec.name, items: layout.items.length, updatedAt: rec.updatedAt }); }); }
+          const fed = !!h?.fed || layout.items.length >= 3; // "opened their home" once, when it first has some furniture
+          const rec = { kh: sha(b.key), name: homeOwnerName(b.name), layout, updatedAt: new Date(now()).toISOString(), ...(fed ? { fed: true } : {}) };
+          await store.set("home:v1:" + id, JSON.stringify(rec), TTL_S); if (fed && !h?.fed) await feed({ k: "home", n: b.name }, "home:" + sha(salt + "|" + ipOf(req)).slice(0, 24)); return send(200, { ok: true, id, name: rec.name, items: layout.items.length, updatedAt: rec.updatedAt }); }); }
       if (b.op === "sign") { const e = cleanEntry(b.name, b.text); if (!e.ok) return send(400, { error: e.reason });
-        if (!(await getJ("home:v1:" + id, null))) return send(404, { error: "home not found" });
+        const host = await getJ("home:v1:" + id, null); if (!host) return send(404, { error: "home not found" });
         const ip = sha(salt + "|" + ipOf(req)).slice(0, 24);
         if (!(await store.setNX("home:rl:s:" + ip + ":" + id, "1", SIGN_HOME_GAP_S))) return send(429, { error: "You just signed this guestbook. Try again in a minute.", retryAfter: SIGN_HOME_GAP_S });
         if (!(await store.setNX("home:rl:s:" + ip, "1", SIGN_GAP_S))) { try { await store.del("home:rl:s:" + ip + ":" + id); } catch {} return send(429, { error: "Slow down: one guestbook entry every 15 seconds.", retryAfter: SIGN_GAP_S }); }
         const entry = { i: randomBytes(6).toString("hex"), name: e.name, text: e.text, at: new Date(now()).toISOString() };
         return await locked(id, async () => { const book = [entry, ...(await getJ("book:v1:" + id, []))].slice(0, GB.MAX); await store.set("book:v1:" + id, JSON.stringify(book), TTL_S);
+          await feed({ k: "guestbook", n: b.name, x: host.name }, "gb:" + id);
           return send(200, { ok: true, entry, count: book.length }); }); }
       if (b.op === "del" || b.op === "book") { if (!(await owner(id, b.key))) return send(403, { error: "not your home" });
         if (b.op === "book") { const book = await getJ("book:v1:" + id, []); return send(200, { book, count: book.length }); }

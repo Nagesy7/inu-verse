@@ -105,6 +105,8 @@ import { buildDrawer, drawerOpen } from './hudmenu.js';
 import { makeDoorState, doorStep, doorExit, outsideOf } from './doors.js';
 import { isDoor, doorList, doorDir, COMMUNITY } from './world.js';
 import { createMultiplayer } from './multiplayer.js';
+import { createFeed } from './feed.js';
+import { createGhosts, spotAt } from './ghosts.js';
 import { createTrading, renderTrade, TRADE_CSS } from './tradeui.js';
 import { createJoystick, joyPref, JOY_KEY } from './joystick.js';
 import * as PAB from './sim/bureau.js'; // Paw Audit Bureau (Phase 1 sim layer): desk + Watchdogs + report panel
@@ -365,7 +367,7 @@ document.addEventListener('pointerdown', (e) => { if (e.target.closest('button,.
 let hourIdx = 0; const fish = { state: 'idle', t: 0, biteAt: 0 };
 const gameDay = () => Math.floor((state.clockSec || 0) / DAY_LEN), hourKey = () => Math.floor((state.clockSec || 0) / (DAY_LEN / 24));
 function farmCtx() { const day = gameDay(); return { enterShop: (lot) => enterShop(lot), onHarvest: () => ENG.addSeasonXp(state, 'farm', day), state, body: $('#panel-body'), toast, hud, persist, rerender: () => { if (panel) openPanel(panel.kind, panel); }, season: seasonOf(day), rain: amb.rain > 0.3, day, hourKey: hourKey(), weekFrac: ((state.clockSec / DAY_LEN) % WEEK_DAYS) / WEEK_DAYS, fish,
-  cast: () => { fish.state = 'wait'; fish.t = 0; fish.biteAt = 1.2 + rng() * 2.5; }, reel: () => { if (fish.state !== 'bite') { fish.state = 'idle'; return { ok: false, reason: 'Too early — it swam off' }; } const r = fishCatch(state, rng(), fish.t); fish.state = 'idle'; if (r.ok) toast(`Caught a ${r.item === 'koi' ? 'GOLDEN KOI!' : r.item}!`, 'good'); return r; } }; }
+  cast: () => { fish.state = 'wait'; fish.t = 0; fish.biteAt = 1.2 + rng() * 2.5; }, reel: () => { if (fish.state !== 'bite') { fish.state = 'idle'; return { ok: false, reason: 'Too early — it swam off' }; } const r = fishCatch(state, rng(), fish.t); fish.state = 'idle'; if (r.ok) toast(`Caught a ${r.item === 'koi' ? 'GOLDEN KOI!' : r.item}!`, 'good'); if (r.ok && r.item === 'koi') FEEDUI.report('koi'); return r; } }; }
 function farmTick(dt) { const day = gameDay(); tickFarm(state, dt, { season: seasonOf(day), rain: amb.rain > 0.3 }); ensureFarm(state).lastReal = Date.now();
   if (fish.state === 'wait') { fish.t += dt; if (fish.t >= fish.biteAt) { fish.state = 'bite'; fish.t = 0; blip(1200); if (panel?.kind === 'farm' && panel.id === 'pond') openPanel('farm', panel); } } else if (fish.state === 'bite') { fish.t += dt; if (fish.t > 1.5) { fish.state = 'idle'; if (panel?.kind === 'farm' && panel.id === 'pond') { toast('It got away!'); openPanel('farm', panel); } } }
   const hk = hourKey(); while (hourIdx < hk) { hourIdx++; marketHour(state); const r = bizHour(state, hourIdx % 24, rng, state.spouse?.helps === 'biz' ? 2 : 0);
@@ -775,6 +777,7 @@ function renderWorld() {
   for (const p of mapImg.props) if (p.y > Tp && p.y < Bt) list.push(p);
   for (const p of dyn) if (!p.flat) list.push(p);
   for (const p of carProps(amb)) list.push(p);
+  for (const p of GH.props(view, time)) list.push(p); // ghost recent visitors (src/ghosts.js)
   { const now = performance.now() / 1000, fdt = Math.min(0.1, Math.max(0, now - (CMP.lastT || now))); CMP.lastT = now; const rm = reducedMotion();
     IQC.stepRemotes(CMP.remotes, actors, fdt, { rm }); for (const F of CMP.remotes.values()) IQC.react(F, IQC.envFor(F, { rain: amb.rain, dark: phase.dark, others: [CMP.F, ...CMP.remotes.values()] }));
     for (const F of [CMP.F, ...CMP.remotes.values()]) if (F.c && F.x > L && F.x < Rt && F.y > Tp && F.y < Bt) list.push({ y: F.y + 2, d: (c) => IQC.drawFollower(c, F, time, { rm, fallback: IQC.drawFallbackPup }) }); }
@@ -2198,6 +2201,7 @@ function frame(now) {
     if (panel?.kind === 'cafe' && panel.shift && !panel.shift.settled) { tickShift(panel.shift, dt, rng); if (mode === 'room' && RP.id === 'cafe') CP.tagShift(panel.shift); cafeUi(); }
   }
   MPL.step(dt); // live multiplayer (no-op when not configured)
+  if (mode === 'world') GH.step(dt);
   if (JOYS && state && (joyT -= dt) <= 0) { joyT = 0.5; const want = joyPref(state); if (want !== JOYS.on) { JOYS.set(want); joyApi.onChange?.(); } } // saved / cloud-loaded Joystick setting
   if (mode === 'world') { updateWorld(dt); renderWorld(); drawSceneBars(); }
   else if (mode === 'room') { updateRoom(dt); RP.render(ctx, devicePixelRatio || 1); }
@@ -2211,6 +2215,14 @@ const MPL = createMultiplayer({ toast, onActions: () => wheel.open(), onTrade: (
 // companion id + form ride in the look's pl.look (cpi/cpf); remote clients strip them before reading the Shiba look
 function cpLook(pl) { const w = CMP.F.c && mode === 'world' && !drive ? IQC.toWire(CMP.F.c) : null; if (!w) return pl; return pl ? { ...pl, look: { ...pl.look, ...w } } : { look: w, outfit: {} }; }
 MPL.start().catch(() => {});
+// ---- Live activity feed + ghost recent visitors (src/feed.js, src/ghosts.js, api/feed.js). Real events only, no rewards. ----
+const liveNames = () => new Set([state?.player?.name, ...MPL.players().map((p) => p.name)].filter(Boolean).map((n) => String(n).toLowerCase()));
+function ghostSprite(coat, face) { const c = document.createElement('canvas'); c.width = 120; c.height = 150; const x = c.getContext('2d'); x.imageSmoothingEnabled = false; drawShiba(x, 60, 134, { coat, outfit: {}, scale: 1.5, face, art: artKey(coat, {}), shadow: false }); return c; }
+const GH = createGhosts({ sprite: ghostSprite, rm: () => reducedMotion() });
+const FEEDUI = createFeed({ onData: (S) => GH.set(S.ghosts, liveNames()) });
+let feedSpot = null; globalThis.__feed = { ui: FEEDUI, ghosts: GH };
+if (!DEMO) FEEDUI.start(() => { if (!state || !document.body.classList.contains('inworld')) return null; if (mode === 'world') feedSpot = spotAt(Math.floor(state.player.x / 32), Math.floor(state.player.y / 32)) || feedSpot;
+  GH.exclude(liveNames()); return { inWorld: true, name: state.player.name, coat: state.player.coat, area: feedSpot }; });
 // ---- Founding Five Thousand seat-open notice (ships with kibble-pay tracker; polls /api/tech) ----
 const FSN = FS.startFoundingNotice({ toast: (m, k) => toast(m, k), onShow: () => { try { blip(988); setTimeout(() => blip(1318), 120); } catch {} } });
 globalThis.__foundingSeats = () => FSN;
