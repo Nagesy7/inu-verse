@@ -736,3 +736,12 @@ body[data-guide] #crier-banner{top:calc(max(8px,env(safe-area-inset-top)) + 104p
 .cat-chip{display:inline-block;font-size:9px;font-weight:700;letter-spacing:.04em;padding:2px 6px;margin:0 0 4px;border-radius:3px;text-transform:uppercase}
 /* phone landscape, in world: the Kibble Pay profile badge (injected by inu-profile.js) landed on the first HUD chip, the feed, or the joystick/footer — park it on the right, under the wallet button and above the A button */
 @media (max-height:520px) and (orientation:landscape){body.inworld #inu-profile-badge{top:calc(max(8px,env(safe-area-inset-top)) + 104px)!important;bottom:auto!important;left:auto!important;right:max(8px,env(safe-area-inset-right))!important;transform:none!important;max-width:min(230px,34vw)!important}}
+/* Alive phase 4: HUD sound chip + popover (fits the phone-landscape status strip, right after the clock) */
+#btn-sound{display:inline-flex;align-items:center;justify-content:center;min-width:44px;min-height:44px;padding:0 9px;cursor:pointer;color:var(--goldl);font:inherit}
+#btn-sound svg{width:18px;height:18px;display:block}#btn-sound.off{color:#9aa0b8}
+#sound-pop{position:fixed;z-index:60;width:228px;background:var(--navy);border:3px solid var(--gold);box-shadow:0 0 0 3px var(--ink),0 10px 24px #0008;padding:8px 10px;color:var(--cream);font-size:11px}
+#sound-pop .sp-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:6px}#sound-pop .sp-head .btn{font-size:10px;padding:4px 10px}
+#sound-pop .sp-row{display:grid;grid-template-columns:68px 1fr 34px;align-items:center;gap:6px;margin:4px 0}#sound-pop input[type=range]{width:100%;accent-color:var(--gold);height:18px}
+#sound-pop em{font-style:normal;text-align:right;color:var(--goldl)}#sound-pop .sp-now{margin-top:6px;color:var(--goldl);font-size:10px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+#audio-debug{position:fixed;left:50%;transform:translateX(-50%);bottom:calc(max(8px,env(safe-area-inset-bottom)) + 62px);z-index:59;margin:0;padding:6px 9px;background:#0c1022e6;border:2px solid var(--gold);color:#bff3c9;font:600 10px/1.35 ui-monospace,Menlo,monospace;white-space:pre;pointer-events:none;max-width:94vw;overflow:hidden}
+body:not(.inworld) #audio-debug{bottom:auto;top:8px}

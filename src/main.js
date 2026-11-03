@@ -18,6 +18,7 @@ import { carProps, catProps, dogWalkActors, leashProps, drawBreadBasket } from '
 import { drawCar } from './cars.js';
 import { makeAlive, stepAlive, drawAliveGround, drawAliveSky, ALIVE, reducedMotion } from './alive.js';
 import { makeAmbient, stepAmbient, throwBall, dayPhase, timeForHour, drawGroundLife, drawSkyLife, drawAtmosphere, drawEmote, lightsFor, addMail, unreadMail, EMOTES, DAY_LEN } from './ambient.js';
+import { setScene as soundScene, setVolume, audioSettings, audioDebug } from './audio.js'; import { mountSoundUi } from './soundui.js'; import { areaAt as soundArea } from './soundscape.js';
 import { initAudio, setMusicActive, setMuted, isMuted, footstep, chirp, bork, blip, uiClick, uiOpen, uiClose, textBlip, rustle, fanfare, cafeChime, munch, sip, clink, crierBell } from './audio.js';
 import * as VF from './verified.js'; // Verified Launch badge (opt-in) + town crier news
 import * as WL from './wallets.js'; // named wallets (President's Vault, Kennel Chest, Bone Vault)
@@ -561,7 +562,18 @@ function doAction(kind) { if (!state || !isAction(kind) || drive || (mode !== 'w
   const a = startAction(ACT, kind, time); blip(a ? 820 : 520); if (a && kind === 'wave') emoteBubble('me', 'wave', time); }
 const poseFor = (a) => (a?.act ? poseAt(a.act.kind, time - a.act.t0, a.face) : null);
 $('#emotes').onclick = (e) => { const b = e.target.closest('[data-emote]'); if (b) doEmote(b.dataset.emote); };
-function toggleMute() { setMuted(!isMuted()); $('#btn-mute').textContent = isMuted() ? 'Sound off' : 'Sound on'; }
+function toggleMute() { setMuted(!isMuted()); syncMuteUi(); }
+// Alive phase 4: HUD sound chip + popover (persisted mute / music / ambience / effects); ?audiodebug=1 shows the live mix
+const SUI = mountSoundUi(document, { init: () => initAudio(), settings: audioSettings, setMuted: (m) => { setMuted(m); syncMuteUi(false); }, setVolume, debug: audioDebug, debugOn: new URLSearchParams(location.search).has('audiodebug') });
+function syncMuteUi(chip = true) { const b = $('#btn-mute'); if (b) b.textContent = isMuted() ? 'Sound off' : 'Sound on'; if (chip) SUI?.refresh(); }
+syncMuteUi(false);
+let sndAcc = 0, sndArea = 'plaza';
+function feedSound(dt) { // ~4 Hz: plain numbers only (area, sky hour, rain, tile, indoors, low-fx); audio.js schedules on its own clock
+  if ((sndAcc += dt) < 0.25) return; sndAcc = 0;
+  const hour = dayPhase(time + dayOffset).hour, rain = amb?.rain ?? 0, low = SKY.lowFx(SKYS.pool, { reduced: reducedMotion(), flag: SKYQ.low });
+  if (mode === 'world' && state) { const tx = state.player.x / TILE, ty = state.player.y / TILE; sndArea = soundArea(tx, ty); soundScene({ area: sndArea, hour, rain, tx, ty, indoor: false, low }); }
+  else soundScene({ area: mode === 'room' ? sndArea : 'plaza', hour, rain, indoor: true, low });
+  SUI?.tick(); }
 function togglePhoto() { photo = !photo; document.body.classList.toggle('photo', photo); if (photo) { const a = document.querySelector('#photo-share'); if (a) a.href = F5.shareXUrl('Snap from Inu Verse'); } }
 $('#btn-mute').onclick = () => { initAudio(); toggleMute(); };
 $('#btn-emote').onclick = () => toggleEmotes(); $('#btn-emote').textContent = 'Actions'; $('#btn-emote').title = 'Sit, dance, wave… (G)';
@@ -2217,6 +2229,7 @@ function frame(now) {
     if (panel?.kind === 'cafe' && panel.shift && !panel.shift.settled) { tickShift(panel.shift, dt, rng); if (mode === 'room' && RP.id === 'cafe') CP.tagShift(panel.shift); cafeUi(); }
   }
   MPL.step(dt); // live multiplayer (no-op when not configured)
+  feedSound(dt);
   if (mode === 'world') GH.step(dt);
   if (JOYS && state && (joyT -= dt) <= 0) { joyT = 0.5; const want = joyPref(state); if (want !== JOYS.on) { JOYS.set(want); joyApi.onChange?.(); } } // saved / cloud-loaded Joystick setting
   if (mode === 'world') { updateWorld(dt); renderWorld(); drawSceneBars(); }
@@ -2279,7 +2292,7 @@ cv.addEventListener('wheel', (e) => { if (mode !== 'world') return; e.preventDef
   cv.addEventListener('touchmove', (e) => { if (!pinch || e.touches.length !== 2) return; const d = dist(e.touches); if (d / pinch > 1.35) { setZoom(stepZoom(ZOOM, 1)); pinch = d; } else if (pinch / d > 1.35) { setZoom(stepZoom(ZOOM, -1)); pinch = d; } }, { passive: true });
   cv.addEventListener('touchend', (e) => { if (e.touches.length < 2) pinch = null; }, { passive: true }); }
 document.getElementById('zin')?.addEventListener('click', () => setZoom(stepZoom(ZOOM, 1))); document.getElementById('zout')?.addEventListener('click', () => setZoom(stepZoom(ZOOM, -1)));
-window.__inu = { guide, open: (k, o) => openPanel(k, o), get time() { return time; }, get player() { return player; }, get zoom() { return ZOOM; }, setZoom, president: pres, presVisit: (k) => startVisit(pres, k, { dayLen: DAY_LEN }), setHour: (h) => { const w = SKY.skyWorldT(skyNow(), DAY_LEN); SKYS.pinH = null; SKYS.shift = timeForHour(h) - (((w % DAY_LEN) + DAY_LEN) % DAY_LEN); syncSky(); }, folk: { T: TFS, Q: FOLKQ, sec: () => folkSecNow(), at: (i, s) => TF.folkAt(i, s), setSec: (s) => { FOLKQ.shift = s - folkBase(); }, find: (name, doing) => { const i = TF.FOLK_NAMES.indexOf(name), o = {}; for (let s = 0; s < TF.FOLK_DAY; s += 2) { TF.folkAt(i, s, o); if (o.doing === doing) return { s, x: o.x, y: o.y }; } return null; } }, setRain: (r) => { SKYS.wx = r ? 'rain' : 'clear'; amb.rain = amb.rainTarget = amb.cloud = amb.cloudTarget = r ? 1 : 0; amb.weatherT = 999; }, sky: SKYS, get amb() { return amb; }, get npcs() { return npcs; }, get mood() { return { ...MOOD.current, shown: MWd.MW.mood }; }, emote: (k) => doEmote(k), cam, get state() { return state; }, get mode() { return mode; }, get panel() { return panel?.kind; }, get panelObj() { return panel; }, mp: MPL, club: { hunt: () => huntNow(), party: () => partyNow(), kennel: () => enterKennel(), room: (id, at) => enterRoom(id, at || null), get rp() { return RP; } } };
+window.__inu = { guide, audio: { debug: audioDebug, settings: audioSettings, area: () => sndArea }, open: (k, o) => openPanel(k, o), get time() { return time; }, get player() { return player; }, get zoom() { return ZOOM; }, setZoom, president: pres, presVisit: (k) => startVisit(pres, k, { dayLen: DAY_LEN }), setHour: (h) => { const w = SKY.skyWorldT(skyNow(), DAY_LEN); SKYS.pinH = null; SKYS.shift = timeForHour(h) - (((w % DAY_LEN) + DAY_LEN) % DAY_LEN); syncSky(); }, folk: { T: TFS, Q: FOLKQ, sec: () => folkSecNow(), at: (i, s) => TF.folkAt(i, s), setSec: (s) => { FOLKQ.shift = s - folkBase(); }, find: (name, doing) => { const i = TF.FOLK_NAMES.indexOf(name), o = {}; for (let s = 0; s < TF.FOLK_DAY; s += 2) { TF.folkAt(i, s, o); if (o.doing === doing) return { s, x: o.x, y: o.y }; } return null; } }, setRain: (r) => { SKYS.wx = r ? 'rain' : 'clear'; amb.rain = amb.rainTarget = amb.cloud = amb.cloudTarget = r ? 1 : 0; amb.weatherT = 999; }, sky: SKYS, get amb() { return amb; }, get npcs() { return npcs; }, get mood() { return { ...MOOD.current, shown: MWd.MW.mood }; }, emote: (k) => doEmote(k), cam, get state() { return state; }, get mode() { return mode; }, get panel() { return panel?.kind; }, get panelObj() { return panel; }, mp: MPL, club: { hunt: () => huntNow(), party: () => partyNow(), kennel: () => enterKennel(), room: (id, at) => enterRoom(id, at || null), get rp() { return RP; } } };
 // Inu Arcade inside the desktop overlay: its 🏠 button asks us to close the overlay instead of reloading.
 // framed Arcade (hall peek) -> Verse: ready / exit (close + inu:back-to-verse alias) / score. Origin pinned (districts.js). Score = toast only.
 addEventListener('message', (e) => { const m = DIS.arcadeMessage(e, new URL(ARCADE.url).origin); if (!m) return; globalThis.__arcadeMsgs = [...(globalThis.__arcadeMsgs || []).slice(-9), m];
