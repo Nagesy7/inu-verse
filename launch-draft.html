@@ -66,7 +66,11 @@ const $ = (s) => document.querySelector(s);
 const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 const toast = (t) => { const el = $('#toast'); el.textContent = t; el.classList.add('on'); clearTimeout(el._t); el._t = setTimeout(() => el.classList.remove('on'), 2200); };
 async function copy(t, label = 'Copied') { try { await navigator.clipboard.writeText(t); toast(label); } catch { const a = document.createElement('textarea'); a.value = t; document.body.appendChild(a); a.select(); try { document.execCommand('copy'); toast(label); } catch { prompt('Copy:', t); } a.remove(); } }
-const res = MD.parseDraft(location.hash || location.search);
+const RAW = location.hash || location.search;
+// ⭐ Sponsored side: resolve the coin only from Kibble Pay's live list (approved + unexpired). A link can't add one.
+const API = globalThis.__KIBBLE_API || MD.KIBBLE_API;
+const sponsors = /(^|[#?&])family=sponsor(&|$)/i.test(RAW) ? await fetch(`${API}/api/cabal?op=sponsors-live`).then((r) => r.json()).then((j) => (j.ok ? MD.buildSponsorRegistry(j.sponsors, { api: API }) : null)).catch(() => null) : null;
+const res = MD.parseDraft(RAW, { sponsors });
 const S = { d: res.draft, img: res.draft?.image, imgFrom: res.draft?.imageSource, got: false };
 globalThis.__lhDraft = () => ({ ok: res.ok, reason: res.reason, notes: res.notes, draft: S.d, imageSource: S.imgFrom, handedOff: S.got });
 
@@ -77,15 +81,15 @@ function refused() {
 }
 const srcText = () => S.imgFrom === 'maker' ? 'Your meme, sent from the maker (kept in this tab only)' : S.imgFrom === 'preset' ? 'Preset art from the meme maker' : `${esc(S.d.coin.name)} art (open from the maker's button for your exact meme)`;
 function render() {
-  const d = S.d; document.documentElement.style.setProperty('--acc', MD.SISTERS[d.sister].color);
+  const d = S.d; document.documentElement.style.setProperty('--acc', d.color);
   const f = (label, v, copyVal, cls = '') => `<div class="field"><b>${label}</b><div class="v ${cls}">${v}</div>${copyVal ? `<button class="btn tiny ghost" data-copy="${esc(copyVal)}">Copy</button>` : '<span></span>'}</div>`;
-  $('#app').innerHTML = `<div class="row" style="margin:0 0 12px"><span class="chip px"><i></i>${MD.SISTERS[d.sister].side === 'crime' ? 'Crime Cat (fan-made)' : 'Cabal'} · ${esc(d.coin.name)} · $${esc(d.coin.ticker)}</span>${d.fromPairBuilder ? '<span class="chip px">🧬 Pair Builder</span>' : '<span class="chip px">Meme export</span>'}${d.kit ? `<span class="chip">Kit: ${esc(d.kit)}</span>` : ''}</div>
+  $('#app').innerHTML = `<div class="row" style="margin:0 0 12px"><span class="chip px"><i></i>${d.side === 'crime' ? 'Crime Cat (fan-made)' : d.side === 'sponsor' ? '⭐ Sponsored side · paid visibility, not an endorsement' : 'Cabal'} · ${esc(d.coin.name)} · $${esc(d.coin.ticker)}</span>${d.fromPairBuilder ? '<span class="chip px">🧬 Pair Builder</span>' : '<span class="chip px">Meme export</span>'}${d.kit ? `<span class="chip">Kit: ${esc(d.kit)}</span>` : ''}</div>
   <div class="grid"><div><div class="art"><img id="d-img" src="${esc(S.img)}" alt="Meme image for ${esc(d.name)}" crossorigin="anonymous"><div class="src" id="d-src">${srcText()}</div></div>
     <div class="row"><button class="btn" id="d-dl">⬇ Download image</button></div></div>
   <div><h2 class="px" style="margin:0 0 6px;font-size:15px;color:var(--goldl)">Draft from Meme Maker</h2>
     ${f('Coin name', esc(d.name), d.name, 'big')}${f('Ticker', '$' + esc(d.ticker), d.ticker, 'big')}
     ${f('Description', d.desc ? esc(d.desc) : '<span class="plan">(none)</span>', d.desc || '')}
-    ${f('Parent coin', `<b>$${esc(d.coin.ticker)}</b> · ${esc(d.coin.name)}<br><code>${esc(d.coin.mint)}</code><div class="plan">${d.parentPair ? `🧬 Pair of pairs: ${d.parentPair.chain.map(esc).join(' → ')}. CA from the verified pair registry; it can't be changed from a link.` : "Locked to this " + (MD.SISTERS[d.sister].side === 'crime' ? 'side' : 'sister') + "'s own coin. It can't be changed from a link."}</div>`, d.coin.mint)}
+    ${f('Parent coin', `<b>$${esc(d.coin.ticker)}</b> · ${esc(d.coin.name)}<br><code>${esc(d.coin.mint)}</code><div class="plan">${d.parentPair ? `🧬 Pair of pairs: ${d.parentPair.chain.map(esc).join(' → ')}. CA from the verified pair registry; it can't be changed from a link.` : "Locked to this " + (d.side === 'crime' ? 'side' : d.side === 'sponsor' ? 'sponsored side' : 'sister') + "'s own coin. It can't be changed from a link."}</div>`, d.coin.mint)}
     ${d.reward != null ? f('Holder reward', `<b>${esc(d.reward)}%</b> <span class="plan">planned. The Launch Hall doesn't set or enforce this; nothing is set on-chain here.</span>`, '') : ''}
     <div class="row"><button class="btn green" id="d-sheet">Copy launch sheet</button><a class="btn" id="d-pump" data-va="lh_pump_click" data-va-from="lh-draft" href="https://pump.fun/create" target="_blank" rel="noopener noreferrer">Open pump.fun create ↗</a><a class="btn ghost" id="d-back" href="${esc(d.back)}" data-va="maker_click" data-va-from="lh-back">← Back to Meme Maker</a></div>
     ${notesHtml(res.notes)}</div></div>

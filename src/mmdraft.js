@@ -89,6 +89,24 @@ export function safeBackUrl(u) {
 }
 export function safeDataUrl(d) { const s = String(d || ''); return s.length <= MAX_IMAGE_CHARS && /^data:image\/(png|jpeg|webp);base64,[A-Za-z0-9+/]+={0,2}$/.test(s) ? s : null; }
 
+/**
+ * ⭐ Sponsored sides (paid visibility, not an endorsement). Built ONLY from Kibble Pay's op=sponsors-live list
+ * (approved by hand + unexpired), fetched by the page; a link can never add one. Each side pairs only with its own mint.
+ * -> Map<applicationId, {id, ticker, name, mint, color, art, expiresAt, tierName}>
+ */
+export function buildSponsorRegistry(list, { api = KIBBLE_API, now = Date.now(), pairs = pairReg() } = {}) {
+  const out = new Map(), locked = new Set([KIBBLE_MINT, ...Object.values(SISTERS).map((x) => x.mint), ...[...pairs.values()].map((x) => x.mint)]);
+  const lockedT = new Set(['KIBBLE', 'INU', 'SOL', 'XLM', 'GOLD', ...Object.keys(SISTERS), ...[...pairs.values()].map((x) => x.ticker)]);
+  for (const r of Array.isArray(list) ? list : []) {
+    const id = String(r?.id || ''), ticker = String(r?.ticker || '').toUpperCase().replace(/^\$/, ''), mint = String(r?.mint || ''), exp = Number(r?.expiresAt);
+    if (!/^[0-9a-f]{12}$/.test(id) || !/^[A-Z0-9]{2,10}$/.test(ticker) || lockedT.has(ticker) || !B58_FULL.test(mint) || locked.has(mint)) continue;
+    if (!(exp > now) || [...out.values()].some((x) => x.mint === mint || x.ticker === ticker)) continue;
+    const art = typeof r.art === 'string' && r.art.startsWith(`${api}/api/cabal?op=sponsor-img&id=${id}&`) ? r.art : null; if (!art) continue;
+    out.set(id, Object.freeze({ id, ticker, mint, name: clean(r.name, 32) || ticker, color: /^#[0-9a-f]{6}$/i.test(r.color || '') ? r.color : '#ffcc33', art, expiresAt: exp, tierName: clean(r.tierName || r.tier, 20) }));
+  }
+  return out;
+}
+
 function readParams(hashOrSearch) {
   const raw = String(hashOrSearch || '').replace(/^[#?]/, '');
   try { return new URLSearchParams(raw); } catch { return new URLSearchParams(); }
@@ -98,19 +116,28 @@ function readParams(hashOrSearch) {
  * Parses + validates a draft. Returns { ok:true, draft, notes:[…] } or { ok:false, reason, notes }.
  * draft = { sister, coin:{ticker,name,mint}, name, ticker, desc, reward|null, kit, image, imageSource, back, handoff, fromPairBuilder }
  */
-export function parseDraft(hashOrSearch, { pairs = pairReg() } = {}) {
+export function parseDraft(hashOrSearch, { pairs = pairReg(), sponsors = null } = {}) {
   const p = readParams(hashOrSearch), notes = [];
   const famRaw = (p.get('family') || '').toLowerCase(), fam = famRaw || 'cabal';
   const sid = (p.get('sister') || p.get('k') || '').toUpperCase().replace(/^\$/, '');
   if (fam === 'inu' || sid === 'KIBBLE' || sid === 'INU') return { ok: false, reason: 'inu', notes: ['Inu / $KIBBLE memes are not sent to the Launch Hall draft desk yet.'] };
   if (!sid) return { ok: false, reason: 'empty', notes };
-  const sister = SISTERS[sid];
+  // ⭐ Sponsored side: the coin comes ONLY from the live sponsors list (approved + unexpired), matched by application id AND ticker.
+  let sponsor = null;
+  if (fam === 'sponsor') {
+    if (!(sponsors instanceof Map)) return { ok: false, reason: 'sponsor-unavailable', notes: ['Couldn’t load the live sponsored sides right now, so this sponsored draft can’t be paired. Try again in a minute.'] };
+    const sp = sponsors.get(String(p.get('sponsor') || '').toLowerCase());
+    if (!sp || sp.ticker !== sid) return { ok: false, reason: 'sponsor-unknown', notes: ['That sponsored side isn’t live (unknown, not approved yet, or expired), so no draft can be paired with it.'] };
+    sponsor = sp;
+    notes.push(`Sponsored side: $${sp.ticker} paid for visibility in the meme maker. That is not an endorsement by the Cabal, Inu Verse or $KIBBLE. NFA.`);
+  }
+  const sister = sponsor ? Object.freeze({ id: 'SP_' + sponsor.ticker, name: sponsor.name, ticker: sponsor.ticker, mint: sponsor.mint, color: sponsor.color, art: sponsor.art, side: 'sponsor' }) : SISTERS[sid];
   if (!sister) return { ok: false, reason: 'pending', notes: ['That coin is not verified in the Launch Hall yet, so no draft can be paired with it. Only $BTC, $ETH, $XRP and $CRIME drafts (and their verified pairs) are accepted for now.'] };
   // Strict sides: a Cabal meme can't pair with $CRIME and a Crime Cat meme can't pair with a sister.
   if (famRaw && famRaw !== sister.side) return { ok: false, reason: 'side-mismatch', notes: [`A ${famRaw === 'crime' ? 'Crime Cat' : famRaw === 'cabal' ? 'Cabal' : clean(famRaw, 12)} meme can't be paired with $${sister.ticker}. Each side pairs only with its own coin.`] };
   // The parent coin is the sister's own, or a pair REGISTERED under her (looked up by id; its CA comes from the registry).
   // A CA/ticker/unknown id in the link never changes the parent.
-  const pv = (p.get('parent') || '').trim().toUpperCase().replace(/^\$/, '');
+  const pv = sponsor ? '' : (p.get('parent') || '').trim().toUpperCase().replace(/^\$/, ''); // sponsored sides take no pairs
   const reg = pv && !B58_FULL.test(pv) && pairs.get(pv) && pairs.get(pv).root === sister.id ? pairs.get(pv) : null;
   if (pv && !reg && !B58_FULL.test(p.get('parent').trim()) && pv !== sister.ticker && !SISTERS[pv] && pv !== 'KIBBLE' && /^[A-Z0-9]{2,10}$/.test(pv))
     return { ok: false, reason: 'unregistered-parent', notes: [`"$${clean(pv, 10)}" is not a registered $${sister.ticker} pair in the Launch Hall yet, so this pair-of-pairs draft can't be paired. Only pairs whose real CA Zachary has verified can be parents (nothing is read from the link).`] };
@@ -134,7 +161,7 @@ export function parseDraft(hashOrSearch, { pairs = pairReg() } = {}) {
   if (imgParam && !img) notes.push('Ignored an image link that is not hosted by the meme maker.');
   const handoff = /^[A-Za-z0-9_-]{6,40}$/.test(p.get('handoff') || '') ? p.get('handoff') : null;
   return { ok: true, notes, draft: {
-    v: VERSION, sister: sister.id, coin, parentPair: reg ? { id: reg.id, depth: reg.depth, chain: reg.chain.map((t) => '$' + t) } : null,
+    v: VERSION, sister: sister.id, side: sister.side, color: sister.color, sponsored: sponsor ? { id: sponsor.id, expiresAt: sponsor.expiresAt, tierName: sponsor.tierName } : null, coin, parentPair: reg ? { id: reg.id, depth: reg.depth, chain: reg.chain.map((t) => '$' + t) } : null,
     name, ticker, desc, reward, kit: clean(p.get('kit'), LIMITS.kit), fromPairBuilder: p.get('src') === 'pairs' || reward != null,
     image: img || reg?.art || sister.art, imageSource: img ? 'preset' : 'sister-art', back: safeBackUrl(p.get('from')), handoff } };
 }
