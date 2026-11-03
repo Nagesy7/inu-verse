@@ -91,7 +91,9 @@ export function createFeed({ f = (...a) => globalThis.fetch(...a), doc = globalT
   let shownKey = '';
   function render() { build(); const el = S.el; if (!el) return; const t = now(), evs = S.events.filter((e) => t - e.t < FEED.TTL_S * 1000);
     if (!evs.length) { el.hidden = true; return; } // empty feed: show nothing (never filler)
-    const hud = doc.getElementById?.('hud'), hb = hud?.getBoundingClientRect?.(); if (hb && hb.bottom > 0 && hb.bottom < 140) el.style.top = Math.round(hb.bottom + 6) + 'px';
+    const hud = doc.getElementById?.('hud'), hb = hud?.getBoundingClientRect?.(); const top = hb && hb.bottom > 0 && hb.bottom < 140 ? Math.round(hb.bottom + 6) : null; if (top != null) el.style.top = top + 'px';
+    // never sit under the wallet/profile badge when it shares the top-left corner (phone landscape): slide right of it
+    const pb = doc.getElementById?.('inu-profile-badge')?.getBoundingClientRect?.(), y0 = top ?? 58; el.style.left = pb && pb.width > 0 && pb.left < 80 && pb.top < y0 + 28 && pb.bottom > y0 ? Math.round(pb.right + 6) + 'px' : '';
     el.hidden = false; el.classList.toggle('collapsed', S.collapsed); el.classList.toggle('quiet', t - evs[0].t > 3600_000);
     const col = el.querySelector('.ft-col'); col.textContent = S.collapsed ? '📰' : '–'; col.setAttribute('aria-label', S.collapsed ? 'Show town news' : 'Collapse town news');
     if (t - S.rotT > FEED.ROTATE_MS) { S.rotT = t; S.idx = (S.idx + 1) % Math.min(FEED.SHOW, evs.length); }
