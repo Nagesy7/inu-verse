@@ -7,6 +7,7 @@ import { TILE, MAP_W, MAP_H, MAP, T, BUILDINGS, PLOTS, MALL_BUILDINGS, NPC_HOMES
 import { mulberry32 } from './rng.js';
 import { reducedMotion, inView } from './alive.js';
 import { fireflySpots, drawSky, drawFireflies, CAPS as SKY_CAPS } from './weather.js';
+import { drawBuildingGlow } from './bldgfx.js';
 
 export const DAY_LEN = 720; // seconds per in-game day (~12 real minutes)
 export const LAMP_TILES = [[8, 18], [24, 18], [40, 23], [52, 18], [12, 29], [44, 29], [20, 34], [50, 34], [13, 46], [50, 46], [24, 56], [40, 56], [29, 5], [45, 34]];
@@ -252,6 +253,7 @@ export function drawAtmosphere(c, A, phase, cam, vw, vh, lightsArg) {
         const gr = x.createRadialGradient(lx, ly, 0, lx, ly, l.r); gr.addColorStop(0, `rgba(255,196,124,${0.52 * lit})`); gr.addColorStop(0.55, `rgba(150,100,60,${0.16 * lit})`); gr.addColorStop(1, 'rgba(0,0,0,0)');
         x.fillStyle = gr; x.beginPath(); x.ellipse(lx, ly, l.r, l.r * (l.flat ?? 0.6), 0, 0, 7); x.fill(); } }
     c.save(); c.globalCompositeOperation = 'multiply'; c.drawImage(L, 0, 0); c.restore();
+    if (night > 0.15) drawBuildingGlow(c, ox, oy, lit); // lit building windows + signs punch through the night grade (bldgfx.js)
     if (night > 0.15) { c.save(); c.globalCompositeOperation = 'lighter';
       for (const l of lights) if (l.glow) { const lx = l.x + ox, ly = l.y + oy; if (lx < -60 || ly < -60 || lx > vw + 60 || ly > vh + 60) continue; const r = l.core || 26;
         const gr = c.createRadialGradient(lx, ly, 0, lx, ly, r); gr.addColorStop(0, `rgba(255,220,140,${0.42 * lit})`); gr.addColorStop(1, 'rgba(255,170,80,0)'); c.fillStyle = gr; c.fillRect(lx - r, ly - r, r * 2, r * 2); }

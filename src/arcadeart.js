@@ -1,5 +1,7 @@
 // Original neon pixel art for the Inu Arcade building (procedural, crisp integer rects).
 import { TILE, ARCADE } from './world.js';
+import { drawBuilding } from './bldgfx.js';
+import { FUNC } from './facadeart.js';
 const INK = '#141a2e';
 const R = (c, x, y, w, h, col) => { c.fillStyle = col; c.fillRect(Math.round(x), Math.round(y), Math.round(w), Math.round(h)); };
 function txt(c, s, x, y, size, col, glow) { c.font = `${size}px Silkscreen, monospace`; c.textAlign = 'center'; c.textBaseline = 'alphabetic'; if (glow) { c.save(); c.shadowColor = glow; c.shadowBlur = 8; c.fillStyle = col; c.fillText(s, x, y); c.restore(); } c.fillStyle = INK; c.fillText(s, x, y + 1); c.fillStyle = col; c.fillText(s, x, y); }
@@ -11,7 +13,11 @@ function cabinet(c, x, y, col, t, i) { // 18x30 upright cabinet seen in the wind
 }
 export function arcadeProps(t, top = []) {
   const x = ARCADE.x * TILE, y = ARCADE.y * TILE, w = ARCADE.w * TILE, h = ARCADE.h * TILE, dx = (ARCADE.door.tx - ARCADE.x) * TILE;
+  const hiScores = (c) => { const sx = x + 8, sy = y + h + 4; R(c, sx + 22, sy + 30, 4, 14, '#4a3a5a'); R(c, sx - 2, sy - 2, 52, 36, INK); R(c, sx, sy, 48, 32, '#140c2c');
+    txt(c, 'HI-SCORES', sx + 24, sy + 8, 5, '#ffe14a', '#ffe14a');
+    (top.length ? top : [{ name: '---', points: 0 }]).slice(0, 3).forEach((r, i) => txt(c, `${i + 1} ${String(r.name).slice(0, 3)} ${r.points ?? r.score ?? 0}`, sx + 24, sy + 16 + i * 7, 5, NEON[(i + 1) % 4])); };
   return [{ y: y + h - 1, d: (c) => {
+    if (drawBuilding(c, ARCADE, FUNC.arcade)) { hiScores(c); return; } // v2 cached façade + live overlay (bldgfx.js); live hi-score board stays dynamic
     // body + roof
     R(c, x - 2, y - 6, w + 4, h + 6, INK); R(c, x, y - 4, w, h + 2, '#1c1638'); R(c, x, y - 4, w, 10, '#2c2258');
     for (let k = 0; k < w; k += 16) R(c, x + k, y + 6, 8, 2, '#3a2e70'); // roof ribs

@@ -1,5 +1,7 @@
 // Pixel art for the Rescue Station and Trainer Gate (procedural, crisp integer rects, same style as arcadeart.js).
 import { TILE, GAME_DOORS, BANK, COMMUNITY } from './world.js';
+import { drawBuilding } from './bldgfx.js';
+import { FUNC } from './facadeart.js';
 const INK = '#1a1424', R = (c, x, y, w, h, col) => { c.fillStyle = col; c.fillRect(Math.round(x), Math.round(y), Math.round(w), Math.round(h)); };
 const txt = (c, s, x, y, size, col) => { c.font = `${size}px Silkscreen, monospace`; c.textAlign = 'center'; c.textBaseline = 'alphabetic'; c.fillStyle = INK; c.fillText(s, x + 1, y + 1); c.fillStyle = col; c.fillText(s, x, y); };
 const night = () => !!globalThis.__inuNight;
@@ -40,7 +42,8 @@ function gate(c, g, t) { const x = g.x * TILE, y = g.y * TILE, w = g.w * TILE, h
   const b = Math.sin(t * 2) * 1.5, cx = x + dx + 16, cy = y + 40 + b; R(c, cx - 9, cy - 9, 18, 18, INK); R(c, cx - 8, cy - 8, 16, 16, '#ffd84a'); R(c, cx - 8, cy - 8, 16, 2, '#fff3b0'); R(c, cx - 3, cy - 1, 6, 5, '#7a4a18'); for (const [px, py] of [[-5, -4], [-2, -6], [2, -6], [5, -4]]) R(c, cx + px - 1, cy + py, 3, 3, '#7a4a18'); // medallion
   for (const lx of [x + dx - 24, x + dx + 56]) { R(c, lx - 1, y + h - 30, 2, 22, INK); R(c, lx - 5, y + h - 40, 10, 12, INK); R(c, lx - 4, y + h - 39, 8, 10, n ? '#ffe08a' : '#e8d8b0'); R(c, lx - 6, y + h - 42, 12, 3, INK); if (n) glow(c, lx, y + h - 34, 24, '#ffc860', 0.6); } // stone lanterns
   R(c, x + dx - 8, y + h, 48, 4, '#9aa4b0'); R(c, x + dx - 8, y + h + 4, 48, 1, INK); }
-function bank(c, g, t) { const x = g.x * TILE, y = g.y * TILE, w = g.w * TILE, h = g.h * TILE, dx = (g.door.tx - g.x) * TILE;
+function bank(c, g, t) { if (drawBuilding(c, g, FUNC.bank)) return; // v2 cached façade (bldgfx.js); flat version below is the fallback
+  const x = g.x * TILE, y = g.y * TILE, w = g.w * TILE, h = g.h * TILE, dx = (g.door.tx - g.x) * TILE;
   R(c, x - 4, y - 18, w + 8, h + 18, INK); R(c, x - 2, y - 16, w + 4, 12, '#c8b890'); // serious stone pediment
   c.fillStyle = '#d0c4a8'; c.beginPath(); c.moveTo(x - 6, y - 16); c.lineTo(x + w / 2, y - 38); c.lineTo(x + w + 6, y - 16); c.closePath(); c.fill(); c.strokeStyle = INK; c.lineWidth = 2; c.stroke();
   R(c, x + w / 2 - 8, y - 32, 16, 12, '#1f2d5c'); R(c, x + w / 2 - 5, y - 29, 10, 8, '#d4a640'); R(c, x + w / 2 - 2, y - 26, 4, 4, '#fff3b0'); // vault seal

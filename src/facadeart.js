@@ -2,6 +2,7 @@
 // Warm café, bold car dealer, bright arcade (arcadeart.js), serious bank (doorart.js), playful fashion, etc.
 // NOT shared cream/$KIBBLE chrome — create/landing stays cream; buildings keep distinct identities.
 import { TILE, DOORS } from './world.js';
+import { drawBuilding, PAINTERS } from './bldgfx.js';
 
 export const INK = '#141a2e';
 const R = (c, x, y, w, h, col) => { c.fillStyle = col; c.fillRect(Math.round(x), Math.round(y), Math.round(w), Math.round(h)); };
@@ -433,6 +434,8 @@ const DRAW = {
 export function drawTypedFacade(c, b) {
   const fn = DRAW[b.id]; if (!fn) return false;
   const F = FUNC[b.id] || FUNC.shop;
+  // v2 graphics: cached, textured, shaded pixel-art painter (bldgfx.js); the original flat painter stays as a safety net.
+  if (PAINTERS[b.id] && drawBuilding(c, b, F)) return true;
   fn(c, b, F);
   return true;
 }
