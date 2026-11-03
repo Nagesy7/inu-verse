@@ -35,7 +35,22 @@ export const SPOTS = {
   g0: [[29, 63], 'right'], g1: [[34, 63], 'left'], g2: [[29, 65], 'right'], g3: [[34, 65], 'left'], g4: [[31, 62], 'down'], g5: [[32, 66], 'up'],
   cafeA: [[8, 19], 'right'], cafeB: [[9, 19], 'left'], launchA: [[36, 19], 'right'], launchB: [[37, 19], 'left'],
   chapelA: [[21, 86], 'right'], chapelB: [[22, 86], 'left'], marketA: [[19, 100], 'right'],
+  // daily-event crowd spots (src/events.js): market stalls, festival plaza, derby pond bank, garden show beds
+  mk0: [[17, 100], 'up'], mk1: [[26, 99], 'right'], mk2: [[19, 98], 'left'], mk3: [[22, 100], 'up'],
+  fs0: [[9, 49], 'right'], fs1: [[19, 51], 'right'], fs2: [[23, 52], 'left'], fs3: [[15, 48], 'down'],
+  dy0: [[4, 98], 'right'], dy1: [[17, 98], 'left'], dy2: [[11, 96], 'down'], dy3: [[9, 102], 'up'],
+  gd0: [[19, 92], 'up'], gd1: [[21, 92], 'up'], gd2: [[27, 92], 'up'], gd3: [[30, 92], 'up'],
 };
+// on an event day some routine blocks inside the event hours move to the event: 'stand' -> one of its crowd spots, 'stroll' -> a
+// nearby loop. Still a pure function of (folk, event, folk-day second), so every client agrees. The trader day keeps the routine.
+export const EVENT_REMAP = {
+  market: { h0: 9, h1: 18, spots: ['mk0', 'mk1', 'mk2', 'mk3'], loop: 'south' },
+  festival: { h0: 11, h1: 23, spots: ['fs0', 'fs1', 'fs2', 'fs3'], loop: 'plaza' },
+  derby: { h0: 8, h1: 18, spots: ['dy0', 'dy1', 'dy2', 'dy3'], loop: 'south' },
+  garden: { h0: 9, h1: 18, spots: ['gd0', 'gd1', 'gd2', 'gd3'], loop: 'south' },
+};
+export function eventDay(i, ev) { const f = FOLK[i], R = EVENT_REMAP[ev]; if (!R) return f.day;
+  return f.day.map(([h, s], k) => { if (h < R.h0 || h >= R.h1) return [h, s]; if (s.startsWith('stand ')) return [h, 'stand ' + R.spots[(i + k) % R.spots.length]]; if (s.startsWith('stroll ')) return [h, 'stroll ' + R.loop]; return [h, s]; }); }
 // homes: the walk ends at the front step and the folk goes indoors (hidden) until morning
 const HOMES = [[4, 40], [11, 40], [18, 40], [25, 40], [12, 102], [26, 102]];
 
@@ -68,6 +83,13 @@ export const FOLK_LINES = {
   stroll: ['Getting my steps in!', 'Gotta keep these paws moving.', 'Loop number three!'],
   stand: ['We were just catching up.', 'Have you heard? New shops soon!', 'The fountain is extra sparkly.'],
   talk: ['I walk this way every day.', 'Try the cafe, the buns are warm.', 'This town feels more alive lately.', 'Wave at the dog walkers, they love it.', 'I heard the pond koi are shy today.'],
+  ev: {
+    market: ['Market Day! Extra stalls today.', 'The apples look amazing.', 'I came for one carrot. Look at my basket.'],
+    festival: ['Happy Lantern Festival!', 'Have you lit a lantern yet?', 'Wait till the lanterns glow tonight!', 'Confetti in my fur again!'],
+    trader: ['A trader rolled into town!', 'Biscuit has the cutest keepsakes.', 'Did you see the trader cart?'],
+    derby: ['Fishing Derby today!', 'I caught a tiny one. Still counts!', 'The pond is packed today.'],
+    garden: ['The Garden Show is lovely.', 'Those sunflowers are taller than me!', 'Best in show? Too close to call.'],
+  },
   pairs: [['Nice weather, huh?', 'Perfect for a stroll!'], ['Did you try the new buns?', 'Twice! No regrets.'], ['See the fireflies last night?', 'By the park! So pretty.'], ['How was your day?', 'Pawsome, thanks!'], ['Look at those clouds.', 'That one is a bone!']],
 };
 const pickL = (arr, r) => arr[Math.floor(r * arr.length) % arr.length];
@@ -114,17 +136,17 @@ function inStop(f, st, e, o) { if (st.kind === 'stroll') { const L = loopPath(st
 
 // ---- daily plan: blocks with their (cached) transit route from where the previous block ended ----
 const PLANS = [];
-export function folkPlan(i) { if (PLANS[i]) return PLANS[i]; const f = FOLK[i], n = f.day.length;
-  const blocks = [...f.day].sort((p, q) => p[0] - q[0]).map(([h, s]) => ({ h, s0: h * 60, stop: parseStop(s), len: 0, route: null, dur: 0 }));
+export function folkPlan(i, ev = null) { const key = EVENT_REMAP[ev] ? i + '|' + ev : i; if (PLANS[key]) return PLANS[key]; const f = FOLK[i], n = f.day.length;
+  const blocks = [...eventDay(i, ev)].sort((p, q) => p[0] - q[0]).map(([h, s]) => ({ h, s0: h * 60, stop: parseStop(s), len: 0, route: null, dur: 0 }));
   for (let k = 0; k < n; k++) blocks[k].len = ((blocks[(k + 1) % n].h - blocks[k].h + 24) % 24 || 24) * 60;
   // start right after the home block (its end point does not depend on anything), go once round the cycle
   const hk = blocks.findIndex((b) => b.stop.kind === 'home'), o = { x: 0, y: 0 };
   for (let j = 1; j <= n; j++) { const k = (hk + j) % n, p = blocks[(k - 1 + n) % n], b = blocks[k];
     const endE = Math.max(0, p.len - p.dur); let from; if (p.route && p.len < p.dur) { along(p.route, p.len * SPEED, TMP); from = [TMP.x, TMP.y]; } else { inStop(f, p.stop, endE, o); from = [o.x, o.y]; }
     b.route = routeBetween(from, anchorOf(f, b.stop)); b.dur = b.route.len / SPEED; }
-  PLANS[i] = { blocks }; return PLANS[i]; }
+  PLANS[key] = { blocks }; return PLANS[key]; }
 // pure position of folk i at folk-day second s: { x, y, face, moving, dist, doing: walk|stroll|sit|stand|home, hidden }
-export function folkAt(i, s, o = {}) { const { blocks } = folkPlan(i); s = ((s % FOLK_DAY) + FOLK_DAY) % FOLK_DAY;
+export function folkAt(i, s, o = {}, ev = null) { const { blocks } = folkPlan(i, ev); s = ((s % FOLK_DAY) + FOLK_DAY) % FOLK_DAY;
   let k = blocks.length - 1; for (let j = 0; j < blocks.length; j++) if (blocks[j].s0 <= s) k = j; // blocks are hour-sorted
   const b = blocks[k]; let e = s - b.s0; if (e < 0) e += FOLK_DAY; o.block = k;
   if (e < b.dur) { const d = e * SPEED, k = Math.max(0, Math.min(1, d / 16, (b.route.len - d) / 16)); along(b.route, d, TMP); o.x = TMP.x + LANE[i % 5][0] * k; o.y = TMP.y + LANE[i % 5][1] * k; o.face = faceOf(TMP.dx, TMP.dy); o.moving = true; o.dist = e * SPEED; o.doing = 'walk'; o.hidden = false; return o; }
@@ -149,7 +171,7 @@ export function stepTownsfolk(T, dt, ctx) { const out = T.out; out.length = 0; c
   for (let i = 0; i < T.F.length; i++) { const F = T.F[i], a = F.a;
     if (i >= n) { F.greeted = false; continue; }
     if (F.hold > 0) { F.hold -= dt; F.lag = Math.min(12, F.lag + dt); } else if (F.lag > 0) F.lag = Math.max(0, F.lag - dt * 0.35);
-    const p = folkAt(i, ctx.s - (F.p.moving || F.hold > 0 ? F.lag : (F.lag = 0)), F.p);
+    const p = folkAt(i, ctx.s - (F.p.moving || F.hold > 0 ? F.lag : (F.lag = 0)), F.p, ctx.ev);
     if (p.hidden || !inV(p.x, p.y, ctx.view, FOLK_CAPS.view)) { F.greeted = F.greeted && !p.hidden; continue; }
     a.x = p.x; a.y = p.y; a.face = p.face; a.moving = p.moving && F.hold <= 0; a.phase = ctx.rm ? 0 : p.dist * 0.35; a.act = p.doing === 'sit' ? SIT : null; a.umbrella = rain && p.doing !== 'home';
     if (ctx.artKey && a.art == null) a.art = ctx.artKey(a.coat, a.outfit) || false;
@@ -167,13 +189,14 @@ export function stepTownsfolk(T, dt, ctx) { const out = T.out; out.length = 0; c
   if ((T.chatT -= dt) <= 0) { T.chatT = 5 + rng() * 6; const vis = out.length; if (vis) { const A = T.F[out[Math.floor(rng() * vis) % vis].folkIdx];
       let B = null; for (const a of out) { const G = T.F[a.folkIdx]; if (G !== A && !G.p.moving && !A.p.moving && Math.hypot(a.x - A.a.x, a.y - A.a.y) < 130) { B = G; break; } }
       if (B && rng() < 0.7) { const pr = pickL(FOLK_LINES.pairs, rng()); if (speak(T, A, pr[0], now, ctx)) T.pending = { i: B.i, text: pr[1], at: now + 1.8 }; }
-      else if (rng() < 0.6) speak(T, A, rng() < 0.5 ? timeLine(ctx.hour ?? 12, ctx.wx, rng()) : pickL(FOLK_LINES[A.p.doing] || FOLK_LINES.talk, rng()), now, ctx); } }
+      else if (rng() < 0.6) speak(T, A, ctx.ev && FOLK_LINES.ev[ctx.ev] && rng() < 0.45 ? pickL(FOLK_LINES.ev[ctx.ev], rng()) : rng() < 0.5 ? timeLine(ctx.hour ?? 12, ctx.wx, rng()) : pickL(FOLK_LINES[A.p.doing] || FOLK_LINES.talk, rng()), now, ctx); } }
   return out; }
 // nearest visible folk within r of (x, y) (for the interact prompt / tap); uses the last step's output
 export function nearestFolk(T, x, y, r = FOLK_CAPS.talk) { let best = null, bd = r; for (const a of T.out) { const d = Math.hypot(a.x - x, a.y - y); if (d < bd) { bd = d; best = a; } } return best; }
 export function folkAtWorld(T, wx, wy) { let best = null, bd = 22; for (const a of T.out) { const dx = Math.abs(wx - a.x), dy = a.y - wy; if (dy < -10 || dy > 44) continue; const d = Math.hypot(dx, Math.max(0, dy - 18)); if (dx < 16 && d < bd) { bd = d; best = a; } } return best; }
 // tap / interact: a short line (no rewards); they turn to you and wave
 export function talkTo(T, a, ctx) { const F = T.F[a.folkIdx], r = ctx.rng || Math.random; F.lookT = 3; F.a.wave.t0 = ctx.now; F.a.em.t = 1.4; if (F.p.moving) F.hold = Math.max(F.hold, 3);
+  if (ctx.ev && FOLK_LINES.ev[ctx.ev] && r() < 0.4) return pickL(FOLK_LINES.ev[ctx.ev], r());
   const pool = r() < 0.4 ? null : (FOLK_LINES[F.p.doing] || FOLK_LINES.talk); return pool ? pickL(r() < 0.5 ? FOLK_LINES.talk : pool, r()) : timeLine(ctx.hour ?? 12, ctx.wx, r()); }
 // chat bubble anchor for a 'tf:' id (above the head), or null when not on screen
 export function folkAnchor(T, id) { if (typeof id !== 'string' || !id.startsWith('tf:')) return null; for (const a of T.out) if (a.fid === id) return { x: a.x, y: a.y - (a.act === SIT ? 52 : 60) }; return null; }

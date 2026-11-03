@@ -4,16 +4,19 @@
 //                                          name gets no session and is never stored). Logs "X arrived in town" at most once per
 //                                          name per 6 h and once per IP per 10 min. Rate limits per hashed IP: 1 hello / 15 s, 8 / h.
 // POST { op:"ping", sid, area, coat }   -> keeps the visitor's last spot / last seen fresh (1 per 20 s per session)
-// POST { op:"event", sid, type, area }  -> client-reported event (CLIENT_TYPES only, today just "koi"): the name comes from the
+// POST { op:"event", sid, type, area, x } -> client-reported event (CLIENT_TYPES: "koi", "trader", "keepsake"): the name comes from the
 //                                          server-side session (never the request), the session must be >= 20 s old and from the
 //                                          same IP, koi needs area "pond"; 1 per type per 2 min per session, 6 per hour per IP.
+//                                          trader / keepsake (daily world events, src/events.js): x = item id, only on the matching
+//                                          Sydney event day, at that event's area, once per name + item + day. Cosmetic only.
 // Server-recorded events (no client call possible): plot claim / home + shop open / guestbook sign (api/home.js) and a new #1 on
 // the Inu Arcade weekly board (polled here from the arcade's own /api/scores, at most every 3 min).
 // No rewards, no tokens, no payments. Nothing returned ever includes a wallet, IP, session id of someone else, or email.
 import { createHash, randomBytes } from 'node:crypto';
 import { upstashKv, memoryKv } from './_lib/kv.js';
 import { appendEvent, readEvents, readVisitors, touchVisitor } from './_lib/feed.js';
-import { CLIENT_TYPES, FEED, feedName } from '../src/feed.js';
+import { CLIENT_TYPES, FEED, feedName, cleanExtra } from '../src/feed.js';
+import { GEAR, eventToday, eventArea } from '../src/events.js';
 import { GHOST, validSpot } from '../src/ghosts.js';
 
 export const HELLO_GAP_S = 15, HELLO_PER_H = 8, PING_GAP_S = 20, EVENT_GAP_S = 120, EVENTS_PER_H = 6, MIN_SESSION_MS = 20_000, ARRIVE_NAME_S = 6 * 3600, ARRIVE_IP_S = 600, ARCADE_EVERY_S = 180, GHOSTS_OUT = 16;
@@ -66,10 +69,15 @@ export function makeHandler({ env = process.env, kv, now = () => Date.now(), f =
         const type = String(b.type || ''); if (!CLIENT_TYPES.includes(type)) return send(400, { error: 'unknown event type' });
         if (t - s.t0 < MIN_SESSION_MS) return send(409, { error: 'too soon' });
         if (type === 'koi' && b.area !== 'pond') return send(409, { error: 'not at the pond' });
+        let x = ''; if (type === 'trader' || type === 'keepsake') { // daily world events: must match TODAY's Sydney event, the item and the area
+          x = cleanExtra(type, b.x); if (!x) return send(400, { error: 'bad item' }); const ev = eventToday(t);
+          if (type === 'trader' ? ev.id !== 'trader' : GEAR[x].ev !== ev.id) return send(409, { error: 'not today' });
+          if (b.area !== eventArea(ev)) return send(409, { error: 'not at the event' }); x = { x, day: ev.day }; }
         if (!(await store.setNX('feed:rl:e:' + sid + ':' + type, '1', EVENT_GAP_S))) return send(429, { error: 'slow down', retryAfter: EVENT_GAP_S });
         if (!(await under(store, 'feed:rl:ec:' + ip, EVENTS_PER_H, 3600))) return send(429, { error: 'too many events', retryAfter: 600 });
+        if (x && !(await store.setNX('feed:rl:x:' + sha(s.n.toLowerCase()).slice(0, 16) + ':' + x.day + ':' + x.x, '1', 26 * 3600))) return send(409, { error: 'already posted' }); // once per name + item + day
         if (validSpot(b.area)) s.a = b.area; s.t = t; await store.set('feed:v1:s:' + sid, JSON.stringify(s), FEED.TTL_S);
-        const ev = await appendEvent(store, { k: type, n: s.n }, { now: t, sleep }); return send(200, { ok: !!ev, ...(await payload(t)) }); }
+        const ev = await appendEvent(store, { k: type, n: s.n, x: x ? x.x : '' }, { now: t, sleep }); return send(200, { ok: !!ev, ...(await payload(t)) }); }
       return send(400, { error: 'unknown op' });
     } catch (e) { return send(e.status || 500, { error: e.status ? e.message : 'feed unavailable' }); }
   };
