@@ -1223,7 +1223,7 @@ function maybeOfferOnboard(kind, opts = {}) {
   if (place) setTimeout(() => onboardUi.offer(place), 280);
 }
 function openPanel(kind, opts = {}) {
-  if (!panel) { feel.fade(); uiOpen(); } panel = { kind, ...opts }; $('#panel').hidden = false; $('#prompt').hidden = true; keys.clear();
+  if (!panel) { feel.fade(); uiOpen(); } panel = { kind, ...opts }; $('#panel').hidden = false; const mpPop = $('#mp-pop'); if (mpPop) mpPop.hidden = true; // the players-online card never sits over a panel $('#prompt').hidden = true; keys.clear();
   const body = $('#panel-body'); body.onclick = null; const dg = $('#dialog'); if (dg) { dg.style.pointerEvents = 'none'; dg.style.visibility = 'hidden'; }
   if (kind !== 'onboard') maybeOfferOnboard(kind, opts);
   if (kind === 'event') return renderEventPanel(body);
