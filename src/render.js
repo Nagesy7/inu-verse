@@ -59,6 +59,7 @@ const THEMES = {
   luxauto: { wall: FUNC.luxauto.wall, roof: FUNC.luxauto.roof, accent: FUNC.luxauto.accent, label: 'Car previews' },
   office:  { wall: FUNC.office.wall, roof: FUNC.office.roof, accent: FUNC.office.accent, label: "President Inu" },
   clubhouse:{ wall: FUNC.clubhouse.wall, roof: FUNC.clubhouse.roof, accent: FUNC.clubhouse.accent, label: 'Pack lodge' },
+  lounge:  { wall: '#2a1a24', roof: '#140c12', accent: '#e3b341', label: 'Holders only' }, // velvet + gold members' lounge (own look)
 };
 
 // Chunky pseudo-isometric storefront filling footprint (x,y,w,h); flag pokes above.
@@ -140,6 +141,7 @@ function legacyBuilding(c, b) {
     c.drawImage(im, Math.round(x + w / 2 - W / 2), Math.round(y + h + 10 - H), Math.round(W), Math.round(H));
     return;
   }
+  if (!th) return; // unknown building id: skip rather than throw inside the frame loop
   storefront(c, x, y, w, h, th, b.name);
   // small tag plate under sign
   c.font = `8px ${FONT}`; const tw = c.measureText(th.label.toUpperCase()).width + 10;
