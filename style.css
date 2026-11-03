@@ -752,3 +752,14 @@ body.short.landscape:not(.inworld) #inu-profile-badge{top:auto!important;bottom:
 
 /* Feature batch, emotes: one compact on-screen emote button (phones) beside the A button; opens the action/emote wheel */
 @media (pointer:coarse){ .tb.e{right:78px;top:22px;width:48px;height:48px;padding:0;display:flex;align-items:center;justify-content:center;background:var(--navy3);border-color:var(--gold)} body.driving .tb.e,body.photo .tb.e{display:none} }
+/* HUD fix (phone landscape, e.g. 844x390): the interact prompt owns the centre strip under the HUD row; the town-news ticker
+   and toasts drop to a second row beside/below it, so neither sits on the prompt. Everything stays clear of the stick / A-B pad. */
+@media (orientation:landscape) and (max-height:500px){
+ body.inworld #feed-tick{top:calc(max(8px,env(safe-area-inset-top)) + 100px)!important;max-width:min(200px,24vw)}
+ body.inworld #feed-tick .ft-list{max-height:calc(100vh - 100px - 36px - 150px)}
+ body.inworld #toast{top:calc(max(8px,env(safe-area-inset-top)) + 100px);width:max-content;max-width:calc(100vw - 2 * max(224px,24vw + 24px))}
+ body.inworld #toast .toast{max-width:100%;font-size:10px;line-height:1.35;text-align:center}
+ body.inworld #toast .toast:nth-last-child(n+3){display:none}
+ body.inworld #crier-banner{top:calc(max(8px,env(safe-area-inset-top)) + 100px);max-width:calc(100vw - 2 * max(224px,24vw + 24px))}
+ body.inworld:has(#crier-banner.show) #toast{top:calc(max(8px,env(safe-area-inset-top)) + 156px)}
+}
