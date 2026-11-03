@@ -5,6 +5,8 @@ import { hires } from './hires.js';
 import { wallet } from './wallet.js';
 import { toU } from './mall.js';
 export const PETS = {
+  duckling: { name: 'Duckling', cur: 'bones', price: 0, starter: true, pal: ['#ffd84a', '#e0a82a', '#ff9a2a'] }, // free starter (src/petlife.js claimStarter)
+  minipup:  { name: 'Mini Pup', cur: 'bones', price: 100, pal: ['#e3a35a', '#a8662c', '#fff1dc'] },
   kitten:   { name: 'Kitten', cur: 'bones', price: 150, pal: ['#f0a050', '#b86a2a', '#fff1e0'] },
   bunny:    { name: 'Bunny', cur: 'bones', price: 120, pal: ['#f4f1ea', '#c9c3b8', '#ff9fb8'] },
   hamster:  { name: 'Hamster', cur: 'bones', price: 80, pal: ['#e8b070', '#b07840', '#fff4e0'] },
@@ -20,7 +22,7 @@ export const PETS = {
 };
 export function ensurePets(s) { s.pets ||= { owned: [], active: null }; return s.pets; }
 export function buyPet(s, species, name) {
-  const p = PETS[species], st = ensurePets(s); if (!p) return { ok: false, reason: 'Unknown pet' };
+  const p = PETS[species], st = ensurePets(s); if (!p) return { ok: false, reason: 'Unknown pet' }; if (p.starter) return { ok: false, reason: 'Claim your free starter instead' };
   if (p.cur === 'bones') { if (s.bones < p.price) return { ok: false, reason: `Need ${p.price} bones` }; s.bones -= p.price; }
   else { const r = wallet().purchaseSync({ state: s, itemId: 'pet-' + species, priceU: toU(p.price) }); if (!r.ok) return r; }
   const pet = { id: 'pet' + (st.owned.length + 1), species, name: (name || '').trim().slice(0, 16) || p.name }; st.owned.push(pet); st.active = pet.id; return { ok: true, pet };
@@ -47,6 +49,9 @@ export function petSprite(species, frame = 0, pal = null) { const k = species + 
     case 'peacock': for (let i = 0; i < 5; i++) { P(0 + i * 2, 1 + (i % 2) + f, 3, 9, b); P(1 + i * 2, 3 + (i % 2) + f, 1, 2, e); } P(8, 5, 5, 8, I); P(9, 6, 3, 6, a); P(10, 2, 3, 4, a); P(13, 3, 1, 1, e); P(11, 1, 1, 1, e); P(9, 13, 1, 2, b); P(11, 13, 1, 2, b); break;
     case 'dragon': P(2, 8, 10, 5, I); P(3, 9, 8, 3, a); P(9, 5, 6, 5, I); P(10, 6, 4, 3, a); P(12, 7, 1, 1, I); P(4, 5 - f, 4, 4, b); P(5, 6 - f, 2, 2, e); P(0, 10, 3, 2, a); P(0, 11, 1, 1, e); for (const x of [4, 6, 8]) P(x, 8, 1, 1, e); legs([4, 9], 13); break;
     case 'koi': P(2, 4, 12, 11, I); P(3, 5, 10, 9, c3(b)); P(5 + f * 2, 8, 5, 3, a); P(6 + f * 2, 9, 2, 1, e); P(3 + f * 2, 9, 2, 1, a); P(4, 6, 1, 3, '#ffffff'); P(3, 14, 10, 1, '#e3b341'); break;
+    case 'duckling': // fluffy duckling: round body, orange beak + feet, little wing that flaps
+      P(3, 8, 9, 6, I); P(4, 9, 7, 4, a); P(5, 9, 3, 2, b); P(9, 3, 6, 6, I); P(10, 4, 4, 4, a); P(14, 6, 2, 2, e); P(12, 5, 1, 1, I); P(11, 3 - f, 2, 1, a); P(6, 10 - f, 3, 2, b); P(2, 9, 2, 2, a); P(5, 14, 2, 1, e); P(9, 14, 2, 1, e); break;
+    case 'minipup':
     case 'pup': // chunky little shiba-style pup: pointy ears, cream muzzle + belly, curled tail that wags
       P(3, 8, 9, 6, I); P(4, 9, 7, 4, a); P(5, 11, 5, 2, e); P(8, 3, 7, 7, I); P(9, 4, 5, 5, a); P(8, 1, 3, 3, I); P(12, 1, 3, 3, I); P(9, 2, 1, 2, b); P(13, 2, 1, 2, b);
       P(11, 7, 4, 2, e); P(14, 6, 2, 2, I); P(11, 5, 1, 2, I); P(9, 7, 1, 1, '#ff9fb8'); P(0 + f, 4, 4, 5, I); P(1 + f, 5, 2, 3, a); P(2 + f, 5, 1, 1, e); legs([4, 9], 14); break;

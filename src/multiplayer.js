@@ -9,6 +9,7 @@ import { artKey } from './art.js';
 import { normalizeProfile } from './vendor/profile-schema.js';
 import { validHomeId } from './homeshare.js';
 import { fromWire, CP_KEYS } from './companions.js';
+import { fromPetWire, WIRE_KEY as PET_KEY } from './petlife.js';
 
 const LS = (() => { try { return globalThis.localStorage || null; } catch { return null; } })();
 const lsGet = (k) => { try { return LS?.getItem(k) ?? null; } catch { return null; } }, lsSet = (k, v) => { try { LS?.setItem(k, v); } catch {} };
@@ -44,6 +45,7 @@ export function createMultiplayer({ getLocal, toast = () => {}, now = () => perf
   function setLook(r, look) { const l = cleanLook(look); r.coat = l.coat; r.outfit = l.eq; r.art = artKey(l.coat);
     // Kibble Kennel tier: ONLY the server-looked-up value (p.k / {t:'k'}) is used; a tier inside the look is ignored.
     // (A pl carrying only that key is not a custom profile.)
+    r.pet = fromPetWire(l.pl?.look?.[PET_KEY]); if (l.pl) delete l.pl.look[PET_KEY]; // Pawsome pet species + gear (cosmetic, src/petlife.js)
     r.cp = fromWire(l.pl?.look); if (l.pl) for (const k of CP_KEYS) delete l.pl.look[k]; // Inu Quest companion id + form (cosmetic), not part of the Shiba look
     const plOnlyKennel = l.pl && Object.keys(l.pl.look).every((k) => k === 'kennel') && !Object.values(l.pl.outfit || {}).some(Boolean);
     r.profile = l.pl && !plOnlyKennel ? (() => { try { return normalizeProfile({ name: r.name, look: l.pl.look, outfit: l.pl.outfit }); } catch { return null; } })() : null; }
@@ -89,7 +91,7 @@ export function createMultiplayer({ getLocal, toast = () => {}, now = () => perf
       const tr = clock() - MP.INTERP_MS, list = [];
       for (const r of S.remotes.values()) { const c = interpolate(r.buf, tr); if (!c) continue; r.cur = c; r.x = c.x; r.y = c.y; if (c.d || isBlocked(r.name)) { S.anchors.delete('mp:' + r.id); continue; } list.push(r); } // blocked players are not drawn
       const vis = view ? cullPlayers(list, view, me || { x: 0, y: 0 }, S.drawCap) : list.slice(0, S.drawCap); S.anchors.clear();
-      return vis.map((r) => { S.anchors.set('mp:' + r.id, { x: r.x, y: r.y - 60 }); return { x: r.x, y: r.y, coat: r.coat, outfit: r.outfit, art: r.art, profile: r.profile, face: r.cur.f, phase: r.phase, moving: !!r.cur.m, name: r.name, emote: r.emote, act: r.act || null, mp: true, id: 'mp:' + r.id, w: r.w, kennel: r.w ? r.kennel : null, kflair: !!(r.w && r.kflair), cp: r.cp || null, cpOff: r.cp && r.cur.cx != null ? [r.cur.cx, r.cur.cy] : null }; }); },
+      return vis.map((r) => { S.anchors.set('mp:' + r.id, { x: r.x, y: r.y - 60 }); return { x: r.x, y: r.y, coat: r.coat, outfit: r.outfit, art: r.art, profile: r.profile, face: r.cur.f, phase: r.phase, moving: !!r.cur.m, name: r.name, emote: r.emote, act: r.act || null, mp: true, id: 'mp:' + r.id, w: r.w, kennel: r.w ? r.kennel : null, kflair: !!(r.w && r.kflair), pet: r.pet || null, cp: r.cp || null, cpOff: r.cp && r.cur.cx != null ? [r.cur.cx, r.cur.cy] : null }; }); },
     anchor(id) { return S.anchors.get(id) || null; },
     chat(text) { const c = cleanChat(text); if (!c.ok) { if (c.reason !== 'empty') toast(c.reason === 'Message blocked by the chat filter.' ? 'Message blocked' : c.reason, 'bad'); return false; }
       const t = now(); if (t - S.lastChatAt < 1 / MP.CHAT_RATE) { toast('Slow down: one message every 2 seconds.', 'bad'); return false; }
