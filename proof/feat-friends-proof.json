@@ -1,0 +1,74 @@
+{
+ "url": "https://inu-verse-tawny.vercel.app/",
+ "viewport": [
+  844,
+  390
+ ],
+ "checks": [
+  "PASS live multiplayer: B sees Pup7301 (online)",
+  "PASS Follow on the live player card -> \"★ Following\"",
+  "PASS Friends in Menu → Me",
+  "FAIL friend by name shows Online + area: Pup7301 Here with you JOIN UNFOLLOW BLOCK | Tora Last seen 6 min ago UNFOLLOW BLOCK",
+  "PASS card-followed Pup7301 shows \"Here with you\"",
+  "FAIL area updates: Tora Last seen 7 min ago UNFOLLOW BLOCK",
+  "PASS D-pad reaches Join: fr-name → join",
+  "PASS pad A on Join (pup7301) warped B to A at the pond: 12.4,95.5 (1.5 tiles) Joined Pup7301 👋 | Portal stone found: Pondside! Find another to warp between them (free).",
+  "PASS B sees A after joining",
+  "PASS block: unfollowed + chat muted + hidden (Blocked (1))",
+  "PASS unblock restores chat; unfollow empties the list",
+  "PASS friends persisted in the save: {\"list\":[],\"blocked\":[]}",
+  "PASS no page errors "
+ ],
+ "mp": {
+  "status": "online",
+  "players": [
+   "Pup7301"
+  ]
+ },
+ "card": {
+  "btn": "★ Following",
+  "following": true
+ },
+ "list": [
+  "Pup7301 Here with you JOIN UNFOLLOW BLOCK",
+  "Tora Last seen 6 min ago UNFOLLOW BLOCK"
+ ],
+ "area": "Tora Last seen 7 min ago UNFOLLOW BLOCK",
+ "padSteps": [
+  "fr-name",
+  "join"
+ ],
+ "joinWho": "pup7301",
+ "join": {
+  "tile": [
+   12.4,
+   95.5
+  ],
+  "dist": 1.5,
+  "panel": null,
+  "toasts": [
+   "Joined Pup7301 👋",
+   "Portal stone found: Pondside! Find another to warp between them (free)."
+  ]
+ },
+ "seesA": true,
+ "block": {
+  "blocked": true,
+  "following": false,
+  "muted": true,
+  "rows": [
+   "Tora Last seen 8 min ago UNFOLLOW BLOCK"
+  ],
+  "blockedUi": "Blocked (1)"
+ },
+ "after": {
+  "blocked": false,
+  "muted": false,
+  "list": []
+ },
+ "saved": {
+  "list": [],
+  "blocked": []
+ },
+ "errors": []
+}
