@@ -1365,7 +1365,7 @@ function renderGarage() { const body = $('#panel-body'), g = ensureGarage(state)
     else if (t.dataset.rename) { const n = prompt('New name?'); if (n) { renamePet(state, t.dataset.rename, n); persist(); renderGarage(); } } }; }
 // Friends list (src/friends.js): follow by public name, presence from live multiplayer + /api/feed?who, Join warps, block/unfollow.
 const FRS = { who: {}, at: 0, loading: false, error: false, seenOn: new Set() };
-async function refreshWho(force = false) { if (!state) return FRS.who; const names = FRD.ensureFriends(state).list.map((x) => x.n); if (!names.length) { FRS.who = {}; return FRS.who; }
+async function refreshWho(force = false) { if (!state) return FRS.who; const names = FRD.ensureFriends(state).list.map((x) => x.n); if (!names.length) { FRS.who = {}; FRS.at = Date.now(); return FRS.who; } /* stamp it: renderFriends re-renders after every refresh, so an unstamped empty list looped forever and froze the page */
   if (!force && Date.now() - FRS.at < 15_000) return FRS.who; FRS.loading = true;
   try { FRS.who = await FRD.fetchWho(names); FRS.error = false; } catch { FRS.error = true; } finally { FRS.loading = false; FRS.at = Date.now(); } return FRS.who; }
 const frHere = () => (MPL.status === 'online' ? MPL.players().filter((p) => !FRD.isBlocked(state, p.name)) : []);
