@@ -34,6 +34,15 @@ export function drawPoseFx(ctx, P, x, y, scale, t, face = 'down') { if (!P) retu
     for (let i = 0; i < 3; i++) { const u = ((t * 0.45 + i / 3) % 1), zx = x + (16 + u * 22) * scale, zy = y - (54 + u * 36) * scale;
       ctx.globalAlpha = Math.min(1, (1 - u) * 1.8); ctx.font = `${Math.round((17 + u * 10) * scale)}px Silkscreen, monospace`;
       ctx.lineWidth = 4 * scale; ctx.strokeStyle = '#121a36'; ctx.strokeText('z', zx, zy); ctx.fillStyle = '#f2cc68'; ctx.fillText('z', zx, zy); } }
+  if (P.ha != null) { ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.lineJoin = 'round'; // laugh: "ha" puffs rising off alternate sides
+    for (let i = 0; i < 3; i++) { const u = ((P.ha * 0.9 + i / 3) % 1), sd = i % 2 ? -1 : 1, hx = x + sd * (20 + u * 14) * scale, hy = y - (50 + u * 30) * scale;
+      ctx.globalAlpha = Math.min(1, (1 - u) * 2); ctx.font = `${Math.round(14 * scale)}px Silkscreen, monospace`; ctx.lineWidth = 4 * scale;
+      ctx.strokeStyle = '#121a36'; ctx.strokeText('ha', hx, hy); ctx.fillStyle = '#ffd84a'; ctx.fillText('ha', hx, hy); } ctx.globalAlpha = 1; }
+  if (P.sparkle != null) { const s = Math.max(1, Math.round(1.6 * scale)); // photo pose: four-point pixel sparkles twinkling around the pup
+    for (let i = 0; i < 4; i++) { const tw = (Math.sin(P.sparkle * 4 + i * 1.7) + 1) / 2; if (tw < 0.25) continue;
+      const a = i * 1.57 + 0.6, sx = Math.round(x + Math.cos(a) * 30 * scale), sy = Math.round(y - 34 * scale + Math.sin(a) * 22 * scale), k = tw > 0.7 ? 2 : 1;
+      ctx.fillStyle = '#121a36'; ctx.fillRect(sx - s * (k + 1), sy - s, s * (2 * k + 3), s * 3); ctx.fillRect(sx - s, sy - s * (k + 1), s * 3, s * (2 * k + 3));
+      ctx.fillStyle = i % 2 ? '#fff6e0' : '#ffd84a'; ctx.fillRect(sx - s * k, sy, s * (2 * k + 1), s); ctx.fillRect(sx, sy - s * k, s, s * (2 * k + 1)); } }
   ctx.restore(); }
 import { FURNITURE, footprint, WALLS, FLOORS } from './furniture.js';
 import { OUTFIT_ATLAS } from './outfit-atlas.js';

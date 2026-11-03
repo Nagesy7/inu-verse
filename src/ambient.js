@@ -13,7 +13,7 @@ export const DAY_LEN = 720; // seconds per in-game day (~12 real minutes)
 export const LAMP_TILES = [[8, 18], [24, 18], [40, 23], [52, 18], [12, 29], [44, 29], [20, 34], [50, 34], [13, 46], [50, 46], [24, 56], [40, 56], [29, 5], [45, 34]];
 export const LAMPS = LAMP_TILES.map(([x, y]) => ({ x: x * TILE + 16, y: y * TILE - 34, gy: y * TILE + 22 }));
 export const PONDS = [[5, 3, 9, 5], [37, 35, 18, 4]];
-export const EMOTES = { wave: 'HI!', sit: 'SIT', zoomies: 'ZOOM', dance: '♪♫', heart: 'heart', bork: 'BORK!', happy: 'YAY', note: 'OK', angry: 'HMPH' };
+export const EMOTES = { wave: 'HI!', sit: 'SIT', zoomies: 'ZOOM', dance: '♪♫', heart: 'heart', bork: 'BORK!', happy: 'YAY', note: 'OK', angry: 'HMPH', laugh: 'HA!', pose: 'cam' };
 import { drawEmblem } from './art.js';
 import { drawCar, LANES, CAR_LEN } from './cars.js';
 
@@ -282,6 +282,9 @@ export function drawEmote(c, x, y, kind, t) {
   const yy = y - 110 + Math.sin(t * 6) * 3;
   c.fillStyle = '#121a36'; c.fillRect(x - 13, yy - 13, 26, 24); c.fillStyle = '#d4a640'; c.fillRect(x - 13, yy + 11, 26, 2); c.fillRect(x - 3, yy + 13, 6, 3);
   if (kind === 'heart') return drawEmblem(c, 'heart', x - 7.5, yy - 8, 3, '#ff5a7a');
+  if (kind === 'pose') { const R = (a, b, w, h, col) => { c.fillStyle = col; c.fillRect(Math.round(x + a), Math.round(yy + b), w, h); }; // pixel camera + flash
+    R(-9, -5, 18, 12, '#f2cc68'); R(-8, -4, 16, 10, '#fff6e0'); R(-4, -8, 6, 3, '#f2cc68'); R(-3, -2, 6, 6, '#121a36'); R(-2, -1, 4, 4, '#5ab0ff'); R(-1, -1, 1, 1, '#fff6e0'); R(5, -3, 2, 2, '#ff5a7a');
+    if ((t * 2) % 1 < 0.25) { R(9, -10, 2, 6, '#fff6e0'); R(7, -8, 6, 2, '#fff6e0'); } return; }
   c.font = kind === 'dance' ? '14px sans-serif' : '8px Silkscreen, monospace'; c.textAlign = 'center'; c.textBaseline = 'middle'; c.fillStyle = '#f2cc68'; c.fillText(icon, x, yy);
 }
 export function lightsFor(state, phase, playerHome) {

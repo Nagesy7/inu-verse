@@ -3,7 +3,7 @@
 // sprite; the face system in src/face.js reads poseFace()). Pure: no DOM, no clocks, no randomness. Same input -> same pose.
 // Sync: an action start rides the existing multiplayer emote path ({t:'e', k}); looping poses also ride the state frame as
 // a small pose code (s.p, see mpshared.js POSES) so late joiners and dropped emotes still see you sitting/dancing.
-import { POSES } from './mpshared.js';
+import { POSES, MP, take } from './mpshared.js';
 
 // loop: holds until you move or pick something else. dur: one-shot length in seconds.
 export const ACTIONS = {
@@ -16,10 +16,17 @@ export const ACTIONS = {
   wag:    { label: 'Wag',         icon: 'WAG',  dur: 3 },
   sleep:  { label: 'Sleep',       icon: 'Zz',   loop: true },
   bow:    { label: 'Bow',         icon: 'BOW',  dur: 1.8 },
+  laugh:  { label: 'Laugh',       icon: 'HA!',  dur: 2.2 },
+  pose:   { label: 'Photo Pose',  icon: 'POSE', loop: true },
 };
-export const ACTION_ORDER = ['sit', 'lie', 'dance', 'dance2', 'dance3', 'wave', 'wag', 'sleep', 'bow'];
+export const ACTION_ORDER = ['sit', 'lie', 'dance', 'dance2', 'dance3', 'wave', 'wag', 'sleep', 'bow', 'laugh', 'pose'];
+// actions that float an icon bubble over the head while they play (local + remote): see ambient.js EMOTES / drawEmote
+export const ICON_ACTIONS = { wave: 2.4, laugh: 2.2, pose: 2.5 };
 // emote bubbles (icon over the head + a chat line), all already in the server's EMOTE_KINDS
 export const BUBBLES = [['heart', '♥'], ['happy', 'YAY'], ['note', 'OK'], ['angry', 'HMPH'], ['bork', 'BORK'], ['zoomies', 'ZOOM']];
+// Client-side emote rate limit: the same token bucket the realtime Worker enforces (MP.EMOTE_RATE/s, burst MP.EMOTE_BURST), so a
+// spammed wheel shows a polite "slow down" instead of sending frames the server would drop. now = ms.
+export function makeEmoteLimiter(rate = MP.EMOTE_RATE, burst = MP.EMOTE_BURST) { const b = {}; return { ok: (now) => take(b, now, rate, burst), b }; }
 export const isAction = (k) => Object.prototype.hasOwnProperty.call(ACTIONS, k);
 export const poseCode = (k) => { const i = POSES.indexOf(k); return i > 0 ? i : 0; };
 export const poseOf = (code) => (Number.isInteger(code) && code > 0 && code < POSES.length ? POSES[code] : null);
@@ -78,6 +85,12 @@ export function poseAt(kind, e, face = 'down') { const P = { sx: 1, sy: 1, rot: 
     case 'wag': P.rot = Math.sin(e * 16) * 0.05; P.dx = Math.sin(e * 16) * 1.2; P.faceEmote = 'happy'; P.wag = 1; break;
     case 'bow': { const k = e < 0.4 ? e / 0.4 : e > ACTIONS.bow.dur - 0.4 ? Math.max(0, (ACTIONS.bow.dur - e) / 0.4) : 1; // down, hold, up
       P.sy = 1 - 0.14 * k; P.rot = (side ? 0.22 : 0) * k; P.dy = 2 * k; P.faceEmote = 'happy'; break; }
+    case 'laugh': { // belly laugh: quick shoulder-shake chuckles in bursts, head tipped back, little hop on each burst, floating "ha"s
+      const burst = Math.sin(e * 22) * (0.6 + 0.4 * Math.abs(Math.sin(e * 3.1))); P.rot = burst * 0.05 - 0.04 * ease; P.dx = burst * 1.1;
+      P.dy = -Math.abs(Math.sin(e * 6.2)) * 2; P.sy = 1 + Math.sin(e * 22) * 0.02; P.faceEmote = 'happy'; P.ha = e; P.wag = 1; break; }
+    case 'pose': { // photo pose: weight on one hip (lean toward the camera side), chin up, one paw raised in a "peace" wave, sparkles
+      P.rot = (face === 'left' ? -1 : 1) * 0.07 * ease; P.sy = 1 + 0.03 * ease; P.dy = -1 * ease; P.faceEmote = 'happy';
+      P.paw = { up: 0.85 + 0.05 * Math.sin(e * 2) }; P.sparkle = e; P.wag = 1; break; }
   }
   if (P.face == null) P.face = face; return P; }
 // face-system mood for a pose (face.js faceAt reads these emote names)

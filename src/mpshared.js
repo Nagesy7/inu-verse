@@ -20,9 +20,11 @@ export const MP = {
   INTERP_MS: 100,        // remote players are drawn ~100 ms in the past, interpolated between snapshots
   WORLD_MAX: 20000,
 };
-export const EMOTE_KINDS = ['wave', 'sit', 'zoomies', 'dance', 'heart', 'bork', 'happy', 'note', 'angry', 'lie', 'dance2', 'dance3', 'wag', 'sleep', 'bow'];
+export const EMOTE_KINDS = ['wave', 'sit', 'zoomies', 'dance', 'heart', 'bork', 'happy', 'note', 'angry', 'lie', 'dance2', 'dance3', 'wag', 'sleep', 'bow', 'laugh', 'pose'];
+// Feature batch (emotes): 'laugh' + 'pose' (photo pose) appended. The Worker imports this file, so it validates them once redeployed;
+// an older Worker silently drops unknown kinds (no strike) and zeroes unknown pose codes, so nothing breaks before the redeploy.
 // Round 3: looping poses also ride the state frame as a tiny code (s.p) so late joiners see them; 0 = standing.
-export const POSES = ['', 'sit', 'lie', 'dance', 'dance2', 'dance3', 'sleep'];
+export const POSES = ['', 'sit', 'lie', 'dance', 'dance2', 'dance3', 'sleep', 'pose'];
 export const FACES = ['down', 'up', 'left', 'right'];
 export const ROOM_RE = /^[a-z0-9][a-z0-9:_-]{0,31}$/;
 export const validRoom = (r) => typeof r === 'string' && ROOM_RE.test(r);

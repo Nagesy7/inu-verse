@@ -1,6 +1,6 @@
 // Round 3 action wheel: one radial menu opened from the existing HUD (☰ menu "Actions" button, the multiplayer chip
 // popover, or G on desktop). Outer ring = the 9 actions, inner ring = emote bubbles, centre = close. Sized from the
-// viewport so every target stays thumb-sized in phone landscape (844x390, 667x375). Number keys 1-9 pick actions.
+// viewport so every target stays thumb-sized in phone landscape (844x390, 667x375). Keys 1-9, 0, - pick actions.
 import { ACTIONS, ACTION_ORDER, BUBBLES } from './actions.js';
 
 export const MIN_TARGET = 44; // px, smallest touch target allowed anywhere on the wheel
@@ -33,7 +33,7 @@ export function mountWheel(doc = document, { onAction, onBubble, current = () =>
   const esc = (s) => String(s).replace(/[&<>"']/g, (c) => `&#${c.charCodeAt(0)};`);
   function build() { if (el) return el; const st = doc.createElement('style'); st.id = 'act-wheel-css'; st.textContent = CSS; doc.head.appendChild(st);
     el = doc.createElement('div'); el.id = 'act-wheel'; el.hidden = true; el.setAttribute('role', 'dialog'); el.setAttribute('aria-label', 'Actions');
-    el.innerHTML = `<div class="aw-ring">${ACTION_ORDER.map((k, i) => `<button class="aw-a" data-act="${k}" aria-label="${esc(ACTIONS[k].label)}" aria-pressed="false"><i>${i + 1}</i><b>${esc(ACTIONS[k].icon)}</b><span>${esc(ACTIONS[k].label)}</span></button>`).join('')}
+    el.innerHTML = `<div class="aw-ring">${ACTION_ORDER.map((k, i) => `<button class="aw-a" data-act="${k}" aria-label="${esc(ACTIONS[k].label)}" aria-pressed="false"><i>${"1234567890-"[i]}</i><b>${esc(ACTIONS[k].icon)}</b><span>${esc(ACTIONS[k].label)}</span></button>`).join('')}
 ${BUBBLES.map(([k, ic]) => `<button class="aw-b" data-bub="${k}" aria-label="Emote ${k}">${esc(ic)}</button>`).join('')}<button class="aw-x" aria-label="Close actions">×</button><div class="aw-cap">Move to stand up · G to close</div></div>`;
     doc.body.appendChild(el);
     el.addEventListener('pointerdown', (e) => e.stopPropagation()); // never turns into a tap-to-walk underneath
@@ -50,5 +50,5 @@ ${BUBBLES.map(([k, ic]) => `<button class="aw-b" data-bub="${k}" aria-label="Emo
   const api = { open, close, toggle() { if (el && !el.hidden) close(); else open(); }, get isOpen() { return !!el && !el.hidden; }, layout: () => (el ? layout() : null),
     // keyboard while open: 1-9 = actions, Esc/G = close. Returns true when the key was used.
     key(k) { if (!api.isOpen) return false; if (k === 'escape' || k === 'g') { close(); return true; }
-      const i = '123456789'.indexOf(k); if (i >= 0) { onAction?.(ACTION_ORDER[i]); close(); return true; } return false; } };
+      const i = '1234567890-'.indexOf(k); if (i >= 0 && ACTION_ORDER[i]) { onAction?.(ACTION_ORDER[i]); close(); return true; } return false; } };
   return api; }

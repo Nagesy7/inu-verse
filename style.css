@@ -749,3 +749,6 @@ body:not(.inworld) #audio-debug{bottom:auto;top:8px}
 /* Phone landscape title screen: the shared Kibble Pay profile pill (bottom-left, inline-styled by kibble-pay) expanded over the
    Connect Wallet pill and the legal footer. Park it in the empty strip of the left column just above the wallet pill. */
 body.short.landscape:not(.inworld) #inu-profile-badge{top:auto!important;bottom:calc(max(6px,env(safe-area-inset-bottom)) + 84px)!important;left:max(8px,env(safe-area-inset-left))!important;right:auto!important;transform:none!important;max-width:min(230px,38vw)!important}
+
+/* Feature batch, emotes: one compact on-screen emote button (phones) beside the A button; opens the action/emote wheel */
+@media (pointer:coarse){ .tb.e{right:78px;top:22px;width:48px;height:48px;padding:0;display:flex;align-items:center;justify-content:center;background:var(--navy3);border-color:var(--gold)} body.driving .tb.e,body.photo .tb.e{display:none} }

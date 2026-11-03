@@ -10,7 +10,7 @@ import { faceAt } from '../src/face.js';
 
 test('actions: the full set is there, with 3 original dances, and every action/bubble passes the server emote filter', () => {
   for (const k of ['sit', 'lie', 'dance', 'dance2', 'dance3', 'wave', 'wag', 'sleep', 'bow']) assert.ok(isAction(k), k);
-  assert.equal(ACTION_ORDER.length, 9); assert.deepEqual([...ACTION_ORDER].sort(), Object.keys(ACTIONS).sort());
+  assert.equal(ACTION_ORDER.length, 11); for (const k of ['wave', 'dance', 'sit', 'laugh', 'pose']) assert.ok(ACTION_ORDER.includes(k), k); assert.deepEqual([...ACTION_ORDER].sort(), Object.keys(ACTIONS).sort());
   assert.equal(Object.values(ACTIONS).filter((a) => a.dance).length, 3);
   for (const k of [...ACTION_ORDER, ...BUBBLES.map((b) => b[0])]) assert.ok(emoteOk(k), 'server must accept ' + k);
   assert.ok(BUBBLES.length >= 4 && BUBBLES.length <= 8);
@@ -89,14 +89,15 @@ test('wheel: thumb-friendly in phone landscape (844x390, 667x375), fits on scree
     assert.ok(L.D <= h - 20 || L.D === 260, `${w}x${h} fits`); assert.ok(L.D <= w - 20);
     const all = [...L.outer, ...L.inner, L.center]; for (const b of all) { assert.ok(b.size >= MIN_TARGET, `${w}x${h} ${b.kind} ${b.size}px`); assert.ok(b.x - b.size / 2 >= 0 && b.x + b.size / 2 <= L.D && b.y - b.size / 2 >= 0 && b.y + b.size / 2 <= L.D, 'inside the ring'); }
     for (let i = 0; i < all.length; i++) for (let j = i + 1; j < all.length; j++) { const p = all[i], q = all[j]; assert.ok(Math.hypot(p.x - q.x, p.y - q.y) >= (p.size + q.size) / 2 + 2, `${w}x${h} ${p.kind}/${q.kind} overlap`); }
-    assert.equal(L.outer.length, 9); assert.equal(L.inner.length, BUBBLES.length); }
+    assert.equal(L.outer.length, ACTION_ORDER.length); assert.equal(L.inner.length, BUBBLES.length); }
   assert.ok(wheelLayout(844, 390).outer[0].size >= 64); assert.ok(wheelLayout(667, 375).outer[0].size >= 64);
 });
 
-test('wiring: opened from the ☰ menu button, the multiplayer popover and G; no new on-screen button; vendor untouched', () => {
+test('wiring: opened from the ☰ menu button, the multiplayer popover and G; plus the one compact on-screen emote button (btn-emo); vendor untouched', () => {
   const main = fs.readFileSync(new URL('../src/main.js', import.meta.url), 'utf8'), mpj = fs.readFileSync(new URL('../src/multiplayer.js', import.meta.url), 'utf8'), hud = fs.readFileSync(new URL('../src/hudmenu.js', import.meta.url), 'utf8');
   assert.match(hud, /\['Fun', \['btn-emote'/); assert.match(main, /\$\('#btn-emote'\)\.onclick = \(\) => toggleEmotes\(\)/); assert.match(main, /if \(k === 'g'\) \{ wheel\.toggle\(\)/);
   assert.match(mpj, /id="mp-act"/); assert.match(main, /onActions: \(\) => wheel\.open\(\)/);
+  assert.match(main, /\$\('#btn-emo'\)\.addEventListener\('click'[^\n]*wheel\.toggle\(\)/);
   assert.match(main, /'r-' \+ RP\.id/, 'rooms/zones get their own live room'); assert.match(fs.readFileSync(new URL('../src/roomplay.js', import.meta.url), 'utf8'), /D\.remotes\?\.\(/);
   const wh = fs.readFileSync(new URL('../src/actionwheel.js', import.meta.url), 'utf8'), ac = fs.readFileSync(new URL('../src/actions.js', import.meta.url), 'utf8');
   for (const src of [wh, ac]) { assert.doesNotMatch(src, /Math\.random|vendor\/inu-avatar/); assert.doesNotMatch(src.toLowerCase(), /\b(buy|sell|moon|dump|pump it)\b/); }
