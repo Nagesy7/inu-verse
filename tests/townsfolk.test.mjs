@@ -84,7 +84,9 @@ test('self-contained: NPC only, never touches multiplayer, feed, economy or $KIB
   assert.ok(/amb = makeAmbient\(42\); snapWeather\(\);/.test(main), 'weather snaps to the current state on load');
 });
 
-test('phone landscape: profile badge is pushed below the HUD row', () => {
+test('phone landscape: profile badge parks right, clear of the HUD row / feed / joystick', () => {
   const css = readFileSync(new URL('../style.css', import.meta.url), 'utf8');
-  assert.match(css, /@media \(max-height:520px\) and \(orientation:landscape\)\{#inu-profile-badge\{top:calc\(max\(8px,env\(safe-area-inset-top\)\) \+ 50px\)!important/);
+  const m = css.match(/@media \(max-height:520px\) and \(orientation:landscape\)\{body\.inworld #inu-profile-badge\{([^}]*)\}\}/);
+  assert.ok(m, 'rule present');
+  for (const d of ['top:calc(max(8px,env(safe-area-inset-top)) + 104px)!important', 'bottom:auto!important', 'left:auto!important', 'right:max(8px,env(safe-area-inset-right))!important']) assert.ok(m[1].includes(d), d);
 });
