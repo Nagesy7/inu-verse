@@ -1354,7 +1354,7 @@ function renderFriends(body) { if (panel?.kind !== 'friends') return; if (!$('#f
   body.onclick = (e) => { const b = e.target.closest('[data-act]'); if (!b) return; uiClick?.(); const a = b.dataset.act, fr = FRD.ensureFriends(state).list.find((x) => x.k === b.dataset.k), bl = FRD.ensureFriends(state).blocked.find((x) => x.k === b.dataset.k);
     if (a === 'add' || a === 'follow') { const r = FRD.follow(state, a === 'add' ? $('#fr-name')?.value || '' : b.dataset.n); toast(r.ok ? `Following ${r.n} ★` : r.why, r.ok ? 'good' : 'bad'); if (r.ok) { if ($('#fr-name')) $('#fr-name').value = ''; persist(); refreshWho(true).then(() => renderFriends(body)); } }
     else if (a === 'unfollow' && fr) { FRD.unfollow(state, fr.n); toast(`Unfollowed ${fr.n}.`); persist(); }
-    else if (a === 'block') { const n = fr?.n || b.dataset.n; if (!n) return; FRD.block(state, n); if (!MPL.isMuted(n)) MPL.toggleMute(n); toast(`Blocked ${n}: unfollowed and chat muted.`); persist(); }
+    else if (a === 'block') { const n = fr?.n || b.dataset.n; if (!n) return; FRD.block(state, n); if (!MPL.isMuted(n)) MPL.toggleMute(n); GH.exclude([n]); toast(`Blocked ${n}: unfollowed and chat muted.`); persist(); }
     else if (a === 'unblock' && bl) { FRD.unblock(state, bl.n); if (MPL.isMuted(bl.n)) MPL.toggleMute(bl.n); toast(`Unblocked ${bl.n}.`); persist(); }
     else if (a === 'join' && fr) return joinFriend(fr);
     renderFriends(body); };
@@ -2388,7 +2388,7 @@ function frame(now) {
   requestAnimationFrame(frame);
 }
 // Live multiplayer: other players in the same room ('city' while walking the world). Off unless /api/config has a realtimeUrl.
-const MPL = createMultiplayer({ toast, onFollow: (n) => followFromCard(n), isFollowing: (n) => !!state && FRD.isFollowing(state, n), onActions: () => wheel.open(), onTrade: (w, name) => openPanel('trade', { short: w, name }), onVisit: (id, name, kind) => (kind === 'shop' ? visitShop(id, name) : visitShared(id, name)), now: () => time, getLocal: () => state && { h: sharedHomeId(), room: mode === 'world' ? 'city' : mode === 'room' && RP.id ? 'r-' + RP.id : null, roomName: mode === 'room' ? RP.sc?.name : null,
+const MPL = createMultiplayer({ toast, onFollow: (n) => followFromCard(n), isFollowing: (n) => !!state && FRD.isFollowing(state, n), isBlocked: (n) => !!state && FRD.isBlocked(state, n), onActions: () => wheel.open(), onTrade: (w, name) => openPanel('trade', { short: w, name }), onVisit: (id, name, kind) => (kind === 'shop' ? visitShop(id, name) : visitShared(id, name)), now: () => time, getLocal: () => state && { h: sharedHomeId(), room: mode === 'world' ? 'city' : mode === 'room' && RP.id ? 'r-' + RP.id : null, roomName: mode === 'room' ? RP.sc?.name : null,
   x: mode === 'room' ? RP.R.p.x : state.player.x, y: mode === 'room' ? RP.R.p.y : state.player.y, f: player.face, m: player.moving, r: player.running, d: !!drive, emote: player.emote, act: ACT.act, p: poseCodeOf(ACT),
   name: state.player.name, token: K.kp?.session || null, look: { coat: state.player.coat, eq: state.wardrobe.equipped, pl: cpLook(mpProfile()) }, cp: CMP.F.c && mode === 'world' && !drive ? IQC.wireOffset(CMP.F, state.player) : null } });
 // companion id + form ride in the look's pl.look (cpi/cpf); remote clients strip them before reading the Shiba look
@@ -2396,9 +2396,11 @@ function cpLook(pl) { const w = CMP.F.c && mode === 'world' && !drive ? IQC.toWi
 MPL.start().catch(() => {});
 // ---- Live activity feed + ghost recent visitors (src/feed.js, src/ghosts.js, api/feed.js). Real events only, no rewards. ----
 const liveNames = () => new Set([state?.player?.name, ...MPL.players().map((p) => p.name)].filter(Boolean).map((n) => String(n).toLowerCase()));
+// names the ghost layer never draws: me, live players (drawn for real) and anyone I blocked
+const ghostSkip = () => { const s = liveNames(); if (state) for (const b of FRD.ensureFriends(state).blocked) if (b?.k) s.add(b.k); return s; };
 function ghostSprite(coat, face) { const c = document.createElement('canvas'); c.width = 120; c.height = 150; const x = c.getContext('2d'); x.imageSmoothingEnabled = false; drawShiba(x, 60, 134, { coat, outfit: {}, scale: 1.5, face, art: artKey(coat, {}), shadow: false }); return c; }
 const GH = createGhosts({ sprite: ghostSprite, rm: () => reducedMotion() });
-const FEEDUI = createFeed({ onData: (S) => GH.set(S.ghosts, liveNames()) });
+const FEEDUI = createFeed({ onData: (S) => GH.set(S.ghosts, ghostSkip()) });
 let feedSpot = null; globalThis.__feed = { ui: FEEDUI, ghosts: GH };
 ghostBlockers(LAMP_TILES); ghostBlockers([[DQUI.BOARD.x, DQUI.BOARD.y]]); buildingsReady.then(() => ghostBlockers(artOverhang())); // street lamps count as decor a ghost should not stand behind
 // screen-space HUD rects (CSS px), refreshed at most every 600 ms; used to keep ghost labels out from under buttons / chips
@@ -2442,7 +2444,7 @@ function renderQuestPanel(body) { const D = dqDay(); body.innerHTML = DQUI.panel
   body.onclick = (e) => { const b = e.target.closest('[data-dq]'); if (!b) return; const [op, a] = b.dataset.dq.split(':'); if (op === 'track') { DQ.ensure(state, D.day).track = +a; blip(880); persist(); hud(); renderQuestPanel(body); } }; }
 globalThis.__quests = { DQ, day: () => dqDay(), note: (k, d) => dqNote(k, d) };
 if (!DEMO) FEEDUI.start(() => { if (!state || !document.body.classList.contains('inworld')) return null; if (mode === 'world') feedSpot = spotAt(Math.floor(state.player.x / 32), Math.floor(state.player.y / 32)) || feedSpot;
-  GH.exclude(liveNames()); return { inWorld: true, name: state.player.name, coat: state.player.coat, area: feedSpot, guest: (() => { try { return localStorage.getItem('inuverse.mp.guest'); } catch { return null; } })() }; });
+  GH.exclude(ghostSkip()); return { inWorld: true, name: state.player.name, coat: state.player.coat, area: feedSpot, guest: (() => { try { return localStorage.getItem('inuverse.mp.guest'); } catch { return null; } })() }; });
 // ---- Founding Five Thousand seat-open notice (ships with kibble-pay tracker; polls /api/tech) ----
 const FSN = FS.startFoundingNotice({ toast: (m, k) => toast(m, k), onShow: () => { try { blip(988); setTimeout(() => blip(1318), 120); } catch {} } });
 globalThis.__foundingSeats = () => FSN;

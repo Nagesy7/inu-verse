@@ -22,7 +22,7 @@ export async function resolveRealtimeUrl({ search = globalThis.location?.search 
   try { const r = await f('/api/config', { cache: 'no-store' }); if (r.ok) { const j = await r.json(); if (ok(j?.realtimeUrl)) return ok(j.realtimeUrl); } } catch {}
   return ok(fallback) || null; }
 
-export function createMultiplayer({ getLocal, toast = () => {}, now = () => performance.now() / 1000, WS = globalThis.WebSocket, doc = globalThis.document, clock = () => Date.now(), coarse = !!globalThis.matchMedia?.('(pointer: coarse)').matches, onActions = null, onVisit = null, onTrade = null, onFollow = null, isFollowing = () => false } = {}) {
+export function createMultiplayer({ getLocal, toast = () => {}, now = () => performance.now() / 1000, WS = globalThis.WebSocket, doc = globalThis.document, clock = () => Date.now(), coarse = !!globalThis.matchMedia?.('(pointer: coarse)').matches, onActions = null, onVisit = null, onTrade = null, onFollow = null, isFollowing = () => false, isBlocked = () => false } = {}) {
   const S = { url: null, ws: null, status: 'off', room: null, inst: 0, id: null, me: null, remotes: new Map(), backoff: 2000, retryAt: 0, lastSend: 0, lastSent: null, lastEmote: null, lastAct: null, lastLookKey: '', lastLookAt: 0, leaveAt: 0, hiddenAt: 0, lastChatAt: -9, pingAt: 0, drawCap: coarse ? 12 : 24, anchors: new Map() };
   S.muted = new Set((() => { try { return JSON.parse(lsGet(K_MUTE) || '[]'); } catch { return []; } })());
   S.optOut = lsGet(K_OFF) === '1';
@@ -87,7 +87,7 @@ export function createMultiplayer({ getLocal, toast = () => {}, now = () => perf
     // renderer-ready actors (same shape main.js draws for NPCs), interpolated, culled to the view, nearest first, capped
     actors(view, me) { if (S.status !== 'online' || !S.remotes.size) return [];
       const tr = clock() - MP.INTERP_MS, list = [];
-      for (const r of S.remotes.values()) { const c = interpolate(r.buf, tr); if (!c) continue; r.cur = c; r.x = c.x; r.y = c.y; if (c.d) { S.anchors.delete('mp:' + r.id); continue; } list.push(r); }
+      for (const r of S.remotes.values()) { const c = interpolate(r.buf, tr); if (!c) continue; r.cur = c; r.x = c.x; r.y = c.y; if (c.d || isBlocked(r.name)) { S.anchors.delete('mp:' + r.id); continue; } list.push(r); } // blocked players are not drawn
       const vis = view ? cullPlayers(list, view, me || { x: 0, y: 0 }, S.drawCap) : list.slice(0, S.drawCap); S.anchors.clear();
       return vis.map((r) => { S.anchors.set('mp:' + r.id, { x: r.x, y: r.y - 60 }); return { x: r.x, y: r.y, coat: r.coat, outfit: r.outfit, art: r.art, profile: r.profile, face: r.cur.f, phase: r.phase, moving: !!r.cur.m, name: r.name, emote: r.emote, act: r.act || null, mp: true, id: 'mp:' + r.id, w: r.w, kennel: r.w ? r.kennel : null, kflair: !!(r.w && r.kflair), cp: r.cp || null, cpOff: r.cp && r.cur.cx != null ? [r.cur.cx, r.cur.cy] : null }; }); },
     anchor(id) { return S.anchors.get(id) || null; },

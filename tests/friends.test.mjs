@@ -62,3 +62,22 @@ test('a friend followed by their live guest tag (Pup1234) is found via the feed 
   const bad = await new Promise((done) => { const res = { headers: {}, setHeader() {}, end(b) { done(JSON.parse(b)); } }; h({ method: 'POST', url: '/api/feed', headers: { 'x-forwarded-for': '8.8.8.8' }, body: JSON.stringify({ op: 'hello', name: 'Other', coat: 'tan', area: 'pond', g: '<x>' }) }, res); });
   assert.ok(bad.sid); assert.ok(!JSON.stringify(JSON.parse(await kv.get('feed:v1:vis'))).includes('<x>'));
 });
+
+// blocked players are not drawn: live multiplayer actors skip them, feed ghosts are excluded by key
+import { createMultiplayer as mkMP } from '../src/multiplayer.js';
+import { createGhosts as mkGhosts } from '../src/ghosts.js';
+test('blocked players: no live avatar, no feed ghost', async () => {
+  const socks = []; class WS { constructor() { this.sent = []; this.readyState = 0; socks.push(this); } send(s) { this.sent.push(s); } close() { this.readyState = 3; } open() { this.readyState = 1; this.onopen?.(); } recv(m) { this.onmessage?.({ data: JSON.stringify(m) }); } }
+  const s = {}; const L = { room: 'city', x: 100, y: 100, f: 'down', m: false, r: false, d: false, emote: null, act: null, p: 0, name: 'Pup1', look: { coat: 'tan', eq: {} } };
+  let ms = 1000, t = 0; const mp = mkMP({ getLocal: () => L, WS, doc: null, clock: () => ms, now: () => t, isBlocked: (n) => F.isBlocked(s, n) });
+  await mp.start('ws://x'); ms += 16; t += 0.016; mp.step(0.016); const ws = socks[0]; ws.open();
+  ws.recv({ t: 'w', id: 'me', name: 'Pup1', room: 'city', inst: 1, players: [{ id: 'a', name: 'Tora', look: {}, s: { x: 50, y: 60, f: 'down', ts: 0 } }, { id: 'b', name: 'Mochi', look: {}, s: { x: 70, y: 60, f: 'down', ts: 0 } }] });
+  assert.deepEqual(mp.actors(null).map((a) => a.name).sort(), ['Mochi', 'Tora']);
+  F.block(s, "tora"); assert.deepEqual(mp.actors(null).map((a) => a.name), ['Mochi'], 'blocked (any case) is not drawn');
+  assert.equal(mp.anchor('mp:a'), null); assert.equal(mp.players().length, 2, 'still listed on the card so you can unblock');
+  F.unblock(s, "Tora"); assert.equal(mp.actors(null).length, 2);
+  const gh = mkGhosts({ now: () => 1e9 }), old = 1e9 - 10 * 60e3;
+  gh.set([{ n: 'Tora', c: 'tan', a: 'plaza', t: old }, { n: 'Mochi', c: 'tan', a: 'plaza', t: old }], new Set(['tora']));
+  assert.deepEqual(gh.list.map((g) => g.n), ['Mochi']);
+  gh.exclude(['Mochi']); assert.equal(gh.list.length, 0);
+});
