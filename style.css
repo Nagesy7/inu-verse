@@ -803,3 +803,14 @@ body[data-pfr=film] #photo-frame::before{top:-4.1vmin}body[data-pfr=film] #photo
  body.inworld.banner-up #toast{top:var(--banner-b)!important}
  body.inworld.banner-up #toast .toast:nth-last-child(n+2){display:none}
 }
+/* Title-screen badge fix: the shared Kibble Pay profile badge (inline-styled flex pill from kibble-pay/inu-profile.js) must stay a
+   one-row pill at its natural size on the title screen; it once rendered as a tall thin column when its width got squeezed.
+   Lock the row layout + content width, cap the height, and keep it above the legal footer when it isn't parked by the phone-landscape rule. */
+body:not(.inworld) #inu-profile-badge{box-sizing:border-box!important;width:max-content!important;min-width:26px!important;height:auto!important;max-height:40px!important;flex-direction:row!important;flex-wrap:nowrap!important;align-items:center!important;overflow:hidden!important;writing-mode:horizontal-tb!important}
+body:not(.inworld) #inu-profile-badge>:first-child{flex:none!important}
+body:not(.inworld) #inu-profile-badge>:not(:first-child){min-width:0;max-width:calc(min(230px,55vw) - 36px)}
+body:not(.inworld):not(.short) #inu-profile-badge{top:auto!important;bottom:calc(max(6px,env(safe-area-inset-bottom)) + 24px)!important}
+/* portrait title: the bottom-left corner is the Start button + legal footer; park the badge top-right beside the Connect Wallet pill (text ellipsised) */
+body:not(.inworld):not(.landscape) #inu-profile-badge{top:calc(max(8px,env(safe-area-inset-top)) + 8px)!important;bottom:auto!important;left:auto!important;right:max(8px,env(safe-area-inset-right))!important;transform:none!important;max-width:calc(50vw - 82px)!important}
+body:not(.inworld):not(.landscape) #inu-profile-badge>:not(:first-child){max-width:calc(50vw - 82px - 32px)}
+body:not(.inworld) #inu-profile-badge>:not(:first-child) *{overflow:hidden;text-overflow:ellipsis;max-width:100%}
