@@ -1,0 +1,256 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Long or Short · Inu Verse</title>
+<meta name="robots" content="noindex,nofollow"><meta name="theme-color" content="#E8913A"><link rel="icon" href="assets/ui/kibble-token-192.png">
+<meta name="description" content="Long or Short: a free daily coin-calling skill contest scored in Bones. Free to play. Not financial advice. No purchase or stake needed.">
+<style>
+/* Kibble theme (same palette/components as launch-draft.html, kibbleinu.com and kibble-pay): cream + shiba orange, Nunito, rounded cards, pill buttons. */
+:root{--bg:#FFF7EA;--bg2:#F6E9D5;--card:#FFFDF8;--line:#EEDFC8;--muted:#7A6654;--brown:#5D3A1A;--ink:#3F2715;
+  --shiba:#E8913A;--shibaD:#B9621A;--gold:#F2C14E;--goldL2:#FFF3D1;--teal:#2F9C8F;--danger:#B8402F;--okc:#2F9E44;--shadow:0 8px 28px rgba(93,58,26,.12);
+  --bone:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='120' height='120' viewBox='0 0 120 120'%3E%3Cg fill='%23E8913A' fill-opacity='.07'%3E%3Cpath d='M22 30a6 6 0 1 1 8-8l20 20a6 6 0 1 1-8 8z'/%3E%3Ccircle cx='21' cy='25' r='5'/%3E%3Ccircle cx='25' cy='21' r='5'/%3E%3Ccircle cx='47' cy='51' r='5'/%3E%3Ccircle cx='51' cy='47' r='5'/%3E%3Ccircle cx='92' cy='84' r='4'/%3E%3Ccircle cx='100' cy='92' r='3'/%3E%3Ccircle cx='86' cy='95' r='3.5'/%3E%3C/g%3E%3C/svg%3E")}
+*{box-sizing:border-box}html{-webkit-text-size-adjust:100%}
+html,body{margin:0;color:var(--ink);font:15px/1.55 "Nunito","Segoe UI",system-ui,-apple-system,Helvetica,Arial,sans-serif}
+body{min-height:100vh;background:var(--bone),radial-gradient(ellipse 80% 50% at 50% -10%,rgba(242,193,78,.35),transparent 60%),linear-gradient(180deg,#FFE8C2 0%,var(--bg) 28%,#F3E2C8 100%);background-size:120px 120px,auto,auto}
+a{color:var(--shibaD);font-weight:700;text-underline-offset:3px}a:hover{color:var(--shiba)}
+code{background:var(--bg2);border-radius:6px;padding:2px 7px;font-size:.85em;word-break:break-all}
+.wrap{max-width:1000px;margin:0 auto;padding:0 16px 40px}
+nav.top{display:flex;flex-wrap:wrap;gap:8px;align-items:center;padding:10px 0 0}nav.top .sp{flex:1}
+header{display:flex;flex-wrap:wrap;gap:14px;align-items:center;justify-content:space-between;margin:10px 0 14px;padding:16px 20px;position:relative;overflow:hidden;background:linear-gradient(135deg,#fff 0%,var(--goldL2) 55%,#FFE0A8 100%);border:2px solid var(--line);border-radius:24px;box-shadow:var(--shadow)}
+header::after{content:"";position:absolute;right:-40px;top:-40px;width:160px;height:160px;border-radius:50%;background:rgba(232,145,58,.12);pointer-events:none}
+.brand{display:flex;align-items:center;gap:14px;min-width:0;position:relative;z-index:1}
+.brand img{width:60px;height:60px;border-radius:50%;background:#fff;box-shadow:0 3px 0 rgba(93,58,26,.18),0 0 0 4px var(--gold)}
+h1{margin:0;font-size:clamp(1.5rem,4.5vw,2.1rem);font-weight:900;line-height:1.1;color:var(--brown)}
+.sub{font-size:13px;font-weight:700;color:var(--muted);margin-top:2px}
+.tag{display:inline-block;margin-top:6px;padding:3px 11px;border-radius:999px;background:var(--shiba);color:#fff;font-size:11px;font-weight:900;letter-spacing:.4px;box-shadow:0 2px 0 rgba(93,58,26,.25)}
+.tag.preview{background:var(--brown)}
+.legal{position:relative;z-index:1;font-size:12px;font-weight:800;color:var(--brown);background:#fff;border:1.5px dashed var(--shiba);border-radius:14px;padding:8px 12px;max-width:320px}
+.btn{font:inherit;font-size:14px;font-weight:800;display:inline-flex;align-items:center;justify-content:center;gap:6px;padding:.55rem 1rem;border-radius:14px;border:0;background:linear-gradient(180deg,#F7A94F,var(--shiba));color:#fff;cursor:pointer;text-decoration:none;min-height:42px;box-shadow:0 3px 0 rgba(93,58,26,.22);transition:transform .12s,filter .12s}
+.btn:hover{filter:brightness(1.05);transform:translateY(-1px);color:#fff}.btn:active{transform:translateY(1px)}
+.btn.ghost{background:var(--card);color:var(--brown);border:1.5px solid var(--line);box-shadow:0 2px 0 rgba(93,58,26,.08)}.btn.ghost:hover{color:var(--shibaD);border-color:var(--gold)}
+.btn.tiny{padding:4px 11px;min-height:34px;font-size:12px;border-radius:10px}
+.btn.long{background:linear-gradient(180deg,#45B37E,#2F9E44)}.btn.short{background:linear-gradient(180deg,#D9634F,var(--danger))}
+.btn:disabled{opacity:.42;cursor:not-allowed;transform:none;box-shadow:none;filter:none}
+.btn.sel{outline:3px solid var(--gold);outline-offset:1px}
+.frame{background:var(--card);border:2px solid var(--line);border-radius:22px;box-shadow:var(--shadow);padding:16px 18px;margin-top:14px}
+.frame>h2{color:var(--brown);display:flex;align-items:center;gap:8px;font-weight:900;margin:0 0 6px;font-size:1.2rem}
+.frame>h2::before{content:"";flex:0 0 auto;width:10px;height:10px;border-radius:50%;background:var(--gold);box-shadow:0 0 0 3px rgba(242,193,78,.35)}
+.hint{color:var(--muted);font-size:13px;margin:0 0 10px}
+.chip{display:inline-flex;align-items:center;gap:6px;padding:3px 10px;border-radius:999px;border:1.5px solid rgba(232,145,58,.35);background:rgba(232,145,58,.12);color:var(--shibaD);font-size:12px;font-weight:800;white-space:nowrap}
+.chip.spons{background:var(--teal);border-color:var(--teal);color:#fff}.chip.soon{background:var(--bg2);color:var(--muted);border-color:var(--line)}
+.chip.win{background:#E3F5E6;border-color:#9ED3A8;color:#1F6E2E}.chip.miss{background:#FBE5E1;border-color:#EDB2A7;color:#8E2F21}.chip.push{background:var(--bg2);border-color:var(--line);color:var(--muted)}.chip.dbg{background:#2B2B2B;color:#FFE08A;border-color:#2B2B2B}
+.statbar{display:grid;grid-template-columns:repeat(5,1fr) minmax(170px,1.3fr);gap:8px}
+.stat{background:linear-gradient(180deg,#fff,#FFF5E1);border:2px solid var(--line);border-radius:16px;padding:8px 10px;text-align:center}
+.stat b{display:block;font-size:20px;font-weight:900;color:var(--brown);line-height:1.2}.stat small{font-size:11px;font-weight:800;color:var(--muted);text-transform:uppercase;letter-spacing:.4px}
+.stat input{width:100%;font:inherit;font-weight:800;border:1.5px solid var(--line);border-radius:10px;padding:5px 8px;background:#fff;color:var(--ink);margin-top:2px}
+.tabs{display:flex;gap:6px;flex-wrap:wrap;margin-top:14px;position:sticky;top:0;z-index:5;padding:6px 0;background:linear-gradient(180deg,rgba(255,247,234,.96),rgba(255,247,234,.85))}
+.tabs a{flex:1 1 auto;text-align:center;text-decoration:none;padding:8px 12px;border-radius:999px;border:1.5px solid var(--line);background:var(--card);color:var(--brown);font-weight:900;font-size:14px}
+.tabs a.on{background:linear-gradient(180deg,#F7A94F,var(--shiba));color:#fff;border-color:transparent}
+.wins{display:flex;gap:6px;flex-wrap:wrap;align-items:center;margin-bottom:10px}
+.coins{display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:12px}
+.coin{border:2px solid var(--line);border-radius:18px;background:linear-gradient(180deg,#fff,#FFF5E1);padding:12px 14px;display:flex;flex-direction:column;gap:6px;min-width:0}
+.coin.isspons{border-color:var(--teal);background:linear-gradient(180deg,#fff,#E7F5F2)}
+.coin .hd{display:flex;align-items:center;gap:10px}.coin .dot{width:38px;height:38px;border-radius:50%;flex:none;display:grid;place-items:center;color:#fff;font-weight:900;font-size:12px;box-shadow:0 0 0 3px #fff,0 2px 6px rgba(93,58,26,.2)}
+.coin .nm{min-width:0}.coin .nm b{font-size:17px;font-weight:900;color:var(--brown)}.coin .nm small{display:block;font-size:11px;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.coin .px{font-size:22px;font-weight:900;color:var(--ink);font-variant-numeric:tabular-nums}
+.chg{font-size:12px;font-weight:800;color:var(--muted)}.up{color:#1F7A33}.dn{color:var(--danger)}
+.coin .acts{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:auto}
+.coin .open{font-size:13px;font-weight:800;color:var(--brown);background:var(--goldL2);border:1.5px dashed var(--gold);border-radius:12px;padding:7px 10px}
+.list{display:flex;flex-direction:column;gap:8px}
+.callrow{display:grid;grid-template-columns:auto 1fr auto;gap:10px;align-items:center;border:2px solid var(--line);border-radius:14px;background:#fff;padding:8px 12px;font-size:13px}
+.callrow.win{border-color:#9ED3A8;background:#F3FBF4}.callrow.miss{border-color:#EDB2A7;background:#FDF4F2}
+.callrow .bn{font-size:18px;font-weight:900;color:var(--okc);text-align:right;white-space:nowrap}.callrow .bn.z{color:var(--muted)}
+.callrow .sd{font-weight:900;border-radius:10px;padding:4px 8px;color:#fff;font-size:12px}.sd.long{background:#2F9E44}.sd.short{background:var(--danger)}
+.banner{border-radius:16px;padding:12px 14px;margin-bottom:10px;font-weight:800;background:linear-gradient(135deg,#E3F5E6,#fff);border:2px solid #9ED3A8;color:#1F6E2E}
+table.lb{width:100%;border-collapse:separate;border-spacing:0 6px;font-size:14px}
+table.lb td,table.lb th{padding:7px 10px;text-align:left}table.lb th{font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:.4px}
+table.lb tr.r td{background:#fff;border-top:1.5px solid var(--line);border-bottom:1.5px solid var(--line)}table.lb tr.r td:first-child{border-left:1.5px solid var(--line);border-radius:12px 0 0 12px}table.lb tr.r td:last-child{border-right:1.5px solid var(--line);border-radius:0 12px 12px 0;text-align:right;font-weight:900}
+table.lb tr.me td{background:var(--goldL2);border-color:var(--gold)!important;font-weight:900}
+.rk{display:inline-grid;place-items:center;width:28px;height:28px;border-radius:50%;background:var(--bg2);font-weight:900;color:var(--brown)}.rk.g1{background:var(--gold)}.rk.g2{background:#E2E2E2}.rk.g3{background:#E9B27A}
+.prize{border-radius:16px;padding:10px 14px;background:linear-gradient(135deg,var(--goldL2),#fff);border:2px solid var(--gold);font-weight:800;color:var(--brown);margin:8px 0}
+.grid2{display:grid;grid-template-columns:1.2fr 1fr;gap:14px}
+.price-tag{font-size:30px;font-weight:900;color:var(--brown)}.price-tag small{font-size:14px;color:var(--muted)}
+ul.rules{margin:6px 0;padding-left:20px;font-size:14px}ul.rules li{margin:3px 0}
+.badges{display:grid;grid-template-columns:repeat(auto-fill,minmax(180px,1fr));gap:10px}
+.badge{border:2px dashed var(--line);border-radius:16px;padding:10px 12px;background:#fff;opacity:.92}.badge b{display:block;color:var(--brown);font-weight:900}.badge small{color:var(--muted)}
+.debugbar{border:2px dashed #2B2B2B;border-radius:14px;padding:8px 12px;background:#FFF8D8;font-size:13px;font-weight:800;display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-top:10px}
+footer{color:var(--muted);font-size:13px;margin-top:18px}
+[hidden]{display:none!important}
+@media (max-width:760px){.statbar{grid-template-columns:repeat(3,1fr)}.stat.name{grid-column:1/-1}.grid2{grid-template-columns:1fr}.legal{max-width:none}header{padding:14px}}
+@media (max-width:420px){.coins{grid-template-columns:1fr}.tabs a{font-size:13px;padding:7px 8px}.stat b{font-size:17px}nav.top .btn{font-size:12px;padding:4px 9px;min-height:32px}}
+</style>
+</head><body>
+<div class="wrap">
+<nav class="top">
+  <a class="btn tiny ghost" href="https://kibble-pay.vercel.app/inu">← Inu hub</a>
+  <a class="btn tiny ghost" href="/">Play Inu Verse</a>
+  <a class="btn tiny ghost" href="/hall.html">Launch Hall</a>
+  <span class="sp"></span>
+  <a class="btn tiny ghost" href="https://kibbleinu.com/for-devs.html?utm_source=inu-verse&amp;utm_medium=long-or-short" data-paid="for-devs" data-paid-from="longshort-nav">🛠️ For devs</a>
+</nav>
+<header>
+  <div class="brand"><img src="assets/ui/kibble-token-192.png" alt="">
+    <div><h1>Long or Short</h1><div class="sub">Call today's coins up or down. Score Bones. Climb the Kennel board.</div>
+      <span class="tag">FREE SKILL CONTEST</span> <span class="tag preview">PREVIEW</span></div></div>
+  <div class="legal" id="legal">Free to play. Not financial advice. No purchase or stake needed. Bones are in-game points with no cash value.</div>
+</header>
+
+<section class="statbar" aria-label="Your stats">
+  <div class="stat"><b id="s-today">0</b><small>Bones today</small></div>
+  <div class="stat"><b id="s-week">0</b><small>Bones this week</small></div>
+  <div class="stat"><b id="s-streak">0</b><small>Streak</small></div>
+  <div class="stat"><b id="s-mult">×1</b><small>Multiplier</small></div>
+  <div class="stat"><b id="s-hit">—</b><small>Hit rate</small></div>
+  <div class="stat name"><small>Caller name</small><input id="name" maxlength="18" placeholder="Pick a name" autocomplete="off"></div>
+</section>
+<div class="debugbar" id="debugbar" hidden>DEBUG (?debug=1) — 20s window enabled. End price for debug calls:
+  <button class="btn tiny ghost" data-force="up">Force +1%</button><button class="btn tiny ghost" data-force="down">Force −1%</button><button class="btn tiny ghost sel" data-force="">Live price</button>
+  <button class="btn tiny ghost" id="dbg-reset">Reset my data</button></div>
+
+<nav class="tabs" id="tabs"><a href="#lineup" data-tab="lineup">Today's lineup</a><a href="#calls" data-tab="calls">My calls</a><a href="#board" data-tab="board">Leaderboard</a><a href="#sponsor" data-tab="sponsor">Get your coin in</a></nav>
+
+<section class="frame" data-pane="lineup">
+  <h2>Today's lineup <span class="chip" id="day"></span></h2>
+  <p class="hint">Pick <b>Long</b> (price ends higher) or <b>Short</b> (price ends lower) for each coin. The price is locked when you call and checked again when the window ends. Correct calls score Bones; every correct call in a row adds ×0.25 to your multiplier (up to ×3). A wrong call resets the streak; an unchanged price is a push.</p>
+  <div class="wins" id="wins"><b style="font-size:13px;color:var(--muted)">Window:</b></div>
+  <div class="coins" id="coins"></div>
+  <p class="hint" style="margin-top:10px" id="src">Prices: DexScreener public API (read-only), refreshed every 30s.</p>
+</section>
+
+<section class="frame" data-pane="calls" hidden>
+  <h2>My calls</h2>
+  <div id="resolved-banner"></div>
+  <h3 style="margin:6px 0;color:var(--brown)">Open</h3><div class="list" id="open-list"></div>
+  <h3 style="margin:14px 0 6px;color:var(--brown)">Resolved</h3><div class="list" id="done-list"></div>
+</section>
+
+<section class="frame" data-pane="board" hidden>
+  <h2>Leaderboard</h2>
+  <div class="wins" id="lbtabs"><button class="btn tiny sel" data-lb="day">Daily</button><button class="btn tiny ghost" data-lb="week">Weekly</button><button class="btn tiny ghost" data-lb="hof">🏆 Hall of Fame (best streak)</button></div>
+  <div class="prize">🎁 Top weekly callers may win Kennel Chest prizes that are reviewed and paid by hand. Free to play. Not financial advice. No purchase or stake needed.</div>
+  <table class="lb"><thead><tr><th>#</th><th>Caller</th><th style="text-align:right" id="lb-col">Bones today</th></tr></thead><tbody id="lb"></tbody></table>
+  <p class="hint">Preview: your row is real (saved in this browser only). Other names are <b>sample callers</b> so the board isn't empty; the live board needs a server. Daily resets 00:00 UTC, weekly on Monday 00:00 UTC.</p>
+</section>
+
+<section class="frame" data-pane="sponsor" hidden>
+  <h2>Get your coin in the lineup</h2>
+  <div class="grid2">
+    <div>
+      <span class="chip spons">Sponsored</span> <span class="chip soon">PREVIEW · payments not live</span>
+      <p class="price-tag" style="margin:8px 0 2px">0.3 SOL <small>/ day · Sponsored coin of the day</small></p>
+      <p class="hint">Paid to the Sponsor Chest <code id="chest"></code></p>
+      <ul class="rules">
+        <li>One <b>Sponsored coin of the day</b> slot next to $KIBBLE and the regular lineup, marked with a <b>Sponsored</b> badge.</li>
+        <li>Strict pairing: the slot shows <b>only your exact mint</b>. No lookalikes, no other pairs, no fallback coin.</li>
+        <li>Players call it Long or Short for Bones like any other coin. Sponsorship buys visibility, not results: a sponsor can't change prices, scoring or the board.</li>
+        <li>Slots are reviewed by hand before they go live. A sponsored slot isn't an endorsement. NFA.</li>
+      </ul>
+      <div class="row" style="display:flex;gap:8px;flex-wrap:wrap;margin-top:10px">
+        <a class="btn" href="https://kibbleinu.com/for-devs.html?utm_source=inu-verse&amp;utm_medium=long-or-short#long-or-short" data-paid="for-devs" data-paid-from="longshort-sponsor">🛠️ For devs · book a slot</a>
+      </div>
+      <p class="hint" style="margin-top:8px">Preview only: there's no payment button here. Booking goes through the For devs page.</p>
+    </div>
+    <div>
+      <h3 style="margin:0 0 6px;color:var(--brown)">Caller badges <span class="chip soon">Coming soon</span></h3>
+      <p class="hint">Cosmetic only. They show next to your name and don't change scoring.</p>
+      <div class="badges" id="badges"></div>
+    </div>
+  </div>
+</section>
+
+<footer>
+  <b>Long or Short</b> is a free skill contest. There are no stakes, wagers, leverage or payouts tied to calls, and Bones are in-game points with no cash value.
+  Top weekly callers may win Kennel Chest prizes that are reviewed and paid by hand. Free to play. Not financial advice. No purchase or stake needed.
+  Price data: <a href="https://docs.dexscreener.com/api/reference" target="_blank" rel="noopener">DexScreener public API</a>, read-only.
+  More: <a href="https://kibbleinu.com/for-devs.html?utm_source=inu-verse&amp;utm_medium=long-or-short" data-paid="for-devs" data-paid-from="longshort-foot">For devs · get your coin in the lineup</a>.
+</footer>
+</div>
+<script type="module">
+import * as LS from './src/longshort.js';
+const $ = (s, r = document) => r.querySelector(s), $$ = (s, r = document) => [...r.querySelectorAll(s)];
+const q = new URLSearchParams(location.search), DEBUG = q.has('debug');
+const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+const short = (m) => m ? m.slice(0, 4) + '…' + m.slice(-4) : '';
+let state = LS.load(localStorage), prices = {}, pricesAt = 0, win = '1h', lb = 'day', force = '', lastResolved = [];
+// Debug only: preview a filled sponsored slot with ?debug=1&sponsor=<mint>. Shows only that exact mint.
+const SPONSOR = DEBUG && q.get('sponsor') ? { mint: q.get('sponsor'), symbol: q.get('sym') || null } : LS.SPONSORED_SLOT;
+const lineup = LS.lineupFor(SPONSOR);
+$('#chest').textContent = LS.SPONSOR_CHEST;
+$('#day').textContent = LS.dayKey(Date.now()) + ' UTC';
+$('#name').value = state.name || '';
+$('#name').addEventListener('input', (e) => { state.name = LS.cleanName(e.target.value); LS.save(localStorage, state); renderBoard(); });
+$('#badges').innerHTML = LS.BADGES.map((b) => `<div class="badge"><b>💎 ${esc(b.name)}</b><small>${esc(b.how)}</small><div><span class="chip soon" style="margin-top:6px">Coming soon</span></div></div>`).join('');
+const winsList = () => [...Object.keys(LS.WINDOWS), ...(DEBUG ? [LS.DEBUG_WINDOW.id] : [])];
+function renderWins() { $('#wins').innerHTML = '<b style="font-size:13px;color:var(--muted)">Window:</b>' + winsList().map((w) => `<button class="btn tiny ${w === win ? 'sel' : 'ghost'}" data-win="${w}">${w}${w === '20s' ? ' (debug)' : ''}</button>`).join(''); }
+$('#wins').addEventListener('click', (e) => { const b = e.target.closest('[data-win]'); if (b) { win = b.dataset.win; renderWins(); renderCoins(); } });
+const left = (t) => { const s = Math.max(0, Math.round((t - Date.now()) / 1000)); const h = Math.floor(s / 3600), m = Math.floor((s % 3600) / 60), x = s % 60; return h ? `${h}h ${String(m).padStart(2, '0')}m` : `${m}:${String(x).padStart(2, '0')}`; };
+const chg = (v, l) => v == null ? '' : `<span class="${v > 0 ? 'up' : v < 0 ? 'dn' : ''}">${l} ${v > 0 ? '+' : ''}${v}%</span>`;
+function renderCoins() {
+  $('#coins').innerHTML = lineup.map((c) => {
+    if (c.sponsored && c.open) return `<div class="coin isspons"><div class="hd"><div class="dot" style="background:${c.color}">AD</div><div class="nm"><b>Your coin here</b><small>Sponsored slot · open</small></div></div>
+      <div><span class="chip spons">Sponsored</span></div><div class="hint" style="margin:0">Sponsored coin of the day: 0.3 SOL/day. Only the exact sponsored mint is ever shown here.</div>
+      <div class="acts" style="grid-template-columns:1fr"><a class="btn ghost tiny" href="#sponsor" data-tab="sponsor">Get your coin in the lineup →</a></div></div>`;
+    const p = prices[c.mint], open = state.calls.find((k) => !k.result && k.mint === c.mint && k.win === win);
+    const sym = c.symbol || p?.symbol || '???';
+    return `<div class="coin ${c.sponsored ? 'isspons' : ''}" data-mint="${esc(c.mint)}"><div class="hd"><div class="dot" style="background:${c.color}">${esc(sym.replace('$', '').slice(0, 3))}</div>
+      <div class="nm"><b>$${esc(sym.replace('$', ''))}</b>${c.always ? ' <span class="chip">Always in</span>' : ''}${c.sponsored ? ' <span class="chip spons">Sponsored</span>' : ''}<small>${esc(c.name || p?.name || '')} · <a href="https://dexscreener.com/solana/${esc(c.mint)}" target="_blank" rel="noopener" title="${esc(c.mint)}">${short(c.mint)}</a></small></div></div>
+      <div class="px">${p ? LS.fmtPrice(p.price) : (pricesAt ? 'No price' : 'Loading…')}</div><div class="chg">${p ? chg(p.change1h, '1h') + ' · ' + chg(p.change24h, '24h') : '&nbsp;'}</div>
+      ${open ? `<div class="open">Called <b>${open.side.toUpperCase()}</b> at ${LS.fmtPrice(open.lockPrice)} · resolves in <span data-left="${open.endsAt}">${left(open.endsAt)}</span>${open.debug ? ' <span class="chip dbg">debug</span>' : ''}</div>`
+        : `<div class="acts"><button class="btn long" data-call="long" data-mint="${esc(c.mint)}" ${p ? '' : 'disabled'}>▲ Long</button><button class="btn short" data-call="short" data-mint="${esc(c.mint)}" ${p ? '' : 'disabled'}>▼ Short</button></div>`}</div>`;
+  }).join('');
+}
+$('#coins').addEventListener('click', (e) => {
+  const b = e.target.closest('[data-call]'); if (!b) return;
+  const coin = lineup.find((c) => c.mint === b.dataset.mint), p = prices[coin.mint];
+  try { LS.makeCall(state, { coin: { ...coin, symbol: (coin.symbol || p?.symbol || '').replace('$', '') }, side: b.dataset.call, win, price: p?.price, debug: DEBUG }); LS.save(localStorage, state); } catch (err) { alert(err.message); }
+  render();
+});
+function callRow(c) {
+  const mv = c.move == null ? '' : ` → ${LS.fmtPrice(c.endPrice)} (${c.move > 0 ? '+' : ''}${(c.move * 100).toFixed(2)}%)`;
+  const res = c.result ? `<span class="chip ${c.result}">${{ win: 'Correct', miss: 'Missed', push: 'Push' }[c.result]}</span>` : `<span class="chip">ends in <span data-left="${c.endsAt}">${left(c.endsAt)}</span></span>`;
+  return `<div class="callrow ${c.result || ''}"><span class="sd ${c.side}">${c.side === 'long' ? '▲ LONG' : '▼ SHORT'}</span>
+    <div><b>$${esc(c.symbol)}</b> · ${c.win} window ${c.sponsored ? '<span class="chip spons">Sponsored</span>' : ''} ${c.debug ? '<span class="chip dbg">debug</span>' : ''}<br><span class="chg">Locked ${LS.fmtPrice(c.lockPrice)}${mv}</span> ${res}</div>
+    <div class="bn ${c.bones ? '' : 'z'}">${c.result ? `+${c.bones || 0} 🦴${c.mult > 1 ? `<br><small>×${c.mult}</small>` : ''}` : '…'}</div></div>`;
+}
+function renderCalls() {
+  const open = state.calls.filter((c) => !c.result).sort((a, b) => a.endsAt - b.endsAt), done = state.calls.filter((c) => c.result).sort((a, b) => b.resolvedAt - a.resolvedAt).slice(0, 30);
+  $('#open-list').innerHTML = open.map(callRow).join('') || '<p class="hint">No open calls. Pick Long or Short on today\'s lineup.</p>';
+  $('#done-list').innerHTML = done.map(callRow).join('') || '<p class="hint">Nothing resolved yet.</p>';
+  const got = lastResolved.reduce((s, c) => s + (c.bones || 0), 0);
+  $('#resolved-banner').innerHTML = lastResolved.length ? `<div class="banner">🦴 ${lastResolved.length} call${lastResolved.length > 1 ? 's' : ''} resolved: +${got} Bones. Streak ${state.streak} (next correct call ×${LS.multiplier(state.streak)}).</div>` : '';
+  $('[data-tab="calls"]').textContent = 'My calls' + (open.length ? ` (${open.length})` : '');
+}
+function renderBoard() {
+  const rows = LS.board(state, lb); $('#lb-col').textContent = { day: 'Bones today', week: 'Bones this week', hof: 'Best streak' }[lb];
+  $('#lb').innerHTML = rows.map((r) => `<tr class="r ${r.me ? 'me' : ''}"><td><span class="rk ${r.rank <= 3 ? 'g' + r.rank : ''}">${r.rank}</span></td><td>${esc(r.name)} ${r.me ? '<span class="chip">You</span>' : '<span class="chip soon">sample</span>'}</td><td>${r.score}${lb === 'hof' ? ' 🔥' : ' 🦴'}</td></tr>`).join('');
+  $$('#lbtabs [data-lb]').forEach((b) => b.className = 'btn tiny ' + (b.dataset.lb === lb ? 'sel' : 'ghost'));
+}
+$('#lbtabs').addEventListener('click', (e) => { const b = e.target.closest('[data-lb]'); if (b) { lb = b.dataset.lb; renderBoard(); } });
+function renderStats() { const s = LS.stats(state); $('#s-today').textContent = s.today; $('#s-week').textContent = s.week; $('#s-streak').textContent = s.streak + (s.best ? ` (best ${s.best})` : ''); $('#s-mult').textContent = '×' + s.mult; $('#s-hit').textContent = s.hit == null ? '—' : s.hit + '%'; }
+function render() { renderCoins(); renderCalls(); renderBoard(); renderStats(); }
+function tab() { const t = (location.hash || '#lineup').slice(1); const ok = ['lineup', 'calls', 'board', 'sponsor'].includes(t) ? t : 'lineup';
+  $$('[data-pane]').forEach((p) => p.hidden = p.dataset.pane !== ok); $$('#tabs a').forEach((a) => a.classList.toggle('on', a.dataset.tab === ok)); if (ok === 'calls') lastResolvedSeen(); }
+let seenTimer; function lastResolvedSeen() { clearTimeout(seenTimer); seenTimer = setTimeout(() => { lastResolved = []; }, 60_000); }
+addEventListener('hashchange', tab);
+async function refresh() {
+  try { const got = await LS.fetchPrices(lineup.map((c) => c.mint)); for (const [m, v] of Object.entries(got)) if (v) prices[m] = v; pricesAt = Date.now(); $('#src').textContent = 'Prices: DexScreener public API (read-only), updated ' + new Date(pricesAt).toLocaleTimeString() + '. Each coin uses its deepest pool for that exact mint.'; }
+  catch (e) { $('#src').textContent = 'Prices unavailable right now (' + e.message + '). Calls open again when prices load.'; }
+}
+let busy = false;
+async function settle() {
+  const d = LS.due(state); if (!d.length || busy) return; busy = true;
+  if (Date.now() - pricesAt > 10_000) await refresh();
+  const now = Date.now(), got = [];
+  for (const c of d) { let end = prices[c.mint]?.price; if (c.debug && force) end = c.lockPrice * (force === 'up' ? 1.01 : 0.99); if (end > 0) { LS.resolveCall(state, c, end, now); got.push(c); } }
+  busy = false; if (got.length) { lastResolved = got; LS.save(localStorage, state); render(); }
+}
+if (DEBUG) { $('#debugbar').hidden = false;
+  $('#debugbar').addEventListener('click', (e) => { const b = e.target.closest('[data-force]'); if (b) { force = b.dataset.force; $$('#debugbar [data-force]').forEach((x) => x.classList.toggle('sel', x === b)); }
+    if (e.target.id === 'dbg-reset') { state = LS.emptyState(); LS.save(localStorage, state); lastResolved = []; $('#name').value = ''; render(); } });
+  window.__ls = { get state() { return state; }, settle, refresh };
+}
+renderWins(); tab(); render(); await refresh(); render(); await settle();
+setInterval(() => { $$('[data-left]').forEach((el) => el.textContent = left(+el.dataset.left)); settle(); }, 1000);
+setInterval(async () => { await refresh(); renderCoins(); }, 30_000);
+</script>
+<script defer src="/_vercel/insights/script.js"></script>
+<script>/* paid_link_click: product + where it was clicked, never wallet data */(function(){window.va=window.va||function(){(window.vaq=window.vaq||[]).push(arguments)};var c=function(v){return String(v||'').toLowerCase().replace(/[^a-z0-9-]/g,'').slice(0,40)};document.addEventListener('click',function(e){var a=e.target&&e.target.closest&&e.target.closest('[data-paid]');if(a)window.va('event',{name:'paid_link_click',data:{product:c(a.getAttribute('data-paid')),from:c(a.getAttribute('data-paid-from')),site:'inu-verse'}})},true)})();</script>
+</body></html>
