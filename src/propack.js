@@ -3,7 +3,7 @@
 // Contents: logo 512 + 1000 px, X banner 1500x500, 16:9 banner 1280x720, pump.fun field sheet (.txt + .html with copy buttons),
 // one-page launch checklist (.png + .txt), README. The free preview is watermarked; the clean zip unlocks after a verified payment.
 // Not financial advice: it's a design pack, not a launch, a listing or an endorsement.
-export const PRICE_FALLBACK = { sol: 0.25, priceFinal: false, payToLabel: 'Sponsor Chest',
+export const PRICE_FALLBACK = { sol: 0.25, priceFinal: true, refundFinal: true, payToLabel: 'Sponsor Chest',
   refund: "No refunds once the pack is unlocked. If the payment doesn't unlock it, we refund by hand." };
 export const LIMITS = { name: 32, ticker: 10, desc: 500 };
 export const FRAMES = Object.freeze([['ring', 'Coin ring'], ['tile', 'Framed tile'], ['clean', 'Clean full-bleed']]);

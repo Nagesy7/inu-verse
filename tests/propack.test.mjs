@@ -58,5 +58,5 @@ test('zip: valid STORE archive that unzip can list and extract (crc ok)', () => 
 test('readme + files list; analytics props carry no wallet data', () => {
   assert.equal(PP.FILES.length, 9); assert.match(PP.readme(D, { id: 'abc123', sig: 'xyz' }), /Order abc123/);
   assert.deepEqual(cleanProps({ wallet: '7rPVPVBi8sDAcLNkEK6zdEnreeK3SV56ARaXzhnRUNRg', side: 'cabal', coin: 'BTC', result: 'unlocked' }), { side: 'cabal', coin: 'BTC', result: 'unlocked' });
-  assert.equal(PP.PRICE_FALLBACK.priceFinal, false); assert.equal(PP.PRICE_FALLBACK.sol, 0.25);
+  assert.equal(PP.PRICE_FALLBACK.priceFinal, true); assert.equal(PP.PRICE_FALLBACK.refundFinal, true); assert.equal(PP.PRICE_FALLBACK.sol, 0.25);
 });
