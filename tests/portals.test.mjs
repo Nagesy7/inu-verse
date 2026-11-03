@@ -93,3 +93,31 @@ test('browser: minimap on + fits the phone HUD, discovers stones by walking, A w
     await ctx.close(); }
     assert.deepEqual(errs, []); } finally { await b.close(); srv.close(); }
 });
+
+test('full-map stone marker: 14px+ outlined diamond, rune / "?" icon, short name tag on found stones', () => {
+  const calls = []; let font = ''; const m = new Proxy({ measureText: (t) => ({ width: t.length * 5 }) }, { get: (o, k) => (k in o ? o[k] : k === 'font' ? font : (...a) => calls.push([k, ...a])), set: (o, k, v) => { if (k === 'font') font = v; calls.push(['set', k, v]); return true; } });
+  const s = PT.BY_ID.farm; PT.drawMapStone(m, s, 100, 100, 2, true, 0);
+  const xs = calls.filter((c) => c[0] === 'lineTo').map((c) => c[1]); assert.ok(Math.max(...xs) - Math.min(...xs) >= 2 * 2 * PT.MAP_STONE_R, 'diamond at least 14 CSS px wide');
+  const fills = calls.filter((c) => c[0] === 'set' && c[1] === 'fillStyle').map((c) => c[2]); assert.ok(fills.includes('#141a2e') && fills.includes('#e8fffb'), 'ink + light outline');
+  assert.ok(calls.some((c) => c[0] === 'fillText' && c[1] === 'FARMLANDS'), 'found stone is labelled'); assert.equal(PT.shortName(PT.BY_ID.plaza), 'Kibble');
+  calls.length = 0; PT.drawMapStone(m, s, 100, 100, 2, false, 0); const txt = calls.filter((c) => c[0] === 'fillText').map((c) => c[1]); assert.deepEqual(txt, ['?'], 'undiscovered: "?" icon, no name spoiler');
+  const src = fs.readFileSync(new URL('../src/guideui.js', import.meta.url), 'utf8'); assert.match(src, /drawMapStone\(m, st,/); assert.match(src, /rm = fxLow\(\)/);
+});
+
+test('browser: full-map stones are big, visible and tappable at 844x390 + 667x375', { timeout: 120000 }, async () => {
+  const srv = await serveRoot(); const b = await chromium.launch(); const errs = [];
+  try { for (const vp of [{ width: 844, height: 390 }, { width: 667, height: 375 }]) {
+    const ctx = await b.newContext({ viewport: vp, isMobile: true, hasTouch: true, deviceScaleFactor: 2 }), p = await ctx.newPage(); p.on('pageerror', (e) => errs.push(e.message));
+    await p.route(/kibble-pay|_vercel/, (r) => r.fulfill({ status: 200, contentType: 'text/javascript', body: '' }));
+    await p.goto(srv.url + '?mp=off&fx=low'); await p.evaluate(() => { localStorage.clear(); localStorage.setItem('inuverse.tour.v1', 'skipped:test'); localStorage.setItem('inuverse.portals.v1', JSON.stringify(['farm', 'plaza'])); }); await p.reload(); await p.waitForTimeout(700); await p.click('#start'); await p.waitForTimeout(1200);
+    await p.tap('#minimap'); await p.waitForFunction(() => !document.getElementById('mapfull').hidden); await p.waitForTimeout(300);
+    const R = await p.evaluate(() => { const cv = document.getElementById('mapcv'), c = cv.getBoundingClientRect(), g = cv.getContext('2d'), u = cv.width / c.width, out = {};
+      for (const id of ['farm', 'arcade']) { const s = __inu.portals.PT.BY_ID[id], x = (s.tx + 0.5) * cv.width / 64, y = (s.ty + 0.5) * cv.height / 106; let cyan = 0, ink = 0;
+        const d = g.getImageData(Math.round(x - 8 * u), Math.round(y - 8 * u), Math.round(16 * u), Math.round(16 * u)).data; for (let i = 0; i < d.length; i += 4) { if (d[i] < 120 && d[i + 1] > 200 && d[i + 2] > 190) cyan++; if (d[i] < 30 && d[i + 1] < 40 && d[i + 2] < 60) ink++; }
+        out[id] = { cyan: cyan / u / u, ink: ink / u / u, cx: c.left + x / u, cy: c.top + y / u }; } return out; });
+    assert.ok(R.farm.cyan >= 40, `found stone shows a big cyan diamond (${R.farm.cyan} CSS px²) @${vp.width}`); assert.ok(R.farm.ink >= 15, 'ink outline @' + vp.width); assert.ok(R.arcade.cyan < 5 && R.arcade.ink >= 15, 'undiscovered stone: grey outlined, not cyan @' + vp.width);
+    await p.mouse.click(R.farm.cx + 5, R.farm.cy + 4); await p.waitForTimeout(300); // edge of the drawn diamond still picks the stone
+    assert.equal(await p.evaluate(() => document.body.dataset.guide), 'stone-farm', 'tap near the drawn diamond edge picks the stone');
+    await ctx.close(); }
+    assert.deepEqual(errs, []); } finally { await b.close(); srv.close(); }
+});

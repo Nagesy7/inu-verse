@@ -3,7 +3,8 @@
 import * as GD from './guide.js';
 import { TILE, MAP_W, MAP_H, isSolid } from './world.js';
 import { drawShiba, artKey } from './art.js';
-import { drawStoneIcon } from './portals.js';
+import { drawMapStone, MAP_STONE_R } from './portals.js';
+import { fxLow } from './bldgfx.js';
 
 const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 const el = (html) => { const t = document.createElement('template'); t.innerHTML = html.trim(); return t.content.firstChild; };
@@ -58,7 +59,7 @@ export function createGuide(h) {
   function openMap() { if (G.tour) endTour('skipped'); closePlaces(); mp.hidden = false; G.mapOpen = true; sizeMap(); warpHint(); }
   // portal stones (src/portals.js): standing at a found stone, tapping another found stone on the map warps you (free); otherwise a stone tap gives directions
   function warpHint() { const P = h.portals?.(), w = $('#map-warp'); if (!w) return; const on = !!(P?.here && P.found.has(P.here.id)); w.hidden = !on; if (on) w.textContent = `✦ At ${P.here.name}: tap a glowing stone to warp there (free)`; }
-  function stonePick(tx, ty) { const P = h.portals?.(); if (!P) return false; let best = null, bd = 2.2; for (const st of P.stones) { const d = Math.hypot(st.tx + 0.5 - tx, st.ty + 0.5 - ty); if (d < bd) { bd = d; best = st; } } if (!best) return false;
+  function stonePick(tx, ty) { const P = h.portals?.(); if (!P) return false; const cr = $('#mapcv').getBoundingClientRect(), tpx = cr.width / MAP_W || 1; let best = null, bd = Math.max(2.2, (MAP_STONE_R + 3) / tpx); /* tap target = the drawn diamond */ for (const st of P.stones) { const d = Math.hypot(st.tx + 0.5 - tx, st.ty + 0.5 - ty); if (d < bd) { bd = d; best = st; } } if (!best) return false;
     if (P.here && P.found.has(P.here.id) && P.found.has(best.id) && best.id !== P.here.id) { closeMap(); h.warp(best.id, P.here.id); return true; }
     closeMap(); setGuide({ id: 'stone-' + best.id, kind: 'stone', name: P.found.has(best.id) ? `Portal stone: ${best.name}` : 'Undiscovered portal stone', group: 'Pin', tx: best.tx, ty: best.ty + 1, fx: best.tx + 0.5, fy: best.ty + 0.5 }); return true; }
   function closeMap() { mp.hidden = true; G.mapOpen = false; }
@@ -72,7 +73,7 @@ export function createGuide(h) {
     for (const p of list) { m.fillStyle = '#141a2e'; m.fillRect(p.fx * s - 4, p.fy * s - 4, 8, 8); m.fillStyle = p.group === 'Games' ? '#ff5ad0' : p.group === 'Prizes & Boards' ? '#ffd84a' : '#fff6e0'; m.fillRect(p.fx * s - 3, p.fy * s - 3, 6, 6); }
     for (const p of list) if (p.featured) { const b = 7 + Math.sin(t * 5) * 1.5; star(m, p.fx * s, p.fy * s, b + 3, '#141a2e'); star(m, p.fx * s, p.fy * s, b, '#ffd84a'); }
     for (const p of list) if (['Featured', 'Games', 'Prizes & Boards'].includes(p.group) || p.kind === 'mall' && p.id === 'mall' || p.id === 'cafe') { const label = (p.featured ? '★ ' : '') + p.name.replace(/ \(.*\)$/, ''); m.fillStyle = '#141a2e'; m.fillText(label, p.fx * s + 1, p.fy * s - 6); m.fillStyle = '#fff6e0'; m.fillText(label, p.fx * s, p.fy * s - 7); }
-    { const P = h.portals?.(); if (P) for (const st of P.stones) drawStoneIcon(m, (st.tx + 0.5) * s, (st.ty + 0.5) * s, Math.max(4, s * 0.9), P.found.has(st.id)); }
+    { const P = h.portals?.(), u = cv.width / (cv.getBoundingClientRect().width || cv.width), rm = fxLow(); if (P) for (const st of P.stones) drawMapStone(m, st, (st.tx + 0.5) * s, (st.ty + 0.5) * s, u, P.found.has(st.id), t, { rm }); }
     if (G.guide) { const g = G.guide, b = 6 + Math.sin(t * 6) * 2; m.strokeStyle = '#4cf08a'; m.lineWidth = 3; m.beginPath(); m.arc((g.tx + 0.5) * s, (g.ty + 0.5) * s, b + 4, 0, 7); m.stroke(); }
     const px = st.player.x / TILE * s, py = st.player.y / TILE * s, r = 7 + Math.sin(t * 5) * 2; m.fillStyle = '#ff3a3a'; m.beginPath(); m.arc(px, py, r, 0, 7); m.fill(); m.strokeStyle = '#fff'; m.lineWidth = 2; m.stroke();
     m.fillStyle = '#141a2e'; m.fillText('YOU ARE HERE', px + 1, py - r - 3); m.fillStyle = '#ff8a8a'; m.fillText('YOU ARE HERE', px, py - r - 4); }

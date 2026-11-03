@@ -68,3 +68,16 @@ export function stoneProps(found, t, view, { rm = false, near = null } = {}) { c
 // tiny map icon (minimap + full map): a diamond, cyan when found, grey when not
 export function drawStoneIcon(m, x, y, r, found) { m.fillStyle = INK; m.beginPath(); m.moveTo(x, y - r - 1); m.lineTo(x + r + 1, y); m.lineTo(x, y + r + 1); m.lineTo(x - r - 1, y); m.closePath(); m.fill();
   m.fillStyle = found ? '#5ff2e0' : '#8a90a8'; m.beginPath(); m.moveTo(x, y - r); m.lineTo(x + r, y); m.lineTo(x, y + r); m.lineTo(x - r, y); m.closePath(); m.fill(); }
+// full-map marker (u = canvas px per CSS px): a chunky 14px diamond with an ink + light outline, a pixel rune inside ("?" when undiscovered),
+// a soft pulsing ring on found stones (static when rm) and a short outlined name tag under found stones
+export const shortName = (s) => s.name.split(' ')[0];
+export const MAP_STONE_R = 7; // CSS px half-width of the full-map diamond
+export function drawMapStone(m, s, x, y, u, found, t = 0, { rm = false } = {}) { const r = MAP_STONE_R * u, o = Math.max(1, Math.round(u)), dia = (rr, col) => { m.fillStyle = col; m.beginPath(); m.moveTo(x, y - rr); m.lineTo(x + rr, y); m.lineTo(x, y + rr); m.lineTo(x - rr, y); m.closePath(); m.fill(); };
+  if (found) { const ph = rm ? 0.5 : (t * 0.8 + s.ty * 0.07) % 1; m.strokeStyle = `rgba(95,242,224,${(0.75 * (1 - ph)).toFixed(2)})`; m.lineWidth = 2 * o; m.beginPath(); m.arc(x, y, r + (3 + ph * 5) * u, 0, 7); m.stroke(); }
+  dia(r + 2 * o, INK); dia(r + o, found ? '#e8fffb' : '#c9cde0'); dia(r, found ? '#5ff2e0' : '#8a90a8'); dia(r * 0.55, found ? '#22a89a' : '#5d6380');
+  m.fillStyle = found ? '#fff6e0' : INK; const p = Math.max(1, Math.round(u * 1.5));
+  if (found) { m.fillRect(x - p / 2, y - p * 1.5, p, p * 3); m.fillRect(x - p * 1.5, y - p / 2, p * 3, p); } // ✦ rune
+  else { m.font = `${Math.round(9 * u)}px Silkscreen, monospace`; m.textAlign = 'center'; m.textBaseline = 'middle'; m.fillStyle = '#fff6e0'; m.fillText('?', x, y + o); }
+  if (found) { const label = shortName(s).toUpperCase(); m.font = `${Math.round(7 * u)}px Silkscreen, monospace`; m.textAlign = 'center'; m.textBaseline = 'top'; const ly = y + r + 3 * o, w = m.measureText(label).width;
+    m.fillStyle = 'rgba(20,26,46,.85)'; m.fillRect(x - w / 2 - 2 * o, ly - o, w + 4 * o, 9 * u); m.fillStyle = '#5ff2e0'; m.fillText(label, x, ly); }
+  m.textBaseline = 'alphabetic'; }
