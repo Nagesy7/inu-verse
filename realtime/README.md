@@ -21,7 +21,7 @@ client -> server: `hi {name, guest, tok?, look, s}` · `s {x,y,f,m,r,d,ts}` · `
 server -> client: `w {id,name,room,inst,cap,players}` · `j {p}` · `q {id}` · `s {id,...}` · `c {id,text}` · `e {id,k}` · `l {id,look}` · `no {why}`
 
 Server enforcement: Origin allow-list, 2 KB frame cap (state frames 200 B), token buckets (state 10/s burst 3, chat 1 per 2 s,
-emote 1/s, look 1 per 5 s, any 25/s; sustained abuse closes the socket), chat filter (profanity masked; slurs, links,
+emote 1/s, look 1 per 5 s, any 25/s; sustained abuse closes the socket), chat filter (profanity masked; slurs, threats/harassment, sexual solicitations, links,
 wallet addresses/keys and seed-phrase-like word lists refused), names cleaned, numbers clamped, looks reduced to known fields.
 Identity: a kibble-pay session token (optional) is verified read-only against kibble-pay; verified players show their chosen
 name + short address, everyone else is a guest `Pup1234`.

@@ -67,6 +67,31 @@ export const hasAddress = (s) => b58In(s) || EVM_RE.test(s) || HEX_RE.test(s) ||
 export function seedLike(s) { const words = s.toLowerCase().replace(/\b\d{1,2}[.):-]?\s*/g, ' ').split(/[^a-z]+/).filter(Boolean); if (words.length < 6) return false;
   const hits = words.filter((w) => BIP39.has(w)).length; return (hits >= 8 && hits / words.length >= 0.75) || (hits >= 6 && hits === words.length && /\b\d{1,2}[.)]/.test(s)); }
 const stripCtl = (s) => String(s ?? '').normalize('NFKC').replace(/[\u0000-\u001f\u007f-\u009f\u200b-\u200f\u2028-\u202e\u2060-\u206f\ufeff]/g, ' ');
+// Light moderation for threats / harassment / sexual solicitation: refuse the whole line (do not over-censor normal talk).
+const HOSTILE_RES = [
+  /\bk+\s*i+\s*l+\s*l\s+(?:yo+u+r?\s*s+e+l+f|yo+u+|u+|him|her|them)\b/i,
+  /\bkys\b/i,
+  /\b(?:hang|cut|slit|shoot|stab|murder)\s+(?:yo+u+r?\s*s+e+l+f|yo+u+|u+)\b/i,
+  /\bi\s*(?:'|’)?l+l\s+(?:kill|murder|rape|hurt|beat|find)\b/i,
+  /\b(?:rape|molest)\s+(?:yo+u+|u+)\b/i,
+  /\bgo\s+(?:and\s+)?(?:die|kill\s+yourself)\b/i,
+  /\bend\s+your\s+life\b/i,
+  /\bi\s+know\s+where\s+you\s+live\b/i,
+  /\b(?:doxx?|swatt?)(?:ing|ed)?\b/i,
+  /\bsend\s+(?:me\s+)?(?:nudes?|nudes|nude\s*pics?|dick\s*pics?)\b/i,
+  /\b(?:suck|lick)\s+my\b/i,
+  /\bshow\s+me\s+your\b.{0,24}\b(?:tit|boob|dick|cock|pussy|nude)s?\b/i,
+  /\b(?:kill|hurt|beat)\s+(?:yourself|yo+u+|u+)\b/i,
+];
+export function isHostile(s) {
+  const t = String(s || '');
+  if (HOSTILE_RES.some((r) => r.test(t))) return true;
+  // spaced / punctuated evasion: "k i l l   y o u", "k.y.s"
+  const spaced = t.toLowerCase().replace(/[^a-z0-9]+/g, ' ').replace(/\s+/g, ' ').trim();
+  if (HOSTILE_RES.some((r) => r.test(spaced))) return true;
+  const joined = norm(t);
+  return /killyourself|killyou|gosuicide| rapeyou|sendnudes|dickpic/.test(joined);
+}
 // Clean a chat line. -> { ok, text } or { ok:false, reason }
 export function cleanChat(raw, max = MP.CHAT_MAX) {
   let s = stripCtl(raw).replace(/[<>]/g, '').replace(/\s+/g, ' ').trim(); if (!s) return { ok: false, reason: 'empty' };
@@ -75,7 +100,7 @@ export function cleanChat(raw, max = MP.CHAT_MAX) {
   s = s.replace(URL_RE, '').replace(DOMAIN_RE, '').replace(/\b(?:discord|t\.me|telegram)\s*\/\s*\S+/gi, '').replace(/\s+/g, ' ').trim(); // links stripped
   if (hasAddress(s)) return { ok: false, reason: 'No wallet addresses or keys in chat.' };
   if (!s) return { ok: false, reason: 'Links are not allowed in chat.' };
-  const words = s.split(' '); if (words.some(isSlur) || slurJoined(s)) return { ok: false, reason: 'Message blocked by the chat filter.' };
+  const words = s.split(' '); if (words.some(isSlur) || slurJoined(s) || isHostile(s)) return { ok: false, reason: 'Message blocked by the chat filter.' };
   s = words.map((w) => (isProf(w) ? w.replace(/[^\s]/g, '*') : w)).join(' ');
   if (s.length > max) s = s.slice(0, max).trim();
   if (!s.replace(/[\s*]/g, '')) return { ok: false, reason: 'Message blocked by the chat filter.' };
