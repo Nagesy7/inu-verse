@@ -17,7 +17,9 @@ export function drawInuAvatarHi(ctx, profile, x, y, opts = {}) {
   let img = hi; if (opts.fid && !globalThis.__noFace) { const view = opts.face === 'up' ? 'back' : opts.face === 'left' || opts.face === 'right' ? 'side' : 'front'; hi.F ||= {};
     if (!(view in hi.F)) { const c = mkCanvas(hi.width, hi.height), x = c.getContext('2d', { willReadFrequently: true }); x.drawImage(hi, 0, 0); hi.F[view] = view === 'back' ? null : findFace(x.getImageData(0, 0, c.width, c.height).data, c.width, c.height, view); }
     if (hi.F[view]) img = faceVariant(hi, hi.F[view], faceFor(opts.fid, { moving: !!opts.moving, face: opts.face, emote: opts.emote, wag: opts.wag || 0 }), { eyes: true, ears: false }); }
-  ctx.save(); for (const [f, a] of sh) { ctx.fillStyle = f; ctx.fillRect(...a); } ctx.imageSmoothingEnabled = false; posed(ctx, opts.pose, x, y, (opts.scale || 1.6) / 1.6, () => ctx.drawImage(img, ...dst)); ctx.restore(); return r;
+  ctx.save(); for (const [f, a] of sh) { ctx.fillStyle = f; ctx.fillRect(...a); } ctx.imageSmoothingEnabled = false; let hl = null; if (opts.procHat) { const view = opts.face === 'up' ? 'back' : opts.face === 'left' || opts.face === 'right' ? 'side' : 'front', hk = opts.procHat.id + '|' + view; hi.H ||= new Map(); if (!hi.H.has(hk)) hi.H.set(hk, procHatLayer(hi, opts.procHat, view)); hl = hi.H.get(hk); }
+  const hk2 = hl && dst.length >= 4 ? dst[3] / hi.height : 0; if (hl && hk2) r.hatH = hl.pad * hk2;
+  posed(ctx, opts.pose, x, y, (opts.scale || 1.6) / 1.6, () => { ctx.drawImage(img, ...dst); if (hl && hk2) ctx.drawImage(hl.cv, dst[0], dst[1] - hl.pad * hk2, dst[2], dst[3] + hl.pad * hk2); }); ctx.restore(); return r;
 }
 // Round 3 poses (src/actions.js poseAt): squash/lean/hop/shuffle applied around the sprite only (shadow + name tag stay put),
 // anchored at the feet, so every renderer below (atlas, reference art, custom profile, pixel fallback) poses the same way.
@@ -46,6 +48,7 @@ export function drawPoseFx(ctx, P, x, y, scale, t, face = 'down') { if (!P) retu
   ctx.restore(); }
 import { FURNITURE, footprint, WALLS, FLOORS } from './furniture.js';
 import { OUTFIT_ATLAS } from './outfit-atlas.js';
+import { procHatLayer } from './seasonhats.js';
 import { OUTFITS } from './outfits.js';
 
 // Reference-art sprites (cropped from the user's own art by scripts/extract_art.py).
@@ -93,6 +96,7 @@ function layeredCanvas(coat, view, frame, equipped, audit = null) {
       const m2 = new Uint8Array(W * H); for (let y = 0; y < ch; y++) for (let xx = 0; xx < cw; xx++) if (mask[y * cw + xx]) { const yy = y >= nk.at ? y + nk.n : y; if (yy < H) m2[yy * W + xx] = 1; }
       { const [x0, y0, nw, nh] = nk.rect; for (let y = y0 + 8; y < y0 + nh && y < H; y++) for (const xx of [x0 - 3, x0 - 2, x0 - 1, x0, x0 + nw - 1, x0 + nw, x0 + nw + 1, x0 + nw + 2]) if (xx >= 0 && xx < W) m2[y * W + xx] = 1; }
       x.putImageData(im, 0, 0); shadeSprite(cv, { r: 3, light: 0.2, dark: 0.24, grad: 0.1, bands: [0.16, 0.2] }); const im2 = x.getImageData(0, 0, W, H); eraseSeams(im2.data, W, H, m2); x.putImageData(im2, 0, 0); } }
+  { const hat = OUTFITS[(equipped || {}).hat]?.look; if (hat?.proc && !audit) cv.hat = procHatLayer(cv, hat, view); } // seasonal procedural hats (src/seasonhats.js): overlay with headroom
   cv.feet = feet;
   if (audit) { const W = cv.width, H = cv.height, d = cv.getContext('2d').getImageData(0, 0, W, H).data, m2 = new Uint8Array(W * H);
     if (mask) for (let y = 0; y < ch; y++) for (let x = 0; x < cw; x++) if (mask[y * cw + x]) { const yy = nk && y >= nk.at ? y + nk.n : y; if (yy < H) m2[yy * W + x] = 1; }
@@ -120,23 +124,26 @@ function faceVariant(cv, F, s, flags) { const key = faceKey(s); if (key === NEUT
 export { faceOf as __faceOf, layeredCanvas as __layered };
 function drawLayered(ctx, x, y, coat, outfit, { face, phase, moving, scale, name, shadow, badge, emote, fid, wag, pose }) {
   const view = face === 'up' ? 'back' : face === 'left' || face === 'right' ? 'side' : 'front';
-  const frame = moving ? Math.floor(phase / 1.6) % 4 : 0; let cv = layeredCanvas(coat, view, frame, outfit);
+  const frame = moving ? Math.floor(phase / 1.6) % 4 : 0; let cv = layeredCanvas(coat, view, frame, outfit); const hatL = cv.hat;
   if (fid) cv = faceCanvas(cv, coat, view, frame, outfit, faceFor(fid, { moving, face, emote, wag }));
   const k = (64 * scale) / (cv.feet - 6), sit = emote === 'sit' && !pose ? 0.82 : 1; // ~64px tall at scale 1, matches the old art sprites
   const w = cv.width * k, h = cv.height * k * sit, top = y + 12 - cv.feet * k * sit, bob = moving ? (frame % 2 ? 1.4 * scale : 0) : Math.sin(phase * 0.5) * 0.6; // walk: body rises on the passing frames
   ctx.save(); ctx.imageSmoothingEnabled = true; ctx.imageSmoothingQuality = 'high';
   if (shadow) { ctx.fillStyle = 'rgba(10,14,30,0.3)'; ctx.beginPath(); ctx.ellipse(x, y + 11, w * 0.3, 4 * scale, 0, 0, 7); ctx.fill(); }
   ctx.translate(Math.round(x), 0); if (face === 'left') ctx.scale(-1, 1);
-  posed(ctx, pose, 0, y + 12, scale, () => ctx.drawImage(mip(cv, h * (ctx.getTransform?.().d || 1)), Math.round(-w / 2), Math.round(top - bob), Math.round(w), Math.round(h)));
+  posed(ctx, pose, 0, y + 12, scale, () => { ctx.drawImage(mip(cv, h * (ctx.getTransform?.().d || 1)), Math.round(-w / 2), Math.round(top - bob), Math.round(w), Math.round(h)); if (hatL) { const ph = hatL.pad * k * sit; ctx.drawImage(mip(hatL.cv, (h + ph) * (ctx.getTransform?.().d || 1)), Math.round(-w / 2), Math.round(top - bob - ph), Math.round(w), Math.round(h + ph)); } });
   ctx.restore();
-  if (name) nameTag(ctx, x, posedTop(pose, top, y + 12, scale), name, badge);
+  if (name) nameTag(ctx, x, posedTop(pose, top - (hatL ? hatL.pad * k * sit * 0.6 : 0), y + 12, scale), name, badge);
 }
 
 // Custom (character-creator) Shibas: shared cross-game renderer, sized to match the layered atlas (~64px at scale 1)
 export function drawProfileShiba(ctx, x, y, profile, o = {}) {
   const { face = 'down', phase = 0, moving = false, scale = 1, name = null, shadow = true, badge = null, fid = null, emote = null, wag = 0, pose = null } = withPose(o);
-  const frame = moving ? Math.floor(phase / 1.6) % 4 : 0, r = drawInuAvatarHi(ctx, profile, x, y + 12, { scale: scale * 1.6, face, frame, shadow, fid, emote, moving, wag, pose });
-  if (name) nameTag(ctx, x, posedTop(pose, y + 12 - r.h, y + 12, scale), name, badge); }
+  const ph = procHatOf(profile), prof = ph ? { ...profile, outfit: { ...profile.outfit, hat: null } } : profile; // seasonal procedural hat: drawn here, not by the shared renderer
+  const frame = moving ? Math.floor(phase / 1.6) % 4 : 0, r = drawInuAvatarHi(ctx, prof, x, y + 12, { scale: scale * 1.6, face, frame, shadow, fid, emote, moving, wag, pose, procHat: ph });
+  if (name) nameTag(ctx, x, posedTop(pose, y + 12 - r.h - (r.hatH || 0) * 0.6, y + 12, scale), name, badge); }
+// profile hat slot {id, kind:'proc'} -> our OUTFITS look (other games just see a self-describing slot and draw their generic cap)
+const procHatOf = (profile) => { const h = profile?.outfit?.hat; if (!h || h.kind !== 'proc') return null; const L = OUTFITS[h.id]?.look; return L?.proc ? { ...L, id: h.id } : null; };
 const rr = (ctx, x, y, w, h, r) => { ctx.beginPath(); ctx.roundRect(x, y, w, h, r); };
 
 // Pixel Shiba (see sprite.js). (x,y) = ground point under the feet-ish centre.

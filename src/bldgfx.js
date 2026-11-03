@@ -4,6 +4,8 @@
 // Style: chunky 1-world-px pixels, ink outlines, top-left sun (lit left / shaded right), ambient occlusion at the ground line,
 // soft drop shadow, textured walls (brick / plank / stone / panel / stucco), shingled or tiled roofs with ridge lines.
 // No webfonts: signs use the built-in 5x7 pixel font below so they bake identically before/after fonts load.
+import { decorate, decorAnim } from './seasondecor.js';
+import { seasonTheme } from './seasons.js';
 import { TILE, DOORS } from './world.js';
 import { ALIVE, reducedMotion } from './alive.js';
 
@@ -829,12 +831,16 @@ export const STATS = { hits: 0, misses: 0, blits: 0, anims: 0, culled: 0, direct
 let makeCanvas = (w, h) => { try { if (typeof OffscreenCanvas !== 'undefined') return new OffscreenCanvas(w, h); if (typeof document !== 'undefined') { const cv = document.createElement('canvas'); cv.width = w; cv.height = h; return cv; } } catch {} return null; };
 export function setCanvasFactory(f) { makeCanvas = f; clearCache(); }
 export function clearCache() { CACHE.clear(); GLOW_RECTS.clear(); FRAME_GLOW.length = 0; }
-export const cacheKey = (b, V) => `${b.id}|${b.name || ''}|${b.x},${b.y},${b.w},${b.h}|${V.night ? 'n' : 'd'}|${V.wet ? 'w' : 's'}|${V.low ? 'lo' : 'hi'}`;
+export const cacheKey = (b, V) => `${b.id}|${b.name || ''}|${b.x},${b.y},${b.w},${b.h}|${V.night ? 'n' : 'd'}|${V.wet ? 'w' : 's'}|${V.low ? 'lo' : 'hi'}|${V.theme || '-'}`; // theme: seasonal decorations (src/seasondecor.js)
 
 function paintInto(c, b, F, V) { const p = P[b.id] || P._generic, g = geo(b);
   p.paint(c, b, F, V, g);
+  if (V.theme) { try { decorate(c, b, g, V, DH); } catch {} } // seasonal decorations, baked into the cached layer
   if (V.low && p.anim && !p.still) { try { p.anim(c, b, F, 0, g, V); } catch {} } // reduced effects: freeze one pose into the static layer
+  if (V.low && V.theme) { try { decorAnim(c, b, g, 0, V, DH); } catch {} }
 }
+const DH = { R: (...a) => R(...a), A: (...a) => A(...a), emit: (...a) => emit(...a) };
+const themeOf = (opts) => { const t = 'theme' in opts ? opts.theme : seasonTheme().theme; return t && t !== 'none' ? t : null; };
 function layer(b, F, V) {
   const k = cacheKey(b, V); let cv = CACHE.get(k);
   if (cv) { STATS.hits++; CACHE.delete(k); CACHE.set(k, cv); return cv; }
@@ -852,20 +858,23 @@ export function drawBuilding(c, b, F, opts = {}) {
     F = F || HOME_F[b.id] || FALLBACK_F;
     const bb = boundsOf(b), view = 'view' in opts ? opts.view : viewOf(c);
     if (view && (bb.x > view.x1 || bb.x + bb.w < view.x0 || bb.y > view.y1 || bb.y + bb.h < view.y0)) { STATS.culled++; return true; }
-    const nk = opts.night ?? nightK(), wet = opts.wet ?? wetNow(), low = opts.low ?? fxLow();
+    const nk = opts.night ?? nightK(), wet = opts.wet ?? wetNow(), low = opts.low ?? fxLow(), theme = themeOf(opts);
     const p = P[b.id] || P._generic;
-    const day = layer(b, F, { night: false, wet, low });
-    if (!day) { STATS.direct++; const V = { night: nk > 0.5, wet, low }; paintInto(c, b, F, V); if (!low && p.anim && !p.still) p.anim(c, b, F, opts.t ?? animT(), geo(b), V); return true; }
+    const day = layer(b, F, { night: false, wet, low, theme });
+    if (!day) { STATS.direct++; const V = { night: nk > 0.5, wet, low, theme }; paintInto(c, b, F, V); if (!low && p.anim && !p.still) p.anim(c, b, F, opts.t ?? animT(), geo(b), V); if (!low && theme) decorAnim(c, b, geo(b), opts.t ?? animT(), V, DH); return true; }
     const sm = c.imageSmoothingEnabled; c.imageSmoothingEnabled = false;
     if (nk < 0.999) { c.drawImage(day, bb.x, bb.y); STATS.blits++; }
-    if (nk > 0.001) { const nl = layer(b, F, { night: true, wet, low }); if (nl) { A(c, nk >= 0.999 ? 1 : nk, () => c.drawImage(nl, bb.x, bb.y)); STATS.blits++; const gr = GLOW_RECTS.get(cacheKey(b, { night: true, wet, low })); if (gr && gr.length) { if (FRAME_GLOW.length > 64) FRAME_GLOW.shift(); FRAME_GLOW.push([gr, nk]); } } }
+    if (nk > 0.001) { const nl = layer(b, F, { night: true, wet, low, theme }); if (nl) { A(c, nk >= 0.999 ? 1 : nk, () => c.drawImage(nl, bb.x, bb.y)); STATS.blits++; const gr = GLOW_RECTS.get(cacheKey(b, { night: true, wet, low, theme })); if (gr && gr.length) { if (FRAME_GLOW.length > 64) FRAME_GLOW.shift(); FRAME_GLOW.push([gr, nk]); } } }
     c.imageSmoothingEnabled = sm;
     if (!low && p.anim && !p.still) { p.anim(c, b, F, opts.t ?? animT(), geo(b), { night: nk > 0.5, wet, low }); STATS.anims++; }
+    if (!low && theme) decorAnim(c, b, geo(b), opts.t ?? animT(), { night: nk > 0.5, wet, low, theme }, DH);
     return true;
   } catch (e) { if (!warned) { warned = true; try { console.warn('[bldgfx] draw failed for', b && b.id, e); } catch {} } return false; }
 }
 
 /** After the night grade (ambient.js): re-light this frame's building windows/signs. ox/oy = world->screen offset. Cheap: a few dozen fillRects. */
+/** queue extra after-grade glow rects (world px) for this frame, e.g. the seasonal plaza centrepiece */
+export function pushGlow(rects, k = 1) { if (rects?.length && k > 0.001 && FRAME_GLOW.length < 80) FRAME_GLOW.push([rects, k]); }
 export function drawBuildingGlow(c, ox, oy, lit = 1) {
   if (!FRAME_GLOW.length) return 0; let n = 0;
   try { c.save(); c.globalCompositeOperation = 'lighter';

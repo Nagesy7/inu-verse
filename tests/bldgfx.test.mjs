@@ -14,7 +14,7 @@ let made = 0;
 const factory = (w, h) => { made++; const cv = { width: w, height: h, ctx: fakeCtx(), getContext() { return this.ctx; } }; return cv; };
 const reset = () => { BG.setCanvasFactory(factory); made = 0; for (const k of Object.keys(BG.STATS)) BG.STATS[k] = 0; };
 const ALL = [...BUILDINGS, ...MALL_BUILDINGS, BANK, ARCADE, { ...CLUBHOUSE, name: 'Pack Clubhouse' }, ...NPC_HOMES];
-const opt = (o = {}) => ({ view: null, night: 0, wet: false, low: false, t: 1.25, ...o });
+const opt = (o = {}) => ({ view: null, night: 0, wet: false, low: false, t: 1.25, theme: null, ...o }); // theme: null = no seasonal decor (tests/seasons.test.mjs covers it)
 
 test('every building type paints day / night / rain / low-fx without throwing, plus unknown ids', () => {
   reset();

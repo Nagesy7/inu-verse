@@ -154,11 +154,15 @@ export function folkAt(i, s, o = {}, ev = null) { const { blocks } = folkPlan(i,
 // folk-day second from the sky clock (sky hour in [0,24)); pinned debug hours (?tod=) still let them move
 export const folkSec = (hour) => (((hour % 24) + 24) % 24) * 60;
 
+// seasonal townsfolk: every other local swaps their hat for the current theme's seasonal hat (src/seasons.js)
+export const FOLK_SEASON_HAT = { xmas: 'ss_santa', halloween: 'ss_witch', newyear: 'ss_party', lunar: 'ss_lucky', easter: 'ss_bunny', spring: 'ss_flowers', summer: 'ss_sunhat' };
+export function folkSeasonOutfit(outfit, i, theme = null) { const h = FOLK_SEASON_HAT[theme]; return h && i % 2 === 0 ? { ...outfit, hat: h } : outfit; }
+
 // ---- runtime: pooled actors + local reactions ----
 const SIT = Object.freeze({ kind: 'sit', t0: -100 });
-export function makeTownsfolk() { const T = { out: [], pending: null, chatT: 6, seq: 0, lastS: 0,
+export function makeTownsfolk(theme = null) { /* theme: current seasonal theme (src/seasons.js, passed in by main.js) */ const T = { out: [], pending: null, chatT: 6, seq: 0, lastS: 0,
   F: FOLK.map((f, i) => ({ i, f, id: folkId(f.name), p: { x: 0, y: 0, face: 'down', moving: false, dist: 0, doing: 'home', hidden: true, block: 0 },
-    a: { x: 0, y: 0, coat: f.coat, outfit: f.outfit, face: 'down', phase: 0, moving: false, name: null, folkName: f.name, fid: 'tf:' + f.name, id: 'tf:' + f.name, townsfolk: true, folkIdx: i, idx: i, art: null, act: null, emote: null, umbrella: false, wave: { kind: 'wave', t0: 0 }, em: { kind: 'wave', t: 0 } },
+    a: { x: 0, y: 0, coat: f.coat, outfit: folkSeasonOutfit(f.outfit, i, theme), face: 'down', phase: 0, moving: false, name: null, folkName: f.name, fid: 'tf:' + f.name, id: 'tf:' + f.name, townsfolk: true, folkIdx: i, idx: i, art: null, act: null, emote: null, umbrella: false, wave: { kind: 'wave', t0: 0 }, em: { kind: 'wave', t: 0 } },
     lag: 0, hold: 0, greeted: false, greetAt: -999, lookT: 0, talkAt: -999, bubbleUntil: -1 })) };
   return T; }
 export const activeCount = (low) => (low ? FOLK_CAPS.low : FOLK_CAPS.all);

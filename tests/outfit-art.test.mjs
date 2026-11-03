@@ -9,6 +9,7 @@ test('every coat has layered base art for all views/frames', () => {
 });
 test('every outfits.js item has a manifest layer (matching slot) for all 6 coats', () => {
   for (const [id, d] of Object.entries(OUTFITS)) {
+    if (d.look?.kind === 'proc') { assert.ok(d.season && d.look.proc, `${id}: procedural hats are seasonal (src/seasonhats.js)`); continue; } // painted in code, no atlas layer
     const it = OUTFIT_ATLAS.items[id]; assert.ok(it, `manifest missing ${id}`);
     assert.equal(it.slot, d.slot, `${id} slot`); assert.ok(SLOTS.includes(it.slot));
     assert.equal(it.replacesBottom, !!d.full, `${id} replacesBottom vs full`);

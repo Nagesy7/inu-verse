@@ -1,5 +1,6 @@
 // Fetch Fashion: clothing catalog + wardrobe logic (headless, no DOM).
 import { markBought } from './trade.js';
+import { inSeason, THEME_LABEL } from './seasons.js';
 export const SLOTS = ['hat', 'eyes', 'neck', 'top', 'bottom', 'feet'];
 export const SLOT_NAMES = { hat: 'Hat', eyes: 'Eyewear', neck: 'Neck', top: 'Top', bottom: 'Bottoms', feet: 'Shoes' };
 // look: drawing hints consumed by src/sprite.js
@@ -47,6 +48,16 @@ export const OUTFITS = {
   sneakers_red: { slot: 'feet', name: 'Red Sneakers', price: 80, look: { c: '#b3202c', sole: '#f4f1ea' } },
   sneakers_gold:{ slot: 'feet', name: 'Black & Gold Sneakers', price: 120, look: { c: '#18181e', sole: '#e3b341' } },
   loafers:      { slot: 'feet', name: 'Shiny Loafers', price: 70, look: { c: '#141418', sole: '#3a3a44' } },
+  // seasonal hats (src/seasons.js + src/seasonhats.js): sold / free to claim only while their Sydney-date window or season is on;
+  // owned ones stay wearable all year. Bones price or free — never $KIBBLE.
+  ss_santa:    { slot: 'hat', name: 'Santa Pup Hat', price: 0, season: 'xmas', look: { kind: 'proc', proc: 'santa' } },
+  ss_antlers:  { slot: 'hat', name: 'Reindeer Antlers', price: 60, season: 'xmas', look: { kind: 'proc', proc: 'antlers' } },
+  ss_witch:    { slot: 'hat', name: 'Spooky Witch Hat', price: 50, season: 'halloween', look: { kind: 'proc', proc: 'witch' } },
+  ss_party:    { slot: 'hat', name: 'Countdown Party Hat', price: 0, season: 'newyear', look: { kind: 'proc', proc: 'party' } },
+  ss_lucky:    { slot: 'hat', name: 'Lucky Knot Band', price: 0, season: 'lunar', look: { kind: 'proc', proc: 'lucky' } },
+  ss_bunny:    { slot: 'hat', name: 'Bunny Ear Band', price: 0, season: 'easter', look: { kind: 'proc', proc: 'bunny' } },
+  ss_flowers:  { slot: 'hat', name: 'Spring Flower Crown', price: 40, season: 'spring', look: { kind: 'proc', proc: 'flowers' } },
+  ss_sunhat:   { slot: 'hat', name: 'Beach Sun Hat', price: 45, season: 'summer', look: { kind: 'proc', proc: 'sunhat', c: '#e8c878', band: '#2a9ad8' } },
   // Verse quest onboarding rewards (inventory-only, never sold — champion / quest rules)
   // bonesBonus: flat extra Bones on top of each base earn while worn (neck slot → only one at a time). Modest onboarding perk.
   ob_apron_pin:     { slot: 'neck', name: 'Café Apron Pin', price: 0, quest: true, bonesBonus: 2, look: { kind: 'pin', c: '#f4efe6', d: '#c8282e' } },
@@ -71,6 +82,7 @@ export function buyOutfit(s, id) {
   if (d.quest) return fail('Quest reward — inventory only, never sold');
   const w = ensureWardrobe(s);
   if (w.owned.includes(id)) return fail('Already owned');
+  if (d.season && !inSeason(d.season)) return fail(`Seasonal — back for ${THEME_LABEL[d.season] || d.season}`);
   if (s.bones < d.price) return fail('Not enough bones');
   s.bones -= d.price; w.owned.push(id); markBought(s, 'w:' + id); return { ok: true }; // Bones-bought copies are tradeable (src/trade.js)
 }
@@ -116,3 +128,6 @@ export function earnBones(s, base) {
   }
   return { base: amt, bonus, total };
 }
+
+/** seasonal items on sale right now (theme from src/seasons.js) */
+export const seasonalNow = (S) => Object.keys(OUTFITS).filter((id) => OUTFITS[id].season && inSeason(OUTFITS[id].season, S));

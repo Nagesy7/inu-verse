@@ -74,6 +74,9 @@ import { squareProps } from './fly5art.js';
 import { arcadeProps } from './arcadeart.js';
 import { ARCADE, GAME_DOORS } from './world.js';
 import { facadeDoors, liftTarget } from './facadecam.js';
+import { inSeason, THEME_LABEL, seasonTheme } from './seasons.js';
+import { plazaCentreProps } from './seasondecor.js';
+import { fxLow as bldgFxLow, nightK as bldgNightK, pushGlow } from './bldgfx.js';
 const FDOORS = facadeDoors();
 import { doorProps } from './doorart.js';
 import { createGuide } from './guideui.js';
@@ -165,7 +168,7 @@ function syncSky() { dayOffset = (SKYS.pinH != null ? timeForHour(SKYS.pinH) : S
 const skyWx = () => SKY.weatherVals(SKYS.wx || SKY.weatherKind(skyNow()));
 function snapWeather() { const w = skyWx(); amb.rain = amb.rainTarget = w.rain; amb.cloud = amb.cloudTarget = w.cloud; } // page load: start at the current weather (HUD and sky agree at once)
 // ---- Alive phase 3: townsfolk on the shared sky clock (src/townsfolk.js). Pooled, culled to the camera, capped bubbles. ----
-const TFS = TF.makeTownsfolk(), FOLKQ = { shift: 0, lastT: 0 };
+const TFS = TF.makeTownsfolk(seasonTheme().theme), FOLKQ = { shift: 0, lastT: 0 };
 // ---- Alive phase 5: one featured world event per Sydney day (src/events.js + src/eventsui.js). Cosmetic keepsakes only. ----
 const EVX = createEvents({ search: location.search }); let EVVIEW = null, chatSyncT = 0; globalThis.__events = EVX;
 const folkBase = () => (SKYS.pinH != null ? TF.folkSec(SKYS.pinH) + time : TF.folkSec(dayPhase(time + dayOffset).hour)); // a pinned ?tod= still lets them walk
@@ -865,7 +868,7 @@ function renderWorld() {
     const tx0 = Math.floor(-ox / TILE) - 1, ty0 = Math.floor(-oy / TILE) - 1; ctx.save(); ctx.scale(SCALE, SCALE); drawWater(ctx, time, tx0, ty0, tx0 + Math.ceil(vw / TILE) + 2, ty0 + Math.ceil(vh / TILE) + 2); ctx.restore(); }
   const phase = dayPhase(time + dayOffset);
   globalThis.__inuNight = phase.dark;
-  const dyn = [...HUB_GATES.map((g) => hubGateProp(g, time)), hubSignProp(62, 58, time), ...dynamicProps(state, time, myPack(state)), ...presidentProps(pres, time), ...doorProps(time), ...carWorldProps(), ...crewProps(), ...adProps(trend, adRot, adIdx, !!globalThis.__inuNight, time, featuredMap()), ...confettiProps(), ...partyWorldProps(ox, oy, vw, vh), ...squareProps(state, time, Math.floor(gameDay() / 7)), ...arcadeProps(time, arcadeTop), ...MWd.statueProps(time, { drawShiba, artLoaded: () => !!ART['shiba-golden'] }), ...MWd.newsProps(time), ...KN.wallProps(KIBBLE_PLAZA.wall, KEN.wall, time, TILE), ...RD.gateProps(KIBBLE_PLAZA.raid, time, TILE), ...MWd.firepitProps(time), ...MWd.plazaSkyProps(time), ...PAB.bureauProps(time, { drawShiba }, state.player), ...HS.shardProps(time, TILE, !!state.hunt?.shard)];
+  const dyn = [...HUB_GATES.map((g) => hubGateProp(g, time)), hubSignProp(62, 58, time), ...dynamicProps(state, time, myPack(state)), ...presidentProps(pres, time), ...doorProps(time), ...carWorldProps(), ...crewProps(), ...adProps(trend, adRot, adIdx, !!globalThis.__inuNight, time, featuredMap()), ...confettiProps(), ...partyWorldProps(ox, oy, vw, vh), ...squareProps(state, time, Math.floor(gameDay() / 7)), ...arcadeProps(time, arcadeTop), ...MWd.statueProps(time, { drawShiba, artLoaded: () => !!ART['shiba-golden'] }), ...MWd.newsProps(time), ...KN.wallProps(KIBBLE_PLAZA.wall, KEN.wall, time, TILE), ...RD.gateProps(KIBBLE_PLAZA.raid, time, TILE), ...MWd.firepitProps(time), ...plazaCentreProps(time, seasonTheme().theme, { low: bldgFxLow(), night: bldgNightK(), glow: pushGlow }), ...MWd.plazaSkyProps(time), ...PAB.bureauProps(time, { drawShiba }, state.player), ...HS.shardProps(time, TILE, !!state.hunt?.shard)];
   for (const d of dyn) if (d.flat) d.d(ctx);
   const view = { x0: -ox, y0: -oy, x1: -ox + vw, y1: -oy + vh };
   drawGroundLife(ctx, amb, phase, view); drawAliveGround(ctx, ALIVE, view, phase); feel.drawGround(ctx);
@@ -1403,12 +1406,12 @@ function renderFashion() {
   const body = $('#panel-body'), w = state.wardrobe;
   body.innerHTML = `<h2>Fetch Fashion</h2><p class="sub">Hats, suits, gowns and bling for discerning dogs. Bought clothes go to your <b>Wardrobe</b>. Preview shows the item on you.</p><div class="row" style="justify-content:flex-start;margin:0 0 10px"><button class="btn alt" id="open-wardrobe">Open wardrobe</button></div><div class="grid" id="fashgrid"></div>`;
   const grid = $('#fashgrid');
-  for (const [id, d] of Object.entries(OUTFITS)) { if (d.drop && !state.wardrobe.owned.includes(id)) continue;
-    if (d.mall) continue;
+  for (const [id, d] of Object.entries(OUTFITS).sort((a, b) => (b[1].season && inSeason(b[1].season) ? 1 : 0) - (a[1].season && inSeason(a[1].season) ? 1 : 0))) { if (d.drop && !state.wardrobe.owned.includes(id)) continue; // in-season items first
+    if (d.mall) continue; if (d.season && !inSeason(d.season) && !w.owned.includes(id)) continue; // seasonal: only in its window (src/seasons.js)
     const own = w.owned.includes(id), on = w.equipped[d.slot] === id;
     const card = document.createElement('div'), cs = catStyle('outfit'); card.className = 'card cat-card' + (on ? ' on' : ''); card.style.borderColor = cs.border; card.style.background = cs.bg; card.dataset.item = id;
     card.appendChild(wearPreview(id)); // dressed layered-art preview of this item on your coat
-    card.insertAdjacentHTML('beforeend', `<div class="cat-chip" style="background:${cs.border};color:#141a2e">${cs.label}</div><div><b>${d.name}</b></div><div class="small" style="margin:2px 0">${SLOT_NAMES[d.slot]}</div><div class="price">${own ? 'Owned' : d.price + ' bones'}</div>${own ? `<button class="btn ${on ? 'ghost' : 'green'}" data-equip="${id}">${on ? 'Wearing' : 'Wear'}</button>` : `<button class="btn" data-buyfit="${id}">Buy</button>`}`);
+    card.insertAdjacentHTML('beforeend', `<div class="cat-chip" style="background:${cs.border};color:#141a2e">${cs.label}</div><div><b>${d.name}</b></div><div class="small" style="margin:2px 0">${SLOT_NAMES[d.slot]}</div>${d.season ? `<div class="small" style="color:#ffb0d0">Seasonal · ${THEME_LABEL[d.season]}</div>` : ''}<div class="price">${own ? 'Owned' : d.price ? d.price + ' bones' : 'Free'}</div>${own ? `<button class="btn ${on ? 'ghost' : 'green'}" data-equip="${id}">${on ? 'Wearing' : 'Wear'}</button>` : `<button class="btn" data-buyfit="${id}">${d.price ? 'Buy' : 'Claim'}</button>`}`);
     grid.appendChild(card);
   }
   grid.onclick = (e) => {
