@@ -91,7 +91,7 @@ import { profileFromState, hasCustomLook, saveProfile, loadProfile, setProfileSt
 import { TRAITS } from './traits.js';
 import { drawProfileShiba, drawPoseFx } from './art.js';
 import { ACTIONS, makeActor, startAction, stepActor, poseAt, poseCodeOf, isAction, ICON_ACTIONS, makeEmoteLimiter, cancelAction } from './actions.js';
-import { nearestSpot, spotAt as seatAt, seatPose, SPOT_NAME, SPOTS } from './sitspots.js'; import { sitProps } from './sitart.js'; // feature batch: emotes + sit spots
+import { nearestSpot, spotAt as seatAt, seatPose, SPOT_NAME, SPOTS } from './sitspots.js'; import { sitProps } from './sitart.js'; import * as PHM from './photomode.js'; // feature batch #2: photo mode // feature batch: emotes + sit spots
 import { mountWheel } from './actionwheel.js';
 import { WORKER_JOB, JOBS as JOB_DEFS, ensureJobs, rankOf } from './jobs.js';
 import { renderFriend, renderChapel, renderFurnStore } from './relui.js';
@@ -316,6 +316,8 @@ addEventListener('keydown', (e) => {
   keys.add(k);
   if (['arrowup', 'arrowdown', 'arrowleft', 'arrowright', ' '].includes(k)) e.preventDefault();
   if (k === 'escape' && photo) return togglePhoto();
+  if (photo) { e.preventDefault(); if (k === 'p') togglePhoto(); else if (k === '+' || k === '=') photoZoom(1.2); else if (k === '-' || k === '_') photoZoom(1 / 1.2); else if (k === '0') PHC && PHM.resetCam(PHC);
+    else if (k.length === 1 && k >= '1' && k <= '6') photoPose(PHM.POSE_KEYS[+k - 1]); return; } // photo mode: arrows/WASD pan (read in updateWorld), 1-6 pose
   initAudio();
   if (wheel.key(k)) { e.preventDefault(); return; }
   if ((mode === 'world' || mode === 'room') && !panel && state && !drive) { ACT.still = 0; // any key resets the idle clock (auto-sit/doze)
@@ -343,7 +345,7 @@ const screenToWorld = (sx, sy) => ({ x: (sx - innerWidth / 2) / ZOOM + cam.x, y:
 
 cv.addEventListener('pointerdown', (e) => { if (mode === 'build' && build?.shop) build.hover = shopCell(e.clientX, e.clientY); });
 cv.addEventListener('mousemove', (e) => { if (mode === 'build') build.hover = build.shop ? shopCell(e.clientX, e.clientY) : roomCell(e.clientX, e.clientY); });
-cv.addEventListener('click', (e) => {
+cv.addEventListener('click', (e) => { if (photo) return; // photo mode: taps/drags pan the camera, never walk
   if (mode === 'world' && !panel) {
     const w = screenToWorld(e.clientX, e.clientY); const ad = adAt(trend, adRot, adIdx, w.x, w.y); if (ad) { blip(990); openPanel('launch', ad.coin.real ? (ad.coin.mint === RC.KIBBLE.mint ? { tab: 'kibble' } : { tab: 'board', coin: ad.coin.mint, vfOpen: !!ad.coin.verified }) : { sel: ad.coin.id }); return; } clickWorldTile(Math.floor(w.x / TILE), Math.floor(w.y / TILE), w.x, w.y);
   } else if (mode === 'room' && !panel && !feel.talking()) RP.click(e.clientX, e.clientY, groundTap(performance.now()));
@@ -605,7 +607,16 @@ function feedSound(dt) { // ~4 Hz: plain numbers only (area, sky hour, rain, til
   if (mode === 'world' && state) { const tx = state.player.x / TILE, ty = state.player.y / TILE; sndArea = soundArea(tx, ty); soundScene({ area: sndArea, hour, rain, tx, ty, indoor: false, low }); }
   else soundScene({ area: mode === 'room' ? sndArea : 'plaza', hour, rain, indoor: true, low });
   SUI?.tick(); }
-function togglePhoto() { photo = !photo; document.body.classList.toggle('photo', photo); if (photo) { const a = document.querySelector('#photo-share'); if (a) a.href = F5.shareXUrl('Snap from Inu Verse'); } }
+// ---- photo mode (feature batch #2): HUD hidden, free camera pan/zoom around your pup, filters/frames, poses, Save PNG / share links ----
+let PHC = null; // photo camera { base zoom, z, pan } while photo mode is on
+const photoZoom = (f) => { if (PHC && mode === 'world') PHM.zoomBy(PHC, f); };
+const photoPose = (k) => { if (!k || !state) return; if (k === 'heart') doEmote('heart'); else if (ACT.act?.kind !== k || !ACTIONS[k].loop) doAction(k); };
+const PHUI = PHM.mountPhotoUI({ canvas: () => cv, name: () => state?.player?.name, exit: () => togglePhoto(), zoom: photoZoom, recentre: () => PHC && PHM.resetCam(PHC), pose: photoPose, reduced: () => reducedMotion(), coarse: () => COARSE.matches, toast,
+  saved: (r) => { if (r === 'cancelled') return; if (state) F5.submitPhoto(state, Math.floor(gameDay() / 7), { caption: 'Inu Verse snap' }); globalThis.__photoSaves = (globalThis.__photoSaves || 0) + 1; toast(r === 'shared' ? 'Photo shared + entered this week\'s board' : 'Photo saved (PNG) + entered this week\'s board', 'good'); } });
+function togglePhoto() { photo = !photo; document.body.classList.toggle('photo', photo);
+  if (photo) { PHC = PHM.makePhotoCam(ZOOM); stopWalk(); player.v = { x: 0, y: 0 }; player.moving = false; touch.x = touch.y = 0; touch.mag = 0; wheel.close?.(); }
+  else { if (PHC) ZOOM = PHC.base; PHC = null; }
+  PHUI.show(photo); }
 $('#btn-mute').onclick = () => { initAudio(); toggleMute(); };
 $('#btn-emote').onclick = () => toggleEmotes(); $('#btn-emo').addEventListener('click', (e) => { e.stopPropagation(); initAudio(); if (state && (mode === 'world' || mode === 'room')) wheel.toggle(); }); $('#btn-emote').textContent = 'Actions'; $('#btn-emote').title = 'Sit, dance, wave… (G)';
 document.addEventListener('pointerdown', () => { ACT.still = 0; }, true);
@@ -614,8 +625,6 @@ $('#btn-fishbook').onclick = () => { initAudio(); uiClick?.(); openPanel('fishbo
 $('#btn-engage').onclick = () => { initAudio(); uiClick?.(); openPanel('engage'); };
 { const sc = $('#streak-chip'), go = () => { initAudio(); uiClick?.(); openPanel('fly5', { tab: 'streak' }); }; sc.onclick = go; sc.onkeydown = (e) => { if (e.key === 'Enter' || e.key === ' ') go(); }; }
 $('#btn-pools').onclick = () => { initAudio(); uiClick?.(); openPanel('city', { tab: 'pools' }); };
-$('#photo-save').onclick = () => { const tmp = document.createElement('canvas'); tmp.width = cv.width; tmp.height = cv.height; const tx = tmp.getContext('2d'); tx.drawImage(cv, 0, 0); F5.watermarkPhoto(tx, tmp.width, tmp.height); const a = document.createElement('a'); a.download = `inu-verse-${Date.now()}.png`; a.href = tmp.toDataURL('image/png'); a.click(); F5.submitPhoto(state, Math.floor(gameDay() / 7), { caption: 'Inu Verse snap' }); toast('Photo saved + entered this week\'s board', 'good'); };
-$('#photo-exit').onclick = () => togglePhoto();
 $('#btn-phantom').onclick = async () => { initAudio(); if (DEMO) return toast('Demo mode: fake KIBBLE, no wallet. Remove ?demo=1 to use Phantom.', ''); if (!K.kp) return toast('Wallet service is offline right now. Try again soon.', 'bad');
   try { const a = await wallet().connect(); syncPhantomBtn(); if (state) { state.walletAddr = a; if (hasCustomLook(state)) await saveProfile(state); persist(); hud(); tourCheck(); refreshPlotOwners(); } toast(`Signed in ${a.slice(0, 4)}…${a.slice(-4)}${K.mode === 'live' ? '' : ' · ' + SOON}`, 'good'); } catch (e) { syncPhantomBtn(); toast(e.message || 'Phantom sign-in failed', 'bad'); } };
 $('#btn-help').onclick = () => openPanel('help');
@@ -741,11 +750,12 @@ const hk = (b, kb) => PAD.glyph(b) || (COARSE.matches ? b.toUpperCase() : kb), h
 // ---------------- World update ----------------
 function updateWorld(dt) {
   const p = state.player; let dx = 0, dy = 0;
-  if (!panel) {
+  if (!panel && !photo) {
     if (keys.has('w') || keys.has('arrowup')) dy -= 1; if (keys.has('s') || keys.has('arrowdown')) dy += 1;
     if (keys.has('a') || keys.has('arrowleft')) dx -= 1; if (keys.has('d') || keys.has('arrowright')) dx += 1;
   }
-  const sx0 = !panel ? touch.x : 0, sy0 = !panel ? touch.y : 0;
+  if (photo && PHC) PHM.panKeys(PHC, keys, dt); // photo mode: keys pan the camera, the pup holds still
+  const sx0 = !panel && !photo ? touch.x : 0, sy0 = !panel && !photo ? touch.y : 0;
   const inp = MOB.pickInput({ keys: { x: dx, y: dy }, stick: { x: sx0, y: sy0 }, stickMag: touch.mag || 0, shift: keys.has('shift'), holdRun: player.holdRun, path: player.pw.pts.length > 0, pathRun: player.pw.run });
   if (inp.source === 'stick' || inp.source === 'keys') { dx = inp.dir.x; dy = inp.dir.y; } else { dx = dy = 0; }
   const speed = MOB.WALK_SPEED * PAB.walkFactor(); // world px/s (world is zoomed 2x, so ~184 screen px/s); run = x1.75. walkFactor: 1, or >= 0.85 for <= 60 s while an opted-in sim cartoon bump is on (src/sim/clinic.js)
@@ -804,7 +814,8 @@ function updateWorld(dt) {
   // smooth camera
   const k = 1 - Math.pow(0.004, dt), lead = player.moving ? 10 : 0, fx = { left: -1, right: 1 }[player.face] || 0, fy = { up: -1, down: 1 }[player.face] || 0;
   guide.update(dt); onboardUi.drawNpc(dt); const tc = guide.camTarget(), kk = tc ? 1 - Math.pow(0.02, dt) : k;
-  cam.x += ((tc ? tc.x : p.x + fx * lead) - cam.x) * kk; cam.y += ((tc ? tc.y : p.y + fy * lead * 0.6) - cam.y) * kk;
+  if (photo && PHC) ZOOM = PHM.photoZoom(PHC); const pnx = photo && PHC ? PHC.pan.x : 0, pny = photo && PHC ? PHC.pan.y : 0;
+  cam.x += ((tc ? tc.x : p.x + fx * lead + pnx) - cam.x) * kk; cam.y += ((tc ? tc.y : p.y + fy * lead * 0.6 + pny) - cam.y) * kk;
   Object.assign(cam, clampCam(cam.x, cam.y, innerWidth / ZOOM, innerHeight / ZOOM, MAP_W * TILE, MAP_H * TILE));
   if (globalThis.__camLock) { cam.x = __camLock.x; cam.y = __camLock.y; } // debug/screenshot camera lock
   const it = !panel && nearIt(p.x, p.y);
@@ -2369,13 +2380,17 @@ globalThis.__kennel = () => ({ ...KEN, mine: kennelMine() });
 function kibbleSpot(id) { if (id === 'kwall') { openPanel('kennel'); return; } if (id === 'raidgate') { openPanel('raid'); return; } if (id === 'kstatue') openPanel('kibblemood'); else if (id === 'dailybone') openPanel('dailybone');
   else if (id === 'crier') { crierRing = 1.5; feel.say(MWd.CRIER_NAME, MWd.crierLine(MWd.MW.mood) + ' ' + KM.lineFor(MWd.MW.mood, rng), textBlip); } }
 titleScreen(); requestAnimationFrame(frame);
-cv.addEventListener('wheel', (e) => { if (mode !== 'world') return; e.preventDefault(); const now = performance.now(); if (now - (cv._wz || 0) < 180) return; cv._wz = now; setZoom(stepZoom(ZOOM, e.deltaY < 0 ? 1 : -1)); }, { passive: false });
+cv.addEventListener('wheel', (e) => { if (mode !== 'world') return; e.preventDefault(); if (photo) return photoZoom(e.deltaY < 0 ? 1.1 : 1 / 1.1); const now = performance.now(); if (now - (cv._wz || 0) < 180) return; cv._wz = now; setZoom(stepZoom(ZOOM, e.deltaY < 0 ? 1 : -1)); }, { passive: false });
+{ let drag = null; // photo mode: one-finger / mouse drag pans the camera
+  cv.addEventListener('pointerdown', (e) => { if (photo && PHC && e.isPrimary) drag = { x: e.clientX, y: e.clientY }; });
+  addEventListener('pointermove', (e) => { if (!drag || !photo || !PHC || !e.isPrimary) return; PHM.panBy(PHC, -(e.clientX - drag.x) / ZOOM, -(e.clientY - drag.y) / ZOOM); drag = { x: e.clientX, y: e.clientY }; });
+  for (const ev of ['pointerup', 'pointercancel']) addEventListener(ev, () => { drag = null; }); }
 { let pinch = null; const dist = (t) => Math.hypot(t[0].clientX - t[1].clientX, t[0].clientY - t[1].clientY);
   cv.addEventListener('touchstart', (e) => { if (e.touches.length === 2) pinch = dist(e.touches); }, { passive: true });
-  cv.addEventListener('touchmove', (e) => { if (!pinch || e.touches.length !== 2) return; const d = dist(e.touches); if (d / pinch > 1.35) { setZoom(stepZoom(ZOOM, 1)); pinch = d; } else if (pinch / d > 1.35) { setZoom(stepZoom(ZOOM, -1)); pinch = d; } }, { passive: true });
+  cv.addEventListener('touchmove', (e) => { if (!pinch || e.touches.length !== 2) return; const d = dist(e.touches); if (photo) { photoZoom(d / pinch); pinch = d; return; } if (d / pinch > 1.35) { setZoom(stepZoom(ZOOM, 1)); pinch = d; } else if (pinch / d > 1.35) { setZoom(stepZoom(ZOOM, -1)); pinch = d; } }, { passive: true });
   cv.addEventListener('touchend', (e) => { if (e.touches.length < 2) pinch = null; }, { passive: true }); }
 document.getElementById('zin')?.addEventListener('click', () => setZoom(stepZoom(ZOOM, 1))); document.getElementById('zout')?.addEventListener('click', () => setZoom(stepZoom(ZOOM, -1)));
-window.__inu = { guide, emo: { get act() { return ACT.act; }, action: (k) => doAction(k), seat: () => seatNear(), sit: (id) => { const sp = SPOTS.find((q) => q.id === id); if (sp) { state.player.x = sp.x; state.player.y = sp.y + 10; const sn = seatNear(); if (sn) sitAt(sn); } return ACT.act; }, spots: SPOTS, wheel }, audio: { debug: audioDebug, settings: audioSettings, area: () => sndArea }, open: (k, o) => openPanel(k, o), get time() { return time; }, get player() { return player; }, get zoom() { return ZOOM; }, setZoom, president: pres, presVisit: (k) => startVisit(pres, k, { dayLen: DAY_LEN }), setHour: (h) => { const w = SKY.skyWorldT(skyNow(), DAY_LEN); SKYS.pinH = null; SKYS.shift = timeForHour(h) - (((w % DAY_LEN) + DAY_LEN) % DAY_LEN); syncSky(); }, folk: { T: TFS, Q: FOLKQ, sec: () => folkSecNow(), at: (i, s) => TF.folkAt(i, s), setSec: (s) => { FOLKQ.shift = s - folkBase(); }, find: (name, doing) => { const i = TF.FOLK_NAMES.indexOf(name), o = {}; for (let s = 0; s < TF.FOLK_DAY; s += 2) { TF.folkAt(i, s, o); if (o.doing === doing) return { s, x: o.x, y: o.y }; } return null; } }, setRain: (r) => { SKYS.wx = r ? 'rain' : 'clear'; amb.rain = amb.rainTarget = amb.cloud = amb.cloudTarget = r ? 1 : 0; amb.weatherT = 999; }, sky: SKYS, get amb() { return amb; }, get npcs() { return npcs; }, get mood() { return { ...MOOD.current, shown: MWd.MW.mood }; }, emote: (k) => doEmote(k), cam, get state() { return state; }, get mode() { return mode; }, get panel() { return panel?.kind; }, get panelObj() { return panel; }, mp: MPL, club: { hunt: () => huntNow(), party: () => partyNow(), kennel: () => enterKennel(), room: (id, at) => enterRoom(id, at || null), get rp() { return RP; } } };
+window.__inu = { guide, photo: { get on() { return photo; }, get cam() { return PHC; }, toggle: () => togglePhoto(), ui: PHUI, PHM }, emo: { get act() { return ACT.act; }, action: (k) => doAction(k), seat: () => seatNear(), sit: (id) => { const sp = SPOTS.find((q) => q.id === id); if (sp) { state.player.x = sp.x; state.player.y = sp.y + 10; const sn = seatNear(); if (sn) sitAt(sn); } return ACT.act; }, spots: SPOTS, wheel }, audio: { debug: audioDebug, settings: audioSettings, area: () => sndArea }, open: (k, o) => openPanel(k, o), get time() { return time; }, get player() { return player; }, get zoom() { return ZOOM; }, setZoom, president: pres, presVisit: (k) => startVisit(pres, k, { dayLen: DAY_LEN }), setHour: (h) => { const w = SKY.skyWorldT(skyNow(), DAY_LEN); SKYS.pinH = null; SKYS.shift = timeForHour(h) - (((w % DAY_LEN) + DAY_LEN) % DAY_LEN); syncSky(); }, folk: { T: TFS, Q: FOLKQ, sec: () => folkSecNow(), at: (i, s) => TF.folkAt(i, s), setSec: (s) => { FOLKQ.shift = s - folkBase(); }, find: (name, doing) => { const i = TF.FOLK_NAMES.indexOf(name), o = {}; for (let s = 0; s < TF.FOLK_DAY; s += 2) { TF.folkAt(i, s, o); if (o.doing === doing) return { s, x: o.x, y: o.y }; } return null; } }, setRain: (r) => { SKYS.wx = r ? 'rain' : 'clear'; amb.rain = amb.rainTarget = amb.cloud = amb.cloudTarget = r ? 1 : 0; amb.weatherT = 999; }, sky: SKYS, get amb() { return amb; }, get npcs() { return npcs; }, get mood() { return { ...MOOD.current, shown: MWd.MW.mood }; }, emote: (k) => doEmote(k), cam, get state() { return state; }, get mode() { return mode; }, get panel() { return panel?.kind; }, get panelObj() { return panel; }, mp: MPL, club: { hunt: () => huntNow(), party: () => partyNow(), kennel: () => enterKennel(), room: (id, at) => enterRoom(id, at || null), get rp() { return RP; } } };
 // Inu Arcade inside the desktop overlay: its 🏠 button asks us to close the overlay instead of reloading.
 // framed Arcade (hall peek) -> Verse: ready / exit (close + inu:back-to-verse alias) / score. Origin pinned (districts.js). Score = toast only.
 addEventListener('message', (e) => { const m = DIS.arcadeMessage(e, new URL(ARCADE.url).origin); if (!m) return; globalThis.__arcadeMsgs = [...(globalThis.__arcadeMsgs || []).slice(-9), m];

@@ -64,11 +64,13 @@ test('browser: compact emote button opens the wheel, laugh plays, spam is limite
     const drops0 = await p.evaluate(() => globalThis.__emoteDrops); for (let i = 0; i < 4; i++) await p.evaluate(() => __inu.emote('heart'));
     assert.ok(await p.evaluate(() => globalThis.__emoteDrops) > drops0, 'spam rate-limited');
     await p.waitForTimeout(2200);
-    const sp = await p.evaluate(() => { const s = __inu.emo.spots.find((q) => q.id === 'b0'); __inu.state.player.x = s.x; __inu.state.player.y = s.y + 12; return s; }); await p.waitForTimeout(200);
-    assert.match(await p.evaluate(() => document.getElementById('prompt').textContent), /Sit on the bench/);
+    let sp = null; for (const id of ['b0', 'b2', 'b8', 'b12', 'b4', 'b10']) { // townsfolk wander: use the first bench with nobody on/next to it
+      const s0 = await p.evaluate((id) => { const s = __inu.emo.spots.find((q) => q.id === id); __inu.state.player.x = s.x; __inu.state.player.y = s.y + 12; return s; }, id); await p.waitForTimeout(250);
+      if (/Sit on the bench/.test(await p.evaluate(() => document.getElementById('prompt').textContent))) { sp = s0; break; } }
+    assert.ok(sp, 'a free bench offers "Sit on the bench"');
     await p.tap('#btn-a'); await p.waitForTimeout(200);
     const st = await p.evaluate(() => ({ k: __inu.emo.act?.kind, spot: __inu.emo.act?.spot, x: __inu.state.player.x, y: __inu.state.player.y, pr: document.getElementById('prompt').textContent }));
-    assert.equal(st.k, 'sit'); assert.equal(st.spot, 'b0'); assert.equal(st.x, sp.x); assert.equal(st.y, sp.y); assert.match(st.pr, /Stand up/);
+    assert.equal(st.k, 'sit'); assert.equal(st.spot, sp.id); assert.equal(st.x, sp.x); assert.equal(st.y, sp.y); assert.match(st.pr, /Stand up/);
     await p.waitForTimeout(1100); await p.tap('#btn-a'); await p.waitForTimeout(150); assert.equal(await p.evaluate(() => __inu.emo.act), null, 'A again stands up');
     await ctx.close(); } } finally { await b.close(); srv.close(); }
   assert.deepEqual(errs, []);
