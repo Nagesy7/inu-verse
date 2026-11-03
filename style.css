@@ -734,3 +734,5 @@ body[data-guide] #crier-banner{top:calc(max(8px,env(safe-area-inset-top)) + 104p
 /* Function color-coding for shop/item cards (matches outdoor façade identities) */
 .card.cat-card{border-width:3px;box-shadow:inset 0 0 0 1px rgba(255,255,255,.08)}
 .cat-chip{display:inline-block;font-size:9px;font-weight:700;letter-spacing:.04em;padding:2px 6px;margin:0 0 4px;border-radius:3px;text-transform:uppercase}
+/* phone landscape: the Kibble Pay profile badge (injected top-left) sat on the first HUD chip — drop it just under the HUD row */
+@media (max-height:520px) and (orientation:landscape){#inu-profile-badge{top:calc(max(8px,env(safe-area-inset-top)) + 50px)!important;left:max(8px,env(safe-area-inset-left))!important;max-width:min(230px,34vw)!important}}

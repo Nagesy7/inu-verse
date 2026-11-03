@@ -108,6 +108,7 @@ import { isDoor, doorList, doorDir, COMMUNITY } from './world.js';
 import { createMultiplayer } from './multiplayer.js';
 import { createFeed } from './feed.js';
 import { createGhosts, spotAt } from './ghosts.js';
+import * as TF from './townsfolk.js'; // Alive phase 3: wandering background townsfolk (NPC only)
 import { createTrading, renderTrade, TRADE_CSS } from './tradeui.js';
 import { createJoystick, joyPref, JOY_KEY } from './joystick.js';
 import * as PAB from './sim/bureau.js'; // Paw Audit Bureau (Phase 1 sim layer): desk + Watchdogs + report panel
@@ -148,6 +149,15 @@ const SKYQ = SKY.parseSkyParams(location.search), SKYS = { shift: 0, pinH: SKYQ.
 const skyNow = () => (globalThis.__skyClock ?? Date.now());
 function syncSky() { dayOffset = (SKYS.pinH != null ? timeForHour(SKYS.pinH) : SKY.skyWorldT(skyNow(), DAY_LEN) + SKYS.shift) - time; }
 const skyWx = () => SKY.weatherVals(SKYS.wx || SKY.weatherKind(skyNow()));
+function snapWeather() { const w = skyWx(); amb.rain = amb.rainTarget = w.rain; amb.cloud = amb.cloudTarget = w.cloud; } // page load: start at the current weather (HUD and sky agree at once)
+// ---- Alive phase 3: townsfolk on the shared sky clock (src/townsfolk.js). Pooled, culled to the camera, capped bubbles. ----
+const TFS = TF.makeTownsfolk(), FOLKQ = { shift: 0, lastT: 0 };
+const folkBase = () => (SKYS.pinH != null ? TF.folkSec(SKYS.pinH) + time : TF.folkSec(dayPhase(time + dayOffset).hour)); // a pinned ?tod= still lets them walk
+const folkSecNow = () => folkBase() + FOLKQ.shift;
+const folkWx = () => (amb.rain > 0.3 ? 'rain' : (amb.cloud || 0) > 0.5 ? 'cloudy' : 'clear');
+function stepFolk(view) { const now = performance.now() / 1000, dt = Math.min(0.1, Math.max(0, now - (FOLKQ.lastT || now))); FOLKQ.lastT = now;
+  return TF.stepTownsfolk(TFS, dt, { s: folkSecNow(), now: time, px: drive ? null : state.player.x, py: drive ? null : state.player.y, view, hour: dayPhase(time + dayOffset).hour, wx: folkWx(),
+    low: SKY.lowFx(SKYS.pool, { reduced: reducedMotion(), flag: SKYQ.low }), rm: reducedMotion(), rng, artKey, say: (id, text, t, force) => chatSay(id, text, t, { force }) }); }
 let vignette = null, miniBase = null;
 const keys = new Set();
 const touch = { x: 0, y: 0, id: null };
@@ -267,7 +277,7 @@ function startGame(s) { loadProfile(s).catch(() => {}); IQC.ensureChoice(s); loa
   state = s; state.kibble ??= DEMO ? 20 : 0; if (!DEMO) state.kibble = 0; ensureWardrobe(state); ensurePacks(state); ensureMall(state); state.clockSec ??= 0; lastEarned = state.stats.bonesEarned; mode = 'world'; LS.ensureStreak(state); setTimeout(() => syncStreak(), 0);
   setTimeout(() => refreshPlotOwners(), 0);
   buildDrawer(document, { joystick: joyApi, bork: () => { initAudio(); bork(); player.emote = { kind: 'bork', t: 1.2 }; emoteBubble('me', 'bork', time); } }); $('#title').hidden = true; $('#hud').hidden = false; $('#minimap-wrap').hidden = false; document.body.classList.add('inworld');
-  makeAlive(); mapImg = prerenderMap(); npcs = spawnNpcs(rng, 6); npcs.forEach((n) => { n.art = artKey(n.coat); }); amb = makeAmbient(42);
+  makeAlive(); mapImg = prerenderMap(); npcs = spawnNpcs(rng, 6); npcs.forEach((n) => { n.art = artKey(n.coat); }); amb = makeAmbient(42); snapWeather();
   Promise.all([artReady, buildingsReady, document.fonts?.load('8px Silkscreen').catch(() => {})]).then(() => { mapImg = prerenderMap(); });
   feel.fade(); $('#hud').classList.add('in');
   // ?spawn=<building> (from a game's 🏠 Back to Inu Verse): stand just outside that building's door.
@@ -335,6 +345,7 @@ $('#minimap').addEventListener('click', (e) => { if (mode === 'world' && !panel)
 const solidT = (x, y) => isSolid(x, y);
 function npcAtWorld(wx, wy) { let best = null, bd = 22; const cands = [...npcs.map((n) => ({ n, x: n.x, y: n.y })), ...crew.filter((w) => w.on).map((w) => ({ n: w, x: w.x, y: w.y, crew: true }))];
   if (presidentPresent(pres)) cands.push({ n: pres, x: pres.x, y: pres.y, pres: true });
+  for (const a of TFS.out) cands.push({ n: {}, x: a.x, y: a.y, folk: true }); // townsfolk: tap to walk over and chat
   for (const c of cands) { const dx = Math.abs(wx - c.x), dy = c.y - wy; if (dy < -10 || dy > 44) continue; const d = Math.hypot(dx, Math.max(0, dy - 18)); if (dx < 16 && d < bd) { bd = d; best = c; } } return best; }
 function planTo(goal, { target = null, npcT = null, run = false, mark = true } = {}) {
   const sx = Math.floor(state.player.x / TILE), sy = Math.floor(state.player.y / TILE);
@@ -520,7 +531,8 @@ const crew = makeCrew(); let adIdx = 0, adRot = 0, adT = 0, trend = []; globalTh
 function crewActors() { return crew.filter((w) => w.on).map((w) => ({ x: w.x, y: w.y, coat: w.coat, outfit: {}, face: w.face, phase: w.phase, moving: w.moving, name: w.name, worker: w, art: artKey(w.coat, {}) })); }
 function crewProps() { const out = []; for (const w of crew) { if (!w.on) continue; if (w.cones) out.push({ y: w.cones[0][1] * TILE, d: (x) => drawCones(x, w) }); if (w.truck) out.push({ y: w.y - 30, d: (x) => drawCar(x, w.x - 40, w.y - 36, { col: '#2f8a4a', kind: 'pickup', dir: w.face === 'left' ? 'west' : 'east' }) }); }
   return out; }
-function nearPup() { for (const w of crew) if (w.on && Math.hypot(w.x - state.player.x, w.y - state.player.y) < 40) return { workerRef: w, name: w.name }; const pet = activePet(state); if (pet && !drive && Math.hypot(petF.x - state.player.x, petF.y - state.player.y) < 34) return { pet, name: pet.name }; if (presidentPresent(pres) && Math.hypot(pres.x - state.player.x, pres.y - state.player.y) < 40) return { president: true, name: 'President Inu' }; let b = null, bd = 36; for (const n of npcs) { const d = Math.hypot(n.x - state.player.x, n.y - state.player.y); if (d < bd) { bd = d; b = n; } } return b; }
+function nearPup() { for (const w of crew) if (w.on && Math.hypot(w.x - state.player.x, w.y - state.player.y) < 40) return { workerRef: w, name: w.name }; const pet = activePet(state); if (pet && !drive && Math.hypot(petF.x - state.player.x, petF.y - state.player.y) < 34) return { pet, name: pet.name }; if (presidentPresent(pres) && Math.hypot(pres.x - state.player.x, pres.y - state.player.y) < 40) return { president: true, name: 'President Inu' }; let b = null, bd = 36; for (const n of npcs) { const d = Math.hypot(n.x - state.player.x, n.y - state.player.y); if (d < bd) { bd = d; b = n; } }
+  if (!b && !drive) { const f = TF.nearestFolk(TFS, state.player.x, state.player.y); if (f) return { folk: f, name: f.folkName }; } return b; } // townsfolk: chat only, no rewards
 function presBanner(msg) { let b = document.getElementById('pres-banner'); if (!b) { b = document.createElement('div'); b.id = 'pres-banner'; b.style.cssText = 'position:fixed;left:50%;top:64px;transform:translateX(-50%);z-index:40;padding:10px 22px;background:#121a36;color:#f2cc68;border:3px solid #d4a640;font:14px Silkscreen,monospace;letter-spacing:1px;box-shadow:0 4px 0 #0008;pointer-events:none;text-align:center'; document.body.appendChild(b); }
   b.textContent = '★ ' + msg + ' ★'; b.hidden = false; clearTimeout(b._t); b._t = setTimeout(() => { b.hidden = true; }, 4500); }
 function honk() { if (honkT > 0) return; honkT = 0.5; blip(392); setTimeout(() => blip(330), 120); feel.say && null; player.emote = { kind: 'bork', t: 0.8, honk: true }; for (const n of npcs) if (Math.hypot(n.x - state.player.x, n.y - state.player.y) < 120) n.emote = { kind: 'wave', t: 1.2 }; }
@@ -531,7 +543,8 @@ function carAction() { // E/A: park (while driving) or hop into the parked car n
   const pk = parkedNear(); if (pk && !nearestInteractable(state, state.player.x, state.player.y)) { const car = carOf(state, pk.id); if (!car) { g.parked = null; return false; } drive = { car, v: 0, vx: 0, vy: 0, dir: pk.dir || 'east' }; state.player.x = pk.x; state.player.y = pk.y; g.parked = null; blip(520); return true; }
   return false; }
 function spawnCar(id) { const g = ensureGarage(state), car = carOf(state, id); if (!car) return; g.active = id; g.parked = null; drive = { car, v: 0, vx: 0, vy: 0, dir: 'east' }; closePanel(); toast(`Hop in! Drive with WASD/stick, H/B to honk, E/A to park.`, 'good'); persist(); }
-function petPup(n) { if (n.workerRef) { const w = n.workerRef; blip(880); if (w.chatted) { w.chatted = false; playJob(WORKER_JOB[w.job]); return; } w.chatted = true; feel.say(`${w.name} (${w.job})`, w.line + ' (talk again for an odd job)', textBlip); return; }
+function petPup(n) { if (n.folk) { blip(880); feel.say(n.name, TF.talkTo(TFS, n.folk, { now: time, rng, hour: dayPhase(time + dayOffset).hour, wx: folkWx() }), textBlip); return; }
+  if (n.workerRef) { const w = n.workerRef; blip(880); if (w.chatted) { w.chatted = false; playJob(WORKER_JOB[w.job]); return; } w.chatted = true; feel.say(`${w.name} (${w.job})`, w.line + ' (talk again for an odd job)', textBlip); return; }
   if (n.pet) { petF.love = 2; blip(990); feel.say(n.pet.name, ['*happy noises*', '*nuzzles you*', '*purrs/chirps contentedly*', '*does a little spin*'][Math.floor(rng() * 4)], textBlip); return; }
   if (n.president) { if (pres.stage === 'visit') { const d = claimPresDrop(state, 'visit' + pres.n); if (d.ok) { toast(`President Inu gave you a free limited drop: ${d.drop.name}!`, 'good'); persist(); } } const r = presTalk(pres, state); pres.emote = { kind: 'heart', t: 2 }; blip(990); feel.say('President Inu', r.quote, textBlip); if (r.tip) { toast(`President Inu tipped you ${r.tip} bones!`, 'good'); hud(); persist(); } return; } n.wag = 1.2; n.path = []; blip(990); if (REL.PEOPLE[n.name]) { const r = REL.chat(state, n.name, gameDay()); if (r.gain) n.emote = { kind: 'heart', t: 2.2 }; persist(); openPanel('friend', { name: n.name }); if (r.scene) startScene(n.name, REL.SCENES[r.scene](n.name)); return; } feel.say(n.name, PUP_LINES[Math.floor(rng() * PUP_LINES.length)], textBlip); }
 const PUP_LINES = ['Woof! That spot behind the ears... perfect!', 'Arf! Have you tried the taiyaki cart on Main Street?', 'Wanna race to Sakura Pond? Last one there is a wet biscuit!', 'I buried a bone by the big tree. Shh, it is a secret.', 'Bork bork! The Launch Hall is busy today.'];
@@ -743,7 +756,7 @@ function updateWorld(dt) {
   if (drive) { pr.hidden = false; pr.innerHTML = `<kbd${tch ? ' class="ta"' : ''}>${tch ? 'A' : 'E'}</kbd>Park ${esc(CAR_MODELS[drive.car.model].name)} · <kbd${tch ? ' class="ta"' : ''}>${tch ? 'B' : 'H'}</kbd>Honk`; setA('PARK'); }
   else if (pk) { pr.hidden = false; pr.innerHTML = `<kbd${tch ? ' class="ta"' : ''}>${tch ? 'A' : 'E'}</kbd>Drive your ${esc(CAR_MODELS[carOf(state, pk.id)?.model]?.name || 'car')}`; setA('DRIVE'); }
   else if (pup?.workerRef) { pr.hidden = false; const v = pup.workerRef.chatted ? `Play ${JOB_DEFS[WORKER_JOB[pup.workerRef.job]].name} with` : 'Chat with'; pr.innerHTML = tch ? `<kbd class="ta">A</kbd>${v} ${esc(pup.name)}` : `<kbd>E</kbd>${v} ${esc(pup.name)}`; setA('TALK'); }
-  else if (pup) { pr.hidden = false; const v = REL.PEOPLE[pup.name] && !pup.pet ? `Talk to ${esc(pup.name)} ${'♥'.repeat(REL.hearts(REL.ensureRel(state)[pup.name]))}` : `Pet ${esc(pup.name)}`; pr.innerHTML = tch ? `<kbd class="ta">A</kbd>${v}` : `<kbd>E</kbd>${v} · <kbd>T</kbd> throw ball`; setA(REL.PEOPLE[pup.name] && !pup.pet ? 'TALK' : 'PET'); }
+  else if (pup) { pr.hidden = false; const v = pup.folk ? `Chat with ${esc(pup.name)}` : REL.PEOPLE[pup.name] && !pup.pet ? `Talk to ${esc(pup.name)} ${'♥'.repeat(REL.hearts(REL.ensureRel(state)[pup.name]))}` : `Pet ${esc(pup.name)}`; pr.innerHTML = tch ? `<kbd class="ta">A</kbd>${v}` : `<kbd>E</kbd>${v} · <kbd>T</kbd> throw ball`; setA(pup.folk || (REL.PEOPLE[pup.name] && !pup.pet) ? 'TALK' : 'PET'); }
   else if (it) { pr.hidden = false; const verb = { community: 'Open', gamedoor: 'Play', bank: 'Enter', arcade: 'Play at', matchmaker: 'Browse', square: 'Open', building: 'Enter', plot: state.plots[it.id] ? 'Enter' : 'Inspect', visit: 'Visit', club: 'Visit', stall: 'View', clubhouse: myPack(state) ? 'Decorate' : 'Open', mall: 'Enter', field: 'Tend', farm: 'Use', lot: 'Visit', biz: 'Read', chapel: 'Enter', kibble: it.id === 'crier' ? 'Talk to' : it.id === 'kstatue' ? 'Look at' : 'Read' }[it.kind] || 'Use'; pr.innerHTML = isWalkDoor(it) ? `<kbd>${it.side === 'left' ? '▶' : it.side === 'right' ? '◀' : '▲'}</kbd>Walk in to ${verb === 'Enter' ? 'enter' : verb.toLowerCase()} ${esc(it.name)}` : `<kbd${tch ? ' class="ta"' : ''}>${tch ? 'A' : 'E'}</kbd>${verb} ${esc(it.name)}`; pr.dataset.target = it.id; setA(isWalkDoor(it) ? '' : verb.toUpperCase()); }
   else { pr.hidden = true; setA(''); }
 }
@@ -772,7 +785,7 @@ function renderWorld() {
   const view = { x0: -ox, y0: -oy, x1: -ox + vw, y1: -oy + vh };
   drawGroundLife(ctx, amb, phase, view); drawAliveGround(ctx, ALIVE, view, phase); feel.drawGround(ctx);
   if (player.clickMark && player.pw.pts.length) drawMark(ctx, player.clickMark, time);
-  const actors = [MWd.crierActor(time, artKey), ...npcs.map((n, i) => ({ ...n, npc: true, idx: i, badge: badgeOf(packOfName(state, n.name)) })), ...(drive ? [] : [{ x: state.player.x, y: state.player.y, coat: state.player.coat, outfit: state.wardrobe.equipped, face: player.face, phase: player.phase, moving: player.moving, name: state.player.name, me: true, badge: badgeOf(myPack(state)), emote: player.emote, act: ACT.act, art: artKey(state.player.coat, state.wardrobe.equipped), profile: hasCustomLook(state) ? myProfile() : null }]), ...streetPups(), ...presActors(), ...petActors(), ...crewActors(), ...pupActors(), ...MPL.actors(view, state.player), ...dogWalkActors(view, walkNow(), artKey), ...mascotActors(state, time)];
+  const actors = [MWd.crierActor(time, artKey), ...npcs.map((n, i) => ({ ...n, npc: true, idx: i, badge: badgeOf(packOfName(state, n.name)) })), ...(drive ? [] : [{ x: state.player.x, y: state.player.y, coat: state.player.coat, outfit: state.wardrobe.equipped, face: player.face, phase: player.phase, moving: player.moving, name: state.player.name, me: true, badge: badgeOf(myPack(state)), emote: player.emote, act: ACT.act, art: artKey(state.player.coat, state.wardrobe.equipped), profile: hasCustomLook(state) ? myProfile() : null }]), ...streetPups(), ...presActors(), ...petActors(), ...crewActors(), ...pupActors(), ...MPL.actors(view, state.player), ...dogWalkActors(view, walkNow(), artKey), ...stepFolk(view), ...mascotActors(state, time)];
   // one depth-sorted list: static props (culled), dynamic props and actors, by ground y
   const L = -ox - 200, Rt = -ox + vw + 200, Tp = -oy - 60, Bt = -oy + vh + 400, list = [];
   for (const p of mapImg.props) if (p.y > Tp && p.y < Bt) list.push(p);
@@ -805,11 +818,11 @@ function renderWorld() {
     KENNEL_TAG.cur = null; if (a.me && LS.wornPin(state) != null) drawWornPin(ctx, LS.wornPin(state), time);
     if (a.worker) { drawVest(ctx, a.face); drawTool(ctx, a.worker); }
     if (a.bread) drawBreadBasket(ctx, a.face);
-    if (mm?.umbrella) MWd.drawUmbrella(ctx, time, a.idx || 0); else if (mm?.zz && !a.emote) MWd.drawZz(ctx, time + (a.idx || 0)); if (a.crier) MWd.drawBell(ctx, time, crierRing > 0);
+    if (mm?.umbrella || a.umbrella) MWd.drawUmbrella(ctx, time, a.idx || 0); else if (mm?.zz && !a.emote) MWd.drawZz(ctx, time + (a.idx || 0)); if (a.crier) MWd.drawBell(ctx, time, crierRing > 0);
     if (a.emote) drawEmote(ctx, 0, a.name ? -14 : 0, a.emote.kind, time); ctx.restore();
   }
   feel.drawAir(ctx);
-  drawChat(ctx, (id) => { if (id === MWd.CRIER_NAME) { const ca = MWd.crierActor(time, artKey); return { x: ca.x, y: ca.y - 62 }; } if (id === 'me') return drive ? null : { x: state.player.x, y: state.player.y - 60 }; const n = npcs.find((q) => q.name === id); return n ? { x: n.x, y: n.y - (n.pupScale ? 40 * n.pupScale + 10 : 60) - (n.badge || packOfName(state, n.name) ? 8 : 0) } : MPL.anchor(id); }, time);
+  drawChat(ctx, (id) => { if (id === MWd.CRIER_NAME) { const ca = MWd.crierActor(time, artKey); return { x: ca.x, y: ca.y - 62 }; } if (id === 'me') return drive ? null : { x: state.player.x, y: state.player.y - 60 }; const n = npcs.find((q) => q.name === id); return n ? { x: n.x, y: n.y - (n.pupScale ? 40 * n.pupScale + 10 : 60) - (n.badge || packOfName(state, n.name) ? 8 : 0) } : TF.folkAnchor(TFS, id) || MPL.anchor(id); }, time);
   drawSkyLife(ctx, amb, phase, view); drawAliveSky(ctx, ALIVE, view, phase);
   const it = !panel && nearestInteractable(state, state.player.x, state.player.y); if (it) feel.bubble(ctx, (it.tx + 0.5) * TILE, (it.ty) * TILE - 6, time);
   guide.drawWorld(ctx, time, state.player);
@@ -2266,7 +2279,7 @@ cv.addEventListener('wheel', (e) => { if (mode !== 'world') return; e.preventDef
   cv.addEventListener('touchmove', (e) => { if (!pinch || e.touches.length !== 2) return; const d = dist(e.touches); if (d / pinch > 1.35) { setZoom(stepZoom(ZOOM, 1)); pinch = d; } else if (pinch / d > 1.35) { setZoom(stepZoom(ZOOM, -1)); pinch = d; } }, { passive: true });
   cv.addEventListener('touchend', (e) => { if (e.touches.length < 2) pinch = null; }, { passive: true }); }
 document.getElementById('zin')?.addEventListener('click', () => setZoom(stepZoom(ZOOM, 1))); document.getElementById('zout')?.addEventListener('click', () => setZoom(stepZoom(ZOOM, -1)));
-window.__inu = { guide, open: (k, o) => openPanel(k, o), get time() { return time; }, get player() { return player; }, get zoom() { return ZOOM; }, setZoom, president: pres, presVisit: (k) => startVisit(pres, k, { dayLen: DAY_LEN }), setHour: (h) => { const w = SKY.skyWorldT(skyNow(), DAY_LEN); SKYS.pinH = null; SKYS.shift = timeForHour(h) - (((w % DAY_LEN) + DAY_LEN) % DAY_LEN); syncSky(); }, setRain: (r) => { SKYS.wx = r ? 'rain' : 'clear'; amb.rain = amb.rainTarget = amb.cloud = amb.cloudTarget = r ? 1 : 0; amb.weatherT = 999; }, sky: SKYS, get amb() { return amb; }, get npcs() { return npcs; }, get mood() { return { ...MOOD.current, shown: MWd.MW.mood }; }, emote: (k) => doEmote(k), cam, get state() { return state; }, get mode() { return mode; }, get panel() { return panel?.kind; }, get panelObj() { return panel; }, mp: MPL, club: { hunt: () => huntNow(), party: () => partyNow(), kennel: () => enterKennel(), room: (id, at) => enterRoom(id, at || null), get rp() { return RP; } } };
+window.__inu = { guide, open: (k, o) => openPanel(k, o), get time() { return time; }, get player() { return player; }, get zoom() { return ZOOM; }, setZoom, president: pres, presVisit: (k) => startVisit(pres, k, { dayLen: DAY_LEN }), setHour: (h) => { const w = SKY.skyWorldT(skyNow(), DAY_LEN); SKYS.pinH = null; SKYS.shift = timeForHour(h) - (((w % DAY_LEN) + DAY_LEN) % DAY_LEN); syncSky(); }, folk: { T: TFS, Q: FOLKQ, sec: () => folkSecNow(), at: (i, s) => TF.folkAt(i, s), setSec: (s) => { FOLKQ.shift = s - folkBase(); }, find: (name, doing) => { const i = TF.FOLK_NAMES.indexOf(name), o = {}; for (let s = 0; s < TF.FOLK_DAY; s += 2) { TF.folkAt(i, s, o); if (o.doing === doing) return { s, x: o.x, y: o.y }; } return null; } }, setRain: (r) => { SKYS.wx = r ? 'rain' : 'clear'; amb.rain = amb.rainTarget = amb.cloud = amb.cloudTarget = r ? 1 : 0; amb.weatherT = 999; }, sky: SKYS, get amb() { return amb; }, get npcs() { return npcs; }, get mood() { return { ...MOOD.current, shown: MWd.MW.mood }; }, emote: (k) => doEmote(k), cam, get state() { return state; }, get mode() { return mode; }, get panel() { return panel?.kind; }, get panelObj() { return panel; }, mp: MPL, club: { hunt: () => huntNow(), party: () => partyNow(), kennel: () => enterKennel(), room: (id, at) => enterRoom(id, at || null), get rp() { return RP; } } };
 // Inu Arcade inside the desktop overlay: its 🏠 button asks us to close the overlay instead of reloading.
 // framed Arcade (hall peek) -> Verse: ready / exit (close + inu:back-to-verse alias) / score. Origin pinned (districts.js). Score = toast only.
 addEventListener('message', (e) => { const m = DIS.arcadeMessage(e, new URL(ARCADE.url).origin); if (!m) return; globalThis.__arcadeMsgs = [...(globalThis.__arcadeMsgs || []).slice(-9), m];
