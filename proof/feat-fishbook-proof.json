@@ -1,0 +1,72 @@
+{
+ "url": "https://inu-verse-tawny.vercel.app/",
+ "viewport": [
+  844,
+  390
+ ],
+ "checks": [
+  "PASS server serves src/fishbook.js",
+  "PASS Fish Book in the Menu (Me)",
+  "PASS empty book: 14 silhouettes",
+  "PASS pond catch recorded: Caught a Pond Carp · 44.2 cm · NEW in your Fish Book! | Fishing Derby: Catch fish at the pond 1/3",
+  "PASS book card shows count + biggest: Pond Carp Common Caught ×1 · best 44.2 cm",
+  "PASS Koi Keeper set -> badge + title",
+  "PASS title worn",
+  "PASS pad focus inside Fish Book: Golden KoiRareCaught ×1 · best 80 cm",
+  "PASS no page errors "
+ ],
+ "served": true,
+ "empty": {
+  "cards": 14,
+  "unknown": 14,
+  "head": "0/14 species · 0 catches. Some fish only bite at night, in the rain or in one season. Sets unlock cosmetic badges and nameplate titles (no Bones, no $KIBBLE)."
+ },
+ "catch": {
+  "toast": [
+   "Caught a Pond Carp · 44.2 cm · NEW in your Fish Book!",
+   "Fishing Derby: Catch fish at the pond 1/3"
+  ],
+  "book": {
+   "seen": 1,
+   "total": 14,
+   "catches": 1
+  },
+  "inv": {
+   "carp": 1
+  }
+ },
+ "afterOne": [
+  "Pond Carp Common Caught ×1 · best 44.2 cm"
+ ],
+ "sets": {
+  "seen": {
+   "seen": 6,
+   "total": 14,
+   "catches": 7
+  },
+  "titles": [
+   "Koi Keeper"
+  ],
+  "badges": [
+   "🏮"
+  ],
+  "bones": 500
+ },
+ "padSteps": [
+  "Unknown fish, Uncommon",
+  "Unknown fish, Uncommon",
+  "Unknown fish, Rare",
+  "Golden Koi, Rare"
+ ],
+ "pad": {
+  "text": "Golden KoiRareCaught ×1 · best 80 cm",
+  "inPanel": true
+ },
+ "nameplate": {
+  "name": "Kabosu",
+  "title": "Koi Keeper",
+  "panel": null,
+  "prompt": false
+ },
+ "errors": []
+}

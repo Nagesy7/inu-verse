@@ -1,0 +1,50 @@
+{
+ "url": "https://inu-verse-tawny.vercel.app/",
+ "viewport": [
+  844,
+  390
+ ],
+ "checks": [
+  "PASS API pick for 2026-11-03 (Sydney): Kabosu · 5 items",
+  "PASS API returns public fields only (no owner key / wallet / layout)",
+  "PASS same pick on repeat request (deterministic for the day)",
+  "PASS picked home really is published with 5 items",
+  "PASS Featured Home in Menu → Explore",
+  "PASS panel: 🏡 FEATURED HOME OF THE DAY 2026-11-03 (Sydney) · a new home is picked every day from homes opened to visitors. Kabosu's home 5 pieces of fu",
+  "PASS D-pad focus reaches Visit: visit → visit",
+  "PASS Visit (pad A) walked into Kabosu's home",
+  "PASS plaza signboard prompt: AUSE FEATURED HOME OF THE DAY",
+  "PASS interacting with the signboard opens the Featured Home panel",
+  "PASS feed has the real featured line for Kabosu (1 featured line(s))",
+  "PASS no page errors "
+ ],
+ "api": {
+  "day": "2026-11-03",
+  "home": {
+   "id": "hizo71vjz5x0c",
+   "name": "Kabosu",
+   "items": 5,
+   "updatedAt": "2026-11-01T12:26:46.932Z",
+   "signs": 0
+  }
+ },
+ "realItems": 5,
+ "panel": "🏡 FEATURED HOME OF THE DAY 2026-11-03 (Sydney) · a new home is picked every day from homes opened to visitors. Kabosu's home 5 pieces of furniture · 0 guestbook entries Drop by, look around and sign the guestbook (filtered like chat). VISIT KABOSU'S HOME",
+ "padSteps": [
+  "visit",
+  "visit"
+ ],
+ "visit": true,
+ "prompt": "AUSE FEATURED HOME OF THE DAY",
+ "feed": [
+  {
+   "i": "f82da480e9",
+   "k": "featured",
+   "n": "Kabosu",
+   "x": "",
+   "t": 1793678169958,
+   "v": 1
+  }
+ ],
+ "errors": []
+}
