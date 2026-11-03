@@ -1,0 +1,50 @@
+{
+ "url": "https://inu-verse-tawny.vercel.app/",
+ "viewport": [
+  844,
+  390
+ ],
+ "checks": [
+  "PASS A: one hello as Tora (test:1) -> {\"op\":\"hello\",\"n\":\"Tora\",\"test\":1,\"status\":200,\"at\":\"2026-11-03T05:58:03.749Z\"}",
+  "PASS B: friend added by name shows \"Online · <area>\": Tora Online · Kibble Plaza JOIN UNFOLLOW BLOCK",
+  "PASS public feed stays clean (no arrival for the proof hello): [\"AAA:arcade\"]",
+  "PASS exactly one hello spent (A); B's 1 POSTs aborted",
+  "PASS no page errors "
+ ],
+ "aPosts": [
+  {
+   "op": "hello",
+   "n": "Tora",
+   "test": 1,
+   "status": 200,
+   "at": "2026-11-03T05:58:03.749Z"
+  }
+ ],
+ "bPosts": 1,
+ "row": "Tora Online · Kibble Plaza JOIN UNFOLLOW BLOCK",
+ "who": {
+  "who": {
+   "tora": {
+    "n": "Tora",
+    "on": true,
+    "a": "plaza",
+    "t": 1793685480000
+   }
+  }
+ },
+ "feed": {
+  "events": [
+   {
+    "i": "ae6b37380f",
+    "k": "arcade",
+    "n": "AAA",
+    "x": "",
+    "t": 1793676419743,
+    "v": 1
+   }
+  ],
+  "ghosts": []
+ },
+ "helloAttempts": 1,
+ "errors": []
+}
