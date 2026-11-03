@@ -563,6 +563,245 @@ P.arcade = {
     const top = y + 44; A(c, 0.5 + 0.5 * Math.sin(t * 4), () => { R(c, x + 3, top + 4, 2, g.base - top - 8, '#ffc0f4'); R(c, x + w - 5, top + 4, 2, g.base - top - 8, '#ffc0f4'); }); },
 };
 
+// ---------------------------------------------------------------- homes (v2): four distinct houses on the 6x5 lots
+// Shared front garden: lawn strip, stone path to the door, fence styles, owner nameplate. Door = interact tile (x+3).
+export const HOME_F = Object.freeze({
+  h1: { wall: '#f1e2c6', roof: '#c89a52', accent: '#ff8ab8', trim: '#fff6e6', signBg: '#5a3a22', sign: '#ffe8c0', glow: '#ffc078', curtain: '#ff9ac4', door: '#3f7a4a', style: 'cottage' },
+  h2: { wall: '#3e4a6e', roof: '#262c44', accent: '#c8283a', trim: '#f4f0e8', signBg: '#1a1f36', sign: '#ffe08a', glow: '#ffd27a', curtain: '#e8d8b8', door: '#b8283a', style: 'townhouse' },
+  h3: { wall: '#f4ecdc', roof: '#4a5a78', accent: '#ff9ac0', trim: '#5a3418', signBg: '#3a2010', sign: '#ffe0c8', glow: '#ffb070', curtain: '#f8e8d0', door: '#6a4024', style: 'machiya' },
+  h4: { wall: '#2e3240', roof: '#1a1c26', accent: '#e3b341', trim: '#c8ccd8', signBg: '#14161e', sign: '#f2cc68', glow: '#ffd27a', curtain: '#d8c8a8', door: '#b07848', style: 'modern' },
+});
+function lawn(c, x, w, base, dx, { path = '#cfc4ae', grass = '#5d9a4a' } = {}) {
+  R(c, x, base - 14, w, 14, grass); for (let i = 0; i < w; i += 3) if (hash(i, base, 7) > 0.55) R(c, x + i, base - 14 + ((hash(i, 2, 7) * 12) | 0), 1, 2, hash(i, 3, 7) > 0.5 ? '#7cbc5c' : '#3f7a3a');
+  A(c, 0.25, () => R(c, x, base - 14, w, 2, '#0a0e1e'));
+  if (dx != null) for (let j = 0; j < 3; j++) { const sw = 18 + j * 2, sx = Math.round(dx - sw / 2 + (j % 2 ? 2 : -1)), sy = base - 13 + j * 4; R(c, sx - 1, sy - 1, sw + 2, 5, '#5a5448'); R(c, sx, sy, sw, 3, path); R(c, sx, sy, sw, 1, shade(path, 1.15)); }
+}
+function picket(c, x0, x1, base, col = '#f8f4ec', gate) { for (let x = x0; x < x1; x += 6) { if (gate && x + 4 > gate[0] && x < gate[1]) continue; R(c, x - 1, base - 13, 6, 13, INK); R(c, x, base - 12, 4, 12, col); R(c, x + 1, base - 14, 2, 2, INK); R(c, x + 3, base - 12, 1, 12, shade(col, 0.8)); }
+  for (const yy of [base - 9, base - 4]) { let a = x0; for (const [p, q] of gate ? [[x0, gate[0]], [gate[1], x1]] : [[x0, x1]]) { if (q - p > 2) { R(c, p, yy, q - p, 2, shade(col, 0.88)); R(c, p, yy + 2, q - p, 1, INK); } a = q; } } }
+function ironFence(c, x0, x1, base, gate) { for (const [p, q] of gate ? [[x0, gate[0]], [gate[1], x1]] : [[x0, x1]]) { if (q - p < 4) continue; R(c, p, base - 12, q - p, 2, INK); R(c, p, base - 3, q - p, 2, INK); for (let x = p; x < q; x += 4) { R(c, x, base - 15, 1, 15, '#1a1d2a'); R(c, x - 1, base - 16, 3, 2, '#3a3f58'); } R(c, p, base - 12, q - p, 1, '#4a5070'); } }
+function bambooFence(c, x0, x1, base, gate) { for (const [p, q] of gate ? [[x0, gate[0]], [gate[1], x1]] : [[x0, x1]]) for (let x = p; x < q; x += 3) { const hh = 12 + ((hash(x, 5, 3) * 3) | 0); R(c, x, base - hh, 3, hh, INK); R(c, x, base - hh + 1, 2, hh - 1, '#8ab04a'); R(c, x, base - hh + 1, 1, hh - 1, '#b8d878'); R(c, x, base - 8, 2, 1, '#5a7a2a'); } for (const [p, q] of gate ? [[x0, gate[0]], [gate[1], x1]] : [[x0, x1]]) if (q - p > 3) { R(c, p, base - 9, q - p, 2, '#5a3a1a'); R(c, p, base - 9, q - p, 1, '#8a5a2a'); } }
+function slatFence(c, x0, x1, base, gate) { for (const [p, q] of gate ? [[x0, gate[0]], [gate[1], x1]] : [[x0, x1]]) { if (q - p < 4) continue; R(c, p - 1, base - 15, q - p + 2, 15, INK); for (let yy = base - 14; yy < base; yy += 4) { R(c, p, yy, q - p, 3, '#a87048'); R(c, p, yy, q - p, 1, '#c89060'); } } }
+function nameplate(c, cx, y, label, F, V, post = true) { const s = norm(label), w = ptw(s, 1) + 10; if (post) { R(c, cx - 2, y + 10, 4, 22, INK); R(c, cx - 1, y + 10, 2, 22, '#6a4424'); }
+  R(c, cx - w / 2 - 1, y - 1, w + 2, 13, INK); R(c, cx - w / 2, y, w, 11, F.signBg); R(c, cx - w / 2, y, w, 1, shade(F.signBg, 1.6)); R(c, cx - w / 2, y + 10, w, 1, F.accent); ptext(c, s, cx, y + 6, F.sign, 1, null); if (V.night) emit(cx - w / 2, y, w, 11, F.sign, 0.18); }
+function shutters(c, x, y, w, h, col) { for (const sx of [x - 11, x + w + 3]) { R(c, sx - 1, y - 1, 10, h + 2, INK); R(c, sx, y, 8, h, col); for (let j = y + 2; j < y + h - 1; j += 3) R(c, sx + 1, j, 6, 1, shade(col, 0.75)); R(c, sx, y, 1, h, shade(col, 1.25)); } }
+function roses(c, x, y, n, seed = 0) { for (let i = 0; i < n; i++) { const rx = x + ((hash(i, seed, 11) * 6) | 0) - 3, ry = y + i * 4; R(c, rx, ry, 3, 3, '#2e6e30'); if (hash(i, seed, 12) > 0.4) { R(c, rx + 1, ry - 1, 3, 3, hash(i, seed, 13) > 0.5 ? '#ff6a9a' : '#ffb0cc'); R(c, rx + 2, ry, 1, 1, '#c8285a'); } } }
+/** thatched roof seen from the front: thick rounded hip with straw strands, sagging eave overhang */
+function thatch(c, x0, x1, eaveY, topY, inset, col) {
+  const H = eaveY - topY, lit = shade(col, 1.15), dk = shade(col, 0.72);
+  for (let yy = 0; yy <= H; yy++) { const t = yy / H, round = Math.round(Math.sqrt(Math.max(0, 1 - (1 - t) * (1 - t))) * 6), l = Math.round(x0 + inset * (1 - t)) - round + 6, r = Math.round(x1 - inset * (1 - t)) + round - 6, y = topY + yy;
+    R(c, l - 2, y, r - l + 4, 1, INK); R(c, l, y, r - l, 1, col); R(c, l, y, Math.round((r - l) * 0.35), 1, lit); R(c, r - 10, y, 10, 1, shade(col, 0.85));
+    for (let xx = l; xx < r; xx += 2) if (hash(xx, y, 21) > 0.62) R(c, xx, y, 1, 1, hash(xx, y, 22) > 0.5 ? dk : shade(col, 1.3)); }
+  for (let k = 0; k < 3; k++) { const yy = topY + 6 + k * Math.round(H / 3.2); const t = (yy - topY) / H, l = Math.round(x0 + inset * (1 - t)), r = Math.round(x1 - inset * (1 - t)); A(c, 0.35, () => R(c, l + 2, yy, r - l - 4, 1, dk)); }
+  R(c, x0 - 4, eaveY - 4, x1 - x0 + 8, 7, INK); R(c, x0 - 3, eaveY - 3, x1 - x0 + 6, 5, col); for (let xx = x0 - 3; xx < x1 + 3; xx += 2) R(c, xx, eaveY + 1 + ((hash(xx, 1, 23) * 3) | 0), 1, 2, dk); R(c, x0 - 3, eaveY - 3, x1 - x0 + 6, 1, lit);
+  R(c, x0 + inset - 2, topY - 3, x1 - x0 - inset * 2 + 4, 5, INK); R(c, x0 + inset, topY - 2, x1 - x0 - inset * 2, 3, shade(col, 0.8)); for (let xx = x0 + inset + 2; xx < x1 - inset - 2; xx += 6) R(c, xx, topY - 2, 3, 3, shade(col, 1.25)); // ridge roll + spars
+}
+
+P.h1 = { // Rose Cottage: thatched stone-and-stucco cottage, eyebrow dormer, rose arch, picket fence
+  paint(c, b, F, V, g) { const { x, y, w, base, dx } = g, bx = x + 16, bw = w - 32, wt = base - 84;
+    dropShadow(c, bx, base - 12, bw);
+    chimney(c, x + w - 58, y - 28, 44, '#8a8478');
+    wall(c, bx, wt, bw, base - 12 - wt, F.wall, 'stucco', V);
+    for (const qx of [bx, bx + bw - 10]) for (let j = wt + 6, k = 0; j < base - 16; j += 9, k++) { const qw = k % 2 ? 7 : 10, xx = qx === bx ? bx : bx + bw - qw; R(c, xx, j, qw, 8, '#a8a090'); R(c, xx, j, qw, 1, '#c8c0b0'); R(c, xx, j + 7, qw, 1, '#7a7468'); } // stone quoins
+    thatch(c, x + 4, x + w - 4, wt + 6, y - 22, 26, F.roof);
+    // eyebrow dormer
+    const ex = x + 58; for (let i = 0; i < 12; i++) { const hw = Math.round(Math.sqrt(144 - (11 - i) * (11 - i)) * 2.2); R(c, ex - hw - 2, y + 8 + i, hw * 2 + 4, 1, INK); R(c, ex - hw, y + 8 + i, hw * 2, 1, i < 3 ? shade(F.roof, 1.2) : F.roof); }
+    win(c, ex - 12, y + 20, 24, 14, F, V, { panes: [3, 1], curtains: false, sill: false });
+    R(c, x + w - 66, y + 12, 18, 18, INK); R(c, x + w - 64, y + 14, 14, 14, F.trim); win(c, x + w - 62, y + 16, 10, 10, F, V, { panes: [2, 2], curtains: false, sill: false }); // round-ish attic light
+    // bow window left, cottage window right
+    const lw = 44, lx = bx + 14, ly = wt + 22; R(c, lx - 6, ly - 8, lw + 12, 6, INK); R(c, lx - 5, ly - 7, lw + 10, 4, '#5a6a8a'); R(c, lx - 5, ly - 7, lw + 10, 1, '#8a9ab8');
+    win(c, lx, ly, lw, 30, F, V, { panes: [4, 2], curtains: true, box: true });
+    const rx = dx + 26; shutters(c, rx, ly + 2, 26, 26, F.accent); win(c, rx, ly + 2, 26, 26, F, V, { panes: [2, 2], curtains: true, box: true });
+    door(c, dx, base - 12, { ...F, accent: '#ffb0cc' }, V, { w: 22, h: 34, col: F.door, steps: 1, lamps: false });
+    // rose arch over the door
+    for (let i = 0; i <= 20; i++) { const a = Math.PI * (i / 20), ax = Math.round(dx - Math.cos(a) * 19), ay = Math.round(base - 50 - Math.sin(a) * 12); R(c, ax - 2, ay - 2, 5, 5, INK); R(c, ax - 1, ay - 1, 3, 3, '#2e6e30'); if (i % 3 === 0) { R(c, ax - 1, ay - 3, 3, 3, i % 2 ? '#ff6a9a' : '#ffb0cc'); R(c, ax, ay - 2, 1, 1, '#c8285a'); } }
+    for (const sx of [dx - 20, dx + 18]) { R(c, sx - 1, base - 52, 4, 40, INK); R(c, sx, base - 52, 2, 40, '#f4efe4'); roses(c, sx + 1, base - 48, 9, sx); }
+    lawn(c, x, w, base, dx);
+    for (let i = 4; i < 60; i += 5) { R(c, x + i, base - 20, 3, 6, '#2e6e30'); R(c, x + i, base - 22, 3, 3, ['#ff6a9a', '#ffd84a', '#ffffff', '#c88aff'][i % 4]); } // cottage bed
+    for (let i = w - 60; i < w - 30; i += 5) { R(c, x + i, base - 20, 3, 6, '#2e6e30'); R(c, x + i, base - 22, 3, 3, ['#ffb0cc', '#ffffff', '#ff9a5a'][i % 3]); }
+    picket(c, x + 2, x + w - 2, base + 2, '#f8f4ec', [dx - 12, dx + 12]);
+    nameplate(c, x + 30, base - 40, `${b.owner || 'Mochi'}'s`, F, V);
+  },
+  anim(c, b, F, t, g) { steam(c, g.x + g.w - 52, g.y - 34, t * 0.7, 4, '#d0d0d8'); },
+};
+
+P.h2 = { // Townhouse: tall three-storey brick terrace, bay window, stoop + iron railings, cornice with chimney pots
+  paint(c, b, F, V, g) { const { x, y, w, base, dx } = g, bx = x + 34, bw = w - 68, top = y - 26, gnd = base - 12;
+    dropShadow(c, bx, gnd, bw);
+    for (const px of [bx + 12, bx + bw - 30]) for (let k = 0; k < 3; k++) { R(c, px + k * 6 - 1, top - 14, 6, 14, INK); R(c, px + k * 6, top - 13, 4, 13, '#b05a3a'); R(c, px + k * 6, top - 13, 1, 13, '#d07a58'); } // chimney pots
+    wall(c, bx, top, bw, gnd - top, F.wall, 'brick', V, { bw: 9, bh: 4 });
+    for (const sx of [bx - 6, bx + bw]) { R(c, sx - 1, top, 7, gnd - top, INK); R(c, sx, top, 6, gnd - top, '#2a3250'); for (let j = top; j < gnd; j += 12) R(c, sx, j, 6, 1, '#1a2038'); } // party-wall piers
+    // cornice + dentils
+    R(c, bx - 10, top - 4, bw + 20, 10, INK); R(c, bx - 9, top - 3, bw + 18, 8, F.trim); R(c, bx - 9, top - 3, bw + 18, 2, '#ffffff'); for (let i = bx - 7; i < bx + bw + 8; i += 5) R(c, i, top + 3, 3, 3, '#b8b4a8'); A(c, 0.35, () => R(c, bx, top + 6, bw, 3, '#0a0e1e'));
+    // third floor: three small windows with arched lintels
+    for (let i = 0; i < 3; i++) { const wx = bx + 12 + i * ((bw - 24 - 22) / 2); win(c, wx, top + 18, 22, 24, F, V, { panes: [2, 2], curtains: true, arch: true, frame: F.trim }); }
+    stringCourse(c, bx, top + 54, bw, F.trim);
+    // second floor: tall windows behind an iron juliet balcony
+    for (let i = 0; i < 3; i++) { const wx = bx + 10 + i * ((bw - 20 - 24) / 2); win(c, wx, top + 66, 24, 40, F, V, { panes: [2, 3], curtains: true, frame: F.trim }); }
+    R(c, bx + 4, top + 100, bw - 8, 2, INK); for (let i = bx + 6; i < bx + bw - 6; i += 4) R(c, i, top + 102, 1, 10, '#1a1d2a'); R(c, bx + 4, top + 111, bw - 8, 2, INK);
+    stringCourse(c, bx, top + 118, bw, F.trim);
+    // ground floor: projecting bay window left, door with fanlight right
+    const bayX = bx + 6, bayW = dx - 22 - bayX - 6, bayY = top + 132; R(c, bayX - 4, bayY - 6, bayW + 8, 7, INK); R(c, bayX - 3, bayY - 5, bayW + 6, 5, '#262c44'); R(c, bayX - 3, bayY - 5, bayW + 6, 1, '#4a5478');
+    win(c, bayX, bayY, bayW, gnd - bayY - 14, F, V, { panes: [3, 2], curtains: true, frame: F.trim, sill: false });
+    R(c, bayX - 3, gnd - 12, bayW + 6, 12, INK); R(c, bayX - 2, gnd - 11, bayW + 4, 11, F.trim); R(c, bayX + 2, gnd - 8, bayW - 4, 5, '#d8d4c8');
+    const fy = gnd - 56; R(c, dx - 14, fy - 2, 28, 12, INK); for (let i = 0; i < 9; i++) { const hw = Math.round(Math.sqrt(81 - (8 - i) * (8 - i)) * 1.4); R(c, dx - hw, fy + i - 8, hw * 2, 1, i ? (V.night ? '#ffe08a' : '#a6d4f2') : INK); } for (const a of [-6, 0, 6]) R(c, dx + a, fy - 6, 1, 6, F.trim); // fanlight
+    door(c, dx, gnd, F, V, { w: 24, h: 38, col: F.door, steps: 3, frame: F.trim });
+    R(c, dx - 7, fy - 22, 14, 9, INK); R(c, dx - 6, fy - 21, 12, 7, GOLD_D); ptext(c, '2', dx, fy - 17, '#fff4c0', 1, null);
+    for (const sx of [dx - 22, dx + 19]) { R(c, sx, gnd - 22, 2, 22, INK); for (let j = gnd - 20; j < gnd; j += 5) R(c, sx - 1, j, 4, 1, '#3a3f58'); R(c, sx - 1, gnd - 24, 4, 3, GOLD_D); } // stoop railings
+    lawn(c, x, w, base, dx, { grass: '#4a8a44' });
+    shrub(c, x + 6, base - 2, 1.1, '#3a3f58'); shrub(c, x + w - 22, base - 2, 1.1, '#3a3f58');
+    ironFence(c, x + 2, x + w - 2, base + 2, [dx - 14, dx + 14]);
+    nameplate(c, dx + 40, gnd - 40, `${b.owner || 'Kuro'}'s`, F, V, false);
+  },
+  anim(c, b, F, t, g) { // a cat in the top window blinks
+    const bx = g.x + 34, wx = Math.round(bx + 12 + 2 * ((g.w - 68 - 24 - 22) / 2)), wy = g.y - 26 + 18; const blink = (t % 4) < 0.15;
+    R(c, wx + 8, wy + 16, 8, 8, '#1a1a22'); R(c, wx + 8, wy + 14, 2, 2, '#1a1a22'); R(c, wx + 14, wy + 14, 2, 2, '#1a1a22'); if (!blink) { R(c, wx + 9, wy + 18, 2, 1, '#ffe14a'); R(c, wx + 13, wy + 18, 2, 1, '#ffe14a'); } },
+};
+
+P.h3 = { // Blossom machiya: timber lattice front, tiled double eaves with upturned ends, noren curtain, paper lanterns
+  paint(c, b, F, V, g) { const { x, y, w, base, dx } = g, gnd = base - 12, bx = x + 10, bw = w - 20;
+    dropShadow(c, bx, gnd, bw);
+    const curvedRoof = (x0, x1, yTop, yEave, col) => { const H = yEave - yTop;
+      for (let yy = 0; yy <= H; yy++) { const t = yy / H, l = Math.round(x0 + 10 * (1 - t)), r = Math.round(x1 - 10 * (1 - t)), lift = Math.round(Math.pow(t, 3) * 5), y2 = yTop + yy;
+        R(c, l - 2 - lift, y2 - (yy === H ? 0 : 0), r - l + 4 + lift * 2, 1, INK); R(c, l - lift, y2, r - l + lift * 2, 1, col); if (yy % 4 === 3) R(c, l - lift, y2, r - l + lift * 2, 1, shade(col, 0.75)); }
+      for (let xx = x0 + 4; xx < x1 - 4; xx += 6) { R(c, xx, yTop + 2, 2, H - 2, shade(col, 1.18)); R(c, xx + 2, yTop + 2, 1, H - 2, shade(col, 0.8)); } // round tile rows
+      R(c, x0 - 8, yEave - 2, 8, 3, INK); R(c, x0 - 10, yEave - 5, 5, 4, INK); R(c, x1, yEave - 2, 8, 3, INK); R(c, x1 + 5, yEave - 5, 5, 4, INK); // upturned eave tips
+      R(c, x0 - 4, yEave + 1, x1 - x0 + 8, 3, INK); R(c, x0 - 3, yEave + 1, x1 - x0 + 6, 2, shade(col, 0.6)); };
+    // upper storey: white plaster, dark timber frame, slatted mushiko windows
+    wall(c, bx + 8, base - 126, bw - 16, 44, F.wall, 'stucco', V);
+    for (const px of [bx + 8, bx + 60, bx + bw - 66, bx + bw - 14]) R(c, px, base - 126, 6, 44, F.trim);
+    R(c, bx + 8, base - 106, bw - 16, 3, F.trim);
+    for (const wx of [bx + 20, bx + bw - 54]) { R(c, wx - 2, base - 122, 38, 14, INK); R(c, wx, base - 120, 34, 10, V.night ? '#ffd27a' : '#e8e0c8'); for (let i = wx + 1; i < wx + 34; i += 3) R(c, i, base - 120, 1, 10, F.trim); if (V.night) emit(wx, base - 120, 34, 10, '#ffb070', 0.3); }
+    curvedRoof(x + 6, x + w - 6, y - 18, base - 128, F.roof);
+    R(c, x + 18, y - 22, w - 36, 5, INK); R(c, x + 20, y - 21, w - 40, 3, shade(F.roof, 0.7)); R(c, x + 14, y - 28, 8, 9, INK); R(c, x + 15, y - 27, 6, 7, shade(F.roof, 1.2)); R(c, x + w - 22, y - 28, 8, 9, INK); R(c, x + w - 21, y - 27, 6, 7, shade(F.roof, 1.2)); // ridge + end tiles
+    // ground storey: wooden koshi lattice
+    wall(c, bx, base - 78, bw, gnd - base + 78, '#7a4a28', 'plank', V, { ph: 7, vertical: true });
+    for (const [a, b2] of [[bx + 8, dx - 22], [dx + 22, bx + bw - 8]]) { R(c, a - 2, base - 70, b2 - a + 4, 50, INK); R(c, a, base - 68, b2 - a, 46, V.night ? '#ffcf80' : '#e8dcc0'); if (V.night) emit(a, base - 68, b2 - a, 46, '#ffb070', 0.22); for (let i = a + 1; i < b2; i += 4) R(c, i, base - 68, 2, 46, '#5a3418'); R(c, a, base - 52, b2 - a, 2, '#5a3418'); R(c, a, base - 66, b2 - a, 1, '#8a5a30'); }
+    curvedRoof(x + 2, x + w - 2, base - 92, base - 78, F.roof);
+    // sliding door with noren curtain
+    R(c, dx - 18, gnd - 46, 36, 46, INK); R(c, dx - 16, gnd - 44, 32, 44, '#5a3418'); for (const sx of [dx - 15, dx + 1]) { R(c, sx, gnd - 42, 14, 40, V.night ? '#ffd890' : '#efe6d0'); for (let j = gnd - 40; j < gnd - 4; j += 6) R(c, sx, j, 14, 1, '#7a4a28'); R(c, sx + 6, gnd - 42, 1, 40, '#7a4a28'); }
+    R(c, dx - 18, gnd - 47, 36, 2, '#3a2010'); for (const [i, nx] of [[0, dx - 17], [1, dx - 5], [2, dx + 7]]) { R(c, nx, gnd - 45, 10, 20, '#2a3a7a'); R(c, nx, gnd - 45, 10, 2, '#1a2458'); R(c, nx + 9, gnd - 45, 1, 20, '#1a2458'); if (i === 1) { R(c, nx + 3, gnd - 37, 4, 4, '#ffb0cc'); R(c, nx + 4, gnd - 38, 2, 6, '#ffb0cc'); R(c, nx + 2, gnd - 36, 6, 2, '#ffb0cc'); R(c, nx + 4, gnd - 36, 2, 2, '#ffe08a'); } }
+    R(c, dx - 22, gnd - 2, 44, 3, INK); R(c, dx - 21, gnd - 2, 42, 2, '#9a9488');
+    // stone lantern + pine on the left, sakura branch on the right
+    const lx = x + 18; R(c, lx - 1, gnd - 30, 14, 4, INK); R(c, lx, gnd - 29, 12, 2, '#a8a498'); R(c, lx + 2, gnd - 26, 8, 8, INK); R(c, lx + 3, gnd - 25, 6, 6, V.night ? '#ffd27a' : '#6a6860'); R(c, lx + 4, gnd - 18, 4, 16, '#8a8478'); R(c, lx + 1, gnd - 3, 10, 3, '#8a8478'); if (V.night) emit(lx + 3, gnd - 25, 6, 6, '#ffd27a', 0.7);
+    R(c, x + w - 20, gnd - 46, 4, 46, INK); R(c, x + w - 19, gnd - 46, 2, 46, '#5a3418'); R(c, x + w - 30, gnd - 44, 12, 2, '#5a3418'); R(c, x + w - 18, gnd - 52, 2, 8, '#5a3418');
+    for (const [px, py, r] of [[x + w - 18, gnd - 56, 9], [x + w - 30, gnd - 48, 7], [x + w - 8, gnd - 48, 6], [x + w - 22, gnd - 44, 6]]) { for (let j = -r; j <= r; j++) { const hw = Math.round(Math.sqrt(r * r - j * j)); R(c, px - hw - 1, py + j, hw * 2 + 2, 1, INK); } for (let j = -r + 1; j < r; j++) { const hw = Math.round(Math.sqrt((r - 1) * (r - 1) - j * j)); R(c, px - hw, py + j, hw * 2, 1, j < -r / 3 ? '#ffc8dc' : j > r / 3 ? '#e87aa4' : '#ff9ac0'); }
+      for (let i = 0; i < r * 2; i++) R(c, px - r + 1 + ((hash(i, py, 31) * (r * 2 - 2)) | 0), py - r + 2 + ((hash(i, px, 32) * (r * 2 - 4)) | 0), 1, 1, hash(i, px, 33) > 0.5 ? '#fff0f6' : '#c8507a'); } // sakura clouds
+    lawn(c, x, w, base, dx, { path: '#b8b4a8', grass: '#4f8a46' });
+    bambooFence(c, x + 2, x + w - 2, base + 1, [dx - 13, dx + 13]);
+    nameplate(c, dx + 30, gnd - 40, `${b.owner || 'Hana'}'s`, F, V, false);
+    if (V.night) for (const lx of [dx - 30, dx + 26]) emit(lx - 2, gnd - 69, 6, 10, '#ff7a4a', 0.6);
+  },
+  anim(c, b, F, t, g) { const gnd = g.base - 12; for (const [i, lx] of [[0, g.dx - 30], [1, g.dx + 26]]) { const sw = Math.round(Math.sin(t * 2 + i) * 1.2); R(c, lx + sw, gnd - 76, 1, 6, INK); R(c, lx - 3 + sw, gnd - 70, 8, 12, INK); R(c, lx - 2 + sw, gnd - 69, 6, 10, '#e8423a'); R(c, lx - 2 + sw, gnd - 66, 6, 1, '#a8221a'); R(c, lx - 2 + sw, gnd - 62, 6, 1, '#a8221a'); R(c, lx - 1 + sw, gnd - 69, 1, 10, '#ff8a6a'); } },
+};
+
+P.h4 = { // Modern: mono-pitch two-storey with cedar slats + glass box wing, solar panels, bollard lights
+  paint(c, b, F, V, g) { const { x, y, w, base, dx } = g, gnd = base - 12, lx0 = x + 10, lx1 = dx - 14, rx0 = dx + 14, rx1 = x + w - 10, hiY = y - 30, loY = y + 10;
+    dropShadow(c, lx0, gnd, rx1 - lx0);
+    // tall block: sloped roof line from hiY (left) to loY (right)
+    const slope = (xx) => Math.round(hiY + ((xx - lx0) / (lx1 - lx0)) * (loY - hiY));
+    for (let xx = lx0 - 2; xx < lx1 + 2; xx++) { const t0 = slope(Math.max(lx0, Math.min(lx1 - 1, xx))) - 2; R(c, xx, t0, 1, gnd - t0, INK); }
+    for (let xx = lx0; xx < lx1; xx++) { const t0 = slope(xx); R(c, xx, t0, 1, gnd - t0, F.wall); }
+    for (let xx = lx0; xx < lx1; xx += 5) { const t0 = slope(xx) + 6; R(c, xx, t0, 4, base - 96 - t0, '#b07848'); R(c, xx, t0, 1, base - 96 - t0, '#c8925a'); R(c, xx + 3, t0, 1, base - 96 - t0, '#8a5a34'); } // cedar slats upstairs
+    for (let xx = lx0 - 4; xx < lx1 + 4; xx++) { const t0 = slope(Math.max(lx0, Math.min(lx1 - 1, xx))); R(c, xx, t0 - 4, 1, 5, INK); R(c, xx, t0 - 3, 1, 2, '#4a4e60'); } // thin roof fascia
+    A(c, 0.2, () => R(c, lx1 - 8, slope(lx1 - 8), 8, gnd - slope(lx1 - 8), '#0a0e1e'));
+    win(c, lx0 + 12, base - 140, lx1 - lx0 - 24, 22, F, V, { panes: [3, 1], curtains: false, sill: false, frame: '#1a1c26' }); // upstairs ribbon window over the slats
+    R(c, lx0, base - 96, lx1 - lx0, 3, '#1a1c26');
+    win(c, lx0 + 8, base - 86, lx1 - lx0 - 16, 46, F, V, { panes: [2, 1], curtains: true, sill: false, frame: '#1a1c26', inner: (cc, wx, wy, ww, wh) => { R(cc, wx + 6, wy + wh - 12, 22, 8, '#c86a3a'); R(cc, wx + 6, wy + wh - 16, 22, 4, '#e88a5a'); R(cc, wx + ww - 14, wy + wh - 22, 6, 18, '#2e6e30'); R(cc, wx + ww - 16, wy + wh - 26, 10, 6, '#3a9152'); } });
+    // glass wing with green roof + solar panels
+    const wt = base - 92; R(c, rx0 - 2, wt - 2, rx1 - rx0 + 4, gnd - wt + 2, INK); R(c, rx0, wt, rx1 - rx0, gnd - wt, F.wall);
+    R(c, rx0 - 4, wt - 8, rx1 - rx0 + 8, 8, INK); R(c, rx0 - 3, wt - 7, rx1 - rx0 + 6, 3, '#4a8a3a'); for (let i = rx0 - 3; i < rx1 + 3; i += 3) R(c, i, wt - 9 - ((hash(i, 4, 41) * 2) | 0), 1, 3, '#6ab04a'); R(c, rx0 - 3, wt - 4, rx1 - rx0 + 6, 3, '#d8dce8');
+    for (let i = 0; i < 3; i++) { const sx = rx0 + 2 + i * 18; R(c, sx - 1, wt - 22, 17, 13, INK); R(c, sx, wt - 21, 15, 11, '#26407a'); for (let k = 1; k < 3; k++) R(c, sx + k * 5, wt - 21, 1, 11, '#5a7ac8'); R(c, sx, wt - 16, 15, 1, '#5a7ac8'); R(c, sx + 6, wt - 10, 2, 4, '#4a4e60'); }
+    win(c, rx0 + 4, wt + 8, rx1 - rx0 - 8, gnd - wt - 14, F, V, { panes: [2, 1], curtains: false, sill: false, frame: '#1a1c26', inner: (cc, wx, wy, ww, wh) => { R(cc, wx + 6, wy + wh - 30, 2, 28, '#1a1c26'); R(cc, wx + 2, wy + wh - 34, 10, 6, V.night ? '#fff0b0' : '#e8d8a0'); R(cc, wx + ww - 24, wy + wh - 10, 20, 8, '#3a3f58'); R(cc, wx + ww - 22, wy + wh - 14, 16, 4, '#5a6080'); } });
+    // pivot door
+    R(c, dx - 14, gnd - 50, 28, 50, INK); R(c, dx - 12, gnd - 48, 18, 48, F.door); for (let j = gnd - 46; j < gnd; j += 4) R(c, dx - 12, j, 18, 1, shade(F.door, 0.8)); R(c, dx + 7, gnd - 48, 5, 48, V.night ? '#ffe08a' : '#a6d4f2'); R(c, dx + 2, gnd - 30, 2, 14, '#e8e8f0'); if (V.night) emit(dx + 7, gnd - 48, 5, 48, '#ffd27a', 0.4);
+    R(c, dx - 20, gnd - 56, 40, 6, INK); R(c, dx - 19, gnd - 55, 38, 4, '#1a1c26'); if (V.night) emit(dx - 8, gnd - 51, 16, 1, '#fff0b0', 0.8);
+    lawn(c, x, w, base, dx, { path: '#b8bcc8', grass: '#4a8a44' });
+    for (let i = 0; i < 5; i++) { const gx = x + 8 + i * 10; for (let k = -3; k <= 3; k += 2) R(c, gx + k, base - 22 + Math.abs(k), 1, 10 - Math.abs(k), k % 3 ? '#a8b860' : '#7a9a4a'); } // ornamental grasses
+    for (const bxp of [dx - 26, dx + 24]) { R(c, bxp - 1, base - 18, 5, 16, INK); R(c, bxp, base - 17, 3, 15, '#4a4e60'); R(c, bxp, base - 16, 3, 2, V.night ? '#fff0b0' : '#c8ccd8'); if (V.night) emit(bxp, base - 16, 3, 2, '#fff0b0', 0.8); } // bollards
+    slatFence(c, x + w - 60, x + w - 2, base + 1);
+    nameplate(c, dx - 40, base - 60, `${b.owner || 'Taro'}'s`, F, V, false);
+  },
+  anim(c, b, F, t, g, V) { if (V && V.night) return; const s = (t * 0.25) % 1; if (s > 0.3) return; const wt = g.base - 92, sx = g.dx + 16 + Math.floor((s / 0.3) * 54); R(c, sx, wt - 21, 2, 11, '#dfe8ff'); },
+};
+
+// ---------------------------------------------------------------- Holder Lounge (v2): velvet + gold art-deco members' club
+const VELVET = '#5a1840', VELVET_D = '#3a0e2a', VELVET_L = '#7a2a58', LACQ = '#16101a';
+function quilt(c, x, y, w, h) { R(c, x, y, w, h, VELVET);
+  for (let j = 0; j < h; j++) for (let i = 0; i < w; i++) { const u = (i + j) % 12, v = (i - j + 1200) % 12; if (u === 0 || v === 0) R(c, x + i, y + j, 1, 1, VELVET_D); else if (u === 1 || v === 1) R(c, x + i, y + j, 1, 1, VELVET_L); }
+  for (let j = 0; j < h; j += 6) for (let i = (j / 6) % 2 ? 6 : 0; i < w; i += 12) { R(c, x + i - 1, y + j - 1, 2, 2, GOLD_D); R(c, x + i - 1, y + j - 1, 1, 1, GOLD_L); } // gold buttons at the tufts
+  A(c, 0.25, () => R(c, x, y, w, Math.round(h * 0.25), '#ffb8e0')); A(c, 0.18, () => R(c, x, y + Math.round(h * 0.7), w, Math.round(h * 0.3), '#0a0410')); }
+function decoPilaster(c, x, y, h) { R(c, x - 1, y, 10, h, INK); R(c, x, y, 8, h, LACQ); R(c, x + 2, y + 4, 1, h - 8, GOLD); R(c, x + 5, y + 4, 1, h - 8, GOLD_D); R(c, x - 2, y - 2, 12, 4, GOLD); R(c, x - 2, y - 2, 12, 1, GOLD_L); R(c, x - 2, y + h - 4, 12, 4, GOLD_D); for (let k = 0; k < 3; k++) R(c, x + 1 + k * 2, y + 6 + k * 2, 6 - k * 4 > 0 ? 6 - k * 2 : 2, 1, GOLD_L); }
+P.lounge = {
+  paint(c, b, F, V, g) { const { x, y, w, base, dx } = g, cx = x + w / 2, top = y + 6;
+    dropShadow(c, x, base, w);
+    // stepped deco crown + sunburst fan
+    for (const [sx, sw, sy] of [[x + 6, w - 12, top - 14], [cx - 52, 104, top - 26], [cx - 34, 68, top - 40]]) { R(c, sx - 2, sy - 2, sw + 4, top - sy + 4, INK); R(c, sx, sy, sw, top - sy, LACQ); R(c, sx, sy, sw, 2, GOLD); R(c, sx, sy, sw, 1, GOLD_L); }
+    for (let i = 0; i < 28; i++) { const a = Math.PI * (i / 27), r = 26; for (let k = 6; k < r; k += 1) { const px = Math.round(cx + Math.cos(a) * k), py = Math.round(top - 14 - Math.sin(a) * k * 0.95); if (i % 2 === 0) R(c, px, py, 1, 1, k > r - 3 ? GOLD_L : GOLD); else if (k > r - 4) R(c, px, py, 1, 1, GOLD_D); } }
+    R(c, cx - 6, top - 22, 12, 9, INK); icon(c, 'crown', cx - 4, top - 21, 1, { a: GOLD_L, r: '#c8282e', w: '#9fd8ff', b: GOLD_D });
+    // quilted velvet wall between lacquer + gold pilasters
+    R(c, x - 2, top - 2, w + 4, base - top + 2, INK); quilt(c, x, top, w, base - top);
+    A(c, 0.22, () => R(c, x + w - 10, top, 10, base - top, '#0a0410')); for (let k = 0; k < 4; k++) A(c, 0.1 + k * 0.07, () => R(c, x, base - 4 + k, w, 1, '#0a0410'));
+    for (const px of [x + 2, x + w - 10]) decoPilaster(c, px, top, base - top - 6);
+    // marquee: gold frame, lacquer board, pixel lettering, bulb sockets
+    const mw = w - 28, mx = cx - mw / 2, my = top + 4, mh = 24; R(c, mx - 4, my - 4, mw + 8, mh + 8, INK); R(c, mx - 3, my - 3, mw + 6, mh + 6, GOLD); R(c, mx - 3, my - 3, mw + 6, 1, GOLD_L); R(c, mx - 1, my - 1, mw + 2, mh + 2, INK); R(c, mx, my, mw, mh, '#1a0a20'); R(c, mx, my, mw, 7, '#2a1030');
+    for (let i = mx + 2; i < mx + mw - 1; i += 6) { R(c, i, my + 1, 2, 2, '#6a4a2a'); R(c, i, my + mh - 3, 2, 2, '#6a4a2a'); }
+    const lab = '$KIBBLE HOLDER LOUNGE'; if (V.night) A(c, 0.45, () => { ptext(c, lab, cx - 1, my + 12, '#ffd27a', 1, null); ptext(c, lab, cx + 1, my + 12, '#ffd27a', 1, null); }); ptext(c, lab, cx, my + 12, V.night ? '#fff0b8' : GOLD_L, 1, INK); if (V.night) emit(mx, my, mw, mh, '#ffc860', 0.3);
+    // deco arched windows with crimson swag curtains (skip the door bay)
+    const swag = (cc, wx, wy, ww, wh) => { R(cc, wx, wy, ww, wh, V.night ? '#5a1e2a' : '#3a1226'); R(cc, wx, wy + wh - 10, ww, 10, V.night ? '#8a3a2a' : '#5a1e2a'); for (let i = 2; i < ww; i += 8) R(cc, wx + i, wy + 12, 3, wh - 22, V.night ? '#6a2a34' : '#46162e'); // warm panelled interior
+      R(cc, wx + 4, wy + wh - 14, ww - 8, 5, VELVET_L); R(cc, wx + 4, wy + wh - 14, ww - 8, 1, '#a04a78'); R(cc, wx + 4, wy + wh - 9, 2, 4, GOLD_D); R(cc, wx + ww - 6, wy + wh - 9, 2, 4, GOLD_D); // chaise
+      A(cc, V.night ? 0.35 : 0.18, () => R(cc, wx + ww / 2 - 8, wy + 8, 16, wh - 16, '#ffd27a')); R(cc, wx + ww / 2 - 6, wy + 4, 12, 2, GOLD_D); for (let i = -2; i <= 2; i++) R(cc, wx + ww / 2 + i * 4, wy + 6 + Math.abs(i), 1, 4 + Math.abs(i), GOLD_L); R(cc, wx + ww / 2 - 1, wy + 2, 2, 2, GOLD_L); // chandelier
+      for (const s of [0, 1]) for (let j = 0; j < wh; j++) { const cw = Math.max(2, Math.round((ww * 0.32) * (1 - j / (wh * 1.3)) + (j > wh * 0.6 ? (j - wh * 0.6) * 0.5 : 0))); R(cc, s ? wx + ww - cw : wx, wy + j, cw, 1, j % 3 ? '#a01a3a' : '#c8284a'); }
+      R(cc, wx, wy, ww, 4, '#7a0e2a'); for (let i = 1; i < ww; i += 3) R(cc, wx + i, wy + 4, 1, 2, GOLD); };
+    const wy = top + 40, wh = base - wy - 22;
+    for (const [a, b2] of [[x + 16, dx - 30], [dx + 30, x + w - 16]]) { if (b2 - a < 18) continue; const n = b2 - a > 70 ? 2 : 1, ww = Math.floor((b2 - a - (n - 1) * 10) / n);
+      for (let i = 0; i < n; i++) { const wx = a + i * (ww + 10); win(c, wx, wy, ww, wh, { ...F, winGlow: '#ff9a5a' }, V, { panes: [1, 1], curtains: false, arch: true, frame: GOLD, sill: true, inner: swag }); } }
+    // canopy: velvet awning with gold fringe + HOLDERS ONLY plaque
+    const cw = 84, cxl = dx - cw / 2, cy = base - 62; A(c, 0.35, () => R(c, cxl + 2, cy + 16, cw - 2, 6, '#0a0410'));
+    R(c, cxl - 2, cy - 2, cw + 4, 18, INK); R(c, cxl, cy, cw, 12, VELVET); R(c, cxl, cy, cw, 2, VELVET_L); R(c, cxl, cy + 10, cw, 2, VELVET_D);
+    for (let i = 0; i < cw; i += 6) { R(c, cxl + i + 1, cy + 12, 4, 3, GOLD); R(c, cxl + i + 2, cy + 15, 2, 1, GOLD_D); } // gold fringe
+    R(c, cxl - 3, cy - 3, cw + 6, 2, GOLD_L); R(c, cxl + 2, cy + 2, cw - 4, 1, GOLD_D); R(c, cxl + 2, cy + 9, cw - 4, 1, GOLD_D);
+    ptext(c, 'HOLDERS ONLY', dx, cy + 6, GOLD_L, 1, null); if (V.night) emit(cxl, cy, cw, 12, '#ffc860', 0.18);
+    // lacquer double door with gold diamond inlay
+    door(c, dx, base, { ...F, trim: GOLD, accent: '#c8282e' }, V, { w: 28, h: 38, double: true, col: LACQ, steps: 2, frame: GOLD, lamps: true });
+    for (const s of [-1, 1]) { const ix = dx + s * 7; R(c, ix - 1, base - 34, 2, 2, GOLD_L); R(c, ix - 3, base - 32, 6, 2, GOLD); R(c, ix - 1, base - 30, 2, 2, GOLD_L); }
+    // red carpet, brass stanchions + velvet rope, gold topiary planters
+    R(c, dx - 12, base - 6, 24, 30, '#a01a2a'); R(c, dx - 12, base - 6, 2, 30, '#c8323c'); R(c, dx - 11, base - 6, 1, 30, GOLD); R(c, dx + 10, base - 6, 1, 30, GOLD);
+    for (const s of [-1, 1]) { const p0 = dx + s * 18, p1 = dx + s * 40; for (const px of [p0, p1]) { R(c, px - 2, base - 2, 5, 3, INK); R(c, px - 1, base - 20, 3, 18, INK); R(c, px, base - 19, 1, 17, GOLD_L); R(c, px - 2, base - 23, 5, 4, GOLD); R(c, px - 1, base - 23, 2, 1, '#fff4c0'); }
+      for (let i = 0; i <= 22; i++) { const xx = Math.round(p0 + ((p1 - p0) * i) / 22), sag = Math.round(Math.sin((Math.PI * i) / 22) * 5); R(c, xx, base - 18 + sag, 1, 3, '#7a0e2a'); R(c, xx, base - 18 + sag, 1, 1, '#c8284a'); } }
+    for (const px of [x + 4, x + w - 20]) { R(c, px - 1, base - 12, 18, 12, INK); R(c, px, base - 11, 16, 11, GOLD); R(c, px, base - 11, 16, 2, GOLD_L); R(c, px + 2, base - 7, 12, 1, GOLD_D); const gg = ['#1f5a34', '#2a7442', '#3a9152']; for (let k = 0; k < 3; k++) { R(c, px + 2 - 1, base - 26 - k * 0, 14, 14, INK); } R(c, px + 2, base - 25, 12, 12, gg[0]); R(c, px + 3, base - 24, 9, 8, gg[1]); R(c, px + 4, base - 23, 4, 3, gg[2]); }
+  },
+  anim(c, b, F, t, g) { const { x, y, w } = g, top = y + 6, mw = w - 28, mx = x + w / 2 - mw / 2, my = top + 4, mh = 24, k = Math.floor(t * 6); let n = 0;
+    for (let i = mx + 2; i < mx + mw - 1; i += 6, n++) { R(c, i, my + 1, 2, 2, (n + k) % 4 === 0 ? '#fff4c0' : '#8a6a3a'); R(c, i, my + mh - 3, 2, 2, (n + k + 2) % 4 === 0 ? '#fff4c0' : '#8a6a3a'); }
+    twinkle(c, x + w / 2 - 14, top - 28, t, 0, '#fff4c0'); twinkle(c, x + w / 2 + 18, top - 22, t, 2.1, '#fff4c0'); },
+};
+
+// ---------------------------------------------------------------- Kibble Mall (v2): keep the marble/gold facade art, add depth + life
+const MALL_FESTOONS = (x, w) => { const n = 4, seg = (w - 40) / n; return Array.from({ length: n }, (_, i) => [Math.round(x + 20 + i * seg), Math.round(x + 20 + (i + 1) * seg)]); };
+P.mall = {
+  paint(c, b, F, V, g) { const { x, y, w, base } = g, cx = x + w / 2;
+    A(c, 0.22, () => { R(c, x + 10, base - 2, w, 10, '#0a0e1e'); R(c, x + w - 4, y + 90, 10, base - y - 90, '#0a0e1e'); });
+    if (typeof F.legacy === 'function') F.legacy(c); else { wall(c, x, y + 92, w, base - y - 92, F.wall, 'stone', V); sign(c, cx, y + 82, 'KIBBLE MALL', F, V, { maxW: 200 }); }
+    // ink silhouette + lit marble edge so the building pops off the plaza
+    A(c, 0.55, () => { R(c, x + 6, y + 92, 2, base - y - 120, '#ffffff'); }); A(c, 0.25, () => R(c, x + w - 18, y + 92, 10, base - y - 120, '#0a0e1e'));
+    // rooftop pennant poles at the cornice corners + the dome finial
+    for (const px of [x + 14, x + w - 16]) flagpole(c, px, y + 86, 30);
+    flagpole(c, cx, y - 2, 22);
+    // planter boxes with clipped box hedges along the stair foot
+    for (const px of [cx - 120, cx + 96]) { R(c, px - 1, base - 18, 26, 14, INK); R(c, px, base - 17, 24, 12, '#e8e2d6'); R(c, px, base - 17, 24, 2, GOLD); R(c, px - 1, base - 30, 26, 13, INK); R(c, px, base - 29, 24, 12, '#2a7442'); R(c, px + 2, base - 28, 12, 5, '#3a9152'); R(c, px + 3, base - 27, 4, 2, '#5cb86a'); }
+    // festoon string-lights draped across the colonnade + wing fronts (bulbs glow at night, chase in anim)
+    for (const [a, b2] of MALL_FESTOONS(x, w)) for (let i = 0; i <= 24; i++) { const xx = Math.round(a + ((b2 - a) * i) / 24), yy = Math.round(y + 150 + Math.sin((Math.PI * i) / 24) * 10); R(c, xx, yy, 1, 1, '#3a2a1a'); if (i % 3 === 0) { R(c, xx - 1, yy + 1, 3, 3, INK); R(c, xx, yy + 2, 1, 1, V.night ? '#fff0b0' : '#f2cc68'); if (V.night) emit(xx - 1, yy + 1, 3, 3, '#ffd27a', 0.9); } }
+    // night: warm wing windows, glowing doors + frieze sign; rain: wet sheen on the marble stairs
+    const W2 = (n) => n * 2;
+    if (V.night) { for (const wx of [10, 24, w / 2 - 34, w / 2 - 20]) for (const wy of [54, 76]) emit(x + W2(wx), y + W2(wy), 20, 28, '#ffd27a', 0.3);
+      emit(cx - 36, base - 104, 72, 60, '#ffe08a', 0.2); emit(cx - 90, y + 80, 180, 24, '#ffe08a', 0.22); }
+    if (V.wet) A(c, 0.28, () => { for (let s = 0; s < 5; s++) R(c, cx - 70 - s * 6, base - 40 + s * 8, 140 + s * 12, 1, '#dfe8ff'); });
+  },
+  anim(c, b, F, t, g) { const { x, y, w } = g, cx = x + w / 2;
+    wavingFlag(c, { x: cx + 1, y: y - 24, col: GOLD, col2: '#2a1a4a' }, t, 16, 9);
+    wavingFlag(c, { x: x + 15, y: y + 56, col: '#c8282e', col2: GOLD }, t + 0.7, 12, 8); wavingFlag(c, { x: x + w - 15, y: y + 56, col: '#1f2d5c', col2: GOLD }, t + 1.4, 12, 8);
+    const s = (t * 0.18) % 1; if (s < 0.35) { const k = s / 0.35, gx = Math.round(cx - 56 + k * 112); A(c, 0.5 * Math.sin(Math.PI * k), () => { for (let r = 0; r < 26; r++) { const yy = r - 26, hw = Math.sqrt(676 - yy * yy) * 2.3; if (Math.abs(gx - cx) < hw - 3) R(c, gx, y + (24 + yy) * 2, 3, 2, '#ffffff'); } }); } }, // light sweeping across the dome
+};
+
 P._generic = {
   paint(c, b, F, V, g) { const { x, y, w, base } = g, top = y + Math.min(34, g.h * 0.3), cx = x + w / 2;
     dropShadow(c, x, base, w);
@@ -610,7 +849,7 @@ let warned = false;
 export function drawBuilding(c, b, F, opts = {}) {
   try {
     if (!b || !Number.isFinite(b.x) || !Number.isFinite(b.y) || !(b.w > 0) || !(b.h > 0)) return false;
-    F = F || FALLBACK_F;
+    F = F || HOME_F[b.id] || FALLBACK_F;
     const bb = boundsOf(b), view = 'view' in opts ? opts.view : viewOf(c);
     if (view && (bb.x > view.x1 || bb.x + bb.w < view.x0 || bb.y > view.y1 || bb.y + bb.h < view.y0)) { STATS.culled++; return true; }
     const nk = opts.night ?? nightK(), wet = opts.wet ?? wetNow(), low = opts.low ?? fxLow();

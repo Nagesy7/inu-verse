@@ -14,10 +14,13 @@ for (const tod of TODS) {
   await p.addStyleTag({ content: '#crier-banner,.toast,.guide-card,#tour,#prompt,#alive-feed,#feed{visibility:hidden!important}' });
   await p.evaluate(() => { globalThis.__guide?.endTour?.('skipped'); globalThis.__noNav = true; });
   const spots = await p.evaluate(async () => { const W = await import('/src/world.js'); const all = [...W.BUILDINGS, ...W.MALL_BUILDINGS, W.BANK, W.ARCADE, ...W.NPC_HOMES];
-    return Object.fromEntries(all.filter(Boolean).map((q) => [q.id, [q.x, q.y, q.w, q.h]])); });
+    return Object.fromEntries(all.filter(Boolean).map((q) => { const d = W.NPC_HOMES.includes(q) ? { tx: q.x + 3, ty: q.y + q.h } : W.doorTile(q); return [q.id, [q.x, q.y, q.w, q.h, d.tx, d.ty]]; })); });
   for (const z of ZS) {
     await p.evaluate((z) => __inu.setZoom(z === 'phone' ? 1 : 2), z);
-    for (const id of IDS) { const s = spots[id]; if (!s) continue; const [x, y, w, h] = s;
+    for (const id of IDS) { const s = spots[id]; if (!s) continue; const [x, y, w, h, tx, ty] = s;
+      if (z === 'door') { // real follow camera, player standing on the door tile (HUD-clipping check)
+        await p.evaluate(([tx, ty]) => { delete globalThis.__camLock; const st = __inu.state; st.player.x = tx * 32 + 16; st.player.y = ty * 32 + 18; }, [tx, ty]);
+        await p.waitForTimeout(2600); await p.screenshot({ path: `${OUT}/${TAG}-${tod}-${z}-${id}.png` }); continue; }
       await p.evaluate(([x, y, w, h, z]) => { const st = __inu.state; st.player.x = (x + w + 1.5) * 32; st.player.y = (y + h + 1.5) * 32; globalThis.__camLock = { x: (x + w / 2) * 32, y: (y + h * (z === 'phone' ? 0.6 : 0.42)) * 32 }; }, [x, y, w, h, z]);
       await p.waitForTimeout(700); await p.screenshot({ path: `${OUT}/${TAG}-${tod}-${z}-${id}.png` }); }
   }

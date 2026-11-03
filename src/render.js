@@ -6,6 +6,7 @@ import { N, SCALE, PAL, buildGround, sprites, shadowEllipse, hash, mk, P } from 
 import { LAMP_TILES, unreadMail } from './ambient.js';
 import { drawCar } from './cars.js';
 import { farmGround, farmStatic, farmDynamic } from './farmart.js';
+import { drawBuilding, HOME_F } from './bldgfx.js';
 import { luxuryGround, luxuryProps, luxuryDynamic, drawMallFacade } from './luxury.js';
 import { drawEmblem, ART } from './art.js';
 import { drawTypedFacade, FUNC } from './facadeart.js';
@@ -263,7 +264,7 @@ export function prerenderMap() {
   for (const b of [...BUILDINGS, ...MALL_BUILDINGS]) props.push({ y: (b.y + b.h) * TILE - 1, d: (c) => { if (b.id === 'mall') return drawMallFacade(c, pixelText); if (drawTypedFacade(c, b)) return; if (!drawBuildingArt(c, b.id, b.x, b.y, b.w, b.h)) legacyBuilding(c, b); else drawDoors(c, b); } });
   for (const b of [...BUILDINGS, ...MALL_BUILDINGS]) if (DOORS[b.id] && DOORS[b.id].side !== 'front') props.push({ y: (b.y + b.h) * TILE - 26, d: (c) => sidePorch(c, b, DOORS[b.id].side) });
   props.push(...luxuryProps(), ...farmStatic());
-  for (const h of NPC_HOMES) props.push({ y: (h.y + h.h) * TILE - 1, d: (c) => { if (!drawBuildingArt(c, HOUSE_ART[h.id], h.x, h.y, h.w, h.h)) legacyNpcHouse(c, h); plaque(c, `${h.owner.toUpperCase()}'S`, (h.x + 1.5) * TILE, (h.y + h.h) * TILE - 22); } });
+  for (const h of NPC_HOMES) props.push({ y: (h.y + h.h) * TILE - 1, d: (c) => { if (drawBuilding(c, h, HOME_F[h.id])) return; if (!drawBuildingArt(c, HOUSE_ART[h.id], h.x, h.y, h.w, h.h)) legacyNpcHouse(c, h); plaque(c, `${h.owner.toUpperCase()}'S`, (h.x + 1.5) * TILE, (h.y + h.h) * TILE - 22); } });
   props.push({ y: (LEADERS.y + LEADERS.h) * TILE - 1, d: (c) => { if (drawBuildingArt(c, 'leaders', LEADERS.x, LEADERS.y, LEADERS.w, LEADERS.h)) return;
     const x = LEADERS.x * TILE, y = LEADERS.y * TILE - 20; R(c, x + 6, y + 40, 4, 44, GOLD_D); R(c, x + 86, y + 40, 4, 44, GOLD_D);
     R(c, x - 4, y - 4, 104, 68, GOLD); R(c, x, y, 96, 60, NAVY); pixelText(c, 'LEADERBOARDS', x + 48, y + 10, 90, 8, GOLD_L); } });

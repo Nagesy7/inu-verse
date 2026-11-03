@@ -72,6 +72,8 @@ import { renderFly5 } from './fly5ui.js';
 import { squareProps } from './fly5art.js';
 import { arcadeProps } from './arcadeart.js';
 import { ARCADE, GAME_DOORS } from './world.js';
+import { facadeDoors, liftTarget } from './facadecam.js';
+const FDOORS = facadeDoors();
 import { doorProps } from './doorart.js';
 import { createGuide } from './guideui.js';
 import { isRealWallet, placeById } from './guide.js';
@@ -817,7 +819,7 @@ function updateWorld(dt) {
   const k = 1 - Math.pow(0.004, dt), lead = player.moving ? 10 : 0, fx = { left: -1, right: 1 }[player.face] || 0, fy = { up: -1, down: 1 }[player.face] || 0;
   guide.update(dt); onboardUi.drawNpc(dt); const tc = guide.camTarget(), kk = tc ? 1 - Math.pow(0.02, dt) : k;
   if (photo && PHC) ZOOM = PHM.photoZoom(PHC); const pnx = photo && PHC ? PHC.pan.x : 0, pny = photo && PHC ? PHC.pan.y : 0;
-  cam.x += ((tc ? tc.x : p.x + fx * lead + pnx) - cam.x) * kk; cam.y += ((tc ? tc.y : p.y + fy * lead * 0.6 + pny) - cam.y) * kk;
+  cam.x += ((tc ? tc.x : p.x + fx * lead + pnx) - cam.x) * kk; cam.y += ((tc ? tc.y : (drive || photo) ? p.y + fy * lead * 0.6 + pny : liftTarget(p.y + fy * lead * 0.6, p.x, p.y, FDOORS, ZOOM, innerHeight)) - cam.y) * kk; // facadecam: lift at front doors so tall signs clear the HUD (not while driving / in photo mode)
   Object.assign(cam, clampCam(cam.x, cam.y, innerWidth / ZOOM, innerHeight / ZOOM, MAP_W * TILE, MAP_H * TILE));
   if (globalThis.__camLock) { cam.x = __camLock.x; cam.y = __camLock.y; } // debug/screenshot camera lock
   const it = !panel && nearIt(p.x, p.y);

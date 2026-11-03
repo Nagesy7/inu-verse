@@ -1,6 +1,7 @@
 // Kibble Mall luxury district: marble forecourt, tiered fountain, parterres, topiary, palms, facade, sparkles, night uplighting.
 // Original pixel art. Ground bits are painted at native res (N=16/tile); props are native sprites drawn at 2x (U=2).
 import { TILE, FOUNTAIN, FORECOURT, MALL_BUILDINGS, BUILDINGS, DECOR, DOORS } from './world.js';
+import { drawBuilding } from './bldgfx.js';
 import { N, PAL, mk, P, hash } from './tiles.js';
 import { drawCar } from './cars.js';
 
@@ -112,7 +113,10 @@ function facade() { const W = MALL.w * N, H = MALL.h * N, [cv, c] = mk(W, H), cx
   for (let s = 0; s < 5; s++) { const sw = 70 + s * 12, sy = colY1 + 2 + s * 4; P(c, cx - sw / 2, sy, s % 2 ? MARBLE_D : '#ffffff', sw, 4); P(c, cx - sw / 2, sy + 3, '#b8b0a2', sw, 1); }
   P(c, cx - 14, colY1 + 2, RED, 28, 20); P(c, cx - 13, colY1 + 2, RED_L, 2, 20); P(c, cx - 12, colY1 + 2, GOLD, 1, 20); P(c, cx + 11, colY1 + 2, GOLD, 1, 20); for (let s = 0; s < 5; s++) P(c, cx - 14, colY1 + 5 + s * 4, RED_D, 28, 1);
   return cv; }
-export function drawMallFacade(c, pixelText) { if (!FAC) FAC = facade(); const S = sprites(), x = MALL.x * TILE, y = MALL.y * TILE;
+// v2: the marble/gold art below is baked into bldgfx's cached layer (adds shadow, flags, planters, night glow, rain sheen, dome glint)
+const MALL_F = { wall: '#e8e0d0', roof: '#4aa090', accent: '#e3b341', trim: '#ffffff', signBg: '#2a1a4a', sign: '#ffe08a', glow: '#ffe08a' };
+export function drawMallFacade(c, pixelText) { if (drawBuilding(c, MALL, { ...MALL_F, legacy: (cc) => mallArt(cc, pixelText) })) return; mallArt(c, pixelText); }
+function mallArt(c, pixelText) { if (!FAC) FAC = facade(); const S = sprites(), x = MALL.x * TILE, y = MALL.y * TILE;
   c.drawImage(FAC, x, y, FAC.width * 2, FAC.height * 2);
   for (const [k, bx] of [[0, 52], [1, 80], [0, MALL.w * TILE - 72], [1, MALL.w * TILE - 100]]) c.drawImage(k ? S.banN : S.banR, x + bx, y + 104, 20, 60); // hanging banners
   const sx = x + MALL.w * TILE / 2, sy = y + 92; // gold signage on the frieze

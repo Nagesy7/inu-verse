@@ -34,6 +34,7 @@ export const FUNC = Object.freeze({
   mall:     { wall: '#e8e0d0', roof: '#4aa090', accent: '#e3b341', trim: '#ffffff', signBg: '#2a1a4a', sign: '#ffe08a', glow: '#ffe08a', tag: 'marble-gold' },
   bank:     { wall: '#d0c4a8', roof: '#1f2d5c', accent: '#d4a640', trim: '#f4ead4', signBg: '#1f2d5c', sign: '#ffd84a', glow: '#fff', tag: 'serious' },
   arcade:   { wall: '#1c1638', roof: '#2c2258', accent: '#ff4fd8', trim: '#3af0ff', signBg: '#3a0f4a', sign: '#3af0ff', glow: '#ffe14a', tag: 'bright-neon' },
+  lounge:   { wall: '#5a1840', roof: '#16101a', accent: '#e3b341', trim: '#f2cc68', signBg: '#1a0a20', sign: '#f2cc68', glow: '#ffc860', tag: 'velvet-gold' },
   clinic:   { wall: '#f4f1ea', roof: '#2f7f8f', accent: '#7fd1b9', trim: '#ffffff', signBg: '#141a2e', sign: '#7fd1b9', glow: '#7fd1b9', tag: 'mint-clinic' },
 });
 
@@ -431,11 +432,13 @@ const DRAW = {
 };
 
 /** Draw a typed façade if we have one. Returns true when drawn (caller should skip PNG/legacy). */
+const V2_ONLY = new Set(['lounge']); // v2 painter with no flat typed painter (falls back to the legacy storefront)
 export function drawTypedFacade(c, b) {
-  const fn = DRAW[b.id]; if (!fn) return false;
+  const fn = DRAW[b.id]; if (!fn && !V2_ONLY.has(b.id)) return false;
   const F = FUNC[b.id] || FUNC.shop;
   // v2 graphics: cached, textured, shaded pixel-art painter (bldgfx.js); the original flat painter stays as a safety net.
   if (PAINTERS[b.id] && drawBuilding(c, b, F)) return true;
+  if (!fn) return false;
   fn(c, b, F);
   return true;
 }
