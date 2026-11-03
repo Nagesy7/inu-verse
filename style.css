@@ -820,3 +820,6 @@ body:not(.inworld) #inu-profile-badge>:not(:first-child) *{overflow:hidden;text-
  body.inworld.toast-low #toast{top:auto!important;bottom:var(--toast-b,10px)!important;max-width:calc(100vw - 2 * max(176px,24vw + 16px))!important} /* same column as the top row: clears the ticker list, stick and A/B pad */
  body.inworld.toast-low.toast-one #toast .toast:nth-last-child(n+2){display:none}
 }
+/* HUD top-row fit (src/hudfit.js): compact online chip / HUD sub-labels only when the chip would sit on the HUD chip row */
+body.mp-tight #mp-chip[data-n] span{display:none}body.mp-tight #mp-chip[data-n]::after{content:attr(data-n)}body.mp-tight #mp-chip{min-width:0;padding-left:8px;padding-right:8px}
+body.hud-tight #hud .chip small{display:none}
