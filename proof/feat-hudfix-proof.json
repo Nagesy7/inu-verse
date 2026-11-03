@@ -1,0 +1,300 @@
+{
+ "url": "https://inu-verse-tawny.vercel.app/",
+ "viewport": [
+  844,
+  390
+ ],
+ "at": "2026-11-03T03:33:23.078Z",
+ "checks": [
+  {
+   "name": "prompt visible",
+   "pass": true
+  },
+  {
+   "name": "town-news ticker visible (live feed)",
+   "pass": true
+  },
+  {
+   "name": "ticker does not cover prompt",
+   "pass": true
+  },
+  {
+   "name": "ticker below HUD row",
+   "pass": true
+  },
+  {
+   "name": "open news list clear of prompt",
+   "pass": true
+  },
+  {
+   "name": "open news list clear of joystick",
+   "pass": true
+  },
+  {
+   "name": "toasts do not sit on prompt",
+   "pass": true
+  },
+  {
+   "name": "toasts clear of ticker",
+   "pass": true
+  },
+  {
+   "name": "toasts clear of #stick",
+   "pass": true
+  },
+  {
+   "name": "toasts clear of #btn-a",
+   "pass": true
+  },
+  {
+   "name": "toasts clear of #tbtns",
+   "pass": true
+  },
+  {
+   "name": "toasts clear of #inu-wallet",
+   "pass": true
+  },
+  {
+   "name": "toasts clear of #hud",
+   "pass": true
+  },
+  {
+   "name": "crier banner clear of prompt",
+   "pass": true
+  },
+  {
+   "name": "toasts step below crier",
+   "pass": true
+  },
+  {
+   "name": "toasts still clear of stick/A",
+   "pass": true
+  }
+ ],
+ "scenes": {
+  "ticker": {
+   "#hud": [
+    8,
+    8,
+    523,
+    52
+   ],
+   "#prompt": [
+    237,
+    60,
+    607,
+    102
+   ],
+   "#feed-tick": [
+    8,
+    108,
+    208,
+    136
+   ],
+   "#stick": [
+    18,
+    252,
+    138,
+    372
+   ],
+   "#btn-a": [
+    762,
+    252,
+    826,
+    316
+   ],
+   "#tbtns": [
+    676,
+    242,
+    826,
+    372
+   ],
+   "#inu-wallet": [
+    702,
+    62,
+    836,
+    106
+   ],
+   "#menu-btn": [
+    788,
+    8,
+    836,
+    56
+   ]
+  },
+  "tickerOpen": {
+   "#hud": [
+    8,
+    8,
+    523,
+    52
+   ],
+   "#prompt": [
+    237,
+    61,
+    607,
+    103
+   ],
+   "#feed-tick": [
+    8,
+    108,
+    208,
+    240
+   ],
+   "#feed-tick .ft-list": [
+    8,
+    136,
+    208,
+    240
+   ],
+   "#stick": [
+    18,
+    252,
+    138,
+    372
+   ],
+   "#btn-a": [
+    762,
+    252,
+    826,
+    316
+   ],
+   "#tbtns": [
+    676,
+    242,
+    826,
+    372
+   ],
+   "#inu-wallet": [
+    702,
+    62,
+    836,
+    106
+   ],
+   "#menu-btn": [
+    788,
+    8,
+    836,
+    56
+   ]
+  },
+  "toasts": {
+   "#hud": [
+    8,
+    8,
+    523,
+    52
+   ],
+   "#prompt": [
+    237,
+    62,
+    607,
+    104
+   ],
+   "#feed-tick": [
+    8,
+    108,
+    208,
+    136
+   ],
+   "#toast": [
+    307,
+    108,
+    538,
+    197
+   ],
+   "#stick": [
+    18,
+    252,
+    138,
+    372
+   ],
+   "#btn-a": [
+    762,
+    252,
+    826,
+    316
+   ],
+   "#tbtns": [
+    676,
+    242,
+    826,
+    372
+   ],
+   "#inu-wallet": [
+    702,
+    62,
+    836,
+    106
+   ],
+   "#menu-btn": [
+    788,
+    8,
+    836,
+    56
+   ]
+  },
+  "crier": {
+   "#hud": [
+    8,
+    8,
+    523,
+    52
+   ],
+   "#prompt": [
+    237,
+    59,
+    607,
+    101
+   ],
+   "#feed-tick": [
+    8,
+    108,
+    208,
+    136
+   ],
+   "#toast": [
+    307,
+    164,
+    538,
+    253
+   ],
+   "#crier-banner": [
+    268,
+    108,
+    576,
+    152
+   ],
+   "#stick": [
+    18,
+    252,
+    138,
+    372
+   ],
+   "#btn-a": [
+    762,
+    252,
+    826,
+    316
+   ],
+   "#tbtns": [
+    676,
+    242,
+    826,
+    372
+   ],
+   "#inu-wallet": [
+    702,
+    62,
+    836,
+    106
+   ],
+   "#menu-btn": [
+    788,
+    8,
+    836,
+    56
+   ]
+  }
+ }
+}
