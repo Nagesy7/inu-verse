@@ -728,3 +728,6 @@ body[data-guide] #crier-banner{top:calc(max(8px,env(safe-area-inset-top)) + 104p
 .times .tag{font-family:Silkscreen,monospace;font-size:9px;background:#141a2e;color:#f2cc68;padding:1px 5px}.times h3,.times h4{margin:4px 0;color:#141a2e;font-size:16px}.times .lead h3{font-size:21px}.times .small{color:#5a5a5a}
 .times .cols{column-width:240px;column-gap:16px}.times .cols article{break-inside:avoid}
 @media (max-height:430px){.sbpage{grid-template-columns:repeat(auto-fill,minmax(130px,1fr))}.times header h2{font-size:20px}.times .lead h3{font-size:17px}}
+/* alive p1: HUD sky icon inside the clock chip (12px native, pixel-scaled) */
+#clock{gap:4px}#clock .skyic{width:16px;height:16px;image-rendering:pixelated;flex:none}
+@media (max-height:500px){#clock .skyic{width:12px;height:12px}}

@@ -113,6 +113,7 @@ import * as KM from './kibblemood.js';
 import * as MWd from './moodworld.js';
 import * as FS from './foundingseats.js';
 import * as BurnVote from './burnvote.js';
+import * as SKY from './weather.js';
 import { ensurePacks, myPack, meIn, createPack, joinPack, leavePack, kickMember, recruitNpc, contribute, buyForPack, donateFurniture, upgradeClubhouse, placePackFurniture, movePackFurniture, storePackFurniture, postToBoard, recordActivity, memberScore, packScore, leaderboard, simulatePacks, packOfName, PACK_CREATE_COST, EMBLEMS, SEASON, SCORE, ME } from './packs.js';
 
 const $ = (s) => document.querySelector(s);
@@ -139,6 +140,11 @@ const myCompanion = () => (state && mode === 'world' && !drive ? IQC.chosen(CMP.
 const SYD_Q = /^(\d{1,2}):(\d{2})$/.exec(new URLSearchParams(location.search).get('sydney') || ''); let sydMin = 0, sydAt = -1;
 const sydneyNow = () => (globalThis.__sydneyMin ?? (SYD_Q ? +SYD_Q[1] * 60 + +SYD_Q[2] : sydneyMinutes()));
 const walkNow = () => (globalThis.__walkClock ?? Date.now()); // dog walks follow the shared wall clock (same place on every client)
+// shared sky (src/weather.js): 24-min in-game day + weather from the wall clock; ?tod= / ?wx= / ?fx=low pin visuals only
+const SKYQ = SKY.parseSkyParams(location.search), SKYS = { shift: 0, pinH: SKYQ.tod ? SKY.TOD_PIN[SKYQ.tod] : null, wx: SKYQ.wx, pool: SKY.makeSky() };
+const skyNow = () => (globalThis.__skyClock ?? Date.now());
+function syncSky() { dayOffset = (SKYS.pinH != null ? timeForHour(SKYS.pinH) : SKY.skyWorldT(skyNow(), DAY_LEN) + SKYS.shift) - time; }
+const skyWx = () => SKY.weatherVals(SKYS.wx || SKY.weatherKind(skyNow()));
 let vignette = null, miniBase = null;
 const keys = new Set();
 const touch = { x: 0, y: 0, id: null };
@@ -706,7 +712,8 @@ function updateWorld(dt) {
   if (player.emote) { player.emote.t -= dt; if (player.emote.kind === 'zoomies') { const a = player.emote.t * 5; moveBody(p, Math.cos(a) * 150 * dt, Math.sin(a) * 150 * dt); player.moving = true; player.phase += dt * 20; player.face = Math.cos(a + 1.57) > 0 ? 'right' : 'left'; } if (player.emote.t <= 0) player.emote = null; }
   stepActor(ACT, dt, time, { moving: player.moving || !!drive, busy: !!panel || !!scene });
   { const vw = innerWidth / ZOOM, vh = innerHeight / ZOOM; stepAlive(ALIVE, dt, { x0: cam.x - vw / 2, y0: cam.y - vh / 2, x1: cam.x + vw / 2, y1: cam.y + vh / 2 }, Math.random, player.running && !drive ? p : null); }
-  for (const e of stepAmbient(amb, dt, p, npcs, { running: player.running && !drive, hour: dayPhase(time + dayOffset).hour, dark: dayPhase(time + dayOffset).dark })) { if (e.kind === 'flush') chirp(); if (e.kind === 'fetched') toast(`${e.who} brought the ball back!`, 'good'); }
+  amb.sky = SKYS.pool; SKY.stepSky(SKYS.pool, dt, amb.rain, innerWidth / ZOOM, innerHeight / ZOOM, { reduced: reducedMotion(), flag: SKYQ.low });
+  for (const e of stepAmbient(amb, dt, p, npcs, { running: player.running && !drive, hour: dayPhase(time + dayOffset).hour, dark: dayPhase(time + dayOffset).dark, weather: skyWx() })) { if (e.kind === 'flush') chirp(); if (e.kind === 'fetched') toast(`${e.who} brought the ball back!`, 'good'); }
   { const c = myCompanion(), F = CMP.F; if (!c) F.c = null; else { if (F.c?.id !== c.id || F.c?.form?.id !== c.form?.id) { if (!F.c) IQC.resetFollower(F, p, c); else F.c = c; }
       IQC.stepFollow(F, p, dt, { rm: reducedMotion(), back: activePet(state) ? 56 : 30 }); /* walks behind the Verse pet when both are out */ const ph = dayPhase(time + dayOffset); IQC.react(F, IQC.envFor(F, { rain: amb.rain, dark: ph.dark, others: [...CMP.remotes.values()] })); } }
   if (rng() < dt * 0.08) chirp();
@@ -804,7 +811,7 @@ function renderWorld() {
   guide.drawWorld(ctx, time, state.player);
   ctx.restore();
   drawAtmosphere(ctx, amb, phase, { x: vw / 2 - ox, y: vh / 2 - oy }, vw, vh, () => lightsFor(state, phase, homeId()));
-  $('#clock').textContent = `${String(Math.floor(phase.hour)).padStart(2, '0')}:${String(Math.floor((phase.hour % 1) * 60)).padStart(2, '0')} ${amb.rain > 0.3 ? 'rain' : phase.label} · ${seasonOf(gameDay())}`;
+  SKY.updateSkyHud($('#clock'), { hour: phase.hour, tod: SKY.todOf(phase.hour), wx: amb.rain > 0.3 ? 'rain' : (amb.cloud || 0) > 0.5 ? 'cloudy' : 'clear', season: seasonOf(gameDay()) });
   if (!vignette || vignette.width !== SW || vignette.height !== SH) { vignette = document.createElement('canvas'); vignette.width = SW; vignette.height = SH; const v = vignette.getContext('2d'), g = v.createRadialGradient(SW / 2, SH / 2, SH * 0.45, SW / 2, SH / 2, SH * 1.05); g.addColorStop(0, 'rgba(18,26,54,0)'); g.addColorStop(1, 'rgba(12,16,34,0.38)'); v.fillStyle = g; v.fillRect(0, 0, SW, SH); }
   ctx.setTransform(dpr, 0, 0, dpr, 0, 0); MWd.drawWeather(ctx, time, SW, SH, { reduced: reducedMotion() }); ctx.drawImage(vignette, 0, 0);
   minimap(-ox, -oy, vw, vh);
@@ -2180,7 +2187,7 @@ function renderMall() {
 // ---------------- Loop ----------------
 function liveScores() { for (const e of document.querySelectorAll('[data-pscore]')) { const p = state.packs?.all?.[e.dataset.pscore]; if (p) { const v = String(packScore(p)); if (e.textContent !== v) e.textContent = v; } } }
 function frame(now) {
-  const dt = Math.min(0.05, (now - lastT) / 1000); lastT = now; time += dt;
+  const dt = Math.min(0.05, (now - lastT) / 1000); lastT = now; time += dt; syncSky();
   if (state) {
     state.clockSec += dt; { const m = ensureMall(state), dEarn = state.stats.bonesEarned - lastEarned; if (dEarn > 0) m.activity.dayBones += dEarn; lastEarned = state.stats.bonesEarned;
       const day = Math.floor(state.clockSec / DAY_LEN); if (day > m.period.day) for (const w of rollPeriods(state, day, poolEntries(state, 1))) toast(`${w.pool} prize pool: ${w.winner} wins ${fmtK(w.amount)} demo KIBBLE (score ${w.score})`, 'good'); }
@@ -2244,7 +2251,7 @@ cv.addEventListener('wheel', (e) => { if (mode !== 'world') return; e.preventDef
   cv.addEventListener('touchmove', (e) => { if (!pinch || e.touches.length !== 2) return; const d = dist(e.touches); if (d / pinch > 1.35) { setZoom(stepZoom(ZOOM, 1)); pinch = d; } else if (pinch / d > 1.35) { setZoom(stepZoom(ZOOM, -1)); pinch = d; } }, { passive: true });
   cv.addEventListener('touchend', (e) => { if (e.touches.length < 2) pinch = null; }, { passive: true }); }
 document.getElementById('zin')?.addEventListener('click', () => setZoom(stepZoom(ZOOM, 1))); document.getElementById('zout')?.addEventListener('click', () => setZoom(stepZoom(ZOOM, -1)));
-window.__inu = { guide, open: (k, o) => openPanel(k, o), get time() { return time; }, get player() { return player; }, get zoom() { return ZOOM; }, setZoom, president: pres, presVisit: (k) => startVisit(pres, k, { dayLen: DAY_LEN }), setHour: (h) => { dayOffset = timeForHour(h) - time; }, setRain: (r) => { amb.rain = amb.rainTarget = r; amb.weatherT = 999; }, get amb() { return amb; }, get npcs() { return npcs; }, get mood() { return { ...MOOD.current, shown: MWd.MW.mood }; }, emote: (k) => doEmote(k), cam, get state() { return state; }, get mode() { return mode; }, get panel() { return panel?.kind; }, get panelObj() { return panel; }, mp: MPL, club: { hunt: () => huntNow(), party: () => partyNow(), kennel: () => enterKennel(), room: (id, at) => enterRoom(id, at || null), get rp() { return RP; } } };
+window.__inu = { guide, open: (k, o) => openPanel(k, o), get time() { return time; }, get player() { return player; }, get zoom() { return ZOOM; }, setZoom, president: pres, presVisit: (k) => startVisit(pres, k, { dayLen: DAY_LEN }), setHour: (h) => { const w = SKY.skyWorldT(skyNow(), DAY_LEN); SKYS.pinH = null; SKYS.shift = timeForHour(h) - (((w % DAY_LEN) + DAY_LEN) % DAY_LEN); syncSky(); }, setRain: (r) => { SKYS.wx = r ? 'rain' : 'clear'; amb.rain = amb.rainTarget = amb.cloud = amb.cloudTarget = r ? 1 : 0; amb.weatherT = 999; }, sky: SKYS, get amb() { return amb; }, get npcs() { return npcs; }, get mood() { return { ...MOOD.current, shown: MWd.MW.mood }; }, emote: (k) => doEmote(k), cam, get state() { return state; }, get mode() { return mode; }, get panel() { return panel?.kind; }, get panelObj() { return panel; }, mp: MPL, club: { hunt: () => huntNow(), party: () => partyNow(), kennel: () => enterKennel(), room: (id, at) => enterRoom(id, at || null), get rp() { return RP; } } };
 // Inu Arcade inside the desktop overlay: its 🏠 button asks us to close the overlay instead of reloading.
 // framed Arcade (hall peek) -> Verse: ready / exit (close + inu:back-to-verse alias) / score. Origin pinned (districts.js). Score = toast only.
 addEventListener('message', (e) => { const m = DIS.arcadeMessage(e, new URL(ARCADE.url).origin); if (!m) return; globalThis.__arcadeMsgs = [...(globalThis.__arcadeMsgs || []).slice(-9), m];

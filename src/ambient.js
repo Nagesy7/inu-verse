@@ -6,6 +6,7 @@ import { luxuryLights } from './luxury.js';
 import { TILE, MAP_W, MAP_H, MAP, T, BUILDINGS, PLOTS, MALL_BUILDINGS, NPC_HOMES, findPath, isSolid } from './world.js';
 import { mulberry32 } from './rng.js';
 import { reducedMotion, inView } from './alive.js';
+import { fireflySpots, drawSky, drawFireflies, CAPS as SKY_CAPS } from './weather.js';
 
 export const DAY_LEN = 720; // seconds per in-game day (~12 real minutes)
 export const LAMP_TILES = [[8, 18], [24, 18], [40, 23], [52, 18], [12, 29], [44, 29], [20, 34], [50, 34], [13, 46], [50, 46], [24, 56], [40, 56], [29, 5], [45, 34]];
@@ -37,7 +38,7 @@ export function makeAmbient(seed = 7) {
   A.ducks = [[5, 3, 4, 5], [11, 3, 3, 5], [37, 35, 9, 4], [48, 35, 7, 4]].flatMap(([x, y, w, h], j) => Array.from({ length: j % 2 ? 1 : 2 }, (_, i) => ({ cx: (x + w / 2) * TILE, cy: (y + h / 2) * TILE, rx: Math.max(10, (w / 2 - 0.9) * TILE), ry: Math.max(8, (h / 2 - 1) * TILE), a: rng() * 6.28, s: (0.12 + rng() * 0.1) * (i % 2 ? 1 : -1) })));
   A.butterflies = spots([T.FLOWER], rng, 9).map(([x, y]) => ({ hx: (x + .5) * TILE, hy: (y + .5) * TILE, p: rng() * 9, col: rng.pick(['#f6efe0', '#f2cc68', '#f08cb0', '#9fd0ff']) }));
   A.squirrels = spots([T.TREE], rng, 40).filter(([x, y]) => x > 0 && y > 0 && x < MAP_W - 1 && y < MAP_H - 1).slice(0, 3).map(([x, y]) => ({ x: (x + .5) * TILE, y: (y + 1.2) * TILE, hx: (x + .5) * TILE, p: rng() * 9 }));
-  A.fireflies = Array.from({ length: 40 }, () => ({ x: rng() * MAP_W * TILE, y: rng() * MAP_H * TILE, p: rng() * 9 }));
+  A.fireflies = fireflySpots(rng); // <= 30, only over park grass / flower beds near trees
   // street traffic: two lanes per road, right-hand traffic (east in the lower lane, west in the upper; south on the avenue's west lane)
   A.cars = [
     { dir: 'east', row: 20, x: 3 * TILE, v: 110, col: '#c8323c' }, { dir: 'west', row: 20, x: 40 * TILE, v: 95, col: '#2f6fbd', kind: 'coupe' },
@@ -158,7 +159,9 @@ export function stepAmbient(A, dt, player, npcs = [], opts = {}) {
     if (c.dir === 'east') { c.x += d; if (c.x > MAP_W * TILE + 80) c.x = -80; } else if (c.dir === 'west') { c.x -= d; if (c.x < -80) c.x = MAP_W * TILE + 80; }
     else if (c.dir === 'south') { c.y += d; if (c.y > hi) c.y = lo; } else { c.y -= d; if (c.y < lo) c.y = hi; }
     c.alpha = c.row != null ? 1 : Math.max(0, Math.min(1, (c.y - lo) / 40, (hi - c.y) / 40)); }
-  A.weatherT -= dt; if (A.weatherT < 0) { A.rainTarget = A.rainTarget ? 0 : (r() < 0.45 ? 1 : 0); A.weatherT = 60 + r() * 120; }
+  if (opts.weather) { A.rainTarget = opts.weather.rain; A.cloudTarget = opts.weather.cloud; } // shared deterministic sky (src/weather.js)
+  else { A.weatherT -= dt; if (A.weatherT < 0) { A.rainTarget = A.rainTarget ? 0 : (r() < 0.45 ? 1 : 0); A.weatherT = 60 + r() * 120; } A.cloudTarget = A.rainTarget; }
+  { const ct = A.cloudTarget ?? 0, c0 = A.cloud ?? 0; A.cloud = c0 + Math.sign(ct - c0) * Math.min(Math.abs(ct - c0), dt * 0.2); }
   A.rain += Math.sign(A.rainTarget - A.rain) * Math.min(Math.abs(A.rainTarget - A.rain), dt * 0.2);
   if (A.ball) {
     const B = A.ball;
@@ -197,7 +200,7 @@ export const unreadMail = (s) => (s.mail || []).filter((m) => !m.read).length;
 const R = (c, x, y, w, h, col) => { c.fillStyle = col; c.fillRect(Math.round(x), Math.round(y), Math.round(w), Math.round(h)); };
 export function drawGroundLife(c, A, phase, view = null) {
   const t = A.t, V = (x, y, m = 40) => !view || inView(x, y, view, m);
-  for (const p of A.puddles) if (A.rain > 0.05 && V(p.x, p.y)) { c.globalAlpha = A.rain * 0.7; R(c, p.x - p.w / 2, p.y - 3, p.w, 6, '#4a6a9a'); R(c, p.x - p.w / 2 + 2, p.y - 2, p.w / 2, 1, '#9ec0e8'); c.globalAlpha = 1; }
+  for (const p of A.puddles) if (A.rain > 0.05 && V(p.x, p.y)) { c.globalAlpha = A.rain * 0.7; R(c, p.x - p.w / 2, p.y - 3, p.w, 6, '#4a6a9a'); R(c, p.x - p.w / 2 + 2, p.y - 2, p.w / 2, 1, '#9ec0e8'); if (!A.sky?.low && Math.sin(t * 3 + p.x * 0.37) > 0.85) R(c, p.x + p.w / 4, p.y - 2, 2, 1, '#ffffff'); c.globalAlpha = 1; }
   for (const k of A.ducks) { const x = k.cx + Math.cos(k.a) * k.rx, y = k.cy + Math.sin(k.a) * k.ry, f = Math.sin(k.a) * k.s > 0 ? 1 : -1, bob = Math.sin(t * 3 + k.a) * 1; if (!V(x, y)) continue;
     R(c, x - 9, y + 3, 18, 2, '#4a8fc0'); R(c, x - 7, y - 4 + bob, 14, 7, '#f6efe0'); R(c, x - 7, y + 1 + bob, 14, 2, '#d8d0c0'); R(c, x + f * 4 - 2, y - 9 + bob, 6, 6, '#3f8a4a'); R(c, x + f * 8 - (f < 0 ? 4 : 0), y - 7 + bob, 4, 2, '#f0a030'); R(c, x + f * 5, y - 8 + bob, 1, 1, '#111'); }
   for (const s of A.squirrels) { if (!V(s.hx, s.y, 60)) continue; const run = Math.sin(t * 0.7 + s.p), x = s.hx + run * 24, hop = Math.abs(Math.sin(t * 8 + s.p)) * 3 * (Math.abs(Math.cos(t * .7 + s.p)) > .3);
@@ -222,44 +225,47 @@ export function drawSkyLife(c, A, phase, view = null) {
   for (const b of A.birds) if ((b.state === 'fly' || b.state === 'return') && V(b.x, b.y - b.z, 60)) { const w = Math.sin(t * 20) > 0 ? 3 : -2; R(c, b.x - 3, b.y + 4, 6, 2, 'rgba(0,0,0,.18)'); R(c, b.x - 5, b.y - b.z + w, 4, 2, b.col); R(c, b.x + 1, b.y - b.z + w, 4, 2, b.col); R(c, b.x - 1, b.y - b.z, 3, 3, b.col); }
   for (const f of A.flyers) { if (!V(f.x, f.y, 90)) continue; const w = Math.sin(t * 9 + f.i) > 0 ? 3 : -3; R(c, f.x + 30, f.y + 70, 8, 3, 'rgba(10,14,30,.2)'); R(c, f.x - 7, f.y + w, 6, 2, '#2a2430'); R(c, f.x + 1, f.y + w, 6, 2, '#2a2430'); R(c, f.x - 1, f.y, 3, 3, '#2a2430'); }
   for (const b of A.butterflies) { if (!V(b.hx, b.hy)) continue; const x = b.hx + Math.sin(t * 1.3 + b.p) * 18, y = b.hy - 10 + Math.sin(t * 2.1 + b.p * 2) * 8, w = Math.sin(t * 16 + b.p) > 0 ? 3 : 1; R(c, x - w, y, w, 3, b.col); R(c, x + 1, y, w, 3, b.col); R(c, x, y, 1, 3, '#222'); }
-  if (phase.dark > 0.3) { c.globalCompositeOperation = 'lighter'; for (const f of A.fireflies) { if (!V(f.x, f.y, 30)) continue; const a = (Math.sin(t * 2 + f.p * 3) + 1) / 2 * phase.dark; const x = f.x + Math.sin(t * .5 + f.p) * 20, y = f.y + Math.cos(t * .4 + f.p) * 14; c.fillStyle = `rgba(200,255,120,${a * .35})`; c.fillRect(x - 3, y - 3, 7, 7); c.fillStyle = `rgba(240,255,170,${a})`; c.fillRect(x, y, 2, 2); }
+  if (phase.dark > 0.3) { c.globalCompositeOperation = 'lighter'; 
     for (const L of LAMPS) if (V(L.x, L.y)) for (let k = 0; k < 3; k++) { const a = t * 3 + k * 2.1 + L.x, x = L.x + Math.cos(a) * 9, y = L.y + Math.sin(a * 1.3) * 6; c.fillStyle = 'rgba(255,240,200,.8)'; c.fillRect(x, y, 2, 2); }
     c.globalCompositeOperation = 'source-over'; }
 }
 // Screen-space overlay: colour grade (multiply) with additive light pools, then weather.
 const mix = (a, b, k) => a.map((v, i) => Math.round(v + (b[i] - v) * k));
-export function gradeFor(phase, rain = 0) {
+export function gradeFor(phase, rain = 0, cloud = 0) {
   let g = [255, 255, 255];
   if (phase.dark > 0) g = mix(g, [52, 62, 128], Math.min(1, phase.dark / 0.62));
   const warm = phase.label === 'sunset' || phase.label === 'dawn' ? phase.tint[3] : 0; // night's tint is cool, not a sunset glow
-  if (warm > 0) g = mix(g, [255, 168, 120], Math.min(1, warm * 1.6));
+  if (warm > 0) g = mix(g, [255, 168, 120], Math.min(1, warm * 3)); // golden-hour wash at dawn / dusk
+  if (cloud > 0) g = mix(g, [206, 212, 228], Math.min(1, cloud) * 0.45); // overcast: a soft grey-blue grade
   if (rain > 0) g = mix(g, [168, 182, 214], rain * 0.6);
   return g;
 }
 export function drawAtmosphere(c, A, phase, cam, vw, vh, lightsArg) {
   let lights = lightsArg; if (typeof lights === 'function') lights = phase.dark / 0.62 > 0.15 ? lights() : []; // lazy: the light list is only built when it is dark enough to use it
-  const ox = Math.round(vw / 2 - cam.x), oy = Math.round(vh / 2 - cam.y), g = gradeFor(phase, A.rain), night = Math.min(1, phase.dark / 0.62);
+  const ox = Math.round(vw / 2 - cam.x), oy = Math.round(vh / 2 - cam.y), g = gradeFor(phase, A.rain, A.cloud || 0), night = Math.min(1, phase.dark / 0.62), lit = Math.min(1, night * 2.6); // lamps + windows come on through dusk
   if (g.some((v) => v < 254)) {
     if (!A.lcv) A.lcv = document.createElement('canvas');
     const L = A.lcv; if (L.width !== vw || L.height !== vh) { L.width = vw; L.height = vh; }
     const x = L.getContext('2d'); x.globalCompositeOperation = 'source-over'; x.fillStyle = `rgb(${g})`; x.fillRect(0, 0, vw, vh);
     if (night > 0.15) { x.globalCompositeOperation = 'lighter';
       for (const l of lights) { const lx = l.x + ox, ly = (l.gy ?? l.y) + oy; if (lx < -l.r || ly < -l.r || lx > vw + l.r || ly > vh + l.r) continue;
-        const gr = x.createRadialGradient(lx, ly, 0, lx, ly, l.r); gr.addColorStop(0, `rgba(255,196,124,${0.52 * night})`); gr.addColorStop(0.55, `rgba(150,100,60,${0.16 * night})`); gr.addColorStop(1, 'rgba(0,0,0,0)');
+        const gr = x.createRadialGradient(lx, ly, 0, lx, ly, l.r); gr.addColorStop(0, `rgba(255,196,124,${0.52 * lit})`); gr.addColorStop(0.55, `rgba(150,100,60,${0.16 * lit})`); gr.addColorStop(1, 'rgba(0,0,0,0)');
         x.fillStyle = gr; x.beginPath(); x.ellipse(lx, ly, l.r, l.r * (l.flat ?? 0.6), 0, 0, 7); x.fill(); } }
     c.save(); c.globalCompositeOperation = 'multiply'; c.drawImage(L, 0, 0); c.restore();
     if (night > 0.15) { c.save(); c.globalCompositeOperation = 'lighter';
       for (const l of lights) if (l.glow) { const lx = l.x + ox, ly = l.y + oy; if (lx < -60 || ly < -60 || lx > vw + 60 || ly > vh + 60) continue; const r = l.core || 26;
-        const gr = c.createRadialGradient(lx, ly, 0, lx, ly, r); gr.addColorStop(0, `rgba(255,220,140,${0.42 * night})`); gr.addColorStop(1, 'rgba(255,170,80,0)'); c.fillStyle = gr; c.fillRect(lx - r, ly - r, r * 2, r * 2); }
+        const gr = c.createRadialGradient(lx, ly, 0, lx, ly, r); gr.addColorStop(0, `rgba(255,220,140,${0.42 * lit})`); gr.addColorStop(1, 'rgba(255,170,80,0)'); c.fillStyle = gr; c.fillRect(lx - r, ly - r, r * 2, r * 2); }
       c.restore(); }
     if (phase.tint[3] > 0 && phase.label !== 'night') { const gr = c.createLinearGradient(0, 0, 0, vh); gr.addColorStop(0, `rgba(255,150,90,${phase.tint[3] * 0.5})`); gr.addColorStop(1, 'rgba(255,120,80,0)'); c.save(); c.globalCompositeOperation = 'soft-light'; c.fillStyle = gr; c.fillRect(0, 0, vw, vh); c.restore(); }
   }
   const t = A.t;
-  if (A.rain > 0.02) { // pixel rain streaks (two depths) + ground splashes
-    const n = Math.floor(220 * A.rain);
+  if (phase.dark > 0.3 && A.rain < 0.5) drawFireflies(c, A.fireflies, t, phase.dark, ox, oy, vw, vh, reducedMotion() || !!A.sky?.low); // after the grade so they glow
+  if (A.rain > 0.02 && A.sky) drawSky(c, A.sky, A.rain); // pooled, capped rain (src/weather.js)
+  else if (A.rain > 0.02) { // headless/legacy path: procedural pixel rain streaks (two depths) + ground splashes, same caps
+    const n = Math.floor(SKY_CAPS.rain * A.rain);
     for (let i = 0; i < n; i++) { const far = i % 3 === 0, sp = far ? 520 : 820, x = Math.round(((i * 97.3 + t * (far ? 90 : 140)) % (vw + 40)) - 20), y = Math.round((i * 53.7 + t * sp + i * i * 0.37) % (vh + 30)) - 15;
       c.fillStyle = far ? `rgba(170,190,240,${A.rain * 0.35})` : `rgba(210,225,255,${A.rain * 0.6})`; for (let k = 0; k < (far ? 3 : 5); k++) c.fillRect(x - k, y + k * 3, 1, 3); }
-    for (let i = 0; i < Math.floor(40 * A.rain); i++) { const ph = (t * 3 + i * 0.37) % 1, x = Math.round((i * 211.7 + Math.floor(t * 3 + i * 0.37) * 97) % vw), y = Math.round((i * 137.3 + Math.floor(t * 3 + i * 0.37) * 61) % vh), r = 1 + Math.floor(ph * 4);
+    for (let i = 0; i < Math.floor(SKY_CAPS.splash * A.rain); i++) { const ph = (t * 3 + i * 0.37) % 1, x = Math.round((i * 211.7 + Math.floor(t * 3 + i * 0.37) * 97) % vw), y = Math.round((i * 137.3 + Math.floor(t * 3 + i * 0.37) * 61) % vh), r = 1 + Math.floor(ph * 4);
       c.fillStyle = `rgba(220,235,255,${(1 - ph) * 0.6 * A.rain})`; c.fillRect(x - r, y, 1, 1); c.fillRect(x + r, y, 1, 1); c.fillRect(x - r + 1, y - 1, r * 2 - 1, 1); c.fillRect(x - r + 1, y + 1, r * 2 - 1, 1); }
   } else if (night < 0.5) for (const p of A.petals) { // sakura petals: tumbling 3-frame sprites drifting on the breeze
     const x = Math.round(((p.x + t * 22 + Math.sin(t * 0.8 + p.p) * 34) % (vw + 40)) - 20), y = Math.round(((p.y + t * 16 + Math.sin(t * 1.7 + p.p) * 6) % (vh + 40)) - 20), f = Math.floor(t * 6 + p.p * 3) % 4;
