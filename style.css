@@ -814,3 +814,9 @@ body:not(.inworld):not(.short) #inu-profile-badge{top:auto!important;bottom:calc
 body:not(.inworld):not(.landscape) #inu-profile-badge{top:calc(max(8px,env(safe-area-inset-top)) + 8px)!important;bottom:auto!important;left:auto!important;right:max(8px,env(safe-area-inset-right))!important;transform:none!important;max-width:calc(50vw - 82px)!important}
 body:not(.inworld):not(.landscape) #inu-profile-badge>:not(:first-child){max-width:calc(50vw - 82px - 32px)}
 body:not(.inworld) #inu-profile-badge>:not(:first-child) *{overflow:hidden;text-overflow:ellipsis;max-width:100%}
+/* Toasts off the player (phone landscape): bottom-centre strip above the event banner / chat bar, never over the pup in the middle
+   of the screen (src/toastfit.js sets body.toast-low + --toast-b; body.toast-one = room for the newest line only) */
+@media (orientation:landscape) and (max-height:500px){
+ body.inworld.toast-low #toast{top:auto!important;bottom:var(--toast-b,10px)!important;max-width:calc(100vw - 2 * max(176px,24vw + 16px))!important} /* same column as the top row: clears the ticker list, stick and A/B pad */
+ body.inworld.toast-low.toast-one #toast .toast:nth-last-child(n+2){display:none}
+}

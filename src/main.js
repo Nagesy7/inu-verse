@@ -122,7 +122,7 @@ import { createFeed } from './feed.js';
 import { createGhosts, spotAt, spotTiles, addBlockers as ghostBlockers } from './ghosts.js';
 import * as DQ from './quests.js'; import * as DQUI from './questsui.js'; // daily townsfolk quests (Bones only, capped)
 import { LAMP_TILES } from './ambient.js';
-import { syncChat } from './chatdodge.js'; import { fitBanners } from './bannerfit.js'; // chat bar hides under panels / modals, event banner sits above it; crier / president banner: toasts stack under it at phone landscape
+import { syncChat } from './chatdodge.js'; import { fitBanners } from './bannerfit.js'; import { fitToasts } from './toastfit.js'; // chat bar hides under panels / modals, event banner sits above it; crier / president banner: toasts stack under it at phone landscape
 import * as EVR from './events.js'; import { createEvents, ensureChip as evChip, updateChip as evChipUpdate, maybeBanner as evBanner, panelHtml as evPanelHtml, drawGear } from './eventsui.js'; // Alive phase 5: daily world events
 import * as TF from './townsfolk.js'; // Alive phase 3: wandering background townsfolk (NPC only)
 import { createTrading, renderTrade, TRADE_CSS } from './tradeui.js';
@@ -2379,7 +2379,7 @@ function frame(now) {
   MPL.step(dt); // live multiplayer (no-op when not configured)
   feedSound(dt);
   if (mode === 'world') { GH.step(dt); stepEvents(dt); }
-  if ((chatSyncT -= dt) <= 0) { chatSyncT = 0.2; syncChat(document, window); fitBanners(document, window); }
+  if ((chatSyncT -= dt) <= 0) { chatSyncT = 0.2; syncChat(document, window); fitBanners(document, window); fitToasts(document, window); }
   if (JOYS && state && (joyT -= dt) <= 0) { joyT = 0.5; const want = joyPref(state); if (want !== JOYS.on) { JOYS.set(want); joyApi.onChange?.(); } } // saved / cloud-loaded Joystick setting
   if (PAD.connected) PAD.poll(dt); // controllers: zero work unless one is plugged in
   if (mode === 'world') { updateWorld(dt); renderWorld(); drawSceneBars(); }
