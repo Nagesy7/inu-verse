@@ -39,6 +39,15 @@ const NAME_FALLBACK = '\u0000'; // cleanName fallback sentinel: a filtered name 
 // Public display name for the feed/ghosts, or null when the name is empty, filtered, or looks like an address/key/seed.
 const LINKISH = /https?:|www\.|t\.me\/|discord\.gg|\.(com|io|xyz|net|org|gg|me|app|fun|sol|link|co)\b/i; // links never become feed names
 export function feedName(raw) { if (typeof raw !== 'string') return null; const n = cleanName(raw, NAME_FALLBACK); return n === NAME_FALLBACK || !n || LINKISH.test(n) ? null : n; }
+// Test / proof runs never reach the public feed. TEST_NAME_RE: the Keeper* names agents and proofs use. LEGACY_TEST: lines a live
+// proof posted before the test flag existed (Tora / Mochi, 3 Nov 2026 AEDT) - hidden only up to that time, so a real player with
+// that name later is unaffected; they also expire on their own within 24 h. A test hello (automation: navigator.webdriver, or
+// localStorage inuverse.test = 1) still records presence for the Friends list but never posts "arrived", never shows as a ghost
+// and never posts client events.
+export const TEST_NAME_RE = /^keeper/i;
+export const LEGACY_TEST = Object.freeze([{ n: 'tora', before: Date.parse('2026-11-03T04:20:00Z') }, { n: 'mochi', before: Date.parse('2026-11-03T04:20:00Z') }]);
+export function isTestName(n, t = Infinity) { if (typeof n !== 'string') return false; if (TEST_NAME_RE.test(n.trim())) return true; const k = n.trim().toLowerCase(); return LEGACY_TEST.some((x) => x.n === k && Number(t) < x.before); }
+export function testRun(win = globalThis, ls = null) { try { if (win?.navigator?.webdriver) return true; } catch {} try { return (ls || win?.localStorage)?.getItem('inuverse.test') === '1'; } catch { return false; } }
 // extra field per type: plot number 1-8, guestbook owner name; others carry nothing
 export function cleanExtra(k, x) {
   if (k === 'plot') { const m = /^p?([1-8])$/.exec(String(x ?? '')); return m ? m[1] : null; }
@@ -52,6 +61,7 @@ export function cleanEvent(e, now = Date.now()) {
   if (!e || typeof e !== 'object' || !isEventType(e.k)) return null;
   const n = feedName(e.n); if (!n) return null; const x = cleanExtra(e.k, e.x); if (x == null) return null;
   const t = Number(e.t); if (!Number.isFinite(t) || t > now + 60_000 || now - t > FEED.TTL_S * 1000) return null;
+  if (isTestName(n, t) || (e.k === 'guestbook' && isTestName(x, t))) return null; // test / proof names never show
   return { i: typeof e.i === 'string' && /^[0-9a-f]{6,16}$/.test(e.i) ? e.i : String(Math.floor(t)).slice(-8), k: e.k, n, x, t, v: EVENT_TYPES[e.k].src === 'server' ? 1 : 0 };
 }
 export function eventText(e) { const c = cleanEvent(e, e?.t ?? Date.now()); return c ? EVENT_TYPES[c.k].text(c.n, c.x) : null; }
@@ -74,14 +84,14 @@ const esc = (s) => String(s).replace(/[&<>"']/g, (c) => `&#${c.charCodeAt(0)};`)
 
 // createFeed({ fetch, doc, now, hudEl }) -> { start, refresh, report(type), visitHello(...), state }
 // The visit handshake and ghost data live in the same /api/feed call (see ghosts.js), so one poll feeds both.
-export function createFeed({ f = (...a) => globalThis.fetch(...a), doc = globalThis.document, now = () => Date.now(), base = '', ls = (() => { try { return globalThis.localStorage || null; } catch { return null; } })(), onData = null } = {}) {
+export function createFeed({ f = (...a) => globalThis.fetch(...a), doc = globalThis.document, now = () => Date.now(), base = '', ls = (() => { try { return globalThis.localStorage || null; } catch { return null; } })(), onData = null, isTest = testRun(globalThis, ls) } = {}) {
   const S = { events: [], ghosts: [], sid: null, sidName: null, idx: -1, open: false, collapsed: ls?.getItem?.(K_COLLAPSED) === '1', lastPoll: 0, lastPing: 0, lastArea: null, busy: false, el: null, rotT: 0, getLocal: null, timer: 0 };
   const api = base + '/api/feed';
   const post = async (body) => { const r = await f(api, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(body) }); const j = await r.json().catch(() => ({})); if (!r.ok) throw Object.assign(new Error(j.error || 'feed ' + r.status), { status: r.status, retryAfter: j.retryAfter }); return j; };
   function take(j) { if (Array.isArray(j?.events)) S.events = j.events.map((e) => cleanEvent(e, now())).filter(Boolean).slice(0, FEED.MAX); if (Array.isArray(j?.ghosts)) S.ghosts = j.ghosts; try { onData?.(S); } catch {} render(); }
   async function refresh() { if (S.busy) return; S.busy = true; S.lastPoll = now(); try { const r = await f(api, { cache: 'no-store' }); if (r.ok) take(await r.json()); } catch {} finally { S.busy = false; } }
   // visit session: hello once per name (the server issues sid; events carry it, never a name of the client's choosing)
-  async function hello(L) { try { const j = await post({ op: 'hello', name: L.name, coat: L.coat, area: L.area || null, ...(L.guest ? { g: L.guest } : {}) }); if (j.sid) { S.sid = j.sid; S.sidName = L.name; S.lastArea = L.area || null; S.lastPing = now(); } take(j); } catch {} }
+  async function hello(L) { try { const j = await post({ op: 'hello', name: L.name, coat: L.coat, area: L.area || null, ...(L.guest ? { g: L.guest } : {}), ...(isTest ? { test: 1 } : {}) }); if (j.sid) { S.sid = j.sid; S.sidName = L.name; S.lastArea = L.area || null; S.lastPing = now(); } take(j); } catch {} }
   async function ping(L) { S.lastPing = now(); S.lastArea = L.area || S.lastArea; try { take(await post({ op: 'ping', sid: S.sid, area: L.area || null, coat: L.coat, ...(L.guest ? { g: L.guest } : {}) })); } catch (e) { if (e.status === 404) S.sid = null; } }
   async function report(type, x = '') { const L = S.getLocal?.(); if (!S.sid || !L || !CLIENT_TYPES.includes(type) || cleanExtra(type, x) == null) return false; try { take(await post({ op: 'event', sid: S.sid, type, area: L.area || null, ...(x ? { x } : {}) })); return true; } catch { return false; } }
   function tick() { const L = (() => { try { return S.getLocal?.(); } catch { return null; } })(), t = now(), vis = !doc || doc.visibilityState !== 'hidden';

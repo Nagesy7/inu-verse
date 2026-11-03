@@ -2,7 +2,7 @@
 // GET                                   -> { events:[{i,k,n,x,t,v}], ghosts:[{n,c,a,t}] }  (ghosts = seen 10 min .. 24 h ago)
 // GET ?who=Name1,Name2 (max 50)        -> { who: { <lower name>: { n, on, a, t } } } presence for the Friends list: a = named spot only
 //                                          while online (seen < 3 min), t rounded to the minute. Public names only.
-// POST { op:"hello", name, coat, area } -> { sid, events, ghosts }  starts a visit session (name cleaned with cleanName; a filtered
+// POST { op:"hello", name, coat, area, test? } -> { sid, events, ghosts }  starts a visit session (test:1 / Keeper* = proof run: presence only) (name cleaned with cleanName; a filtered
 //                                          name gets no session and is never stored). Logs "X arrived in town" at most once per
 //                                          name per 6 h and once per IP per 10 min. Rate limits per hashed IP: 1 hello / 15 s, 8 / h.
 // POST { op:"ping", sid, area, coat, g? } (g = the device's multiplayer guest tag Pup1234, also accepted on hello)   -> keeps the visitor's last spot / last seen fresh (1 per 20 s per session)
@@ -17,7 +17,7 @@
 import { createHash, randomBytes } from 'node:crypto';
 import { upstashKv, memoryKv } from './_lib/kv.js';
 import { appendEvent, readEvents, readVisitors, touchVisitor } from './_lib/feed.js';
-import { CLIENT_TYPES, FEED, feedName, cleanExtra } from '../src/feed.js';
+import { CLIENT_TYPES, FEED, feedName, cleanExtra, isTestName } from '../src/feed.js';
 import { GEAR, eventToday, eventArea } from '../src/events.js';
 import { GHOST, validSpot } from '../src/ghosts.js';
 import { whoKeys, whoOut } from '../src/friends.js';
@@ -28,7 +28,7 @@ const sha = (s) => createHash('sha256').update(String(s)).digest('hex');
 const ipOf = (req) => String(req.headers?.['x-forwarded-for'] || req.socket?.remoteAddress || '?').split(',')[0].trim();
 const SID_RE = /^[0-9a-f]{24}$/, COAT_RE = /^[a-z0-9_-]{1,24}$/, GUEST_RE = /^Pup\d{4}$/;
 let MEM = null;
-export function ghostsOut(vis, now) { return Object.values(vis).filter((v) => validSpot(v.a) && now - v.t >= GHOST.ONLINE_MS).sort((a, b) => b.t - a.t).slice(0, GHOSTS_OUT).map(({ n, c, a, t }) => ({ n, c, a, t })); }
+export function ghostsOut(vis, now) { return Object.values(vis).filter((v) => !v.x && !isTestName(v.n, v.t) && validSpot(v.a) && now - v.t >= GHOST.ONLINE_MS).sort((a, b) => b.t - a.t).slice(0, GHOSTS_OUT).map(({ n, c, a, t }) => ({ n, c, a, t })); }
 // count-per-window limiter on top of get/set (best effort; races only ever under-count by one)
 async function under(store, key, max, win) { const n = Number(await store.get(key)) || 0; if (n >= max) return false; await store.set(key, String(n + 1), win); return true; }
 export async function pollArcade(store, { f = fetch, now = Date.now(), url = ARCADE_SCORES } = {}) {
@@ -60,10 +60,10 @@ export function makeHandler({ env = process.env, kv, now = () => Date.now(), f =
         const name = feedName(b.name); if (!name) return send(200, { ok: true, sid: null, ...(await payload(t)) }); // filtered names are never stored or shown
         if (!(await under(store, 'feed:rl:hc:' + ip, HELLO_PER_H, 3600))) return send(429, { error: 'too many visits from here', retryAfter: 600 });
         const sid = randomBytes(12).toString('hex'), area = validSpot(b.area) ? b.area : null, coat = COAT_RE.test(b.coat || '') ? b.coat : 'tan';
-        const g = GUEST_RE.test(b.g || '') ? b.g : null;
-        await store.set('feed:v1:s:' + sid, JSON.stringify({ n: name, c: coat, a: area, g, ip, t0: t, t }), FEED.TTL_S);
-        await touchVisitor(store, { n: name, c: coat, a: area, g }, { now: t, sleep });
-        if (await store.setNX('feed:rl:arr:' + ip, '1', ARRIVE_IP_S)) { if (await store.setNX('feed:arr:' + sha(name.toLowerCase()).slice(0, 24), '1', ARRIVE_NAME_S)) await appendEvent(store, { k: 'arrive', n: name }, { now: t, sleep }); }
+        const g = GUEST_RE.test(b.g || '') ? b.g : null, test = !!b.test || isTestName(name); // test / proof run: presence only, never public
+        await store.set('feed:v1:s:' + sid, JSON.stringify({ n: name, c: coat, a: area, g, ip, t0: t, t, ...(test ? { x: 1 } : {}) }), FEED.TTL_S);
+        await touchVisitor(store, { n: name, c: coat, a: area, g, x: test }, { now: t, sleep });
+        if (!test && await store.setNX('feed:rl:arr:' + ip, '1', ARRIVE_IP_S)) { if (await store.setNX('feed:arr:' + sha(name.toLowerCase()).slice(0, 24), '1', ARRIVE_NAME_S)) await appendEvent(store, { k: 'arrive', n: name }, { now: t, sleep }); }
         return send(200, { ok: true, sid, ...(await payload(t)) }); }
       if (b.op === 'ping' || b.op === 'event') {
         const sid = String(b.sid || ''); if (!SID_RE.test(sid)) return send(400, { error: 'bad session' });
@@ -71,7 +71,7 @@ export function makeHandler({ env = process.env, kv, now = () => Date.now(), f =
         if (s.ip !== ip) return send(403, { error: 'session moved' });
         if (b.op === 'ping') { if (!(await store.setNX('feed:rl:p:' + sid, '1', PING_GAP_S))) return send(429, { error: 'slow down', retryAfter: PING_GAP_S });
           if (validSpot(b.area)) s.a = b.area; if (COAT_RE.test(b.coat || '')) s.c = b.coat; if (GUEST_RE.test(b.g || '')) s.g = b.g; s.t = t; await store.set('feed:v1:s:' + sid, JSON.stringify(s), FEED.TTL_S);
-          await touchVisitor(store, { n: s.n, c: s.c, a: s.a, g: s.g }, { now: t, sleep }); return send(200, { ok: true, ...(await payload(t)) }); }
+          await touchVisitor(store, { n: s.n, c: s.c, a: s.a, g: s.g, x: s.x }, { now: t, sleep }); return send(200, { ok: true, ...(await payload(t)) }); }
         const type = String(b.type || ''); if (!CLIENT_TYPES.includes(type)) return send(400, { error: 'unknown event type' });
         if (t - s.t0 < MIN_SESSION_MS) return send(409, { error: 'too soon' });
         if (type === 'koi' && b.area !== 'pond') return send(409, { error: 'not at the pond' });
@@ -83,7 +83,7 @@ export function makeHandler({ env = process.env, kv, now = () => Date.now(), f =
         if (!(await under(store, 'feed:rl:ec:' + ip, EVENTS_PER_H, 3600))) return send(429, { error: 'too many events', retryAfter: 600 });
         if (x && !(await store.setNX('feed:rl:x:' + sha(s.n.toLowerCase()).slice(0, 16) + ':' + x.day + ':' + x.x, '1', 26 * 3600))) return send(409, { error: 'already posted' }); // once per name + item + day
         if (validSpot(b.area)) s.a = b.area; s.t = t; await store.set('feed:v1:s:' + sid, JSON.stringify(s), FEED.TTL_S);
-        const ev = await appendEvent(store, { k: type, n: s.n, x: x ? x.x : '' }, { now: t, sleep }); return send(200, { ok: !!ev, ...(await payload(t)) }); }
+        const ev = s.x ? null : await appendEvent(store, { k: type, n: s.n, x: x ? x.x : '' }, { now: t, sleep }); /* test sessions never post */ return send(200, { ok: !!ev, ...(await payload(t)) }); }
       return send(400, { error: 'unknown op' });
     } catch (e) { return send(e.status || 500, { error: e.status ? e.message : 'feed unavailable' }); }
   };

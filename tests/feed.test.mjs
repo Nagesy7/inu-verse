@@ -55,18 +55,18 @@ test('feed: names are sanitised with the chat filter; filtered names never appea
 
 test('api/feed: hello logs a real arrival, koi needs a real session at the pond, rate limits, no wallet/IP/session leakage', async () => {
   const { h, tick, kv } = mk();
-  let r = await call(h, { body: { op: 'hello', name: 'KeeperTest', coat: 'cream', area: 'plaza', wallet: WALLET, email: 'a@b.co' } });
+  let r = await call(h, { body: { op: 'hello', name: 'Biscuit', coat: 'cream', area: 'plaza', wallet: WALLET, email: 'a@b.co' } });
   assert.equal(r.code, 200); assert.match(r.body.sid, /^[0-9a-f]{24}$/); const sid = r.body.sid;
-  assert.deepEqual(r.body.events.map((e) => [e.k, e.n, e.v]), [['arrive', 'KeeperTest', 0]]);
-  assert.equal((await call(h, { body: { op: 'hello', name: 'KeeperTest' } })).code, 429, 'hello rate limit');
-  tick(HELLO_GAP_S * 1000); r = await call(h, { body: { op: 'hello', name: 'KeeperTest' } }); assert.equal(r.body.events.length, 1, 'no duplicate arrival spam');
+  assert.deepEqual(r.body.events.map((e) => [e.k, e.n, e.v]), [['arrive', 'Biscuit', 0]]);
+  assert.equal((await call(h, { body: { op: 'hello', name: 'Biscuit' } })).code, 429, 'hello rate limit');
+  tick(HELLO_GAP_S * 1000); r = await call(h, { body: { op: 'hello', name: 'Biscuit' } }); assert.equal(r.body.events.length, 1, 'no duplicate arrival spam');
   assert.equal((await call(h, { body: { op: 'event', sid, type: 'koi', area: 'pond' } })).code, 409, 'brand-new sessions cannot report');
   tick(MIN_SESSION_MS);
   assert.equal((await call(h, { body: { op: 'event', sid, type: 'koi', area: 'mall' } })).code, 409, 'koi only at the pond');
   assert.equal((await call(h, { body: { op: 'event', sid, type: 'koi', area: 'pond' }, ip: '5.6.7.8' })).code, 403, 'a session cannot be used from elsewhere');
   assert.equal((await call(h, { body: { op: 'event', sid: 'f'.repeat(24), type: 'koi', area: 'pond' } })).code, 404);
   r = await call(h, { body: { op: 'event', sid, type: 'koi', area: 'pond', name: 'Imposter' } }); assert.equal(r.code, 200);
-  assert.equal(r.body.events[0].n, 'KeeperTest', 'name comes from the server session, never the request');
+  assert.equal(r.body.events[0].n, 'Biscuit', 'name comes from the server session, never the request');
   assert.equal((await call(h, { body: { op: 'event', sid, type: 'koi', area: 'pond' } })).code, 429, 'one koi per 2 min');
   r = await call(h, { method: 'GET' }); assert.equal(r.code, 200);
   for (const leak of [WALLET, 'a@b.co', sid, '1.2.3.4']) assert.ok(!r.raw.includes(leak), 'GET never leaks ' + leak);
@@ -127,4 +127,37 @@ test('guardrails: no rewards/tokens in the feed code, no Kibble payment paths to
   assert.ok(!/addKibble|kibble\s*[+-]?=|grant|reward\(/i.test(src), 'no rewards granted from feed code');
   const main = fs.readFileSync(new URL('../src/main.js', import.meta.url), 'utf8'); assert.match(main, /if \(!DEMO\) FEEDUI\.start/, 'no network in demo/tests');
   assert.ok(FD.FEED.POLL_MS >= 20_000, 'polls gently');
+});
+
+test('test / proof runs never reach the public feed: test hello = presence only (no arrival, no ghost, no events); Keeper* names hidden', async () => {
+  const { h, tick } = mk(); let r = await call(h, { body: { op: 'hello', name: 'Tora', coat: 'tan', area: 'pond', test: 1 } });
+  assert.ok(r.body.sid); assert.deepEqual(r.body.events, [], 'no "arrived in town" for a test run');
+  const sid = r.body.sid; tick(MIN_SESSION_MS + 1000);
+  r = await call(h, { body: { op: 'event', sid, type: 'koi', area: 'pond' } }); assert.equal(r.body.ok, false); assert.deepEqual(r.body.events, [], 'test sessions never post events');
+  tick(15 * 60e3); r = await call(h, { body: { op: 'hello', name: 'Rex', area: 'plaza' }, ip: '9.9.9.9' });
+  assert.deepEqual(r.body.events.map((e) => e.n), ['Rex']); assert.ok(!r.body.ghosts.some((g) => g.n === 'Tora'), 'never a ghost');
+  const who = await new Promise((done) => { const res = { headers: {}, setHeader() {}, end(b) { done(JSON.parse(b)); } }; h({ method: 'GET', url: '/api/feed?who=Tora', query: { who: 'Tora' }, headers: {} }, res); });
+  assert.equal(who.who.tora?.n, 'Tora', 'still findable by friends (presence)');
+  // Keeper* names: no arrival even without the flag, never a ghost, dropped from any stored list
+  tick(HELLO_GAP_S * 1000); r = await call(h, { body: { op: 'hello', name: 'KeeperGhost', area: 'plaza' }, ip: '8.8.8.8' });
+  assert.ok(!r.body.events.some((e) => /^keeper/i.test(e.n)));
+  for (const e of [{ k: 'arrive', n: 'KeeperTest' }, { k: 'guestbook', n: 'Rex', x: 'KeeperTest' }, { k: 'home', n: 'keeperpal' }]) assert.equal(FD.cleanEvent({ ...e, t: T0 }, T0), null, JSON.stringify(e));
+  assert.equal(await appendEvent(memoryKv(() => T0), { k: 'home', n: 'KeeperTest' }, { now: T0 }), null);
+});
+
+test('legacy proof lines (Tora / Mochi before the flag existed) are hidden; the same names later are real players', () => {
+  const before = Date.parse('2026-11-03T04:10:00Z'), after = Date.parse('2026-11-03T06:00:00Z');
+  assert.equal(FD.cleanEvent({ k: 'arrive', n: 'Tora', t: before }, before + 1000), null);
+  assert.equal(FD.cleanEvent({ k: 'arrive', n: 'mochi', t: before }, before + 1000), null);
+  assert.equal(FD.cleanEvent({ k: 'arrive', n: 'Tora', t: after }, after + 1000)?.n, 'Tora');
+  assert.equal(FD.isTestName('Rex', before), false);
+});
+
+test('testRun: automation (navigator.webdriver) or localStorage inuverse.test=1 marks the client; real browsers are not', () => {
+  const ls = (v) => ({ getItem: (k) => (k === 'inuverse.test' ? v : null) });
+  assert.equal(FD.testRun({ navigator: { webdriver: true } }), true);
+  assert.equal(FD.testRun({ navigator: { webdriver: false } }, ls('1')), true);
+  assert.equal(FD.testRun({ navigator: { webdriver: false } }, ls(null)), false);
+  assert.equal(FD.testRun({}), false);
+  assert.match(fs.readFileSync(new URL('../src/feed.js', import.meta.url), 'utf8'), /\.\.\.\(isTest \? \{ test: 1 \} : \{\}\)/, 'the hello carries the flag');
 });
