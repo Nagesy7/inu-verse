@@ -123,7 +123,7 @@ function makeUi(doc, S, h) {
 #mp-chat input{flex:1;min-width:0;font:inherit;font-size:12px;padding:7px 8px;background:#0c1022;color:#fff6e0;border:2px solid #8a6a2a;min-height:36px}
 #mp-chat button#mp-send{font:inherit;cursor:pointer;background:#2a3358;color:#fff6e0;border:2px solid #d4a640;padding:4px 10px;min-width:52px;min-height:36px}
 #mp-chat button#mp-send:disabled,#mp-chat input:disabled{opacity:.45;cursor:default}
-@media (max-height:500px){#mp-chat{width:min(380px,calc(100vw - 230px));bottom:max(6px,env(safe-area-inset-bottom))}#mp-chat .mp-log{max-height:4.8em}#mp-chat.focus .mp-log{max-height:min(34vh,9em)}#mp-chat input,#mp-chat button#mp-send{min-height:32px;padding:5px 8px}}
+@media (max-height:500px){#mp-chat{width:min(380px,calc(100vw - 350px));left:max(200px,calc(50% - 190px));transform:none;bottom:max(6px,env(safe-area-inset-bottom))}#mp-chat .mp-log{max-height:4.8em}#mp-chat.focus .mp-log{max-height:min(34vh,9em)}#mp-chat input,#mp-chat button#mp-send{min-height:32px;padding:5px 8px}}
 @media (max-width:520px) and (max-height:420px){#mp-chat{width:min(300px,calc(100vw - 210px))}}`;
   function renderLog() { if (!logEl) return; logEl.innerHTML = log.slice(-12).map((m) => `<div class="${m.me ? 'me' : ''}"><b>${esc(m.name)}</b> ${esc(m.text)}</div>`).join(''); logEl.scrollTop = logEl.scrollHeight; }
   function pushLog(name, text, me = false) { log.push({ name: String(name || 'Pup').slice(0, MP.NAME_MAX), text: String(text || '').slice(0, MP.CHAT_MAX), me: !!me, t: Date.now() }); while (log.length > CHAT_LOG) log.shift(); renderLog(); }
