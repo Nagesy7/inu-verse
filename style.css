@@ -823,3 +823,5 @@ body:not(.inworld) #inu-profile-badge>:not(:first-child) *{overflow:hidden;text-
 /* HUD top-row fit (src/hudfit.js): compact online chip / HUD sub-labels only when the chip would sit on the HUD chip row */
 body.mp-tight #mp-chip[data-n] span{display:none}body.mp-tight #mp-chip[data-n]::after{content:attr(data-n)}body.mp-tight #mp-chip{min-width:0;padding-left:8px;padding-right:8px}
 body.hud-tight #hud .chip small{display:none}
+/* very short phone landscape (e.g. 740x360): the 84x92 minimap under the wallet pill reached the A button; shrink it so it ends above the touch buttons */
+@media (orientation:landscape) and (max-height:370px){body.mm-on.inworld #minimap{width:72px;height:79px}}
