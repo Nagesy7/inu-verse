@@ -52,11 +52,34 @@ export function pickPair(pairs, mint) {
   return { mint, price: Number(p.priceUsd), symbol: p.baseToken.symbol || '', name: p.baseToken.name || '', dex: p.dexId || '', pair: p.pairAddress || '', change1h: p.priceChange?.h1 ?? null, change24h: p.priceChange?.h24 ?? null, url: p.url || '' };
 }
 export const priceUrl = (mints) => 'https://api.dexscreener.com/tokens/v1/solana/' + mints.filter(Boolean).join(',');
+// Known GeckoTerminal pool for $KIBBLE (pump pool). DexScreener sometimes has no pairs for this mint.
+export const KIBBLE_POOL = 'CwcC2iMpRVGgxZKKnmLq9N3fMjVVPSkLGKdvU7piXLrc';
+
+/** GeckoTerminal quote for one mint (deepest pool). Used when DexScreener has no pair — keeps $KIBBLE callable. */
+export async function geckoQuote(mint, f = globalThis.fetch) {
+  if (!mint) return null;
+  try {
+    if (mint === KIBBLE_MINT) {
+      const r = await f('https://api.geckoterminal.com/api/v2/networks/solana/pools/' + KIBBLE_POOL);
+      if (r.ok) { const a = (await r.json())?.data?.attributes; const price = Number(a?.base_token_price_usd);
+        if (price > 0) return { mint, price, symbol: '$KIBBLE', name: 'Kibble', dex: 'geckoterminal', pair: KIBBLE_POOL, change1h: null, change24h: null }; }
+    }
+    const r = await f('https://api.geckoterminal.com/api/v2/networks/solana/tokens/' + encodeURIComponent(mint) + '/pools?page=1');
+    if (!r.ok) return null;
+    const rows = ((await r.json())?.data || []).map((d) => d?.attributes).filter(Boolean)
+      .map((a) => ({ mint, price: Number(a.base_token_price_usd), symbol: '', name: '', dex: 'geckoterminal', pair: a.address || '',
+        change1h: a.price_change_percentage?.h1 != null ? Number(a.price_change_percentage.h1) : null,
+        change24h: a.price_change_percentage?.h24 != null ? Number(a.price_change_percentage.h24) : null, liq: Number(a.reserve_in_usd) || 0 }))
+      .filter((x) => x.price > 0);
+    rows.sort((a, b) => b.liq - a.liq); const best = rows[0]; if (!best) return null; delete best.liq; return best;
+  } catch { return null; }
+}
 
 export async function fetchPrices(mints, f = globalThis.fetch) {
   const r = await f(priceUrl(mints)); if (!r.ok) throw new Error('dexscreener ' + r.status);
   const pairs = await r.json(); const out = {};
   for (const m of mints) if (m) out[m] = pickPair(pairs, m);
+  for (const m of mints) if (m && !out[m]) out[m] = await geckoQuote(m, f); // DexScreener miss → GeckoTerminal (esp. $KIBBLE)
   return out;
 }
 

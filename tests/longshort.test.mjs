@@ -59,6 +59,16 @@ test('longshort: owner names Zachary/Nagesy/Znagle allowed; other reserved block
   assert.equal(S.cleanDisplayName('Nagesy7'), null, 'Nagesy7 stays reserved; use Nagesy');
 });
 
+test('longshort: geckoQuote fills when DexScreener has no pair (keeps $KIBBLE callable)', async () => {
+  const f = async (u) => {
+    if (u.includes('dexscreener')) return { ok: true, json: async () => [] };
+    if (u.includes('/pools/' + LS.KIBBLE_POOL)) return { ok: true, json: async () => ({ data: { attributes: { base_token_price_usd: '0.0000033', address: LS.KIBBLE_POOL } } }) };
+    throw new Error('unexpected ' + u);
+  };
+  const q = await LS.fetchPrices([LS.KIBBLE_MINT], f);
+  assert.equal(q[LS.KIBBLE_MINT].price, 0.0000033); assert.equal(q[LS.KIBBLE_MINT].dex, 'geckoterminal'); assert.equal(q[LS.KIBBLE_MINT].pair, LS.KIBBLE_POOL);
+});
+
 test('longshort: page carries the legal copy, no stake/wager flow, sponsor + For devs paid link', () => {
   const html = readFileSync(new URL('../long-or-short.html', import.meta.url), 'utf8');
   assert.match(html, /Free to play\. Not financial advice\. No purchase or stake needed\./);
