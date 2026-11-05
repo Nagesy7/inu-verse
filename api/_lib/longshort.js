@@ -21,7 +21,10 @@ import { feedName, isTestName } from '../../src/feed.js';
 
 export const RULES = Object.freeze({ LOCK_MAX_AGE_MS: 5_000, READ_MAX_AGE_MS: 15_000, END_TOL_MS: 60_000, VOID_AFTER_MS: 6 * 3600_000, KEEP_RESOLVED: 60,
   CALL_GAP_S: 1, CALLS_PER_H: 40, CALLS_PER_H_IP: 120, REG_GAP_S: 10, REG_PER_H_IP: 5, RENAMES_PER_DAY: 3, RESOLVE_GAP_S: 2, LAZY_PLAYERS: 10, CRON_PLAYERS: 200 });
-const RESERVED = /^(admin|mod|moderator|official|kibble|kibbleinu|inu ?verse|inuverse|sponsor|support|team|system|zachary|nagesy7?)$/i;
+// Owner names Zachary can use; first registrant wins the unique lock (claim early after deploy).
+// Impersonation isn't cryptographically blocked until Phantom sign-message; uniqueness + this allowlist is the current bar.
+const OWNER_NAMES = /^(zachary|nagesy|znagle)$/i;
+const RESERVED = /^(admin|mod|moderator|official|kibble|kibbleinu|inu ?verse|inuverse|sponsor|support|team|system|nagesy7)$/i;
 export const sha = (s) => createHash('sha256').update(String(s)).digest('hex');
 export const pidOf = (token) => sha('ls|' + token).slice(0, 16);
 const TOKEN_RE = /^[A-Za-z0-9_-]{32}$/, PID_RE = /^[0-9a-f]{16}$/;
@@ -81,7 +84,9 @@ export async function geckoClose(pool, endsAt, f = fetch) {
 
 // ---- players ----
 export function cleanDisplayName(raw) { const n = feedName(typeof raw === 'string' ? raw.slice(0, 40) : ''); if (!n) return null; const t = n.slice(0, 18).trim();
-  if (t.length < 2 || RESERVED.test(t.replace(/[ _.-]+/g, ' ').trim())) return null; return t; }
+  const key = t.replace(/[ _.-]+/g, ' ').trim(); if (t.length < 2) return null;
+  if (OWNER_NAMES.test(key)) return t; // Zachary / Nagesy / Znagle
+  if (RESERVED.test(key)) return null; return t; }
 export async function auth(store, req) { const tok = String(req.headers?.authorization || '').replace(/^Bearer\s+/i, ''); if (!TOKEN_RE.test(tok)) return null;
   const pid = pidOf(tok), p = await getJ(store, 'p:' + pid, null); return p ? p : null; }
 async function claimName(store, name, pid) { const k = 'n:' + name.toLowerCase(); if (await store.setNX(k, pid, 400 * 86400)) return true; return (await store.get(k)) === pid; }

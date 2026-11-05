@@ -9,7 +9,7 @@
 // POST { op:"name", name }     [Bearer]  -> { player }          rename (3 / day, unique-ish, filtered)
 // POST { op:"call", mint, side, win } [Bearer] -> { call, player }   server locks the price itself; anything else in the body is ignored
 // POST { op:"resolve" }        [Bearer]  -> { player, resolved } idempotent: resolves only calls whose window has ended
-// GET  ?op=resolve-all  [x-admin-token or Authorization: Bearer CRON_SECRET] -> { players, resolved }   (for an optional cron)
+// GET  ?op=resolve-all  [x-admin-token or Authorization: Bearer CRON_SECRET] -> { players, resolved }   (vercel.json cron every minute; Authorization: Bearer CRON_SECRET)
 // GET  ?op=winners&week=YYYY-MM-DD(Monday)&top=10&format=csv  [x-admin-token] -> weekly top callers for HAND-REVIEWED Kennel Chest prizes
 import { createHash } from 'node:crypto';
 import { upstashKv, memoryKv } from './_lib/kv.js';
@@ -48,7 +48,7 @@ export function makeHandler({ env = process.env, kv, now = () => Date.now(), f =
         if (op === 'board') { const period = ['day', 'week', 'hof'].includes(qp('period')) ? qp('period') : 'day'; const p = await S.auth(store, req);
           try { await S.resolveDue(store, prices, now, S.RULES.LAZY_PLAYERS); } catch {}
           return send(200, await S.board(store, period, { now, me: p?.pid })); }
-        if (op === 'resolve-all') { if (!S.isAdmin(req, env) && !S.isCron(req, env)) return send(401, { error: 'admin or cron only' });
+        if (op === 'resolve-all' || (S.isCron(req, env) && (op === '' || op == null))) { if (!S.isAdmin(req, env) && !S.isCron(req, env)) return send(401, { error: 'admin or cron only' });
           try { await prices.quotes(S.callableMints(day, schedule)); } catch {} // a fresh sample every run keeps end prices exact
           return send(200, await S.resolveDue(store, prices, now, S.RULES.CRON_PLAYERS)); }
         if (op === 'winners') { if (!S.isAdmin(req, env)) return send(401, { error: 'admin only' });

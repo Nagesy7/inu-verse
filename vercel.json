@@ -1,4 +1,7 @@
 {
   "$schema": "https://openapi.vercel.sh/vercel.json",
-  "outputDirectory": "."
+  "outputDirectory": ".",
+  "crons": [
+    { "path": "/api/longshort?op=resolve-all", "schedule": "* * * * *" }
+  ]
 }

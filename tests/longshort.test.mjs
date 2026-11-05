@@ -47,6 +47,18 @@ test('longshort: week / day keys (UTC, Monday weeks); void keeps the streak', ()
   LS.resolveCall(st, c, 'void', 3600_000); assert.equal(c.result, 'void'); assert.equal(st.streak, 3); assert.equal(c.bones, 0);
   assert.equal(LS.SAMPLE_CALLERS, undefined, 'no fake leaderboard names');
 });
+
+test('longshort: owner names Zachary/Nagesy/Znagle allowed; other reserved blocked', async () => {
+  // cleanDisplayName lives on the server module
+  const S = await import('../api/_lib/longshort.js');
+  assert.equal(S.cleanDisplayName('Zachary'), 'Zachary');
+  assert.equal(S.cleanDisplayName('nagesy'), 'nagesy');
+  assert.equal(S.cleanDisplayName('Znagle'), 'Znagle');
+  assert.equal(S.cleanDisplayName('admin'), null);
+  assert.equal(S.cleanDisplayName('kibble'), null);
+  assert.equal(S.cleanDisplayName('Nagesy7'), null, 'Nagesy7 stays reserved; use Nagesy');
+});
+
 test('longshort: page carries the legal copy, no stake/wager flow, sponsor + For devs paid link', () => {
   const html = readFileSync(new URL('../long-or-short.html', import.meta.url), 'utf8');
   assert.match(html, /Free to play\. Not financial advice\. No purchase or stake needed\./);

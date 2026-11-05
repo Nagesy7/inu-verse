@@ -97,6 +97,20 @@ test('longshort api: rate limits, auth and name filter', async () => {
   const rn = await w.call('POST', { token: t, body: { op: 'name', name: 'Rexy' } }); assert.equal(rn.body.player.name, 'Rexy');
   assert.equal((await w.call('POST', { body: { op: 'register', name: 'Rex' }, ip: 'z' })).code, 200, 'old name released');
 });
+test('longshort api: Zachary / Nagesy / Znagle can register; admin still blocked', async () => {
+  const w = mk();
+  const z = await w.call('POST', { body: { op: 'register', name: 'Zachary' }, ip: '8.8.8.8' });
+  assert.equal(z.code, 200); assert.equal(z.body.player.name, 'Zachary');
+  const n = await w.call('POST', { body: { op: 'register', name: 'Nagesy' }, ip: '8.8.8.9' });
+  assert.equal(n.code, 200); assert.equal(n.body.player.name, 'Nagesy');
+  const zn = await w.call('POST', { body: { op: 'register', name: 'Znagle' }, ip: '8.8.8.11' });
+  assert.equal(zn.code, 200);
+  const bad = await w.call('POST', { body: { op: 'register', name: 'admin' }, ip: '8.8.8.10' });
+  assert.equal(bad.code, 400);
+  const bad2 = await w.call('POST', { body: { op: 'register', name: 'Nagesy7' }, ip: '8.8.8.12' });
+  assert.equal(bad2.code, 400);
+});
+
 test('longshort api: real daily / weekly boards + Hall of Fame; debug rounds never count; admin-only winners export', async () => {
   const w = mk(); const a = await reg(w, 'Rex'), b = await reg(w, 'Milo'), c = await reg(w, 'Biscuit');
   for (const tk of [a, b, c]) { await w.call('POST', { token: tk, body: { op: 'call', mint: SOL, side: tk === c ? 'short' : 'long', win: '1h' } }); }
