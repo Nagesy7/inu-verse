@@ -17,13 +17,16 @@ export function makeRoomPlay(D) {
     R.npcs = (sc.npcs || []).map((n) => ({ ...n, x: (n.x + 0.5) * ST, y: (n.y + 0.5) * ST, face: n.face || 'down', phase: Math.random() * 6, moving: false, path: [], wait: 1 + Math.random() * 3, home: [n.x, n.y] }));
     D.extra?.enter?.(R, id); // room-specific runtime (the café's diners + waiter, cafeplay.js)
     R.cam = { x: R.p.x, y: R.p.y }; clampCam(true); return true; }
-  function viewW() { return innerWidth / D.zoom(); } function viewH() { return innerHeight / D.zoom(); }
+  // indoor rooms (the Kibble Mall is 20x10 tiles) fit the screen on phones: zoom 2 only showed a corner at 844x390. Cap the zoom to the
+  // room's fit (1/8 steps, never below 1x); outdoor zones keep scrolling at the chosen zoom. Exported for tests as roomZoom.
+  function Zf() { return roomZoom(D.zoom(), R.sc, innerWidth, innerHeight); }
+  function viewW() { return innerWidth / Zf(); } function viewH() { return innerHeight / Zf(); }
   function clampCam(snap) { const W = R.sc.w * ST, H = R.sc.h * ST, vw = viewW(), vh = viewH(); const tx = W <= vw ? W / 2 : Math.max(vw / 2, Math.min(W - vw / 2, R.p.x)), ty = H <= vh ? H / 2 : Math.max(vh / 2, Math.min(H - vh / 2, R.p.y - 8 + (R.sc.camDy ? R.sc.camDy * Math.min(1, Math.max(0, (R.sc.camBand[1] - R.p.y) / (R.sc.camBand[1] - R.sc.camBand[0]))) : 0)));
     if (snap) { R.cam.x = tx; R.cam.y = ty; } else { R.cam.x += (tx - R.cam.x) * Math.min(1, D.dt * 10); R.cam.y += (ty - R.cam.y) * Math.min(1, D.dt * 10); } }
   function planTo(goal, opt = {}) { const sx = Math.floor(R.p.x / ST), sy = Math.floor(R.p.y / ST); const raw = MOB.astar(sx, sy, goal[0], goal[1], solid, { w: R.sc.w, h: R.sc.h }); if (!raw) return false;
     const pts = MOB.smoothPath(raw, solid, ST).slice(1), end = raw[raw.length - 1]; Object.assign(P.pw, { pts: pts.length ? pts : [end], goal: end, run: !!opt.run, stuckT: 0, lastD: Infinity, replans: 0 });
     P.path = P.pw.pts; P.target = opt.spot || null; P.npcT = opt.npc || null; P.exitT = opt.exit || null; if (opt.mark !== false) P.clickMark = { x: (end[0] + 0.5) * ST, y: (end[1] + 0.5) * ST, t: 1, npc: !!opt.npc }; return true; }
-  const toWorld = (sx, sy) => ({ x: (sx - innerWidth / 2) / D.zoom() + R.cam.x, y: (sy - innerHeight / 2) / D.zoom() + R.cam.y });
+  const toWorld = (sx, sy) => ({ x: (sx - innerWidth / 2) / Zf() + R.cam.x, y: (sy - innerHeight / 2) / Zf() + R.cam.y });
   function click(sx, sy, run) { if (R.busy) return; const w = toWorld(sx, sy), tx = Math.floor(w.x / ST), ty = Math.floor(w.y / ST);
     for (const n of R.npcs) if (Math.abs(w.x - n.x) < 16 && n.y - w.y > -10 && n.y - w.y < 44) { n.held = 6; return planTo([Math.floor(n.x / ST), Math.floor(n.y / ST)], { npc: n, run }); }
     const spot = R.sc.spots.find((s) => (s.tx === tx && s.ty === ty) || (Math.abs(s.tx - tx) <= 1 && Math.abs(s.ty - ty) <= 1 && solid(tx, ty) && R.sc.at(tx, ty)?.prop));
@@ -69,7 +72,7 @@ export function makeRoomPlay(D) {
       if (d <= st) { n.x = gx; n.y = gy; n.path.shift(); } else { n.x += dx / d * st; n.y += dy / d * st; } n.moving = true; n.phase += dt * 10; n.face = MOB.faceOf(dx, dy, n.face); }
     R.chatT -= dt; if (R.chatT <= 0 && R.npcs.length) { R.chatT = 5 + Math.random() * 5; const n = R.npcs[Math.floor(Math.random() * R.npcs.length)]; if (Math.hypot(n.x - R.p.x, n.y - R.p.y) < 260) D.chat?.(n.name, n.lines[Math.floor(Math.random() * n.lines.length)]); }
     D.extra?.update?.(R, dt); clampCam(false); }
-  function render(c, dpr) { const sc = R.sc, Z = D.zoom(), SW = innerWidth, SH = innerHeight, vw = SW / Z, vh = SH / Z, t = D.time(), night = D.night?.() && sc.kind === 'zone';
+  function render(c, dpr) { const sc = R.sc, Z = Zf(), SW = innerWidth, SH = innerHeight, vw = SW / Z, vh = SH / Z, t = D.time(), night = D.night?.() && sc.kind === 'zone';
     c.setTransform(dpr, 0, 0, dpr, 0, 0); c.imageSmoothingEnabled = false; c.fillStyle = sc.kind === 'zone' ? '#2f6fb0' : '#141a2e'; c.fillRect(0, 0, SW, SH);
     const q = 1 / (Z * dpr), snap = (v) => Math.round(v / q) * q, ox = snap(vw / 2 - R.cam.x), oy = snap(vh / 2 - R.cam.y);
     c.setTransform(dpr * Z, 0, 0, dpr * Z, 0, 0); c.save(); c.translate(ox, oy); drawSceneGround(c, sc, night, -ox, -oy, -ox + vw, -oy + vh); // chunked + culled (sceneart.js)
@@ -88,3 +91,5 @@ export function makeRoomPlay(D) {
     globalThis.__roomCam = { ox, oy, Z }; }
   return { R, enter, update, render, click, act, travel, planTo, stop, get id() { return R.sc?.id; }, get sc() { return R.sc; }, nearSpot: () => R.sc && nearestSpot(R.sc, R.p.x, R.p.y) };
 }
+
+export function roomZoom(z, sc, sw, sh) { if (!sc || sc.kind === 'zone' || z <= 1) return z; const fit = Math.floor(Math.min(sw / (sc.w * ST), sh / (sc.h * ST)) * 8) / 8; return Math.max(1, Math.min(z, fit)); }
