@@ -92,7 +92,7 @@ import * as DIS from './districts.js';
 import * as DR from './district-rent.js';
 import * as DRUI from './districtrentui.js';
 import * as XC from './explaincard.js';
-import * as GR from './growth.js';
+import * as WG from './worldgrowth.js';
 import { hubSignProp } from './districtart.js';
 import { renderCompanions } from './companionui.js';
 import { makeTown, townHour, lineFor, playerDid, friendsOf, rivalsOf, breadRound, sydneyMinutes } from './townai.js';
@@ -537,7 +537,8 @@ function renderExplain(opts = {}) {
   const body = $('#panel-body'); body.innerHTML = XC.cardHtml({ booth: !!(opts.booth || opts.from === 'lease'), esc });
   $('#explain-ok').onclick = () => { XC.dismiss(state, { hideAgain: !!$('#explain-hide')?.checked, place: opts.from === 'bank' ? 'bank' : opts.from === 'lease' ? 'lease' : null }); persist(); closePanel(); };
 }
-function renderGrowth() { $('#panel-body').innerHTML = GR.cardHtml(esc, { band: GR.bandFor(GR.mcOf(MOOD?.current)) }); }
+function growthSnap() { return WG.readGrowth(MOOD?.current, { search: typeof location !== 'undefined' ? location.search : '' }); }
+function renderGrowth() { $('#panel-body').innerHTML = WG.cardHtml(esc, { snap: growthSnap() }); }
 function doBoothLease(districtId, cls) { const r = DR.leaseBooth(state, cls, districtId, gameDay()); if (!r.ok) { toast(r.reason || 'Could not lease', 'bad'); return false; }
   toast(`Leased ${DR.BOOTHS[cls].name} for ${r.cost} Bones (2-day deposit). Cabinets stay free.`, 'good'); hud(); persist(); return true; }
 function renderBoothRent(districtId) { const body = $('#panel-body'), pending = panel.pendingCls;
@@ -1294,8 +1295,8 @@ function openPanel(kind, opts = {}) {
     TRD.S.view = opts.view || { mode: 'home' }; TRD.S.err = null; renderTradePanel();
     TRD.refresh({ quiet: false }).then(() => { if (opts.short && panel?.kind === 'trade') { const p = TRD.S.board.find((x) => x.short === opts.short); if (p) TRD.S.view = { mode: 'compose', to: p.tid, give: [], get: [] }; else TRD.S.err = `${opts.name || 'That player'} hasn't opened the Trading Post yet. Ask them to tap Trades in the players list.`; }
       if (panel?.kind === 'trade') renderTradePanel(); }); return; }
-  if (kind === 'kibblemood') { body.innerHTML = MWd.moodCardHtml(MOOD.current, esc) + '<div class="row" style="justify-content:flex-start"><button class="btn alt tiny" id="mood-growth">Town growth</button></div>'; body.querySelectorAll('[data-copy]').forEach((b) => b.onclick = () => copyText(b.dataset.copy)); body.querySelector('[data-npcrules]').onclick = () => openPanel('npcrules'); body.querySelector('#mood-growth').onclick = () => openPanel('growth'); return; }
-  if (kind === 'dailybone') { body.innerHTML = MWd.dailyBoneHtml(MWd.MW.mood) + '<div id="db-vote"></div><div class="row" style="justify-content:flex-start"><button class="btn ghost tiny" data-npcrules>How the town talks</button><button class="btn alt tiny" data-inutimes>Read the Inu Times</button></div>'; body.querySelector('[data-npcrules]').onclick = () => openPanel('npcrules'); body.querySelector('[data-inutimes]').onclick = () => openPanel('club-times'); BurnVote.fetchVoteNotice().then((n) => { const el = body.querySelector('#db-vote'); if (el && n) el.innerHTML = BurnVote.voteNoticeHtml(n); }).catch(() => {}); return; }
+  if (kind === 'kibblemood') { body.innerHTML = MWd.moodCardHtml(MOOD.current, esc) + `<p class="sub" id="growth-line">${esc(WG.statueLine(growthSnap()))}</p>` + '<div class="row" style="justify-content:flex-start"><button class="btn alt tiny" id="mood-growth">Town growth</button></div>'; body.querySelectorAll('[data-copy]').forEach((b) => b.onclick = () => copyText(b.dataset.copy)); body.querySelector('[data-npcrules]').onclick = () => openPanel('npcrules'); body.querySelector('#mood-growth').onclick = () => openPanel('growth'); return; }
+  if (kind === 'dailybone') { body.innerHTML = MWd.dailyBoneHtml(MWd.MW.mood) + `<p class="sub" id="growth-line">${esc(WG.statueLine(growthSnap()))}</p>` + '<div id="db-vote"></div><div class="row" style="justify-content:flex-start"><button class="btn ghost tiny" data-npcrules>How the town talks</button><button class="btn alt tiny" data-inutimes>Read the Inu Times</button></div>'; body.querySelector('[data-npcrules]').onclick = () => openPanel('npcrules'); body.querySelector('[data-inutimes]').onclick = () => openPanel('club-times'); BurnVote.fetchVoteNotice().then((n) => { const el = body.querySelector('#db-vote'); if (el && n) el.innerHTML = BurnVote.voteNoticeHtml(n); }).catch(() => {}); return; }
   if (kind === 'kennel') { const draw = () => { if (panel?.kind !== 'kennel') return; body.innerHTML = KN.wallHtml({ wall: KEN.wall, me: KEN.real, wallet: KEN.wallet, override: KEN.override, overrideFlair: KEN.flair, show: KEN.show, peek: KEN.peeking });
       const cb = body.querySelector('#kn-show'); if (cb) cb.onchange = () => { KEN.show = cb.checked; KN.setShowMine(cb.checked); toast(cb.checked ? 'Kennel look on' : 'Kennel look hidden', 'good'); }; };
     draw(); refreshKennel(true).then(draw); return; }

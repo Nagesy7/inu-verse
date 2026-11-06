@@ -1,6 +1,7 @@
-// Growth-ladder cosmetic bands from economy loop v1.1 (29 Oct 2026).
-// Source: /workspace/briefs/kibble-economy-loop-v1-2026-10-29.md (MC flavour table) and kibble-economy-map-2026-10-29.md.
-// These bands flavour the town and cosmetic calendars only — they are not permanent unlock gates, prize odds, or Kennel eligibility.
+// Economy-loop v1.1 flavour bands (29 Oct 2026) — calendar / ambience targets only, not the player-facing world ladder.
+// Source: /workspace/briefs/kibble-economy-loop-v1-2026-10-29.md and kibble-economy-map-2026-10-29.md.
+// Player-facing town growth is src/worldgrowth.js (World Grower growth-map v1.1: Seed Town → Metropolis).
+// These bands flavour cosmetic calendars only — they are not permanent unlock gates, prize odds, or Kennel eligibility.
 // No item grants ship here: the briefs name calendar *ideas* (spotlight / flair / festival) but do not list item IDs, art, or Bones amounts.
 // Rewards, if any are added later, may be cosmetics or Bones only — never $KIBBLE from play.
 export const BANDS = Object.freeze([

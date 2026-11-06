@@ -5,6 +5,7 @@
 // price_change_percentage, then pump.fun 1h candles, then our own price samples (kibble:mood:hist); none -> stays null ("chill"). Mood hysteresis: a new mood
 // must hold for 2 consecutive refreshes before it shows. Everything failing -> last good answer marked stale, else "chill".
 import { MINT, classify, stepMood, FALLBACK } from "../src/kibblemood.js";
+import { tierFromMc, stepWorld, apiFields } from "../src/worldgrowth.js";
 import { rpcUrl, redact } from "./_lib/rpc.js";
 import { upstashKv, memoryKv } from "./_lib/kv.js";
 
@@ -67,9 +68,10 @@ export async function refresh({ prev, hist, now, f, env }) { let q = null; const
   const changeSource = src.h1 === src.h24 ? src.h1 : [src.h1 && "1h: " + src.h1, src.h24 && "24h: " + src.h24].filter(Boolean).join(" · ") || null;
   const raw = classify(q.change1h, q.change24h), state = stepMood(prev?.state, raw);
   const r1 = (x, d = 2) => x == null ? null : Math.round(x * 10 ** d) / 10 ** d;
+  const wstate = stepWorld(prev?.wstate, tierFromMc(q.marketCapUsd)?.id ?? null);
   const resp = { mint: MINT, symbol: "KIBBLE", price: q.price ?? null, priceSol: q.priceSol ?? null, change1h: r1(q.change1h), change24h: r1(q.change24h), mood: state.mood, rawMood: raw, pendingMood: state.pending,
-    updatedAt: new Date(now).toISOString(), source: q.source, changeSource, samples: h.length, samplesSinceMin: h.length ? Math.round((now - h[0].t) / 60000) : 0, liquidityUsd: r1(q.liquidityUsd), marketCapUsd: r1(q.marketCapUsd), stale: false };
-  return { resp, state, hist: h, at: now }; }
+    updatedAt: new Date(now).toISOString(), source: q.source, changeSource, samples: h.length, samplesSinceMin: h.length ? Math.round((now - h[0].t) / 60000) : 0, liquidityUsd: r1(q.liquidityUsd), marketCapUsd: r1(q.marketCapUsd), stale: false, ...apiFields(wstate) };
+  return { resp, state, wstate, hist: h, at: now }; }
 
 let MEM = null; // fallback store when Upstash env is missing (local dev)
 export function makeHandler({ env = process.env, kv, f = timed(fetch), now = () => Date.now() } = {}) {
@@ -88,7 +90,7 @@ export function makeHandler({ env = process.env, kv, f = timed(fetch), now = () 
     try { hist = JSON.parse((await store.get(HIST)) || "[]"); } catch {}
     const out = await refresh({ prev, hist, now: t, f, env });
     if (out.failed) { try { await store.set(KEY + ":fail", "1", 30); } catch {} }
-    if (!out.failed) { try { await store.set(KEY, JSON.stringify({ resp: out.resp, state: out.state, at: out.at }), 86400); await store.set(HIST, JSON.stringify(out.hist), 2 * 86400); } catch {} }
+    if (!out.failed) { try { await store.set(KEY, JSON.stringify({ resp: out.resp, state: out.state, wstate: out.wstate, at: out.at }), 86400); await store.set(HIST, JSON.stringify(out.hist), 2 * 86400); } catch {} }
     try { await store.del(LOCK); } catch {}
     return send({ ...out.resp, cached: !!out.failed }, !out.failed);
   };

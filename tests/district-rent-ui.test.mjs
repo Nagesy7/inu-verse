@@ -12,7 +12,9 @@ test('main.js imports district-rent, ticks it on the in-game day, and opens boot
   const src = readFileSync(new URL('../src/main.js', import.meta.url), 'utf8');
   assert.match(src, /import \* as DR from '\.\/district-rent\.js'/);
   assert.match(src, /import \* as XC from '\.\/explaincard\.js'/);
-  assert.match(src, /import \* as GR from '\.\/growth\.js'/);
+  assert.match(src, /import \* as WG from '\.\/worldgrowth\.js'/);
+  assert.match(src, /WG\.cardHtml/);
+  assert.match(src, /WG\.statueLine/);
   assert.match(src, /DR\.tickDay\(state,/);
   assert.match(src, /kind === 'boothrent'/);
   assert.match(src, /kind === 'explain'/);
