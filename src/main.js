@@ -89,6 +89,10 @@ import * as PAIR from './pairing.js';
 import { ensureFly, featuredOf, statusGlow, poolsOf, FEATURED_SLOTS, claimPresDrop } from './flywheels.js';
 import * as IQC from './companions.js';
 import * as DIS from './districts.js';
+import * as DR from './district-rent.js';
+import * as DRUI from './districtrentui.js';
+import * as XC from './explaincard.js';
+import * as GR from './growth.js';
 import { hubSignProp } from './districtart.js';
 import { renderCompanions } from './companionui.js';
 import { makeTown, townHour, lineFor, playerDid, friendsOf, rivalsOf, breadRound, sydneyMinutes } from './townai.js';
@@ -253,7 +257,7 @@ addEventListener('kibble:failed', (e) => toast(e.detail.reason || 'Payment faile
 addEventListener('kibble:wallet', () => { syncPhantomBtn(); if (state) { state.walletAddr = wallet().address; hud(); } });
 bootKibble(); refreshRegistry(true);
 if (localStorage.getItem('inu.noext.resume')) import('./launchui.js').then((m) => m.resumeAuth({ toast })).catch(() => {}); // finish Google/Apple sign-in after Phantom's redirect
-function hud() { syncPhantomBtn(); GOLD.name = F5.isVip(state) ? state.player.name : null; { const P = DEMO ? poolsOf(state) : serverPools, el = $('#pools'); if (el) el.textContent = P ? `D${(P.daily / 1e6).toFixed(2)} W${(P.weekly / 1e6).toFixed(2)} M${(P.monthly / 1e6).toFixed(2)}` : 'pools'; } $('#bones').textContent = Math.floor(state.bones); $('#kibble').textContent = DEMO ? state.kibble.toFixed(2) : (wallet().live ? (wallet().balanceUi ?? '–') : 'soon'); $('#hud-name').textContent = state.player.name; { const ch = $('#streak-chip'); if (ch) { const k = JSON.stringify(LS.view(state)); if (ch.dataset.k !== k) { ch.dataset.k = k; ch.innerHTML = LSUI.chipHtml(state); ch.classList.toggle('device', !state.loginStreak?.wallet); } } } }
+function hud() { syncPhantomBtn(); GOLD.name = F5.isVip(state) ? state.player.name : null; { const P = DEMO ? poolsOf(state) : serverPools, el = $('#pools'); if (el) el.textContent = P ? `D${(P.daily / 1e6).toFixed(2)} W${(P.weekly / 1e6).toFixed(2)} M${(P.monthly / 1e6).toFixed(2)}` : 'pools'; } $('#bones').textContent = Math.floor(state.bones); $('#kibble').textContent = DEMO ? state.kibble.toFixed(2) : (wallet().live ? (wallet().balanceUi ?? '–') : 'soon'); $('#hud-name').textContent = state.player.name; { const ch = $('#streak-chip'); if (ch) { const k = JSON.stringify(LS.view(state)); if (ch.dataset.k !== k) { ch.dataset.k = k; ch.innerHTML = LSUI.chipHtml(state); ch.classList.toggle('device', !state.loginStreak?.wallet); } } } const bchip = $('#bones')?.closest('.chip'); if (bchip) bchip.title = XC.TOOLTIPS.bones; const kchip = $('#kibble')?.closest('.chip'); if (kchip) kchip.title = XC.TOOLTIPS.kibble; let rc = $('#rent-chip'); const lease = DR.districtRentEnabled() ? state.districtRent?.lease : null; if (lease) { if (!rc) { rc = document.createElement('button'); rc.id = 'rent-chip'; rc.className = 'chip'; rc.type = 'button'; $('#bones')?.closest('.chip')?.after(rc); rc.onclick = () => { initAudio(); uiClick?.(); openPanel('boothrent', { district: state.districtRent?.lease?.district }); }; } rc.hidden = false; rc.title = XC.TOOLTIPS.rent; rc.innerHTML = `<span>${lease.rent}</span><small>booth</small>`; } else if (rc) rc.hidden = true; }
 
 function resize() { const nw = Math.round(innerWidth * devicePixelRatio), nh = Math.round(innerHeight * devicePixelRatio); if (cv.width !== nw || cv.height !== nh) { cv.width = nw; cv.height = nh; vignette = null; } // only touch the backing store on a real size change (visualViewport fires during address-bar moves; re-setting width clears the canvas)
   document.body.classList.toggle('landscape', innerWidth > innerHeight); document.body.classList.toggle('short', innerHeight < 520); }
@@ -414,7 +418,7 @@ function farmTick(dt) { const day = gameDay(); tickFarm(state, dt, { season: sea
   const hk = hourKey(); while (hourIdx < hk) { hourIdx++; marketHour(state); const r = bizHour(state, hourIdx % 24, rng, state.spouse?.helps === 'biz' ? 2 : 0);
     if (hourIdx % 24 === 6) { const w = REL.spouseMorning(state); if (w) toast(`${state.spouse.name} watered ${w} field${w > 1 ? 's' : ''} this morning`, 'good'); for (const j of REL.pupJobs(state, Math.floor(hourIdx / 24))) toast(j, 'good'); }
     if (hourIdx % 24 === 0) { const row = bizDay(state, Math.floor(hourIdx / 24) - 1); if (row?.closed) toast(`3 unpaid days: your shop closed and the lease on ${row.lot} was handed back.`, 'bad'); else if (row?.unpaid) toast(`Warning: couldn't cover rent + wages (${row.due} bones). Unpaid day ${row.unpaidDays}/3 — the shop closes after 3.`, 'bad'); else if (row) toast(`Shop ledger: day profit ${row.profit} bones`, row.profit >= 0 ? 'good' : 'bad');
-      const wk = Math.floor(Math.floor(hourIdx / 24) / WEEK_DAYS); const a = rollFarmWeek(state, wk), b = rollBizWeek(state, wk); if (a?.paid) toast(`Top Farmer #${a.rank}: +${a.paid} bones!`, 'good'); if (b?.paid) toast(`Top Business #${b.rank}: +${b.paid} bones!`, 'good'); }
+      const wk = Math.floor(Math.floor(hourIdx / 24) / WEEK_DAYS); const a = rollFarmWeek(state, wk), b = rollBizWeek(state, wk); if (a?.paid) toast(`Top Farmer #${a.rank}: +${a.paid} bones!`, 'good'); if (b?.paid) toast(`Top Business #${b.rank}: +${b.paid} bones!`, 'good');      const rent = DR.tickDay(state, Math.floor(hourIdx / 24) - 1); if (rent?.closed) toast('3 unpaid days: your district booth lease ended. Cosmetics unequipped.', 'bad'); else if (rent?.unpaid) toast(`District booth: couldn't cover rent. Unpaid day ${rent.unpaid}/3 — the lease closes after 3.`, 'bad'); }
     if (r?.sold && panel?.kind === 'lot') openPanel('lot', panel); } }
 const LOTS_POS = Object.fromEntries(BIZ_LOTS.map((l) => [l.id, [l.x + 3.5, l.y + l.h + 0.6]]));
 const pupF = [];
@@ -529,11 +533,30 @@ function onboardEngage(place, kind = null) {
 }
 function wayUi(on) { const w = document.getElementById('wayctl'); if (w) w.hidden = !on; }
 async function tourCheck() { if (!state || mode !== 'world') return; const w = state.walletAddr; const prof = isRealWallet(w) ? await profileStore().get(w).catch(() => null) : null; guide.maybeStartTour(prof); }
+function renderExplain(opts = {}) {
+  const body = $('#panel-body'); body.innerHTML = XC.cardHtml({ booth: !!(opts.booth || opts.from === 'lease'), esc });
+  $('#explain-ok').onclick = () => { XC.dismiss(state, { hideAgain: !!$('#explain-hide')?.checked, place: opts.from === 'bank' ? 'bank' : opts.from === 'lease' ? 'lease' : null }); persist(); closePanel(); };
+}
+function renderGrowth() { $('#panel-body').innerHTML = GR.cardHtml(esc, { band: GR.bandFor(GR.mcOf(MOOD?.current)) }); }
+function doBoothLease(districtId, cls) { const r = DR.leaseBooth(state, cls, districtId, gameDay()); if (!r.ok) { toast(r.reason || 'Could not lease', 'bad'); return false; }
+  toast(`Leased ${DR.BOOTHS[cls].name} for ${r.cost} Bones (2-day deposit). Cabinets stay free.`, 'good'); hud(); persist(); return true; }
+function renderBoothRent(districtId) { const body = $('#panel-body'), pending = panel.pendingCls;
+  if (pending && XC.shouldShow(state, 'lease')) {
+    body.innerHTML = XC.cardHtml({ booth: true, esc });
+    $('#explain-ok').onclick = () => { XC.dismiss(state, { hideAgain: !!$('#explain-hide')?.checked, place: 'lease' }); persist();
+      doBoothLease(districtId, pending); panel.pendingCls = null; renderBoothRent(districtId); };
+    return;
+  }
+  body.innerHTML = DRUI.panelHtml(state, districtId, { esc, earnedYesterday: state.districtRent?.earnedYesterday || state.mall?.activity?.dayBones || 0 });
+  body.onclick = (e) => { const b = e.target.closest('[data-lease]');
+    if (b) { if (XC.shouldShow(state, 'lease')) { panel.pendingCls = b.dataset.lease; renderBoothRent(districtId); return; } doBoothLease(districtId, b.dataset.lease); renderBoothRent(districtId); return; }
+    if (e.target.id === 'rent-end') { const r = DR.endLease(state); if (r.ok) { toast('Booth lease ended. No refund.', ''); hud(); persist(); renderBoothRent(districtId); } } };
+}
 // ---- Kibble Bank: read-only view of the wallet (kibble-pay). No deposits, lending or yield. ----
 async function renderBank() { const body = $('#panel-body'), kp = K.kp, w = wallet(), signed = !DEMO && !!kp?.session;
   const bal = DEMO ? `${state.kibble.toFixed(2)} demo KIBBLE (fake)` : w.live ? (signed ? `${w.balanceUi ?? '…'} KIBBLE` : 'sign in to see') : 'wallet service offline';
   const P = DEMO ? poolsOf(state) : serverPools, fmtU = (u) => (Number(u || 0) / 1e6).toLocaleString('en-US', { maximumFractionDigits: 4 });
-  body.innerHTML = `<h2>Kibble Bank</h2><p class="sub">A read-only window on your wallet. <b>No deposits, no lending, no yield</b>: your $KIBBLE stays in your own wallet.</p>
+  body.innerHTML = `<h2>Kibble Bank <button class="btn ghost tiny" id="bk-explain" title="Bones vs $KIBBLE">?</button></h2><p class="sub">A read-only window on your wallet. <b>No deposits, no lending, no yield</b>: your $KIBBLE stays in your own wallet.</p>
    <div class="bank"><div class="card"><b>Wallet</b><small id="bk-addr">${DEMO ? 'Demo mode (no wallet)' : signed ? esc(kp.address) : 'Not signed in'}</small>${!DEMO && !signed ? '<button class="btn" id="bk-sign">Sign in with Phantom</button>' : ''}</div>
    <div class="card"><b>$KIBBLE balance</b><small id="bk-bal">${esc(bal)}</small></div>
    <div class="card"><b>Prize pools (public)</b><small>${P ? `Daily ${fmtU(P.daily)} · Weekly ${fmtU(P.weekly)} · Monthly ${fmtU(P.monthly)}` : 'loading…'}</small><small>Burned (opt-in, all wallets): ${P?.burned != null ? fmtU(P.burned) : '–'}</small>
@@ -541,7 +564,7 @@ async function renderBank() { const body = $('#panel-body'), kp = K.kp, w = wall
    <h3>Inventory</h3><div id="bk-inv" class="grid"><div class="card"><small>${DEMO ? 'Demo items live in your local save.' : signed ? 'Loading…' : 'Sign in to see items your wallet owns across every Inu game.'}</small></div></div>
    <h3>Purchase history</h3><div id="bk-hist"><p class="sub">${DEMO ? 'Demo purchases are not real and have no history.' : signed ? 'Loading…' : 'Sign in to see your purchases and burns.'}</p></div>`;
   PAB.simReadout(body); // Paw Audit Bureau: small sim-only side-currency readout (not money)
-  $('#bk-pools').onclick = () => openPanel('city', { tab: 'pools' }); $('#bk-burn').onclick = () => openPanel('fly5', { tab: 'burn' });
+  if (XC.shouldShow(state, 'bank')) { body.insertAdjacentHTML('afterbegin', XC.cardHtml({ booth: false, esc })); $('#explain-ok').onclick = () => { XC.dismiss(state, { hideAgain: !!$('#explain-hide')?.checked, place: 'bank' }); persist(); renderBank(); }; }  $('#bk-explain')?.addEventListener('click', () => openPanel('explain', { from: 'bank' }));  $('#bk-pools').onclick = () => openPanel('city', { tab: 'pools' }); $('#bk-burn').onclick = () => openPanel('fly5', { tab: 'burn' });
   const sb = $('#bk-sign'); if (sb) sb.onclick = () => $('#btn-phantom').onclick().then(() => panel?.kind === 'bank' && renderBank());
   if (!signed) return;
   try { const [inv, hist] = await Promise.all([kp.inventory(), kp.history().catch(() => [])]); if (panel?.kind !== 'bank') return; const names = K.cfg?.items || {};
@@ -1073,8 +1096,9 @@ const homeRoomExtra = {
   enter: (...a) => CP.enter?.(...a), update: (...a) => { CP.update?.(...a); clubRoomUpdate(); },
   props: (t) => {
     const base = CP.props?.(t) || [], sc = RP.sc, items = sc?.homeItems, club = clubRoomProps(t);
-    if (!items?.length) return club.length ? base.concat(club) : base;
-    const out = base.concat(club);
+    const lease = (RP.id === 'districts' && state) ? DRUI.leaseDeskProps(state, state.player?.name) : [];
+    if (!items?.length) return base.concat(club, lease);
+    const out = base.concat(club, lease);
     for (const it of items) {
       if (!FURNITURE[it.id]) continue;
       const x = (HOME_OX + (it.x | 0)) * ROOM_ST, y = (HOME_OY + (it.y | 0)) * ROOM_ST, f = footprint(it.id, it.rot | 0);
@@ -1258,6 +1282,9 @@ function openPanel(kind, opts = {}) {
   if (kind === 'onboard') return onboardUi.renderPanel(body);
   if (kind === 'engage') return renderEngage({ ...farmCtx(), tab: opts.tab, day: gameDay(), open: (t) => openPanel('engage', { tab: t }) });
   if (kind === 'bank') return renderBank();
+  if (kind === 'boothrent') return renderBoothRent(opts.district);
+  if (kind === 'explain') return renderExplain(opts);
+  if (kind === 'growth') return renderGrowth();
   if (kind === 'cabinet') return renderCabinet(opts.id);
   if (kind === 'fasttravel') return renderFastTravel(opts.from);
   if (kind === 'portals') return renderPortals(opts.from);
@@ -1267,7 +1294,7 @@ function openPanel(kind, opts = {}) {
     TRD.S.view = opts.view || { mode: 'home' }; TRD.S.err = null; renderTradePanel();
     TRD.refresh({ quiet: false }).then(() => { if (opts.short && panel?.kind === 'trade') { const p = TRD.S.board.find((x) => x.short === opts.short); if (p) TRD.S.view = { mode: 'compose', to: p.tid, give: [], get: [] }; else TRD.S.err = `${opts.name || 'That player'} hasn't opened the Trading Post yet. Ask them to tap Trades in the players list.`; }
       if (panel?.kind === 'trade') renderTradePanel(); }); return; }
-  if (kind === 'kibblemood') { body.innerHTML = MWd.moodCardHtml(MOOD.current, esc); body.querySelectorAll('[data-copy]').forEach((b) => b.onclick = () => copyText(b.dataset.copy)); body.querySelector('[data-npcrules]').onclick = () => openPanel('npcrules'); return; }
+  if (kind === 'kibblemood') { body.innerHTML = MWd.moodCardHtml(MOOD.current, esc) + '<div class="row" style="justify-content:flex-start"><button class="btn alt tiny" id="mood-growth">Town growth</button></div>'; body.querySelectorAll('[data-copy]').forEach((b) => b.onclick = () => copyText(b.dataset.copy)); body.querySelector('[data-npcrules]').onclick = () => openPanel('npcrules'); body.querySelector('#mood-growth').onclick = () => openPanel('growth'); return; }
   if (kind === 'dailybone') { body.innerHTML = MWd.dailyBoneHtml(MWd.MW.mood) + '<div id="db-vote"></div><div class="row" style="justify-content:flex-start"><button class="btn ghost tiny" data-npcrules>How the town talks</button><button class="btn alt tiny" data-inutimes>Read the Inu Times</button></div>'; body.querySelector('[data-npcrules]').onclick = () => openPanel('npcrules'); body.querySelector('[data-inutimes]').onclick = () => openPanel('club-times'); BurnVote.fetchVoteNotice().then((n) => { const el = body.querySelector('#db-vote'); if (el && n) el.innerHTML = BurnVote.voteNoticeHtml(n); }).catch(() => {}); return; }
   if (kind === 'kennel') { const draw = () => { if (panel?.kind !== 'kennel') return; body.innerHTML = KN.wallHtml({ wall: KEN.wall, me: KEN.real, wallet: KEN.wallet, override: KEN.override, overrideFlair: KEN.flair, show: KEN.show, peek: KEN.peeking });
       const cb = body.querySelector('#kn-show'); if (cb) cb.onchange = () => { KEN.show = cb.checked; KN.setShowMine(cb.checked); toast(cb.checked ? 'Kennel look on' : 'Kennel look hidden', 'good'); }; };
@@ -2370,7 +2397,7 @@ function renderMall() {
     return;
   }
   const items = Object.entries(MALL_ITEMS).filter(([, it]) => cat === 'all' || it.cat === cat);
-  body.innerHTML = `${demo}<h2>${esc(store?.name || 'Kibble Mall')}</h2><p class="sub">Luxury goods priced in ${kibText(state)}. Owned by ${OWNER.name}. Checkout shows the <b>${FEE_LABEL}</b>.</p><div class="grid" id="mallgrid"></div>${cat === 'all' ? pools : ''}`;
+  body.innerHTML = `${demo}<h2>${esc(store?.name || 'Kibble Mall')} <button class="btn ghost tiny" id="mall-explain" title="Bones vs $KIBBLE">?</button></h2><p class="sub">Luxury goods priced in ${kibText(state)}. Owned by ${OWNER.name}. Checkout shows the <b>${FEE_LABEL}</b>.</p><div class="grid" id="mallgrid"></div>${cat === 'all' ? pools : ''}`;
   const grid = $('#mallgrid');
   for (const [id, it] of items) {
     const q = quote(id), card = document.createElement('div'), cs = catStyle(it.cat); card.className = 'card cat-card';
@@ -2382,7 +2409,7 @@ function renderMall() {
     card.insertAdjacentHTML('beforeend', `<div class="cat-chip" style="background:${cs.border};color:#141a2e">${cs.label}</div><div><b>${it.name}</b></div><div class="checkout"><div>Price <b>${fmtK(q.price)}</b></div><div class="small">2% fee ${fmtK(q.fee)} (1% owner ${fmtK(q.owner)} · pools ${fmtK(q.daily + q.weekly + q.monthly)})</div><div>Total <b>${fmtK(q.total)}</b> KIBBLE</div></div>${own && !it.grants.furniture ? '<div class="price">Owned</div>' : `<button class="btn" data-mbuy="${id}">Buy</button>`}`);
     grid.appendChild(card);
   }
-  grid.onclick = (e) => { const b = e.target.closest('[data-mbuy]'); if (!b) return; const r = buyMallItem(state, b.dataset.mbuy); if (r.ok) { toast(`Bought ${MALL_ITEMS[b.dataset.mbuy].name}: paid ${fmtK(r.quote.total)} KIBBLE incl. ${fmtK(r.quote.fee)} fee`, 'good'); hud(); persist(); renderMall(); } else toast(r.reason, 'bad'); };
+  $('#mall-explain')?.addEventListener('click', () => openPanel('explain', { from: 'mall' }));  grid.onclick = (e) => { const b = e.target.closest('[data-mbuy]'); if (!b) return; const r = buyMallItem(state, b.dataset.mbuy); if (r.ok) { toast(`Bought ${MALL_ITEMS[b.dataset.mbuy].name}: paid ${fmtK(r.quote.total)} KIBBLE incl. ${fmtK(r.quote.fee)} fee`, 'good'); hud(); persist(); renderMall(); } else toast(r.reason, 'bad'); };
 }
 
 // ---------------- Loop ----------------

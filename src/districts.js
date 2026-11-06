@@ -99,9 +99,10 @@ export const LEGEND = { 'k': ['pave', null, 0], 'r': ['road', null, 0], 'm': ['r
 // spots: every door (walk into it or tap A) + every fast-travel post; spawns: hub, each district, each cabinet door
 const SPOTS = [...STRUCTS.filter((s) => s.door).map((s) => { const cab = cabinet(s.id); return { id: spawnId(cab), tx: s.door[0], ty: s.door[1], face: 'up', walk: true, name: cab.live ? `${label(cab)} (Inu Arcade)` : `${label(cab)}: coming soon`, act: { panel: 'cabinet', opts: { id: cab.id } }, label: cab.live ? 'Play' : 'Look' }; }),
   ...DISTRICTS.map((d) => { const [kx, ky] = kioskOf(d); return { id: 'kiosk-' + d.id, tx: kx, ty: ky - 1, face: 'down', name: `Fast travel (${d.name})`, act: { panel: 'fasttravel', opts: { from: d.id } }, label: 'Fast travel' }; }),
+  ...DISTRICTS.map((d) => { const [kx, ky] = kioskOf(d); return { id: 'lease-' + d.id, tx: kx + 2, ty: ky - 1, face: 'down', name: `Booth lease (${d.name})`, act: { panel: 'boothrent', opts: { district: d.id } }, label: 'Lease' }; }),
   ...DISTRICTS.map((d) => ({ id: 'sign-' + d.id, tx: d.x0 + 1, ty: DOOR_Y, face: 'down', name: `${d.name} sign`, act: { say: signLine(d) }, label: 'Read' }))];
 function signLine(d) { const cabs = CABINETS.filter((c) => c.district === d.id), open = cabs.filter((c) => c.live).length;
-  return `${d.name}. ${open ? `${open} cabinet${open > 1 ? 's' : ''} open` : 'Cabinets coming soon'}${open < cabs.length ? `, ${cabs.length - open} coming soon` : ''}. Fast travel posts are on the south sidewalk.`; }
+  return `${d.name}. ${open ? `${open} cabinet${open > 1 ? 's' : ''} open` : 'Cabinets coming soon'}${open < cabs.length ? `, ${cabs.length - open} coming soon` : ''}. Fast travel posts are on the south sidewalk. Want a nameplate? Lease a plaque for Bones.`; }
 const spawns = { hub: [1, ROAD + 1, 'right'] };
 for (const d of DISTRICTS) { const [kx] = kioskOf(d); spawns['d-' + d.id] = [kx, ROAD + 1, 'down']; }
 for (const s of STRUCTS) if (s.door) spawns[spawnId(cabinet(s.id))] = [s.door[0], DOOR_Y, 'down'];
@@ -109,7 +110,7 @@ export const SCENE = Object.freeze({ name: 'Arcade Districts', kind: 'zone', leg
   exits: [{ tiles: [[0, ROAD], [0, ROAD + 1], [0, ROAD + 2]], face: 'left', to: 'hub', gate: 'arcade' }], spots: SPOTS,
   npcs: [{ name: 'Usher Ollie', coat: 'golden', x: 39, y: 15, wander: true, lines: ['The Arena doors are open: step right up!', 'Fast travel posts are on the south sidewalk.'] },
     { name: 'Groundskeeper Fern', coat: 'tan', x: 80, y: 15, wander: true, lines: ['Pitch is freshly mowed. Games coming soon!', 'Mind the goal posts.'] },
-    { name: 'Token Tess', coat: 'cream', x: 14, y: 11, wander: true, lines: ['Eight cabinets on this row, all open!', 'Tap 🏠 inside a cabinet to come back here.'] },
+    { name: 'Token Tess', coat: 'cream', x: 14, y: 11, wander: true, lines: ['Eight cabinets on this row, all open!', 'Want a nameplate? Lease a plaque for Bones.'] },
     { name: 'Pit Crew Rio', coat: 'red', x: 120, y: 18, wander: true, lines: ['The race track opens soon.', 'Vroom vroom… one day.'] }] });
 export const HUB_GATE = Object.freeze({ id: 'arcade', name: 'Arcade Districts gate', label: 'ARCADE', tx: 62, ty: 57, face: 'right', to: 'districts', at: 'hub', out: [61, 57, 'left'] });
 // fast travel: every district + town

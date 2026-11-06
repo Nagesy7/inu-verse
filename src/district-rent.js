@@ -5,10 +5,9 @@
 // no MC in the formula. Bones never go negative (an unpaid day charges nothing and counts toward closing).
 import { DISTRICTS, CABINETS } from './districts.js';
 
-// RELEASE FLAG: OFF by default. Nothing in the app imports this module yet, and while the flag is off every state-changing
-// call below is a no-op (no save writes, no Bones charged, nothing rendered). Turn on only once Zachary approves the release.
-// Tests opt in with setDistrictRentEnabled(true).
-export const DISTRICT_RENT_DEFAULT = false;
+// RELEASE FLAG: ON. Zachary approved wiring booths into the UI and save tick (Bones-only 15/35/50/80, no pool skim).
+// setDistrictRentEnabled(false) still turns every write path into a no-op for tests.
+export const DISTRICT_RENT_DEFAULT = true;
 let ENABLED = DISTRICT_RENT_DEFAULT;
 export const districtRentEnabled = () => ENABLED;
 export function setDistrictRentEnabled(on) { ENABLED = on === true; return ENABLED; }

@@ -51,7 +51,7 @@ The whole street is one continuous road. Each district has its own kiosk (fast t
 - Storefront titles sit low on the facade: venue banners are right above the cabinet plaque, and booth marquees are right above the door. That keeps them below the top bar at zoom 2 on 844x390 and 667x375. `titleRect()` in `src/districtart.js` is the source, and a test checks every storefront against it.
 
 ## District booth rent (Bones) — approved by Zachary, 2 Nov 2026
-Logic lives in `src/district-rent.js` (pure module, tests in `tests/district-rent.test.mjs`). It isn't wired into the UI or save tick yet, and it sits behind a release flag that is **off by default** (`DISTRICT_RENT_DEFAULT = false`): while off, `leaseBooth`/`endLease`/`tickDay`/`ensureDistrictRent`/`boothIn` are no-ops (no save writes, no Bones charged, nothing shown). `tests/district-rent-off.test.mjs` checks the flag and that nothing in the app imports the module. Flip it only after Zachary approves the release.
+Logic lives in `src/district-rent.js` (pure module, tests in `tests/district-rent.test.mjs`). Wired into the UI and the in-game day tick (`DR.tickDay` beside `bizDay` in `src/main.js`). The release flag is **on** (`DISTRICT_RENT_DEFAULT = true`). Lease desks sit two tiles east of each district travel kiosk (`lease-<district>`); the panel lists the Bones classes offered there. Cabinets and doors stay free. Visuals are a sidewalk plaque (nameplate when you hold the lease). Persist is the normal save tick (`s.districtRent`).
 
 | Booth class | Where | Rent / in-game day | Deposit (2 days) |
 |---|---|---|---|
