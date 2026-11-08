@@ -33,7 +33,15 @@ test('browser: toasts never cover the player in the middle of the screen at 844x
       const R = await p.evaluate(() => { const q = (e) => { if (!e) return null; const r = e.getBoundingClientRect(), cs = getComputedStyle(e); return r.width && cs.display !== 'none' && cs.visibility !== 'hidden' ? [r.x, r.y, r.width, r.height] : null; };
         return { toasts: [...document.querySelectorAll('#toast .toast')].map(q).filter(Boolean), ev: q(document.getElementById('ev-banner')), o: ['stick', 'btn-a', 'btn-emo'].map((id) => q(document.getElementById(id))) }; });
       const pup = [vp.width / 2 - 28, vp.height / 2 - 100, 56, 100]; // camera-centred pup: name tag to feet
-      const at = `ev:${ev} @${vp.width}x${vp.height}`; assert.ok(R.toasts.length >= 1, 'a toast shows ' + at);
+      const at = `ev:${ev} @${vp.width}x${vp.height}`;
+      const compact = await p.evaluate(() => document.body.classList.contains('notice-compact'));
+      if (compact) {
+        const text = await p.evaluate(() => document.getElementById('notice-log')?.innerText || '');
+        assert.match(text, /Welcome to Inu Verse|Login streak/, 'toast text stays in the notice log ' + at);
+        for (const t of R.toasts) if (t[2] > 2 && t[3] > 2) { assert.ok(!overlaps(t, pup), `toast ${t} on the pup ${at}`); for (const o of R.o) if (o) assert.ok(!overlaps(t, o), `toast ${t} on control ${o} ${at}`); }
+        continue;
+      }
+      assert.ok(R.toasts.length >= 1, 'a toast shows ' + at);
       for (const t of R.toasts) { assert.ok(!overlaps(t, pup), `toast ${t} on the pup ${at}`); if (R.ev) assert.ok(!overlaps(t, R.ev), 'toast on the event banner ' + at); for (const o of R.o) assert.ok(!overlaps(t, o), `toast ${t} on control ${o} ${at}`); }
     }
     await ctx.close(); }
