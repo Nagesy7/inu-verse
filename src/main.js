@@ -120,6 +120,8 @@ import { makeRoomPlay } from './roomplay.js';
 import { sceneForDoor, HUB_GATES, resolveExit, makePortalState, portalStep, SCENES, scene as sceneOf, walkInExits, solidAt as sceneSolid, ST as ROOM_ST } from './scenes.js';
 import { hubGateProp } from './sceneart.js';
 import { buildDrawer, drawerOpen } from './hudmenu.js';
+import { layoutSafe } from './safezones.js';
+import { createGroveTown } from './groveview.js';
 import { makeDoorState, doorStep, doorExit, outsideOf } from './doors.js';
 import { isDoor, doorList, doorDir, COMMUNITY } from './world.js';
 import { createMultiplayer } from './multiplayer.js';
@@ -127,11 +129,12 @@ import { createFeed } from './feed.js';
 import { createGhosts, spotAt, spotTiles, addBlockers as ghostBlockers } from './ghosts.js';
 import * as DQ from './quests.js'; import * as DQUI from './questsui.js'; // daily townsfolk quests (Bones only, capped)
 import { LAMP_TILES } from './ambient.js';
-import { syncChat } from './chatdodge.js'; import { fitBanners } from './bannerfit.js'; import { fitHud } from './hudfit.js'; import { fitToasts } from './toastfit.js'; // chat bar hides under panels / modals, event banner sits above it; crier / president banner: toasts stack under it at phone landscape
+import { syncChat } from './chatdodge.js'; import { fitBanners } from './bannerfit.js'; import { fitHud } from './hudfit.js'; import { fitToasts } from './toastfit.js'; import { mountNotices } from './notices.js'; // chat bar hides under panels / modals, event banner sits above it; crier / president banner: toasts stack under it at phone landscape; phone notice tray keeps those lines without covering the controls
 import * as EVR from './events.js'; import { createEvents, ensureChip as evChip, updateChip as evChipUpdate, maybeBanner as evBanner, panelHtml as evPanelHtml, drawGear } from './eventsui.js'; // Alive phase 5: daily world events
 import * as TF from './townsfolk.js'; // Alive phase 3: wandering background townsfolk (NPC only)
 import { createTrading, renderTrade, TRADE_CSS } from './tradeui.js';
 import { createJoystick, joyPref, JOY_KEY } from './joystick.js';
+import { bindStick } from './stick.js';
 import { createGamepad } from './gamepad.js';
 import * as PAB from './sim/bureau.js'; // Paw Audit Bureau (Phase 1 sim layer): desk + Watchdogs + report panel
 import { ensureShare, myHomePlot, layoutOf, layoutKey, homeApi, cleanLayout, cleanEntry, validHomeId, validPlotId, GB } from './homeshare.js';
@@ -176,6 +179,8 @@ function snapWeather() { const w = skyWx(); amb.rain = amb.rainTarget = w.rain; 
 const TFS = TF.makeTownsfolk(seasonTheme().theme), FOLKQ = { shift: 0, lastT: 0 };
 // ---- Alive phase 5: one featured world event per Sydney day (src/events.js + src/eventsui.js). Cosmetic keepsakes only. ----
 const EVX = createEvents({ search: location.search }); let EVVIEW = null, chatSyncT = 0; globalThis.__events = EVX;
+const parkNotices = mountNotices(document);
+const GROVE = createGroveTown(document, localStorage);
 const folkBase = () => (SKYS.pinH != null ? TF.folkSec(SKYS.pinH) + time : TF.folkSec(dayPhase(time + dayOffset).hour)); // a pinned ?tod= still lets them walk
 const folkSecNow = () => folkBase() + FOLKQ.shift;
 const folkWx = () => (amb.rain > 0.3 ? 'rain' : (amb.cloud || 0) > 0.5 ? 'cloudy' : 'clear');
@@ -350,7 +355,7 @@ addEventListener('keydown', (e) => {
   if (k === 'escape') { if (panel) closePanel(); else if (build) exitBuild(); }
   if (mode === 'room' && !panel && (k === 'e' || k === 'enter')) { RP.act(); return; }
   if (mode === 'world' && !panel && (k === 'e' || k === 'enter') && carAction()) return;
-  if (mode === 'world' && !panel && (k === 'e' || k === 'enter')) { const it = nearIt(state.player.x, state.player.y); const pup = nearPup(); if (pup && !it) petPup(pup); else if (it) interact(it); }
+  if (mode === 'world' && !panel && (k === 'e' || k === 'enter')) { if (GROVE.tryAct(state.player.x, state.player.y)) return; const it = nearIt(state.player.x, state.player.y); const pup = nearPup(); if (pup && !it) petPup(pup); else if (it) interact(it); }
   if (mode === 'build' && k === 'r') rotateSel();
 });
 addEventListener('keyup', (e) => keys.delete(e.key.toLowerCase()));
@@ -360,7 +365,7 @@ const screenToWorld = (sx, sy) => ({ x: (sx - innerWidth / 2) / ZOOM + cam.x, y:
 
 cv.addEventListener('pointerdown', (e) => { if (mode === 'build' && build?.shop) build.hover = shopCell(e.clientX, e.clientY); });
 cv.addEventListener('mousemove', (e) => { if (mode === 'build') build.hover = build.shop ? shopCell(e.clientX, e.clientY) : roomCell(e.clientX, e.clientY); });
-cv.addEventListener('click', (e) => { if (photo) return; // photo mode: taps/drags pan the camera, never walk
+cv.addEventListener('click', (e) => { if (photo || document.body.classList.contains('ctrl-lock')) return; // photo mode: taps/drags pan the camera, never walk. An open menu, notice sheet, or chat field does not walk.
   if (mode === 'world' && !panel) {
     const w = screenToWorld(e.clientX, e.clientY); const ad = adAt(trend, adRot, adIdx, w.x, w.y); if (ad) { blip(990); openPanel('launch', ad.coin.real ? (ad.coin.mint === RC.KIBBLE.mint ? { tab: 'kibble' } : { tab: 'board', coin: ad.coin.mint, vfOpen: !!ad.coin.verified }) : { sel: ad.coin.id }); return; } clickWorldTile(Math.floor(w.x / TILE), Math.floor(w.y / TILE), w.x, w.y);
   } else if (mode === 'room' && !panel && !feel.talking()) RP.click(e.clientX, e.clientY, groundTap(performance.now()));
@@ -756,14 +761,8 @@ function clubRoomUpdate() { if (!state || mode !== 'room' || !RP.R?.p) return; c
 $('#panel-close').onclick = () => closePanel();
 // ---- touch controls (virtual stick on the left, A/B + menu on the right) ----
 { const pad = $('#stick'), knob = $('#knob');
-  const upd = (e) => { const r = pad.getBoundingClientRect(), cx = r.left + r.width / 2, cy = r.top + r.height / 2, R = r.width / 2; let dx = e.clientX - cx, dy = e.clientY - cy; const d = Math.hypot(dx, dy); if (d > R) { dx *= R / d; dy *= R / d; }
-    knob.style.transform = `translate(${dx}px,${dy}px)`; const m = Math.hypot(dx, dy) / R; touch.mag = m; if (m < 0.22) { touch.x = touch.y = 0; return; } touch.x = dx / (m * R); touch.y = dy / (m * R);
-    if (Math.abs(touch.x) < 0.38) touch.x = 0; if (Math.abs(touch.y) < 0.38) touch.y = 0; };
-  pad.addEventListener('pointerdown', (e) => { e.preventDefault(); initAudio(); touch.id = e.pointerId; pad.setPointerCapture(e.pointerId); pad.classList.add('on'); player.holdRun = stickTap(performance.now()); upd(e); });
-  pad.addEventListener('pointermove', (e) => { if (e.pointerId === touch.id) upd(e); });
-  const end = (e) => { if (e.pointerId !== touch.id) return; touch.id = null; touch.x = touch.y = 0; touch.mag = 0; player.holdRun = false; knob.style.transform = ''; pad.classList.remove('on'); };
-  pad.addEventListener('pointerup', end); pad.addEventListener('pointercancel', end);
-  const act = padAct = () => { globalThis.__actCount = (globalThis.__actCount || 0) + 1; if (feel.talking()) return feel.advance(); if (mode === 'room' && !panel) return RP.act(); if (mode !== 'world' || panel || !state) return; if (carAction()) return; const it = nearIt(state.player.x, state.player.y); const stn = !nearPup() && stoneHere(); if (stn) return openPanel('portals', { from: stn.id }); /* portal stones sit 3+ tiles from seats + doors */ const sn = seatNear(itDist(it)); if (sn?.sitting) return sitAt(sn); const pup = nearPup(); if (pup && !it) petPup(pup); else if (sn && !(!drive && EVX.nearTrader(state.player.x, state.player.y))) sitAt(sn); else if (it) interact(it); }; // seated: A stands up; else pup/trader > seat > building (matches the prompt)
+  bindStick(pad, knob, touch, { onStart: () => initAudio(), onDown: () => { player.holdRun = stickTap(performance.now()); }, onEnd: () => { player.holdRun = false; } });
+  const act = padAct = () => { globalThis.__actCount = (globalThis.__actCount || 0) + 1; if (feel.talking()) return feel.advance(); if (mode === 'room' && !panel) return RP.act(); if (mode !== 'world' || panel || !state) return; if (carAction()) return; if (GROVE.tryAct(state.player.x, state.player.y)) return; const it = nearIt(state.player.x, state.player.y); const stn = !nearPup() && stoneHere(); if (stn) return openPanel('portals', { from: stn.id }); /* portal stones sit 3+ tiles from seats + doors */ const sn = seatNear(itDist(it)); if (sn?.sitting) return sitAt(sn); const pup = nearPup(); if (pup && !it) petPup(pup); else if (sn && !(!drive && EVX.nearTrader(state.player.x, state.player.y))) sitAt(sn); else if (it) interact(it); }; // seated: A stands up; else pup/trader > seat > building (matches the prompt)
   $('#btn-a').addEventListener('pointerdown', (e) => { e.preventDefault(); initAudio(); act(); });
   $('#btn-b').addEventListener('pointerdown', (e) => { e.preventDefault(); initAudio(); if (mode === 'world' && !panel && state) { if (drive) return honk(); bork(); player.emote = { kind: 'bork', t: 1.2 }; emoteBubble('me', 'bork', time); } });
   $('#btn-menu')?.addEventListener('pointerdown', (e) => { e.preventDefault(); });
@@ -790,13 +789,15 @@ const hk = (b, kb) => PAD.glyph(b) || (COARSE.matches ? b.toUpperCase() : kb), h
 // ---------------- World update ----------------
 function updateWorld(dt) {
   const p = state.player; let dx = 0, dy = 0;
-  if (!panel && !photo) {
+  const ctrlLock = document.body.classList.contains('ctrl-lock');
+  if (ctrlLock) { touch.x = touch.y = 0; touch.mag = 0; if (player.pw?.pts?.length) { player.pw.pts = []; player.path = player.pw.pts; player.target = null; player.npcT = null; player.clickMark = null; } }
+  if (!panel && !photo && !ctrlLock) {
     if (keys.has('w') || keys.has('arrowup')) dy -= 1; if (keys.has('s') || keys.has('arrowdown')) dy += 1;
     if (keys.has('a') || keys.has('arrowleft')) dx -= 1; if (keys.has('d') || keys.has('arrowright')) dx += 1;
   }
   if (!drive) portalTick(dt); // portal stones: discover by walking near
   if (photo && PHC) PHM.panKeys(PHC, keys, dt); // photo mode: keys pan the camera, the pup holds still
-  const sx0 = !panel && !photo ? touch.x : 0, sy0 = !panel && !photo ? touch.y : 0;
+  const sx0 = !panel && !photo && !ctrlLock ? touch.x : 0, sy0 = !panel && !photo && !ctrlLock ? touch.y : 0;
   const inp = MOB.pickInput({ keys: { x: dx, y: dy }, stick: { x: sx0, y: sy0 }, stickMag: touch.mag || 0, shift: keys.has('shift'), holdRun: player.holdRun, path: player.pw.pts.length > 0, pathRun: player.pw.run });
   if (inp.source === 'stick' || inp.source === 'keys') { dx = inp.dir.x; dy = inp.dir.y; } else { dx = dy = 0; }
   const speed = MOB.WALK_SPEED * PAB.walkFactor(); // world px/s (world is zoomed 2x, so ~184 screen px/s); run = x1.75. walkFactor: 1, or >= 0.85 for <= 60 s while an opted-in sim cartoon bump is on (src/sim/clinic.js)
@@ -812,11 +813,7 @@ function updateWorld(dt) {
       else if (f?.stuck) { player.pw.pts = []; player.clickMark = null; }
       if (f) { want = f.want; snap = f.snap; if (f.arrive) { player.v = { x: 0, y: 0 }; if (snap) { const bx = snap.x - p.x, by = snap.y - p.y; moveBody(p, bx, by); } arrive(); } } player.path = player.pw.pts; }
     player.push = { x: want.x, y: want.y }; // intent (keys / stick / sprint / tap-walk path) even when a wall stops the body: doors use it
-    player.v = MOB.stepVelocity(player.v, want, dt);
-    if (player.v.x || player.v.y) { const bx = p.x, by = p.y; moveBody(p, player.v.x * dt, player.v.y * dt); // wall: kill the blocked axis so speed never builds up against it (path mode re-plans instead)
-      if (inp.source !== 'path') { if (Math.abs(p.x - bx) < 1e-4) player.v.x = 0; if (Math.abs(p.y - by) < 1e-4) player.v.y = 0; } }
-    const sp = Math.hypot(player.v.x, player.v.y); player.moving = sp > 12; player.running = inp.run && sp > speed * 1.1;
-    if (sp > 12) { if (Math.abs(player.v.x) > 1) player.dir = player.v.x > 0 ? 1 : -1; player.face = MOB.faceOf(player.v.x, player.v.y, player.face); }
+    MOB.applyFoot(p, player, want, dt, (body, dx, dy) => moveBody(body, dx, dy), { source: inp.source, run: inp.run, walkSpeed: speed });
     if (player.running) { dustAcc += dt; if (dustAcc > 0.11) { dustAcc = 0; feel.dust(p.x - player.dir * 6, p.y + 11); } }
   }
   if (player.moving) player.phase += dt * (player.running ? 21 : 12) * Math.min(1, Math.hypot(player.v.x, player.v.y) / speed + 0.25); else player.phase += dt * 2;
@@ -851,6 +848,7 @@ function updateWorld(dt) {
     else if (!player.pw.pts.length) { const g = portalStep(gateSt, null, { x: p.x, y: p.y, face: player.face, moving: player.moving, push: player.push }, time, GATE_EXITS); if (g) enterGate(g.gate); } }
   { const vw = innerWidth / ZOOM, vh = innerHeight / ZOOM; stepChat({ now: time, player: p, npcs, hour: dayPhase(time + dayOffset).hour, rain: amb.rain > 0.3, rng, moodLine: (n) => rng() < 0.5 ? MWd.moodLine(n.name, rng) : null, inView: (x, y) => Math.abs(x - cam.x) < vw / 2 - 20 && Math.abs(y - cam.y) < vh / 2 - 30, placeOf: chatPlace }); }
   PAB.simTick(dt, time, { x: p.x, y: p.y, driving: !!drive, busy: !!panel }, (tx, ty) => (isSolid(tx, ty) ? -1 : MAP[ty][tx]), T); // sim police/rangers: reads a copy of the position only, never blocks play
+  if (!drive) GROVE.step({ x: p.x, y: p.y, now: performance.now(), input: !!player.moving, foreground: document.visibilityState !== 'hidden' });
   mailAcc += dt; if (mailAcc > 45) { mailAcc = 0; if (rng() < 0.6 && addMail(state, rng)) { toast('New note in your mailbox!', 'good'); persist(); } }
   // smooth camera
   const k = 1 - Math.pow(0.004, dt), lead = player.moving ? 10 : 0, fx = { left: -1, right: 1 }[player.face] || 0, fy = { up: -1, down: 1 }[player.face] || 0;
@@ -872,6 +870,7 @@ function updateWorld(dt) {
   else if (pup?.workerRef) { pr.hidden = false; const v = pup.workerRef.chatted ? `Play ${JOB_DEFS[WORKER_JOB[pup.workerRef.job]].name} with` : 'Chat with'; pr.innerHTML = `<kbd${hc()}>${hk('a', 'E')}</kbd>${v} ${esc(pup.name)}`; setA('TALK'); }
   else if (pup) { pr.hidden = false; const v = pup.folk ? `Chat with ${esc(pup.name)}` : REL.PEOPLE[pup.name] && !pup.pet ? `Talk to ${esc(pup.name)} ${'♥'.repeat(REL.hearts(REL.ensureRel(state)[pup.name]))}` : `Pet ${esc(pup.name)}`; pr.innerHTML = PAD.padMode ? `<kbd${hc()}>${hk('a', 'E')}</kbd>${v}` : tch ? `<kbd class="ta">A</kbd>${v}` : `<kbd>E</kbd>${v} · <kbd>T</kbd> throw ball`; setA(pup.folk || (REL.PEOPLE[pup.name] && !pup.pet) ? 'TALK' : 'PET'); }
   else if (seat) { pr.hidden = false; const k = `<kbd${hc()}>${hk('a', 'E')}</kbd>`; pr.innerHTML = seat.sitting ? `${k}Stand up` : `${k}Sit on the ${SPOT_NAME[seat.spot.kind]}`; pr.dataset.target = 'seat:' + seat.spot.id; setA(seat.sitting ? 'UP' : 'SIT'); }
+  else if (GROVE.near(p.x, p.y)) { const g = GROVE.near(p.x, p.y); pr.hidden = false; pr.innerHTML = `<kbd${hc()}>${hk('a', 'E')}</kbd>${esc(g.name)} · ${esc(GROVE.hint(g.id))}`; setA('PATCH'); }
   else if (it) { pr.hidden = false; const verb = { community: 'Open', gamedoor: 'Play', bank: 'Enter', arcade: 'Play at', matchmaker: 'Browse', square: 'Open', building: 'Enter', plot: state.plots[it.id] ? 'Enter' : 'Inspect', visit: 'Visit', club: 'Visit', stall: 'View', clubhouse: myPack(state) ? 'Decorate' : 'Open', mall: 'Enter', field: 'Tend', farm: 'Use', lot: 'Visit', biz: 'Read', chapel: 'Enter', kibble: it.id === 'crier' ? 'Talk to' : it.id === 'kstatue' ? 'Look at' : 'Read' }[it.kind] || 'Use'; pr.innerHTML = isWalkDoor(it) ? `<kbd>${it.side === 'left' ? '▶' : it.side === 'right' ? '◀' : '▲'}</kbd>Walk in to ${verb === 'Enter' ? 'enter' : verb.toLowerCase()} ${esc(it.name)}` : `<kbd${hc()}>${hk('a', 'E')}</kbd>${verb} ${esc(it.name)}`; pr.dataset.target = it.id; setA(isWalkDoor(it) ? '' : verb.toUpperCase()); }
   else { pr.hidden = true; setA(''); }
 }
@@ -914,6 +913,7 @@ function renderWorld() {
     IQC.stepRemotes(CMP.remotes, actors, fdt, { rm }); for (const F of CMP.remotes.values()) IQC.react(F, IQC.envFor(F, { rain: amb.rain, dark: phase.dark, others: [CMP.F, ...CMP.remotes.values()] }));
     for (const F of [CMP.F, ...CMP.remotes.values()]) if (F.c && F.x > L && F.x < Rt && F.y > Tp && F.y < Bt) list.push({ y: F.y + 2, d: (c) => IQC.drawFollower(c, F, time, { rm, fallback: IQC.drawFallbackPup }) }); }
   for (const p of PT.stoneProps(PFOUND, time, view, { rm: reducedMotion(), near: stoneHere() })) list.push(p); // portal stones
+  for (const p of GROVE.props()) list.push(p); // staged grove chain: logs, saw, shed, porch. Test Splints, not Bones.
   for (const p of sitProps(time, actors.filter((a) => a.act?.kind === 'sit'), reducedMotion())) if (p.y > Tp && p.y < Bt) list.push(p); // swings + café terrace
   for (const p of catProps(amb, view)) list.push(p); for (const p of leashProps(view, walkNow())) list.push(p);
   { const ta = EVX.traderAt(); if (ta) { const dx = state.player.x - ta.x, dy = state.player.y - ta.y, near = Math.hypot(dx, dy) < 110; actors.push({ x: ta.x, y: ta.y, coat: EVR.TRADER.coat, outfit: EVR.TRADER.outfit, face: near ? (Math.abs(dx) > Math.abs(dy) ? (dx > 0 ? 'right' : 'left') : dy < 0 ? 'up' : 'down') : 'down', phase: 0, moving: false, name: EVR.TRADER.name, id: 'ev:trader', art: artKey(EVR.TRADER.coat, EVR.TRADER.outfit) }); } }
@@ -1109,8 +1109,8 @@ const homeRoomExtra = {
   },
 };
 const RP = makeRoomPlay({ player, extra: homeRoomExtra, diner: (s) => openDiner(s), zoom: () => ZOOM, time: () => time, blocked: () => !!panel || feel.talking() || mode !== 'room',
-  input: () => { let dx = 0, dy = 0; if (!panel) { if (keys.has('w') || keys.has('arrowup')) dy -= 1; if (keys.has('s') || keys.has('arrowdown')) dy += 1; if (keys.has('a') || keys.has('arrowleft')) dx -= 1; if (keys.has('d') || keys.has('arrowright')) dx += 1; }
-    return { dx, dy, stick: { x: panel ? 0 : touch.x, y: panel ? 0 : touch.y }, mag: touch.mag || 0, shift: keys.has('shift'), holdRun: player.holdRun }; },
+  input: () => { let dx = 0, dy = 0; const locked = document.body.classList.contains('ctrl-lock'); if (locked) { touch.x = touch.y = 0; touch.mag = 0; } if (!panel && !locked) { if (keys.has('w') || keys.has('arrowup')) dy -= 1; if (keys.has('s') || keys.has('arrowdown')) dy += 1; if (keys.has('a') || keys.has('arrowleft')) dx -= 1; if (keys.has('d') || keys.has('arrowright')) dx += 1; }
+    return { dx, dy, stick: { x: panel || locked ? 0 : touch.x, y: panel || locked ? 0 : touch.y }, mag: touch.mag || 0, shift: keys.has('shift'), holdRun: player.holdRun }; },
   openPanel: (k, o) => openPanel(k, o), build: (id) => {
     roomBuild = { id: RP.id, at: { x: RP.R.p.x, y: RP.R.p.y, face: player.face } };
     if (id === 'clubhouse') { if (myPack(state)) enterBuild(id); else { roomBuild = null; openPanel('packs'); } return; }
@@ -2429,7 +2429,7 @@ function frame(now) {
   MPL.step(dt); // live multiplayer (no-op when not configured)
   feedSound(dt);
   if (mode === 'world') { GH.step(dt); stepEvents(dt); }
-  if ((chatSyncT -= dt) <= 0) { chatSyncT = 0.2; syncChat(document, window); fitBanners(document, window); fitToasts(document, window); fitHud(document); }
+  if ((chatSyncT -= dt) <= 0) { chatSyncT = 0.2; syncChat(document, window); fitBanners(document, window); fitToasts(document, window); fitHud(document); layoutSafe(document, window); parkNotices(); }
   if (JOYS && state && (joyT -= dt) <= 0) { joyT = 0.5; const want = joyPref(state); if (want !== JOYS.on) { JOYS.set(want); joyApi.onChange?.(); } } // saved / cloud-loaded Joystick setting
   if (PAD.connected) PAD.poll(dt); // controllers: zero work unless one is plugged in
   if (mode === 'world') { updateWorld(dt); renderWorld(); drawSceneBars(); }
@@ -2539,7 +2539,8 @@ cv.addEventListener('wheel', (e) => { if (mode !== 'world') return; e.preventDef
   cv.addEventListener('touchmove', (e) => { if (!pinch || e.touches.length !== 2) return; const d = dist(e.touches); if (photo) { photoZoom(d / pinch); pinch = d; return; } if (d / pinch > 1.35) { setZoom(stepZoom(ZOOM, 1)); pinch = d; } else if (pinch / d > 1.35) { setZoom(stepZoom(ZOOM, -1)); pinch = d; } }, { passive: true });
   cv.addEventListener('touchend', (e) => { if (e.touches.length < 2) pinch = null; }, { passive: true }); }
 document.getElementById('zin')?.addEventListener('click', () => setZoom(stepZoom(ZOOM, 1))); document.getElementById('zout')?.addEventListener('click', () => setZoom(stepZoom(ZOOM, -1)));
-window.__inu = { guide, pet: { get f() { return petF; }, PL, remote: RPETS }, portals: { PT, found: PFOUND, warp: (to, from) => warpTo(to, from), here: () => stoneHere(), get view() { return mmView; } }, photo: { get on() { return photo; }, get cam() { return PHC; }, toggle: () => togglePhoto(), ui: PHUI, PHM }, emo: { get act() { return ACT.act; }, action: (k) => doAction(k), seat: () => seatNear(), sit: (id) => { const sp = SPOTS.find((q) => q.id === id); if (sp) { state.player.x = sp.x; state.player.y = sp.y + 10; const sn = seatNear(); if (sn) sitAt(sn); } return ACT.act; }, spots: SPOTS, wheel }, audio: { debug: audioDebug, settings: audioSettings, area: () => sndArea }, open: (k, o) => openPanel(k, o), get time() { return time; }, get player() { return player; }, get zoom() { return ZOOM; }, setZoom, president: pres, presVisit: (k) => startVisit(pres, k, { dayLen: DAY_LEN }), setHour: (h) => { const w = SKY.skyWorldT(skyNow(), DAY_LEN); SKYS.pinH = null; SKYS.shift = timeForHour(h) - (((w % DAY_LEN) + DAY_LEN) % DAY_LEN); syncSky(); }, folk: { T: TFS, Q: FOLKQ, sec: () => folkSecNow(), at: (i, s) => TF.folkAt(i, s), setSec: (s) => { FOLKQ.shift = s - folkBase(); }, find: (name, doing) => { const i = TF.FOLK_NAMES.indexOf(name), o = {}; for (let s = 0; s < TF.FOLK_DAY; s += 2) { TF.folkAt(i, s, o); if (o.doing === doing) return { s, x: o.x, y: o.y }; } return null; } }, setRain: (r) => { SKYS.wx = r ? 'rain' : 'clear'; amb.rain = amb.rainTarget = amb.cloud = amb.cloudTarget = r ? 1 : 0; amb.weatherT = 999; }, sky: SKYS, get amb() { return amb; }, get npcs() { return npcs; }, get mood() { return { ...MOOD.current, shown: MWd.MW.mood }; }, emote: (k) => doEmote(k), cam, get state() { return state; }, get mode() { return mode; }, get panel() { return panel?.kind; }, get panelObj() { return panel; }, mp: MPL, club: { hunt: () => huntNow(), party: () => partyNow(), kennel: () => enterKennel(), room: (id, at) => enterRoom(id, at || null), get rp() { return RP; } } };
+GROVE.place = (x, y) => { state.player.x = x; state.player.y = y; cam.x = x; cam.y = y; };
+window.__inu = { grove: GROVE, guide, pet: { get f() { return petF; }, PL, remote: RPETS }, portals: { PT, found: PFOUND, warp: (to, from) => warpTo(to, from), here: () => stoneHere(), get view() { return mmView; } }, photo: { get on() { return photo; }, get cam() { return PHC; }, toggle: () => togglePhoto(), ui: PHUI, PHM }, emo: { get act() { return ACT.act; }, action: (k) => doAction(k), seat: () => seatNear(), sit: (id) => { const sp = SPOTS.find((q) => q.id === id); if (sp) { state.player.x = sp.x; state.player.y = sp.y + 10; const sn = seatNear(); if (sn) sitAt(sn); } return ACT.act; }, spots: SPOTS, wheel }, audio: { debug: audioDebug, settings: audioSettings, area: () => sndArea }, open: (k, o) => openPanel(k, o), get time() { return time; }, get player() { return player; }, get zoom() { return ZOOM; }, setZoom, president: pres, presVisit: (k) => startVisit(pres, k, { dayLen: DAY_LEN }), setHour: (h) => { const w = SKY.skyWorldT(skyNow(), DAY_LEN); SKYS.pinH = null; SKYS.shift = timeForHour(h) - (((w % DAY_LEN) + DAY_LEN) % DAY_LEN); syncSky(); }, folk: { T: TFS, Q: FOLKQ, sec: () => folkSecNow(), at: (i, s) => TF.folkAt(i, s), setSec: (s) => { FOLKQ.shift = s - folkBase(); }, find: (name, doing) => { const i = TF.FOLK_NAMES.indexOf(name), o = {}; for (let s = 0; s < TF.FOLK_DAY; s += 2) { TF.folkAt(i, s, o); if (o.doing === doing) return { s, x: o.x, y: o.y }; } return null; } }, setRain: (r) => { SKYS.wx = r ? 'rain' : 'clear'; amb.rain = amb.rainTarget = amb.cloud = amb.cloudTarget = r ? 1 : 0; amb.weatherT = 999; }, sky: SKYS, get amb() { return amb; }, get npcs() { return npcs; }, get mood() { return { ...MOOD.current, shown: MWd.MW.mood }; }, emote: (k) => doEmote(k), cam, get state() { return state; }, get mode() { return mode; }, get panel() { return panel?.kind; }, get panelObj() { return panel; }, mp: MPL, club: { hunt: () => huntNow(), party: () => partyNow(), kennel: () => enterKennel(), room: (id, at) => enterRoom(id, at || null), get rp() { return RP; } } };
 // Inu Arcade inside the desktop overlay: its 🏠 button asks us to close the overlay instead of reloading.
 // framed Arcade (hall peek) -> Verse: ready / exit (close + inu:back-to-verse alias) / score. Origin pinned (districts.js). Score = toast only.
 addEventListener('message', (e) => { const m = DIS.arcadeMessage(e, new URL(ARCADE.url).origin); if (!m) return; globalThis.__arcadeMsgs = [...(globalThis.__arcadeMsgs || []).slice(-9), m];

@@ -46,6 +46,29 @@ test('browser: crier + president banners clear of HUD bar, ticker (closed/open),
         return { banner: q(document.querySelector('#crier-banner.show')) || q(document.getElementById('pres-banner')), toasts, hud: [...document.querySelectorAll('#hud > *')].map(q).filter(Boolean), tick: q(ft?.querySelector('.ft-row')), list: q(list), ev: q(document.getElementById('ev-banner')),
           o: ['menu-btn', 'minimap-wrap', 'inu-wallet-btn', 'stick', 'btn-a', 'btn-emo', 'prompt'].map((id) => [id, q(document.getElementById(id))]) }; });
       const at = `${kind} ticker:${tick} @${vp.width}x${vp.height}`;
+      const parked = await p.evaluate(() => {
+        const log = document.getElementById('notice-log');
+        const q = (e) => { if (!e) return null; const r = e.getBoundingClientRect(); return r.width ? [r.x, r.y, r.width, r.height] : null; };
+        return {
+          compact: document.body.classList.contains('notice-compact'),
+          text: log ? log.innerText : '',
+          bones: q(document.getElementById('bones-chip')),
+          day: q(document.getElementById('streak-chip')),
+        };
+      });
+      if (parked.compact) {
+        assert.match(parked.text, kind === 'crier' ? /Hear ye/ : /President/);
+        assert.match(parked.text, /Welcome to Inu Verse|Login streak/);
+        const center = [vp.width / 2 - 40, vp.height / 2 - 40, 80, 80];
+        for (const box of [R.banner, R.ev, ...R.toasts]) if (box && box[2] > 2 && box[3] > 2) assert.ok(!overlaps(box, center), `parked card still on the play center ${at}`);
+        for (const box of [R.banner, R.ev, ...R.toasts]) {
+          if (!box || box[2] <= 2) continue;
+          if (parked.bones) assert.ok(!overlaps(box, parked.bones), 'card on bones ' + at);
+          if (parked.day) assert.ok(!overlaps(box, parked.day), 'card on day ' + at);
+          for (const [id, r] of R.o) if (r && (id === 'stick' || id === 'btn-a')) assert.ok(!overlaps(box, r), `card on ${id} ${at}`);
+        }
+        continue;
+      }
       assert.ok(R.banner, 'banner shown ' + at); assert.ok(R.tick, 'ticker shown ' + at); assert.ok(R.ev, 'event banner shown ' + at);
       for (const h of R.hud) assert.ok(!overlaps(R.banner, h), `banner ${R.banner} on HUD top bar ${h} ${at}`);
       assert.ok(R.banner[1] >= Math.max(...R.hud.map((h) => h[1] + h[3])), 'banner below the HUD bar ' + at);

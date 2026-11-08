@@ -127,8 +127,8 @@ function makeUi(doc, S, h) {
 @media (max-width:520px) and (max-height:420px){#mp-chat{width:min(300px,calc(100vw - 210px))}}`;
   function renderLog() { if (!logEl) return; logEl.innerHTML = log.slice(-12).map((m) => `<div class="${m.me ? 'me' : ''}"><b>${esc(m.name)}</b> ${esc(m.text)}</div>`).join(''); logEl.scrollTop = logEl.scrollHeight; }
   function pushLog(name, text, me = false) { log.push({ name: String(name || 'Pup').slice(0, MP.NAME_MAX), text: String(text || '').slice(0, MP.CHAT_MAX), me: !!me, t: Date.now() }); while (log.length > CHAT_LOG) log.shift(); renderLog(); }
-  function focusChat() { if (!bar || chip?.hidden || S.status !== 'online') return; bar.classList.add('focus'); input.disabled = false; input.focus(); }
-  function blurChat() { if (!bar) return; bar.classList.remove('focus'); input.blur(); }
+  function focusChat() { if (!bar || chip?.hidden || S.status !== 'online') return; bar.classList.add('focus'); doc.body.classList.add('chat-focus', 'ctrl-lock'); input.disabled = false; input.focus(); }
+  function blurChat() { if (!bar) return; bar.classList.remove('focus'); doc.body.classList.remove('chat-focus'); if (!doc.body.classList.contains('drawer-open') && !doc.body.classList.contains('notices-open')) doc.body.classList.remove('ctrl-lock'); input.blur(); }
   function build() { if (built) return; built = true;
     const st = doc.createElement('style'); st.textContent = css; doc.head.appendChild(st);
     chip = doc.createElement('button'); chip.id = 'mp-chip'; chip.className = 'chip'; chip.title = 'Players online'; chip.setAttribute('aria-label', 'Players online'); chip.innerHTML = '<i></i><span>solo</span>';
