@@ -86,6 +86,7 @@ test('browser: minimap on + fits the phone HUD, discovers stones by walking, A w
     assert.deepEqual([at.x, at.y], [pa.x, pa.y]); assert.equal(at.w, 1); assert.equal(at.b, bones0, 'warping is free');
     assert.equal(await p.evaluate(() => __inu.portals.warp('pond', 'plaza')), false, 'cannot warp to an undiscovered stone');
     // minimap tap -> full map; at a stone, tapping another found stone on the map warps there
+    if (await p.evaluate(() => getComputedStyle(document.getElementById('minimap')).display === 'none')) await p.tap('#map-peek');
     await p.tap('#minimap'); await p.waitForTimeout(400); assert.ok(await p.evaluate(() => !document.getElementById('mapfull').hidden), 'full map open'); assert.ok(await p.evaluate(() => !document.getElementById('map-warp').hidden), 'warp hint at a stone');
     const box = await p.evaluate(() => { const c = document.getElementById('mapcv').getBoundingClientRect(), s = __inu.portals.PT.BY_ID.farm; return { x: c.left + (s.tx + 0.5) * c.width / 64, y: c.top + (s.ty + 0.5) * c.height / 106 }; });
     await p.mouse.click(box.x, box.y); await p.waitForTimeout(400);
@@ -110,6 +111,7 @@ test('browser: full-map stones are big, visible and tappable at 844x390 + 667x37
     const ctx = await b.newContext({ viewport: vp, isMobile: true, hasTouch: true, deviceScaleFactor: 2 }), p = await ctx.newPage(); p.on('pageerror', (e) => errs.push(e.message));
     await p.route(/kibble-pay|_vercel/, (r) => r.fulfill({ status: 200, contentType: 'text/javascript', body: '' }));
     await p.goto(srv.url + '?mp=off&fx=low'); await p.evaluate(() => { localStorage.clear(); localStorage.setItem('inuverse.tour.v1', 'skipped:test'); localStorage.setItem('inuverse.portals.v1', JSON.stringify(['farm', 'plaza'])); }); await p.reload(); await p.waitForTimeout(700); await p.click('#start'); await p.waitForTimeout(1200);
+    if (await p.evaluate(() => getComputedStyle(document.getElementById('minimap')).display === 'none')) await p.tap('#map-peek');
     await p.tap('#minimap'); await p.waitForFunction(() => !document.getElementById('mapfull').hidden); await p.waitForTimeout(300);
     const R = await p.evaluate(() => { const cv = document.getElementById('mapcv'), c = cv.getBoundingClientRect(), g = cv.getContext('2d'), u = cv.width / c.width, out = {};
       for (const id of ['farm', 'arcade']) { const s = __inu.portals.PT.BY_ID[id], x = (s.tx + 0.5) * cv.width / 64, y = (s.ty + 0.5) * cv.height / 106; let cyan = 0, ink = 0;

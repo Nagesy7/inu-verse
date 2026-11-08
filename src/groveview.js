@@ -129,16 +129,28 @@ export function createGroveTown(doc = document, storage = globalThis.localStorag
   let gen = rec.gen || 0;
   const held = storage;
   const strip = doc?.createElement ? doc.createElement('div') : null;
+  let noteEl = null;
+  let ledgerEl = null;
   if (strip && doc.body) {
     strip.id = 'grove-strip';
-    strip.setAttribute('role', 'status');
+    if (strip.setAttribute) strip.setAttribute('role', 'status');
+    if (typeof strip.querySelector === 'function') {
+      strip.innerHTML = '<p id="grove-note"></p>';
+      noteEl = strip.querySelector('#grove-note');
+      ledgerEl = doc.createElement('div');
+      ledgerEl.id = 'grove-ledger';
+      if (doc.body.appendChild) doc.body.appendChild(ledgerEl);
+    }
     doc.body.appendChild(strip);
   }
   const paint = () => {
     if (!strip) return;
     const s = state;
     const day = s.salvage?.done ? 'done' : (s.salvage?.items || []).filter((item) => item.state === 'broken' || item.state === 'restored' || item.state === 'delivered' || item.state === 'donated' || item.state === 'scrapped').length;
-    strip.textContent = `${NOTE} · ${SCRIP} ${moneySum(s)}/${CAP} · budget ${s.budget || 0} · you ${s.you || 0} · sprig ${s.sprigWallet || 0} · hold ${s.hold || 0} · npc ${s.npcHold || 0} · stoolHold ${s.stoolHold || 0} · salvageHold ${s.salvageHold || 0} · logs ${s.logs || 0} · boards ${s.boards || 0} · porch ${s.holes} · gate ${s.gateHoles} · stool ${s.stool?.state || 'missing'} · day ${day}`;
+    const full = `${NOTE} · ${SCRIP} ${moneySum(s)}/${CAP} · budget ${s.budget || 0} · you ${s.you || 0} · sprig ${s.sprigWallet || 0} · hold ${s.hold || 0} · npc ${s.npcHold || 0} · stoolHold ${s.stoolHold || 0} · salvageHold ${s.salvageHold || 0} · logs ${s.logs || 0} · boards ${s.boards || 0} · porch ${s.holes} · gate ${s.gateHoles} · stool ${s.stool?.state || 'missing'} · day ${day}`;
+    if (noteEl) noteEl.textContent = NOTE;
+    if (ledgerEl) ledgerEl.textContent = full;
+    else strip.textContent = full;
     strip.title = `${noticeOf(s)} ${PREVIEW_LIMIT}`;
   };
   const persist = () => {

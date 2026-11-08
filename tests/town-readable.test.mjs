@@ -124,12 +124,34 @@ test('portrait bones and day stay readable; menu holds the rest without overflow
     assert.ok(hud.bones, 'bones chip missing');
     assert.ok(hud.num.font >= 16 && hud.num.w >= 12 && hud.num.clipX <= 1, JSON.stringify(hud.num));
     assert.ok(hud.bones.h >= 28 && hud.bones.right <= hud.vw - 48, JSON.stringify(hud.bones));
-    assert.ok(hud.dayn && hud.dayn.font >= 16 && hud.dayn.clipX <= 1, JSON.stringify(hud.dayn));
-    assert.ok(hud.day.x >= hud.bones.x && hud.day.bottom <= hud.bones.bottom + 4, JSON.stringify(hud));
-    assert.ok(hud.clock.y >= hud.bones.bottom - 2, JSON.stringify(hud));
+    assert.equal(hud.day.parent, 'play-body', JSON.stringify(hud.day));
+    assert.equal(hud.clock.parent, 'play-body', JSON.stringify(hud.clock));
+    assert.equal(hud.day.h, 0, 'day streak stays off the world until Town is open');
     assert.match(hud.extent, /^\d+px$/);
-    assert.ok(parseInt(hud.extent, 10) >= hud.clock.bottom, JSON.stringify(hud));
+    assert.ok(parseInt(hud.extent, 10) <= 180, JSON.stringify(hud));
     await page.screenshot({ path: `${SHOTS}/town-portrait-390x844.png` });
+    await page.tap('#play-details');
+    const town = await page.evaluate(() => {
+      const day = document.getElementById('streak-chip').getBoundingClientRect();
+      const n = document.getElementById('streak-n');
+      const ledger = document.getElementById('grove-ledger');
+      return {
+        locked: document.body.classList.contains('ctrl-lock'),
+        pe: getComputedStyle(document.getElementById('stick')).pointerEvents,
+        dayH: day.height,
+        dayFont: parseFloat(getComputedStyle(n).fontSize),
+        dayText: document.getElementById('streak-chip').innerText,
+        ledger: ledger.innerText,
+      };
+    });
+    assert.equal(town.locked, true);
+    assert.equal(town.pe, 'none');
+    assert.match(town.dayText, /day/i);
+    assert.ok(town.dayFont >= 14 && town.dayH >= 28, JSON.stringify(town));
+    assert.match(town.ledger, /budget/i);
+    assert.match(town.ledger, /not Bones/i);
+    await page.keyboard.press('Escape');
+    assert.equal(await page.evaluate(() => document.getElementById('play-sheet').hidden && !document.body.classList.contains('ctrl-lock')), true);
     const wide = await page.evaluate(() => {
       const num = document.getElementById('bones');
       num.textContent = '99999';
@@ -281,9 +303,10 @@ test('desktop keeps a gold readable strip', { timeout: 90000 }, async () => {
       return { bones: q(bones), day: q(day), clock: q(clock) };
     });
     assert.match(hud.bones.text, /bones/i);
-    assert.match(hud.day.text, /day/i);
-    assert.ok(hud.bones.w >= 72 && hud.day.w >= 80, JSON.stringify(hud));
-    assert.equal(hud.clock.parent, 'hud');
+    assert.ok(hud.bones.w >= 72, JSON.stringify(hud));
+    assert.equal(hud.clock.parent, 'play-body');
+    await page.click('#play-details');
+    assert.match(await page.locator('#streak-chip').innerText(), /day/i);
     await page.screenshot({ path: `${SHOTS}/town-desktop-1280x800.png` });
     await ctx.close();
   } finally {
