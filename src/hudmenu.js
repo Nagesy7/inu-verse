@@ -27,6 +27,7 @@ export function buildDrawer(doc = document, { bork, joystick } = {}) {
     dr.hidden = !v; btn.setAttribute('aria-expanded', String(v)); doc.body.classList.toggle('drawer-open', v);
     if (v) {
       opener = doc.activeElement === btn ? btn : btn;
+      if (!doc.getElementById('play-sheet')?.hidden) doc.getElementById('play-close')?.click();
       const pop = doc.getElementById('sound-pop'); if (pop) pop.hidden = true;
       const log = doc.getElementById('notice-log');
       if (log && !log.hidden) { log.hidden = true; doc.getElementById('notice-toggle')?.setAttribute('aria-expanded', 'false'); doc.body.classList.remove('notices-open'); }
@@ -36,7 +37,7 @@ export function buildDrawer(doc = document, { bork, joystick } = {}) {
       doc.body.classList.add('ctrl-lock');
       dr.querySelector('#dr-title')?.focus();
     } else {
-      if (!doc.body.classList.contains('notices-open') && !doc.body.classList.contains('chat-focus')) doc.body.classList.remove('ctrl-lock');
+      if (!doc.body.classList.contains('notices-open') && !doc.body.classList.contains('chat-focus') && !doc.body.classList.contains('play-sheet-open')) doc.body.classList.remove('ctrl-lock');
       try { (opener || btn).focus(); } catch {}
     }
   };
@@ -50,7 +51,12 @@ export function buildDrawer(doc = document, { bork, joystick } = {}) {
   btn.onclick = () => open(dr.hidden); $('dr-close').onclick = () => open(false);
   dr.addEventListener('click', (e) => { if (e.target === dr) return open(false); const b = e.target.closest('button,a'); if (b && !STAY_OPEN.has(b.id) && b.id !== 'dr-close' && b.closest('.dr-grid')) setTimeout(() => open(false), 0); });
   extra['dr-bork'].onclick = () => bork?.();
-  const mm = $('minimap-wrap'), key = 'inuverse.minimap', setMM = (v) => { doc.body.classList.toggle('mm-on', v); extra['dr-minimap'].textContent = `Minimap: ${v ? 'on' : 'off'}`; try { localStorage.setItem(key, v ? '1' : '0'); } catch {} };
+  const mm = $('minimap-wrap'), key = 'inuverse.minimap', setMM = (v) => { doc.body.classList.toggle('mm-on', v); if (!v) doc.body.classList.remove('mm-open'); extra['dr-minimap'].textContent = `Minimap: ${v ? 'on' : 'off'}`; try { localStorage.setItem(key, v ? '1' : '0'); } catch {} };
+  if (mm && !doc.getElementById('map-peek')) {
+    const peek = mk('<button id="map-peek" type="button">Map</button>');
+    mm.prepend(peek);
+    peek.addEventListener('click', (e) => { e.stopPropagation(); e.preventDefault(); if (!doc.body.classList.contains('mm-on')) return; doc.body.classList.toggle('mm-open'); });
+  }
   let mmOn; try { mmOn = localStorage.getItem(key); } catch {} setMM(mmOn == null ? true : mmOn === '1'); extra['dr-minimap'].onclick = () => setMM(!doc.body.classList.contains('mm-on')); // feature batch #3: the minimap fits the phone HUD, so it starts on everywhere (toggle in the menu)
   if (joystick) { const jb = extra['dr-joy'], show = () => { const v = !!joystick.get(); jb.textContent = `Joystick controls: ${v ? 'on' : 'off'}`; jb.setAttribute('aria-checked', String(v)); };
     jb.onclick = () => { joystick.set(!joystick.get()); show(); }; joystick.onChange = show; show(); }

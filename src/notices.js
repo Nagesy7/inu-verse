@@ -13,7 +13,7 @@ export function mountNotices(doc = document) {
   const tray = doc.createElement('div');
   tray.id = 'notice-tray';
   tray.hidden = true;
-  tray.innerHTML = '<button type="button" id="notice-toggle" aria-expanded="false">Notices <b id="notice-count">0</b></button><div id="notice-log" hidden></div>';
+  tray.innerHTML = '<button type="button" id="notice-toggle" aria-expanded="false" aria-label="Notices">Notices <b id="notice-count">0</b></button><div id="notice-log" hidden></div>';
   doc.body.appendChild(tray);
   const log = tray.querySelector('#notice-log');
   const count = tray.querySelector('#notice-count');
@@ -23,12 +23,13 @@ export function mountNotices(doc = document) {
     if (open) {
       const dr = doc.getElementById('drawer');
       if (dr && !dr.hidden) doc.getElementById('menu-btn')?.click();
+      if (!doc.getElementById('play-sheet')?.hidden) doc.getElementById('play-close')?.click();
       doc.body.classList.remove?.('chat-focus');
     }
     log.hidden = !open;
     toggle.setAttribute('aria-expanded', String(open));
     doc.body.classList.toggle('notices-open', open);
-    const locked = open || doc.body.classList.contains('drawer-open') || doc.body.classList.contains('chat-focus');
+    const locked = open || doc.body.classList.contains('drawer-open') || doc.body.classList.contains('chat-focus') || doc.body.classList.contains('play-sheet-open');
     doc.body.classList.toggle('ctrl-lock', locked);
   });
   const seen = new Set();
@@ -66,6 +67,7 @@ export function mountNotices(doc = document) {
     }
     const n = log.children.length;
     count.textContent = String(n);
+    toggle.setAttribute('aria-label', n ? `Notices ${n}` : 'Notices');
     tray.hidden = n === 0;
     return n;
   };

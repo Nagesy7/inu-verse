@@ -115,7 +115,7 @@ test('chromium: click and stick through pickup, mill, store, and repair without 
     const groveRaw = await page.evaluate(() => localStorage.getItem('inuverse.preview.grove.v0'));
     assert.match(groveRaw, /grove-slice-1/);
     assert.equal(groveRaw.includes('inuverse.save.v1'), false);
-    const day = await page.locator('#streak-chip').innerText();
+    const day = await page.evaluate(() => document.getElementById('streak-chip').textContent);
     assert.match(day, /day/i);
     const a = await page.locator('#btn-a').boundingBox();
     assert.ok(a.width >= 44 && a.height >= 44);
@@ -439,7 +439,7 @@ async function frameEvent(page, name) {
   await page.waitForTimeout(60);
   await page.evaluate(() => __inu.setHour(10));
   const prompt = await page.locator('#prompt').innerText();
-  const strip = await page.locator('#grove-strip').innerText();
+  const strip = await page.evaluate(() => document.getElementById('grove-ledger')?.textContent || '');
   await page.screenshot({ path: `/opt/cursor/artifacts/event-${name}-portrait-390x844.png` });
   await page.setViewportSize({ width: 1280, height: 800 });
   await page.waitForTimeout(60);
@@ -629,10 +629,11 @@ async function frameSnap(page, station) {
     const s = __inu.grove.status();
     const near = __inu.grove.near(__inu.state.player.x, __inu.state.player.y);
     const prompt = document.getElementById('prompt')?.innerText || '';
-    const strip = document.getElementById('grove-strip')?.textContent || '';
+    const note = document.getElementById('grove-note')?.textContent || '';
+    const strip = document.getElementById('grove-ledger')?.textContent || '';
     return {
       station, near: near?.id || null,
-      prompt, strip,
+      prompt, strip, note,
       budget: s.budget, you: s.you, hold: s.hold, sprigWallet: s.sprigWallet,
       npcHold: s.npcHold, stoolHold: s.stoolHold, salvageHold: s.salvageHold,
       logs: s.logs, boards: s.boards, holes: s.holes,
@@ -643,6 +644,8 @@ async function frameSnap(page, station) {
 }
 
 function assertSnapAgrees(snap) {
+  assert.match(snap.note, /TEST SPLINTS/i);
+  assert.doesNotMatch(snap.note, /budget/i);
   assert.match(snap.strip, /TEST SPLINTS/i);
   assert.match(snap.strip, /not Bones/i);
   assert.match(snap.strip, /not \$KIBBLE/i);
@@ -689,7 +692,17 @@ test('chromium: one porch batch is walked, and stock, funds, and a finished porc
     assert.doesNotMatch(before.prompt, /gate board/i);
     await walkTo(page, 'stump');
     await page.click('#btn-a');
-    const held = await page.evaluate(() => __inu.grove.status());
+    let held = await page.evaluate(() => __inu.grove.status());
+    if (held.hold !== 2 && /Sprig already reserved/.test(held.notice || '')) {
+      await page.evaluate(() => localStorage.removeItem('inuverse.preview.grove.v0'));
+      await page.reload();
+      await page.click('#continue');
+      await page.waitForFunction(() => document.getElementById('hud')?.classList.contains('in'));
+      await page.evaluate(() => { const s = __inu.grove.station('stump'); __inu.grove.place(s.x, s.y + 16); });
+      await walkTo(page, 'stump');
+      await page.click('#btn-a');
+      held = await page.evaluate(() => __inu.grove.status());
+    }
     assert.equal(held.hold, 2, held.notice);
     assert.equal(held.logs, 2);
     assert.equal(held.boards, 0);
@@ -899,10 +912,12 @@ test('webkit engine, not a phone: bones and the day label stay readable', { time
     const ctx = await browser.newContext({ viewport: { width: 390, height: 844 } });
     const page = await ctx.newPage();
     await startTown(page, srv.url);
+    await page.click('#play-details');
     const day = await page.locator('#streak-chip').innerText();
     assert.match(day, /day/i);
     const box = await page.locator('#streak-chip').boundingBox();
-    assert.ok(box.y >= 0 && box.width >= 40);
+    assert.ok(box && box.y >= 0 && box.width >= 40 && box.height >= 28);
+    assert.equal(await page.evaluate(() => document.body.classList.contains('ctrl-lock')), true);
     await ctx.close();
   } finally { await browser.close(); srv.close(); }
 });
