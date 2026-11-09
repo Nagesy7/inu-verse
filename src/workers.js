@@ -41,8 +41,29 @@ export function drawTool(c, w) { const s = w.face === 'left' ? -1 : 1, a = Math.
     case 'shears': R(c, X(18), -30, 4, 10, '#c9cede'); R(c, X(18) + a * 4, -36, 3, 8, '#c9cede'); R(c, X(18) - 2, -22, 8, 4, '#c8323c'); break;
     case 'ladder': if (w.work > 0 || w.billboard) { for (let i = 0; i < 7; i++) R(c, X(10) - 8, -12 - i * 12, 18, 2, '#c9cede'); R(c, X(10) - 8, -88, 2, 88, '#9aa0b4'); R(c, X(10) + 8, -88, 2, 88, '#9aa0b4'); } R(c, X(18), -34 + a * 6, 10, 4, '#2f6fbd'); R(c, X(18) + 4, -30 + a * 6, 2, 8, '#141a2e'); break;
     case 'cone': R(c, X(18) - 5, -6, 10, 4, '#141a2e'); R(c, X(18) - 4, -20, 8, 14, '#ff6a1e'); R(c, X(18) - 3, -16, 6, 3, '#f4f2ea'); break;
-    case 'wrench': R(c, X(18), -34 + a * 3, 3, 14, '#9aa0b4'); R(c, X(18) - 2, -36 + a * 3, 7, 4, '#9aa0b4'); break;
-    case 'axe': R(c, X(16) + a * 6, -46 + a * 8, 3, 28, '#9a6a3c'); R(c, X(10) + a * 6, -50 + a * 8, 16, 8, '#c9cede'); R(c, X(10) + a * 6, -50 + a * 8, 16, 2, '#f4f2ea'); break;
+    case 'wrench': {
+      if (Number.isInteger(w.frame)) {
+        const f = ((w.frame % 4) + 4) % 4;
+        const dy = [-28, -8, 14, 28][f];
+        const dx = [8, 18, 30, 18][f];
+        R(c, X(dx), -28 + dy, 3, 16, '#9aa0b4');
+        R(c, X(dx) - 4, -32 + dy, 11, 5, '#d5dae2');
+        R(c, X(dx) - 4, -32 + dy, 11, 2, '#f4f6f8');
+        break;
+      }
+      R(c, X(18), -34 + a * 3, 3, 14, '#9aa0b4'); R(c, X(18) - 2, -36 + a * 3, 7, 4, '#9aa0b4'); break;
+    }
+    case 'axe': {
+      const f = Number.isInteger(w.frame) ? ((w.frame % 4) + 4) % 4 : (a > 0.4 ? 0 : a > 0 ? 1 : a > -0.4 ? 2 : 3);
+      const head = [-48, -16, 18, 42][f];
+      R(c, X(12), -34 + head, 4, 28, '#9a6a3c');
+      R(c, X(12), -30 + head, 1, 28, '#c48a48');
+      R(c, X(2), -46 + head, 22, 10, '#c9cede');
+      R(c, X(2), -46 + head, 22, 3, '#f4f2ea');
+      R(c, X(2), -38 + head, 22, 2, '#8a909c');
+      if (f === 2) { R(c, X(20), -4, 10, 3, '#e2b070'); R(c, X(24), 0, 6, 2, '#a87440'); }
+      break;
+    }
     case 'roller': R(c, X(18), -40 + a * 6, 2, 22, '#9a6a3c'); R(c, X(18) - 5, -46 + a * 6, 12, 6, '#f4f2ea'); R(c, X(18) - 5, -42 + a * 6, 12, 2, '#7ab0e0'); break;
     case 'bin': R(c, X(-26) - 8, -24, 16, 24, '#141a2e'); R(c, X(-26) - 7, -23, 14, 22, '#3f9450'); R(c, X(-26) - 8, -26, 16, 3, '#2a6a38'); R(c, X(-26) - 6, -2, 4, 4, '#22232c'); break;
     case 'net': R(c, X(16), -48 + a * 4, 2, 40, '#9a6a3c'); R(c, X(16) - 6, -56 + a * 4, 14, 10, 'rgba(230,240,255,.7)'); R(c, X(16) - 6, -56 + a * 4, 14, 1, '#141a2e'); break;

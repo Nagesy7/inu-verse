@@ -792,6 +792,8 @@ test('chromium: one porch batch is walked, and stock, funds, and a finished porc
       const s = rec.state;
       s.budget = 0; s.you = 8; s.hold = 0; s.npcHold = 0; s.stoolHold = 0; s.salvageHold = 0; s.sprigWallet = 0;
       s.holes = 2; s.logs = 4; s.boards = 0; s.job = null; s.gateJob = null; s.stoolJob = null; s.salvageJob = null;
+      s.regenMs = 0; s.sprig = 0; s.sprigLeg = 0;
+      if (s.play) { s.play.lastNow = null; s.play.x = null; s.play.y = null; }
       if (s.salvage) {
         s.salvage.done = true;
         for (const item of s.salvage.items) {
@@ -841,6 +843,8 @@ test('chromium: one porch batch is walked, and stock, funds, and a finished porc
       const s = rec.state;
       s.budget = 8; s.you = 0; s.hold = 0; s.npcHold = 0; s.stoolHold = 0; s.salvageHold = 0; s.sprigWallet = 0;
       s.holes = 2; s.logs = 0; s.boards = 0; s.job = null; s.gateJob = null; s.stoolJob = null; s.salvageJob = null;
+      s.regenMs = 0; s.sprig = 0; s.sprigLeg = 0;
+      if (s.play) { s.play.lastNow = null; s.play.x = null; s.play.y = null; }
       if (s.salvage) {
         s.salvage.done = false;
         for (const item of s.salvage.items) {

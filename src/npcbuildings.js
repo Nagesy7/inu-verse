@@ -9,8 +9,8 @@ export const DAILY_ISSUE = 40;
 export const CHIT_CAP = 160;
 export const TAG = 'npc-buildings-1';
 
-export const LUMBER = Object.freeze({ id: 'lumber', name: 'Lumber Yard', x: 50, y: 96, w: 6, h: 4, door: Object.freeze([50, 95]) });
-export const MECHANIC = Object.freeze({ id: 'mechanic', name: "Mechanic's Shop", x: 28, y: 2, w: 5, h: 4, door: Object.freeze([30, 6]) });
+export const LUMBER = Object.freeze({ id: 'lumber', name: 'Lumber Yard', x: 50, y: 96, w: 6, h: 4, door: Object.freeze([50, 95]), work: Object.freeze([52, 98]), saw: Object.freeze([53, 97]) });
+export const MECHANIC = Object.freeze({ id: 'mechanic', name: "Mechanic's Shop", x: 28, y: 2, w: 5, h: 4, door: Object.freeze([30, 6]), work: Object.freeze([29, 4]), bay: Object.freeze([31, 4]) });
 export const RECYCLER = Object.freeze([30, 8]);
 export const HOMES = Object.freeze({
   timber: Object.freeze([12, 40]),
@@ -107,6 +107,10 @@ export function seedState() {
     issuedDawn: 0,
     lastIssue: 0,
     cut: 0,
+    act: 'chop',
+    axe: 0,
+    shownChop: false,
+    wrenchSwing: 0,
     logs: 0,
     planks: 0,
     shopPlanks: 0,
@@ -146,13 +150,30 @@ export function advance(input) {
   }
   if (s.beat === 'work') {
     if (s.cut < 4) {
-      s.cut += 1;
-      s.logs += 1;
-    } else if (s.cart === 'broken') s.cart = 'fixed';
-    else if (s.logs >= 2 && s.planks < 1) {
+      if (s.act === 'chop') {
+        if (s.axe < 3) s.axe += 1;
+        else { s.act = 'stack'; s.axe = 0; }
+      } else if (s.axe < 1) s.axe += 1;
+      else { s.cut += 1; s.logs += 1; s.act = 'chop'; s.axe = 0; }
+      return s;
+    }
+    if (!s.shownChop) {
+      s.act = 'chop';
+      if (s.axe < 2) s.axe += 1;
+      else s.shownChop = true;
+      return s;
+    }
+    if (s.cart === 'broken') {
+      if (s.wrenchSwing < 3) s.wrenchSwing += 1;
+      else s.cart = 'fixed';
+      return s;
+    }
+    if (s.logs >= 2 && s.planks < 1) {
       s.logs -= 2;
       s.planks += 1;
-    } else s.beat = 'deliver';
+      return s;
+    }
+    s.beat = 'deliver';
     return s;
   }
   if (s.beat === 'deliver') {
@@ -172,10 +193,7 @@ export function advance(input) {
       s.shopPlanks += 1;
       s.cargo = null;
       s.shortage = 'FILLED';
-      if (s.cart === 'fixed') {
-        s.cart = 'carried';
-        s.cargo = 'tool';
-      }
+      if (s.cart === 'fixed' && s.recycled === 0) s.cargo = 'tool';
       s.leg = 'toRecycler';
       s.i.porter = 0;
       return s;
@@ -183,7 +201,6 @@ export function advance(input) {
     if (s.leg === 'toRecycler' && s.cargo === 'tool') {
       s.recycled += 1;
       s.cargo = null;
-      s.cart = 'recycled';
       s.beat = 'homebound';
       s.i.timber = 0;
       s.i.wrench = 0;
@@ -211,8 +228,8 @@ export function seek(label) {
   const want = () => {
     if (label === 'home') return s.beat === 'home';
     if (label === 'walking') return s.beat === 'walk' && s.i.timber === 15 && s.i.wrench === 15 && s.logs === 0 && s.cart === 'broken';
-    if (label === 'working-lumber') return s.beat === 'work' && s.logs === 4 && s.planks === 0 && s.cart === 'broken';
-    if (label === 'working-mechanic') return s.beat === 'work' && s.cart === 'fixed' && s.logs === 4 && s.planks === 0;
+    if (label === 'working-lumber') return s.beat === 'work' && s.logs === 4 && s.shownChop && s.act === 'chop' && s.axe === 2 && s.planks === 0 && s.cart === 'broken';
+    if (label === 'working-mechanic') return s.beat === 'work' && s.cart === 'fixed' && s.wrenchSwing === 3 && s.logs === 4 && s.planks === 0;
     if (label === 'delivery') return s.leg === 'toShop' && s.cargo === 'plank' && s.planks === 0 && s.shopPlanks === 0 && s.i.porter === Math.floor(ROUTES.toShop.length / 2);
     if (label === 'nextdawn') return s.beat === 'nextdawn';
     return false;
@@ -243,24 +260,33 @@ export function crewView(s) {
   for (const id of ['timber', 'wrench', 'porter']) {
     const route = routeFor(s, id);
     const i = Math.max(0, Math.min(route.length - 1, indexFor(s, id)));
-    const [tx, ty] = route[i];
+    let tx = route[i][0];
+    let ty = route[i][1];
     const nxt = route[Math.min(route.length - 1, i + 1)];
-    const moving = i < route.length - 1 && (s.beat === 'walk' || s.beat === 'deliver' || s.beat === 'homebound') && !(id === 'porter' && s.beat !== 'deliver' && s.beat !== 'homebound');
+    let moving = i < route.length - 1 && (s.beat === 'walk' || s.beat === 'deliver' || s.beat === 'homebound') && !(id === 'porter' && s.beat !== 'deliver' && s.beat !== 'homebound');
     let face = 'down';
     if (moving) {
       const dx = nxt[0] - tx;
       const dy = nxt[1] - ty;
       face = Math.abs(dx) > Math.abs(dy) ? (dx > 0 ? 'right' : 'left') : (dy > 0 ? 'down' : 'up');
-    } else if ((id === 'timber' && tx === LUMBER.door[0] && ty === LUMBER.door[1]) || (id === 'wrench' && tx === MECHANIC.door[0] && ty === MECHANIC.door[1])) face = 'up';
+    }
     let place = 'path';
     if ((s.beat === 'home' || s.beat === 'nextdawn') && i === 0) place = 'home';
     else if (tx === LUMBER.door[0] && ty === LUMBER.door[1] && id !== 'wrench') place = 'lumber';
     else if (tx === MECHANIC.door[0] && ty === MECHANIC.door[1]) place = 'mechanic';
     else if (tx === RECYCLER[0] && ty === RECYCLER[1]) place = 'recycler';
     else if (i === 0 && id === 'porter' && s.beat !== 'deliver') place = 'home';
+    const onJob = s.beat === 'work' || s.beat === 'deliver';
+    if (id === 'timber' && onJob) {
+      tx = LUMBER.door[0]; ty = LUMBER.door[1]; moving = false; face = 'up'; place = 'lumber';
+    }
+    if (id === 'wrench' && onJob) {
+      tx = MECHANIC.door[0]; ty = MECHANIC.door[1]; moving = false; face = 'up'; place = 'mechanic';
+    }
     const working = s.beat === 'work' && ((id === 'timber' && place === 'lumber') || (id === 'wrench' && place === 'mechanic'));
     out[id] = {
-      id, tx, ty, x: tx * TILE + 16, y: ty * TILE + 16, face, moving, place, working,
+      id, tx, ty, x: tx * TILE + 16 + (id === 'wrench' && place === 'mechanic' ? 6 : 0), y: ty * TILE + 16, face, moving, place, working,
+      frame: id === 'timber' ? s.axe : s.wrenchSwing,
       name: id === 'timber' ? 'Timber' : id === 'wrench' ? 'Wrench' : 'Porter',
       coat: id === 'timber' ? 'tan' : id === 'wrench' ? 'gray' : 'cream',
       tool: id === 'timber' ? 'axe' : id === 'wrench' ? 'wrench' : '',
@@ -274,11 +300,10 @@ export function plankTotal(s) {
 }
 
 export function conserved(s) {
-  const carts = ['broken', 'fixed', 'carried', 'recycled'];
   return s.logs >= 0 && s.logs + 2 * plankTotal(s) === s.cut
     && plankTotal(s) <= 1 && s.recycled <= 1
-    && carts.includes(s.cart)
-    && (s.cargo === 'tool') === (s.cart === 'carried')
-    && (s.recycled === 1) === (s.cart === 'recycled')
+    && (s.cart === 'broken' || s.cart === 'fixed')
+    && (s.cargo !== 'tool' || (s.cart === 'fixed' && s.recycled === 0))
+    && (s.recycled !== 1 || (s.cargo == null && s.cart === 'fixed'))
     && s.chits === s.issuedDawn && s.issuedDawn <= DAILY_ISSUE * s.day && s.chits <= CHIT_CAP;
 }

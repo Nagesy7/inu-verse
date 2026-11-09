@@ -122,7 +122,7 @@ import { hubGateProp } from './sceneart.js';
 import { buildDrawer, drawerOpen } from './hudmenu.js';
 import { layoutSafe } from './safezones.js';
 import { createGroveTown } from './groveview.js';
-import { createNpcWork } from './npcwork.js';
+import { createNpcWork, drawNpcOverlay } from './npcwork.js';
 import { makeDoorState, doorStep, doorExit, outsideOf } from './doors.js';
 import { isDoor, doorList, doorDir, COMMUNITY } from './world.js';
 import { createMultiplayer } from './multiplayer.js';
@@ -937,12 +937,14 @@ function renderWorld() {
     if (a.me) { const gl = statusGlow(state); if (gl) drawFlair(ctx, gl, time); }
     const kt = a.me ? kennelMine() : a.mp ? KN.remoteLook(a) : null; if (kt) { KN.drawAura(ctx, kt.tier, time); KENNEL_TAG.cur = KN.tagFor(kt.tier, kt.preview, kt.flair); }
     const pz = poseFor(a);
+    if (a.npcOverlay?.behind) drawNpcOverlay(ctx, a.npcOverlay);
     if (a.profile) { drawProfileShiba(ctx, 0, 0, a.profile, { face: a.face, phase: a.phase, moving: a.moving, name: a.name, scale: 1.5, badge: a.badge, fid: a.me ? 'me' : a.name, emote: a.emote?.kind, pose: pz }); if (a.emote) drawEmote(ctx, 0, -110, a.emote.kind, time); }
     else drawShiba(ctx, 0, 0, { coat: a.coat, outfit: a.outfit, face: a.face, phase: a.phase, moving: a.moving, name: a.name, scale: 1.5, badge: a.badge, art: a.art, emote: a.emote?.kind, fid: a.me ? 'me' : a.name || a.id, wag: a.wag || (mm?.wag ? 1 : 0), pose: pz });
     if (a.onboardMascot) drawMascotTag(ctx, a);
     if (pz) drawPoseFx(ctx, pz, 0, 0, 1.5, time, pz.face);
     KENNEL_TAG.cur = null; if (a.me && LS.wornPin(state) != null) drawWornPin(ctx, LS.wornPin(state), time);
-    if (a.worker) { drawVest(ctx, a.face); drawTool(ctx, a.worker); }
+    if (a.worker) { drawVest(ctx, a.face); if (!a.npcOverlay) drawTool(ctx, a.worker); }
+    if (a.npcOverlay && !a.npcOverlay.behind) drawNpcOverlay(ctx, a.npcOverlay);
     if (a.bread) drawBreadBasket(ctx, a.face);
     if (mm?.umbrella || a.umbrella) MWd.drawUmbrella(ctx, time, a.idx || 0); else if (mm?.zz && !a.emote) MWd.drawZz(ctx, time + (a.idx || 0)); if (a.crier) MWd.drawBell(ctx, time, crierRing > 0);
     if (a.emote) drawEmote(ctx, 0, a.name ? -14 : 0, a.emote.kind, time); else if (a.act && ICON_ACTIONS[a.act.kind] && time - a.act.t0 < ICON_ACTIONS[a.act.kind]) drawEmote(ctx, 0, a.name ? -14 : 0, a.act.kind, time); ctx.restore();

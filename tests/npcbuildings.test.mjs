@@ -55,7 +55,12 @@ test('work waits until the worker is at the building, then the pile and the cart
   const y = crewView(yard);
   assert.equal(y.timber.place, 'lumber');
   assert.equal(y.timber.moving, false);
+  assert.equal(y.timber.face, 'up');
+  assert.equal(y.timber.tx, LUMBER.door[0]);
+  assert.equal(y.timber.ty, LUMBER.door[1]);
   assert.equal(y.timber.working, true);
+  assert.equal(y.timber.frame, 2);
+  assert.equal(yard.act, 'chop');
   assert.equal(yard.logs, 4);
   assert.equal(yard.planks, 0);
   assert.equal(yard.cart, 'broken');
@@ -63,7 +68,11 @@ test('work waits until the worker is at the building, then the pile and the cart
   const w = crewView(shop);
   assert.equal(w.wrench.place, 'mechanic');
   assert.equal(w.wrench.moving, false);
+  assert.equal(w.wrench.face, 'up');
+  assert.equal(w.wrench.ty, MECHANIC.door[1]);
+  assert.equal(w.wrench.x, MECHANIC.door[0] * 32 + 22);
   assert.equal(w.wrench.working, true);
+  assert.equal(w.wrench.frame, 3);
   assert.equal(shop.cart, 'fixed');
   assert.equal(shop.logs, 4);
   assert.equal(conserved(yard) && conserved(shop), true);
@@ -86,7 +95,7 @@ test('porter moves one plank and one tool, and a second pass does not mint anoth
   assert.equal(done.planks, 0);
   assert.equal(done.cargo, null);
   assert.equal(done.recycled, 1);
-  assert.equal(done.cart, 'recycled');
+  assert.equal(done.cart, 'fixed');
   assert.equal(done.shortage, 'FILLED');
   assert.equal(done.logs, 2);
   assert.equal(done.cut, 4);

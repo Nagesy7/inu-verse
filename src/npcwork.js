@@ -13,37 +13,53 @@ export function npcWorkOn(search = '') {
   return new URLSearchParams(search).get(NPCWORK_QUERY) === '1';
 }
 
+const ART_SRC = {
+  lumber: 'assets/npcwork/buildings/lumber-yard.png',
+  mechanic: 'assets/npcwork/buildings/mechanic-shop.png',
+  log: 'assets/npcwork/props/log.png',
+  plank: 'assets/npcwork/props/plank.png',
+  cartBroken: 'assets/npcwork/props/cart-broken.png',
+  cartFixed: 'assets/npcwork/props/cart-fixed.png',
+  signShort: 'assets/npcwork/props/sign-short-1-plank.png',
+  signFilled: 'assets/npcwork/props/sign-filled.png',
+  recyclerEmpty: 'assets/npcwork/props/recycler-empty.png',
+  recyclerTool: 'assets/npcwork/props/recycler-tool.png',
+  chop: 'assets/npcwork/overlays/chop-axe-down.png',
+  stack: 'assets/npcwork/overlays/stack-log-down.png',
+  wrench: 'assets/npcwork/overlays/repair-wrench-up.png',
+  carryPlank: 'assets/npcwork/overlays/carry-plank.png',
+  carryTool: 'assets/npcwork/overlays/carry-tool.png',
+};
+const IMG = {};
+let artLoaded = false;
+function loadArt() {
+  if (artLoaded || typeof Image === 'undefined') return Promise.resolve(false);
+  artLoaded = true;
+  return Promise.all(Object.entries(ART_SRC).map(([key, src]) => new Promise((res) => {
+    const im = new Image();
+    im.onload = () => { IMG[key] = im; res(true); };
+    im.onerror = () => res(false);
+    im.src = src;
+  })));
+}
+
+function blit(c, key, x, y, w, h) {
+  const im = IMG[key];
+  if (!im) return;
+  c.imageSmoothingEnabled = false;
+  c.drawImage(im, Math.round(x), Math.round(y), w, h);
+}
+
+export function drawNpcOverlay(ctx, o) {
+  const im = IMG[o.key];
+  if (!im) return;
+  ctx.imageSmoothingEnabled = false;
+  ctx.drawImage(im, (o.frame || 0) * 48, 0, 48, 60, -48, -88, 96, 120);
+}
+
 const R = (c, x, y, w, h, col) => { c.fillStyle = col; c.fillRect(Math.round(x), Math.round(y), w, h); };
 
-function building(c, lot, wall, roof, title) {
-  const x = lot.x * TILE;
-  const y = lot.y * TILE;
-  const w = lot.w * TILE;
-  const h = lot.h * TILE;
-  R(c, x + 4, y + h - 6, w, 8, 'rgba(16,24,48,.28)');
-  R(c, x, y + 10, w, h - 10, '#3a2210');
-  R(c, x + 2, y + 12, w - 4, h - 14, wall);
-  R(c, x - 4, y, w + 8, 16, '#3a2210');
-  R(c, x - 2, y + 2, w + 4, 12, roof);
-  R(c, x + w / 2 - 8, y + h - 22, 16, 18, '#5c3a22');
-  c.font = '8px Silkscreen, monospace';
-  c.textAlign = 'center';
-  c.textBaseline = 'middle';
-  const tw = Math.ceil(c.measureText(title).width) + 8;
-  R(c, x + w / 2 - tw / 2, y + 18, tw, 12, '#121a36');
-  c.fillStyle = '#f6e7b8';
-  c.fillText(title, x + w / 2, y + 24);
-}
-
-function logs(c, n) {
-  const x = (LUMBER.x + 2) * TILE;
-  const y = (LUMBER.y + LUMBER.h - 1) * TILE - 8;
-  for (let i = 0; i < n; i++) {
-    R(c, x + (i % 3) * 14, y - Math.floor(i / 3) * 8, 12, 6, i % 2 ? '#8a5a32' : '#c48a48');
-    R(c, x + (i % 3) * 14, y - Math.floor(i / 3) * 8, 12, 2, '#e2b888');
-  }
-  label(c, `LOGS ${n}`, x + 20, y - 28);
-}
+const LOG_SLOTS = [[1660, 3160], [1678, 3160], [1696, 3160], [1668, 3150]];
 
 function label(c, text, x, y) {
   c.font = '8px Silkscreen, monospace';
@@ -53,40 +69,6 @@ function label(c, text, x, y) {
   R(c, x - w / 2, y - 6, w, 12, '#121a36');
   c.fillStyle = '#f6e7b8';
   c.fillText(text, x, y);
-}
-
-function cart(c, kind) {
-  const x = MECHANIC.door[0] * TILE + 16;
-  const y = (MECHANIC.y + MECHANIC.h - 1) * TILE + 8;
-  if (kind === 'carried' || kind === 'recycled') return;
-  R(c, x - 16, y - 10, 32, 10, kind === 'fixed' ? '#2f6fbd' : '#6a6460');
-  R(c, x - 18, y - 16, 20, 8, kind === 'fixed' ? '#7eb0e0' : '#4a4644');
-  R(c, x - 14, y, 8, 8, '#141a2e');
-  if (kind === 'fixed') R(c, x + 6, y, 8, 8, '#141a2e');
-  else R(c, x + 8, y + 2, 8, 3, '#8a4030');
-  label(c, kind === 'fixed' ? 'CART FIXED' : 'CART BROKEN', x, y - 28);
-}
-
-function sign(c, text) {
-  const x = (MECHANIC.x + MECHANIC.w - 1) * TILE;
-  const y = MECHANIC.door[1] * TILE - 20;
-  label(c, text, x, y);
-}
-
-function bin(c, n) {
-  const x = RECYCLER[0] * TILE + 16;
-  const y = RECYCLER[1] * TILE + 10;
-  R(c, x - 10, y - 16, 20, 16, '#2a6a38');
-  R(c, x - 12, y - 20, 24, 5, '#1d4a28');
-  if (n) R(c, x - 6, y - 28, 12, 6, '#9aa0b4');
-  label(c, n ? 'RECYCLED 1' : 'RECYCLER', x, y - 36);
-}
-
-function plankProp(c, x, y) {
-  R(c, x + 8, y - 16, 28, 8, '#e2b070');
-  R(c, x + 8, y - 16, 28, 2, '#f0d0a0');
-  R(c, x + 8, y - 10, 28, 2, '#a87440');
-  label(c, 'PLANK', x + 22, y - 28);
 }
 
 export function detailText(s, crew) {
@@ -142,9 +124,11 @@ export function createNpcWork(doc = document, storage = globalThis.localStorage)
     chip.setAttribute?.('aria-expanded', String(!pop.hidden));
     paint();
   });
+  const ready = loadArt();
   paint();
   persist();
   return {
+    artReady: ready.then(() => true),
     saveKey: SAVE_KEY,
     hold(v) { held = !!v; },
     reset() {
@@ -208,25 +192,36 @@ export function createNpcWork(doc = document, storage = globalThis.localStorage)
       };
     },
     actors() {
-      return Object.values(crewView(state)).map((a) => ({
-        x: a.x, y: a.y, coat: a.coat, outfit: {}, face: a.face, phase: state.phase, moving: a.moving,
-        name: a.name, art: null, npcwork: true,
-        worker: { tool: a.tool, face: a.face, phase: state.phase, work: a.working ? 1 : 0 },
-      }));
+      return Object.values(crewView(state)).map((a) => {
+        let npcOverlay = null;
+        if (a.id === 'timber' && a.working) npcOverlay = { key: state.act === 'stack' ? 'stack' : 'chop', frame: state.axe, behind: false };
+        else if (a.id === 'wrench' && a.working) npcOverlay = { key: 'wrench', frame: state.wrenchSwing, behind: false };
+        else if (a.id === 'porter' && state.cargo === 'plank') npcOverlay = { key: 'carryPlank', frame: 0, behind: a.face === 'up' };
+        else if (a.id === 'porter' && state.cargo === 'tool') npcOverlay = { key: 'carryTool', frame: 0, behind: a.face === 'up' };
+        return {
+          x: a.x, y: a.y, coat: a.coat, outfit: {}, face: a.face, phase: state.phase, moving: a.moving,
+          name: a.name, art: null, npcwork: true, npcOverlay,
+          worker: { tool: '', face: a.face, phase: state.phase, work: 0 },
+        };
+      });
     },
     props() {
-      const crew = crewView(state);
       const list = [
-        { y: (LUMBER.y + LUMBER.h) * TILE, d: (c) => building(c, LUMBER, '#8d5a32', '#6a3030', 'LUMBER') },
-        { y: (MECHANIC.y + MECHANIC.h) * TILE, d: (c) => building(c, MECHANIC, '#4a5568', '#2a3348', 'MECHANIC') },
-        { y: (LUMBER.y + LUMBER.h) * TILE + 2, d: (c) => { logs(c, state.logs); label(c, `PLANKS ${state.planks}`, (LUMBER.x + 4) * TILE, (LUMBER.y + 1) * TILE); } },
-        { y: MECHANIC.door[1] * TILE, d: (c) => { cart(c, state.cart); sign(c, state.shortage); label(c, `SHOP ${state.shopPlanks}`, MECHANIC.door[0] * TILE - 28, MECHANIC.door[1] * TILE - 8); } },
-        { y: RECYCLER[1] * TILE + 12, d: (c) => bin(c, state.recycled) },
+        { y: 3200, d: (c) => blit(c, 'lumber', 1600, 3072, 192, 128) },
+        { y: 192, d: (c) => blit(c, 'mechanic', 896, 64, 160, 128) },
+        { y: 3202, d: (c) => {
+          for (let i = 0; i < state.logs && i < LOG_SLOTS.length; i++) blit(c, 'log', LOG_SLOTS[i][0], LOG_SLOTS[i][1], 18, 10);
+          label(c, `LOGS ${state.logs}`, 1712, 3144);
+          if (state.planks >= 1) blit(c, 'plank', 1736, 3128, 34, 8);
+        } },
+        { y: 194, d: (c) => {
+          if (state.cart === 'broken' || state.cart === 'fixed') blit(c, state.cart === 'fixed' ? 'cartFixed' : 'cartBroken', 954, 148, 44, 30);
+          if (state.shopPlanks >= 1) blit(c, 'plank', 952, 180, 34, 8);
+          blit(c, state.shortage === 'FILLED' ? 'signFilled' : 'signShort', 1010, 155, 40, 18);
+          label(c, `SHOP ${state.shopPlanks}`, 1030, 190);
+        } },
+        { y: 286, d: (c) => blit(c, state.recycled ? 'recyclerTool' : 'recyclerEmpty', 960, 256, 32, 32) },
       ];
-      if (state.cargo === 'plank' || state.cargo === 'tool') {
-        const p = crew.porter;
-        list.push({ y: p.y + 4, d: (c) => (state.cargo === 'plank' ? plankProp(c, p.x + 18, p.y) : label(c, 'TOOL', p.x + 18, p.y - 36)) });
-      }
       return list;
     },
   };
