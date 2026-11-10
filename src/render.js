@@ -254,7 +254,7 @@ function groundExtras(c) {
   }
 }
 
-const WORK_LOTS = new Set(['bakery', 'tailor', 'farm', 'mill', 'mine', 'smelter', 'forge', 'scrap', 'sawmill', 'lumber', 'mechanic', 'factory', 'cloth', 'cotton', 'goods', 'depot', 'tower', 'shed', 'sip', 'vet', 'cot0', 'cot1', 'cot2']);
+const WORK_LOTS = new Set(['bakery', 'tailor', 'farm', 'mill', 'mine', 'smelter', 'forge', 'scrap', 'sawmill', 'lumber', 'mechanic', 'factory', 'cloth', 'cotton', 'goods', 'depot', 'tower', 'shed', 'sip', 'vet', 'cot0', 'cot1', 'cot2', 'quarry', 'builders', 'stage', 'pay', 'drawwell', 'eastdock', 'jobs']);
 
 // Preview-only facades. The live loop still paints these two from bldgfx.js.
 const PREVIEW_SHOPS = {
@@ -305,7 +305,7 @@ export function proposalProps(grid, w, h, lots) {
   for (const [x, y] of plazaPlanters()) props.push({ y: y * TILE + 28, d: (c) => c.drawImage(S.streetTree, x * TILE - 14, y * TILE + 28 - S.streetTree.height * 3, 60, S.streetTree.height * 3) });
   for (const lot of lots) {
     if (lot.water || lot.reserved || WORK_LOTS.has(lot.id)) continue;
-    const front = lot.id === 'cafe' ? (lot.y + lot.h - 1) * TILE : (lot.y + lot.h) * TILE - 1;
+    const front = lot.id === 'cafe' || lot.id === 'goldden' ? (lot.y + lot.h - 1) * TILE : (lot.y + lot.h) * TILE - 1;
     props.push({ y: front, d: (c) => { drawLotBuilding(c, lot); } });
     if (lot.id !== 'cafe') continue;
     const x0 = lot.x * TILE;

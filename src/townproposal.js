@@ -51,14 +51,14 @@ export const LOTS = Object.freeze([
   lot('chapel', 'Park Chapel', 'plaza', 28, 18, 7, 5, [31, 23]),
   lot('fountain', 'Plaza Fountain', 'plaza', 40, 24, 4, 3, [42, 27]),
   lot('well', 'Well', 'plaza', 36, 28, 2, 2, [36, 30], { reserved: true }),
-  lot('jobs', 'Jobs Board', 'plaza', 52, 26, 2, 2, [54, 27], { reserved: true }),
+  lot('jobs', 'Noticeboard', 'plaza', 52, 26, 2, 1, [53, 27]),
   lot('leaders', 'Leaderboards Hall', 'plaza', 6, 30, 6, 3, [9, 33]),
 
   lot('lumber', 'Lumber Yard', 'timber', 24, 14, 6, 4, [27, 18]),
   lot('sawmill', 'Sawmill', 'timber', 40, 16, 5, 4, [42, 20]),
   lot('office', "President's Office", 'civic', 58, 16, 10, 5, [63, 21]),
 
-  lot('cafe', 'Shiba Sips Café', 'food', 4, 38, 8, 6, [8, 44]),
+  lot('cafe', 'Shiba Sips Café', 'food', 4, 38, 8, 6, [5, 43]),
   lot('bakery', 'Bakery', 'food', 14, 34, 5, 4, [16, 38]),
   lot('mill', 'Flour Mill', 'food', 20, 42, 5, 4, [22, 41]),
   lot('farm', 'Wheat Farm', 'food', 26, 32, 6, 4, [29, 36]),
@@ -71,12 +71,15 @@ export const LOTS = Object.freeze([
   lot('tower', 'Water Tower', 'metal', 86, 28, 3, 3, [87, 31]),
 
   lot('sip', 'Café', 'food', 4, 50, 4, 4, [7, 54]),
+  lot('drawwell', 'Town Well', 'food', 4, 56, 3, 3, [6, 59]),
   lot('cloth', 'Cloth Mill', 'food', 12, 54, 5, 4, [16, 58]),
   lot('cotton', 'Cotton Field', 'fields', 58, 60, 5, 4, [60, 64]),
   lot('tailor', 'Tailor', 'food', 18, 48, 5, 4, [20, 52]),
   lot('vet', 'Vet Clinic', 'food', 26, 52, 4, 4, [29, 56]),
-  lot('quarry', 'Quarry', 'metal', 54, 44, 6, 4, [57, 43], { reserved: true }),
-  lot('builders', "Builders' Yard", 'metal', 62, 48, 6, 4, [65, 47], { reserved: true }),
+  lot('quarry', 'Quarry', 'metal', 54, 44, 5, 4, [56, 48]),
+  lot('builders', "Builders' Yard", 'metal', 64, 48, 5, 4, [66, 52]),
+  lot('stage', 'House Frame', 'metal', 81, 40, 3, 3, [82, 43]),
+  lot('pay', 'Pay Window', 'metal', 78, 50, 2, 2, [79, 52]),
   lot('factory', 'Car Factory', 'metal', 70, 44, 8, 5, [71, 49]),
   lot('depot', 'Delivery Depot', 'metal', 80, 48, 5, 4, [82, 52]),
   lot('shed', 'Power Shed', 'metal', 88, 42, 4, 3, [91, 45]),
@@ -112,7 +115,7 @@ export const LOTS = Object.freeze([
   lot('mall', 'Kibble Mall', 'market', 36, 76, 14, 8, [43, 84]),
   lot('jewel', 'Gilded Collar Jewelers', 'market', 52, 80, 8, 6, [56, 79]),
   lot('designer', 'Royal Paws Designer', 'market', 62, 76, 8, 6, [66, 82]),
-  lot('goldden', 'Golden Den Furniture', 'market', 72, 80, 8, 6, [76, 79]),
+  lot('goldden', 'Golden Den Furniture', 'market', 72, 80, 8, 6, [79, 85]),
   lot('luxauto', 'Zoomies Luxury Autos', 'market', 82, 76, 8, 6, [86, 82]),
   lot('petshop', 'Pawsome Pets', 'market', 16, 86, 8, 3, [20, 85]),
 
@@ -123,6 +126,8 @@ export const LOTS = Object.freeze([
   lot('barn', 'Big Barn', 'fields', 26, 74, 8, 5, [30, 73]),
   lot('pond', 'Fishing Pond', 'fields', 6, 86, 8, 3, [15, 84], { water: true }),
   lot('dock', 'Fishing Dock', 'fields', 14, 84, 2, 2, [15, 83], { reserved: true }),
+  lot('eastdock', 'East Dock', 'fields', 74, 72, 3, 3, [74, 75], { deck: true }),
+  lot('eastpond', 'East Pond', 'fields', 77, 72, 4, 3, [74, 75], { water: true }),
   lot('craft', 'Crafting Station', 'fields', 52, 74, 4, 3, [54, 73]),
   lot('pen', 'Animal Pen', 'fields', 70, 86, 10, 3, [69, 87]),
   lot('cosy', 'Cosy Corner Furniture', 'fields', 82, 84, 5, 5, [84, 83]),
@@ -217,9 +222,20 @@ export function buildProposalGrid() {
     }
   }
   stroke(grid, [[70, 84], [74, 84], [78, 85], [82, 84]], 0.6, T.FENCE);
+  const denDoor = LOTS.find((b) => b.id === 'goldden')?.door;
+  if (denDoor) {
+    for (const [x, y] of [[denDoor[0] + 1, denDoor[1]], [denDoor[0] + 1, denDoor[1] - 1]]) {
+      if (grid[y] && (grid[y][x] === T.FENCE || grid[y][x] === T.GRASS || grid[y][x] === T.TREE)) grid[y][x] = T.WALK;
+    }
+  }
   for (const b of LOTS) {
-    if (b.water) continue;
-    else if (b.reserved && b.soft) {
+    if (b.water) {
+      if (b.id === 'eastpond') paint(grid, b.x, b.y, b.w, b.h, T.WATER);
+      continue;
+    } else if (b.deck) {
+      paint(grid, b.x, b.y, Math.max(1, b.w - 1), b.h, T.BUILDING);
+      paint(grid, b.x + b.w - 1, b.y, 1, b.h, T.WATER);
+    } else if (b.reserved && b.soft) {
       for (let yy = b.y; yy < b.y + b.h; yy++) for (let xx = b.x; xx < b.x + b.w; xx++) {
         const cur = grid[yy] && grid[yy][xx];
         if (cur === T.GRASS || cur === T.TREE || cur === T.HILL) grid[yy][xx] = T.RESERVED;
@@ -346,8 +362,23 @@ export const CAFE_PROPS = Object.freeze([
 ]);
 const CAFE_FRONT_OPEN = new Set([1, 2, 4, 5, 7].map((dx) => `${CAFE_LOT.x + dx},${CAFE_LOT.y + CAFE_LOT.h - 1}`));
 
+// Painted door tiles on the PNG shops. The interact tile stands on that tile.
+export const PNG_DOOR = Object.freeze({
+  cafe: Object.freeze([1, 5]),
+  goldden: Object.freeze([7, 5]),
+});
+
+export function pngDoorTile(id) {
+  const lot = lotById(id);
+  const off = PNG_DOOR[id];
+  if (!lot || !off) return null;
+  return [lot.x + off[0], lot.y + off[1]];
+}
+
 export function isBlocked(tx, ty) {
   if (CAFE_FRONT_OPEN.has(`${tx},${ty}`)) return false;
+  const den = pngDoorTile('goldden');
+  if (den && tx === den[0] && ty === den[1]) return false;
   const tile = tileAt(tx, ty);
   return tile == null || BLOCKED.has(tile);
 }

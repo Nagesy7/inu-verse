@@ -2,6 +2,7 @@
 // Save key is inuverse.preview.npcwork.v1. This file does not touch inuverse.save.v1.
 import { TILE } from './world.js';
 import { EXPANSIONS, hop, lotById, NOOKS, setDistrictArt, STOPS, stubApproach, visitDistrict } from './townproposal.js';
+import { cottageAsleep, dayProps, drawCottageSleep, lifeMode, loadDayArt, lunchActor, setLife, shopOverlay, stepLife } from './daytown.js';
 import { factoryFrame } from './factoryline.js';
 import { clothFrame } from './clothline.js';
 import { cafeFrame, depotFrame, marketShown, powerFrame, serveFrame, vetFrame } from './townline.js';
@@ -181,7 +182,7 @@ function loadArt() {
     im.src = src;
   }))).then((ok) => {
     setDistrictArt({ brick: IMG.brick, grassEdge: IMG.brickGrass, dirtEdge: IMG.brickDirt, soot: IMG.soot, pathTiles: IMG.pathC, pathEdges: IMG.pathCEdge, inlay: IMG.pathInlay });
-    return ok;
+    return loadDayArt().then(() => ok);
   });
 }
 
@@ -485,7 +486,7 @@ function drawDepot(c) {
   const wheel = Math.floor(townMs / 120) % 2;
   const truckFrame = now.stage === 'roll' ? 2 + wheel : wheel;
   blitFrame(c, 'truckSide', truckFrame, x + 20, y + 96, 80, 44, 40, 22);
-  if (now.stage === 'load') blitFrame(c, 'depotLoad', now.frame, x + 12, y + 44, 108, 76, 54, 38);
+  if (now.stage === 'load' && lifeMode() !== 'cart') blitFrame(c, 'depotLoad', now.frame, x + 12, y + 44, 108, 76, 54, 38);
 }
 
 function drawTower(c) {
@@ -541,7 +542,8 @@ function drawCottage(c, id, key) {
   const x = lot.x * TILE;
   const y = lot.y * TILE;
   blit(c, key, x, y, 96, 96);
-  if (globalThis.__inuNight) {
+  if (cottageAsleep(id)) drawCottageSleep(c, x, y);
+  else if (globalThis.__inuNight) {
     blit(c, 'glowWindow', x + 14, y + 36, 20, 20);
     blit(c, 'glowDoor', x + 42, y + 52, 12, 12);
   }
@@ -735,6 +737,7 @@ export function createNpcWork(doc = document, storage = globalThis.localStorage)
     line(ms) { lineMs = ms; return factoryFrame(lineMs); },
     cloth(ms) { clothMs = ms; return clothFrame(clothMs); },
     town(ms) { townMs = ms; rememberStocks(state); return { serve: serveFrame(townMs), cafe: cafeFrame(townMs), market: marketShown(townMs, shownStocks) }; },
+    life(ms, mode) { return setLife(ms, mode); },
     shelf(stocks) { shelfOverride = stocks; rememberStocks(state); return marketShown(townMs, shownStocks); },
     advance() {
       advance(state);
@@ -748,6 +751,7 @@ export function createNpcWork(doc = document, storage = globalThis.localStorage)
       lineMs += Math.max(0, dt) * 1000;
       clothMs += Math.max(0, dt) * 1000;
       townMs += Math.max(0, dt) * 1000;
+      stepLife(dt);
       rememberStocks(state);
       if (acc >= 140) {
         acc = 0;
@@ -793,7 +797,7 @@ export function createNpcWork(doc = document, storage = globalThis.localStorage)
         if (a.id === 'ember' && (state.beat === 'pour' || state.scrapFeed > 0)) return false;
         if (a.id === 'smith' && state.beat === 'hammer') return false;
         return true;
-      }).concat(laidOut ? factoryHands().concat(clothHands(), townHands()) : []).map((a) => {
+      }).concat(laidOut ? factoryHands().concat(clothHands(), townHands()) : []).filter((a) => !(a.id === 'dash' && lifeMode() === 'cart')).map((a) => {
         let npcOverlay = null;
         if (a.id === 'timber' && a.working) npcOverlay = { key: state.act === 'stack' ? 'stack' : 'chop', frame: state.axe, behind: false };
         else if (a.id === 'porter') npcOverlay = porterOverlay(state, a.face);
@@ -801,6 +805,7 @@ export function createNpcWork(doc = document, storage = globalThis.localStorage)
         else if (a.id === 'dusty' && state.cargo === 'flour') npcOverlay = { key: 'carryFlour', frame: 0, behind: a.face === 'up' };
         else if (a.id === 'pike' && state.cargo === 'ore') npcOverlay = { key: 'carryOre', frame: 0, behind: a.face === 'up' };
         else if (a.id === 'ember' && state.cargo === 'bar') npcOverlay = { key: 'carryBar', frame: 0, behind: a.face === 'up' };
+        else if (a.id === 'bean' && shopOverlay()) npcOverlay = shopOverlay();
         else if (a.npcOverlay) npcOverlay = a.npcOverlay;
         const seat = { sprout: 'farm', dusty: 'mill', pike: 'mine', ember: 'smelter', smith: 'forge', timber: 'lumber', saw: 'sawmill', crumb: 'bakery', stitch: 'tailor', bolt: 'scrap', wrench: 'mechanic' };
         let x = a.x;
@@ -815,7 +820,7 @@ export function createNpcWork(doc = document, storage = globalThis.localStorage)
           name: named ? a.name : '', art: null, npcwork: true, npcOverlay,
           worker: { tool: '', face: a.face, phase: state.phase, work: 0 },
         };
-      });
+      }).concat(lunchActor() || []);
     },
     props() {
       rememberStocks(state);
@@ -873,6 +878,7 @@ export function createNpcWork(doc = document, storage = globalThis.localStorage)
           for (const n of NOOKS) R(c, n.tx * TILE + 8, n.ty * TILE + 8, 16, 16, '#8a6ad0');
         } },
         { y: place(TAILOR).y + 128, d: (c) => drawTailorShop(c, state) },
+        ...dayProps(),
         ...(state.car === 'leaving' || state.car === 'out' ? [{
           y: ROUTES.carExit[Math.min(state.carI, ROUTES.carExit.length - 1)][1] * TILE + 16,
           d: (c) => {

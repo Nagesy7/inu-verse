@@ -1,7 +1,9 @@
 // The building preview is off unless ?npcwork=1, and it does not write the live save.
 import test from 'node:test';
 import assert from 'node:assert/strict';
+import { readFileSync } from 'node:fs';
 import { SHEAF_WORLD, bottomCentre, createNpcWork, npcWorkOn } from '../src/npcwork.js';
+import { lunchLayout, setLife } from '../src/daytown.js';
 import { LIVE_SAVE_KEY, SAVE_KEY } from '../src/npcbuildings.js';
 
 function mem() {
@@ -61,4 +63,23 @@ test('the larger sheaf sits on its bottom centre and the carry sheet stays 48x60
   assert.equal(next.x + SHEAF_WORLD.w / 2, 200);
   assert.equal(old.y, 264);
   assert.equal(next.y, 246);
+});
+
+test('lunch composites on the sit anchor and the day shift does not mint bones', () => {
+  const lay = lunchLayout(400, 500);
+  assert.deepEqual(lay.bench, [368, 474, 64, 28]);
+  assert.equal(lay.clipY, 490);
+  assert.equal(lay.raise, 6);
+  assert.deepEqual(lay.coat, [376, 456, 48, 60]);
+  assert.deepEqual(lay.front, [376, 456, 48, 60]);
+  const lunch = setLife(100, 'lunch');
+  assert.equal(lunch.mode, 'lunch');
+  assert.equal(lunch.lunch, 0);
+  const bite = setLife(800, 'lunch');
+  assert.equal(bite.lunch, 1);
+  const src = readFileSync(new URL('../src/daytown.js', import.meta.url), 'utf8');
+  assert.equal(src.includes('bones'), false);
+  assert.equal(src.includes('inuverse.save.v1'), false);
+  assert.match(src, /dock-east\.png/);
+  assert.equal(src.includes('dock/dock.png'), false);
 });

@@ -10,7 +10,7 @@ import { save, load, MemoryStorage } from '../src/save.js';
 import { FARM, MILL, BAKERY, LUMBER, SAWMILL, MECHANIC, SCRAP, MINE, SMELTER, FORGE } from '../src/npcbuildings.js';
 import {
   APPLIED, FADE_MS, GRID, LIVE_SAVE_KEY, LOTS, NEIGHBOURHOODS, NOOKS, OVAL_CENTRE, PATHS, PLAZA_INLAY, PROPOSAL_H, PROPOSAL_W, SPAWN, STOP_KEY, STOP_PX, STOPS, T, TILE_PX,
-  plazaPlanters, CAFE_PROPS,
+  plazaPlanters, CAFE_PROPS, PNG_DOOR, pngDoorTile,
   brickFill, edgePlan, EXPANSIONS, hop, isBlocked, isBrickTile, loadStops, lotById, overlaps, preparePreviewPlayer, proposalPath, relocate, sootTiles, stubApproach, stubPast, tileAt, tripSeconds, visitDistrict, walkSeconds, yardTiles,
 } from '../src/townproposal.js';
 
@@ -405,6 +405,30 @@ test('the new workplaces are solid and clear of the gates, stops, nooks and futu
   assert.equal(LOTS.some((b) => b.x <= 46 && b.x + b.w > 46 && b.y <= 67 && b.y + b.h > 67), false);
 });
 
+test('the v1.7 workplaces stay clear of the station, town hall and stargazing', () => {
+  const ids = ['quarry', 'builders', 'stage', 'pay', 'drawwell', 'eastdock', 'jobs'];
+  const keeps = [[40, 59, 6, 5], [40, 64, 6, 1], [56, 75, 6, 4], [56, 79, 6, 1], [57, 86, 1, 1]];
+  for (const id of ids) {
+    const lot = lotById(id);
+    assert.equal(lot.reserved, undefined, id);
+    assert.equal(isBlocked(...lot.door), false, id);
+    assert.ok(proposalPath(SPAWN.tx, SPAWN.ty, lot.door[0], lot.door[1]), id);
+    for (const [x, y, w, h] of keeps) {
+      const hit = lot.x < x + w && lot.x + lot.w > x && lot.y < y + h && lot.y + lot.h > y;
+      assert.equal(hit, false, id);
+    }
+  }
+  const dock = lotById('eastdock');
+  assert.equal(dock.deck, true);
+  assert.equal(tileAt(dock.x + dock.w - 1, dock.y), T.WATER);
+  assert.equal(tileAt(dock.x, dock.y), T.BUILDING);
+  assert.deepEqual([...dock.door], [dock.x, dock.y + dock.h]);
+  assert.equal(tileAt(lotById('eastpond').x, lotById('eastpond').y), T.WATER);
+  assert.equal(lotById('town-hall').reserved, true);
+  assert.equal(lotById('station').reserved, true);
+  assert.equal(NOOKS.some((n) => n.id === 'stargaze' && n.tx === 57 && n.ty === 86 && n.bones === 0), true);
+});
+
 test('the car factory is a solid metal lot clear of the gates, stops and nooks', () => {
   const factory = lotById('factory');
   assert.equal(factory.reserved, undefined);
@@ -511,4 +535,33 @@ test('preview cafe furniture is a small block and the live painters stay in fron
   assert.equal(stand.ty, den.y + den.h - 1);
   assert.equal(stand.tx - (den.x + 7), 1);
   assert.equal(stand.ty, den.y + 5);
+  assert.equal(den.x + PNG_DOOR.goldden[0], 17);
+  assert.equal(den.y + PNG_DOOR.goldden[1], 65);
+});
+
+test('png shop interact tiles sit on the manifest door, and an old doorway still loads', () => {
+  for (const id of Object.keys(PNG_DOOR)) {
+    const lot = lotById(id);
+    assert.deepEqual([...lot.door], pngDoorTile(id), id);
+    assert.equal(isBlocked(lot.door[0], lot.door[1]), false, id);
+    assert.ok(proposalPath(SPAWN.tx, SPAWN.ty, lot.door[0], lot.door[1]), id);
+  }
+  const preview = lotById('goldden');
+  assert.deepEqual([...preview.door], [79, 85]);
+  const live = [...BUILDINGS, ...MALL_BUILDINGS].find((b) => b.id === 'goldden');
+  assert.deepEqual([doorTile(live).tx, doorTile(live).ty], [18, 65]);
+  const oldDoor = relocate(76.5 * TILE_PX, 79.5 * TILE_PX);
+  assert.equal(oldDoor.moved, false);
+  assert.equal(isBlocked(oldDoor.tx, oldDoor.ty), false);
+  const oldStand = relocate(80.5 * TILE_PX, 85.5 * TILE_PX);
+  assert.equal(oldStand.moved, false);
+  assert.equal(isBlocked(oldStand.tx, oldStand.ty), false);
+  const buried = relocate(56.5 * TILE_PX, 46.5 * TILE_PX);
+  assert.equal(buried.moved, true);
+  assert.equal(isBlocked(buried.to.tx, buried.to.ty), false);
+  const game = newGame({ name: 'Kabo', coat: 'tan' });
+  game.player.x = 76.5 * TILE_PX;
+  game.player.y = 79.5 * TILE_PX;
+  preparePreviewPlayer(game.player);
+  assert.equal(isBlocked(Math.floor(game.player.x / TILE_PX), Math.floor(game.player.y / TILE_PX)), false);
 });

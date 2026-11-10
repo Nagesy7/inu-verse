@@ -123,6 +123,7 @@ import { buildDrawer, drawerOpen } from './hudmenu.js';
 import { layoutSafe } from './safezones.js';
 import { createGroveTown } from './groveview.js';
 import { createNpcWork, drawNpcOverlay, useLayout } from './npcwork.js';
+import { drawSeated, punchNightLights } from './daytown.js';
 import { hop, isBlocked as previewBlocked, LOTS as proposalLots, NOOKS, PLAZA_FOLK, preparePreviewPlayer, previewGround, proposalPath, PROPOSAL_H, PROPOSAL_W, STOPS, visitDistrict, GRID as previewGrid, T as previewTile } from './townproposal.js';
 import { makeDoorState, doorStep, doorExit, outsideOf } from './doors.js';
 import { isDoor, doorList, doorDir, COMMUNITY } from './world.js';
@@ -980,6 +981,16 @@ function renderWorld() {
   for (const it of list) {
     if (!it.a) { it.d(ctx); continue; }
     const a = it.a;
+    if (a.lunch) {
+      drawSeated(ctx, a, (ax, ay) => {
+        ctx.save();
+        ctx.translate(snapPx(ax), snapPx(ay));
+        ctx.scale(0.5, 0.5);
+        drawShiba(ctx, 0, 0, { coat: a.coat, outfit: a.outfit || {}, face: a.face, phase: a.phase || 0, moving: false, name: a.name, scale: 1.5, art: a.art, shadow: false });
+        ctx.restore();
+      });
+      continue;
+    }
     if (a.statue) { ctx.fillStyle = '#6a6080'; ctx.fillRect(Math.round(a.x - 34), Math.round(a.y - 4), 68, 18); ctx.fillStyle = '#d4a640'; ctx.fillRect(Math.round(a.x - 38), Math.round(a.y - 8), 76, 5); ctx.fillStyle = '#121a36'; ctx.font = '8px Silkscreen, monospace'; ctx.textAlign = 'center'; ctx.fillText('PRESIDENT INU', Math.round(a.x), Math.round(a.y + 8)); ctx.save(); ctx.filter = 'sepia(1) saturate(2.6) brightness(1.05)'; drawShiba(ctx, a.x, a.y - 10, { art: a.art, scale: 1.5, shadow: false }); ctx.restore(); continue; }
     const mm = a.npc && !a.crier ? MWd.npcMood(MWd.MW.mood, a, time, a.idx || 0) : null;
     ctx.save(); ctx.translate(snapPx(a.x), snapPx(a.y - (mm?.hop || 0))); ctx.scale(0.5, 0.5);
@@ -1010,6 +1021,7 @@ function renderWorld() {
   guide.drawWorld(ctx, time, state.player);
   ctx.restore();
   drawAtmosphere(ctx, amb, phase, { x: vw / 2 - ox, y: vh / 2 - oy }, vw, vh, () => { const L = lightsFor(state, phase, homeId()); for (const l of EVX.lights()) L.push(l); return L; });
+  if (NPCW) punchNightLights(ctx, ox, oy);
   evChipUpdate(evChip(document, () => { if (!panel) openPanel('event'); }), EVX.ev);
   { const D = dqDay(); DQUI.updateChip(DQUI.ensureChip(document, () => { if (!panel) openPanel('dquests'); }), D.list, DQ.ensure(state, D.day)); }
   SKY.updateSkyHud($('#clock'), { hour: phase.hour, tod: SKY.todOf(phase.hour), wx: amb.rain > 0.3 ? 'rain' : (amb.cloud || 0) > 0.5 ? 'cloudy' : 'clear', season: seasonOf(gameDay()) });
