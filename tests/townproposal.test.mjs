@@ -11,7 +11,7 @@ import { save, load, MemoryStorage } from '../src/save.js';
 import { FARM, MILL, BAKERY, LUMBER, SAWMILL, MECHANIC, SCRAP, MINE, SMELTER, FORGE } from '../src/npcbuildings.js';
 import {
   APPLIED, FADE_MS, GRID, LIVE_SAVE_KEY, LOTS, NEIGHBOURHOODS, NOOKS, OVAL_CENTRE, PATHS, PLAZA_INLAY, PROPOSAL_H, PROPOSAL_W, SPAWN, STOP_KEY, STOP_PX, STOPS, T, TILE_PX,
-  plazaPlanters, CAFE_PROPS, PNG_DOOR, pngDoorTile,
+  plazaPlanters, CAFE_PROPS, PNG_DOOR, pngDoorTile, SHOP_PROPS,
   brickFill, edgePlan, EXPANSIONS, hop, isBlocked, isBrickTile, loadStops, lotById, overlaps, preparePreviewPlayer, proposalPath, relocate, sootTiles, stubApproach, stubPast, tileAt, tripSeconds, visitDistrict, walkSeconds, yardTiles,
 } from '../src/townproposal.js';
 
@@ -513,7 +513,14 @@ test('option C paves the preview and leaves the live path painters in place', as
 
 test('preview cafe furniture is a small block and the live painters stay in front', async () => {
   const { readFile, access } = await import('node:fs/promises');
-  for (const file of ['assets/buildings/cafe.png', 'assets/buildings/cafe-night-lit.png', 'assets/buildings/goldden.png', 'assets/buildings/goldden-night-lit.png', 'assets/buildings/cafe-easel.png', 'assets/buildings/cafe-table.png']) await access(file);
+  const sheets = ['cafe', 'goldden', 'jewel', 'designer', 'shop', 'cars', 'fashion', 'luxauto', 'office', 'clubhouse', 'launch'];
+  for (const id of sheets) {
+    await access(`assets/buildings/${id}.png`);
+    await access(`assets/buildings/${id}-night-lit.png`);
+  }
+  for (const piece of SHOP_PROPS) await access(`assets/props/${piece.id}.png`);
+  await access('assets/buildings/cafe-easel.png');
+  await access('assets/buildings/cafe-table.png');
   const render = await readFile(new URL('../src/render.js', import.meta.url), 'utf8');
   assert.match(render, /if \(b\.id === 'mall'\) return drawMallFacade/);
   assert.match(render, /drawTypedFacade\(c, b\)/);
@@ -552,6 +559,28 @@ test('png shop interact tiles sit on the manifest door, and an old doorway still
   assert.deepEqual(previewDoor('goldden'), { dx: 7, side: 'front' });
   assert.equal(previewShowsPorch('goldden'), false);
   assert.equal(DOORS.goldden.dx, 0);
+  const painted = { jewel: [0, 5], designer: [6, 5], shop: [7, 5], cars: [2, 5], fashion: [6, 5], luxauto: [1, 5], office: [5, 4], clubhouse: [4, 4], launch: [6, 6] };
+  for (const [id, off] of Object.entries(painted)) assert.deepEqual([...PNG_DOOR[id]], off, id);
+  assert.deepEqual(previewDoor('jewel'), { dx: 0, side: 'front' });
+  assert.deepEqual(previewDoor('fashion'), { dx: 6, side: 'front' });
+  assert.equal(previewShowsPorch('jewel'), false);
+  assert.equal(previewShowsPorch('fashion'), false);
+  assert.equal(DOORS.jewel.side, 'left');
+  assert.equal(DOORS.jewel.dx, 0);
+  assert.equal(DOORS.fashion.side, 'right');
+  assert.equal(DOORS.fashion.dx, 0);
+  assert.deepEqual(DOORS.shop, { dx: 7, side: 'front' });
+  for (const piece of SHOP_PROPS) {
+    const shop = piece.id.split('-')[0];
+    const door = pngDoorTile(shop);
+    for (let x = piece.tx; x < piece.tx + piece.tw; x++) {
+      assert.equal(x === door[0] && (piece.ty === door[1] || piece.ty === door[1] + 1), false, piece.id);
+      assert.equal(isBlocked(x, piece.ty), true, `${piece.id} ${x}`);
+      assert.notEqual(tileAt(x, piece.ty), T.RESERVED, piece.id);
+      assert.notEqual(tileAt(x, piece.ty), T.WATER, piece.id);
+    }
+    assert.ok(proposalPath(SPAWN.tx, SPAWN.ty, door[0], door[1]), shop);
+  }
   const faceY = preview.y + preview.h - 1;
   for (let y = faceY + 1; y <= faceY + 2; y++) {
     for (let x = preview.x; x < preview.x + preview.w; x++) {

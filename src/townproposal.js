@@ -46,8 +46,8 @@ export const LOTS = Object.freeze([
   lot('lounge', '$KIBBLE Holder Lounge', 'portals', 67, 5, 6, 4, [70, 9]),
   lot('academy', 'Good Boy Academy', 'civic', 74, 10, 10, 5, [79, 15]),
 
-  lot('launch', 'Launch Hall', 'civic', 4, 18, 12, 7, [10, 25]),
-  lot('clubhouse', 'Pack Clubhouse', 'civic', 18, 20, 9, 5, [22, 25]),
+  lot('launch', 'Launch Hall', 'civic', 4, 18, 12, 7, [10, 24]),
+  lot('clubhouse', 'Pack Clubhouse', 'civic', 18, 20, 9, 5, [22, 24]),
   lot('chapel', 'Park Chapel', 'plaza', 28, 18, 7, 5, [31, 23]),
   lot('fountain', 'Plaza Fountain', 'plaza', 40, 24, 4, 3, [42, 27]),
   lot('well', 'Well', 'plaza', 36, 28, 2, 2, [36, 30], { reserved: true }),
@@ -56,7 +56,7 @@ export const LOTS = Object.freeze([
 
   lot('lumber', 'Lumber Yard', 'timber', 24, 14, 6, 4, [27, 18]),
   lot('sawmill', 'Sawmill', 'timber', 40, 16, 5, 4, [42, 20]),
-  lot('office', "President's Office", 'civic', 58, 16, 10, 5, [63, 21]),
+  lot('office', "President's Office", 'civic', 58, 16, 10, 5, [63, 20]),
 
   lot('cafe', 'Shiba Sips Café', 'food', 4, 38, 8, 6, [5, 43]),
   lot('bakery', 'Bakery', 'food', 14, 34, 5, 4, [16, 38]),
@@ -109,14 +109,14 @@ export const LOTS = Object.freeze([
   lot('p7', 'Plot 7', 'homes', 20, 68, 6, 6, [23, 74]),
   lot('p8', 'Plot 8', 'homes', 78, 64, 6, 6, [81, 63]),
 
-  lot('cars', 'Zoomies Motors', 'market', 4, 80, 10, 6, [9, 79]),
-  lot('shop', 'Paws & Pillows', 'market', 16, 78, 9, 6, [20, 77]),
-  lot('fashion', 'Fetch Fashion', 'market', 28, 82, 7, 6, [31, 81]),
+  lot('cars', 'Zoomies Motors', 'market', 4, 80, 10, 6, [6, 85]),
+  lot('shop', 'Paws & Pillows', 'market', 16, 78, 9, 6, [23, 83]),
+  lot('fashion', 'Fetch Fashion', 'market', 28, 82, 7, 6, [34, 87]),
   lot('mall', 'Kibble Mall', 'market', 36, 76, 14, 8, [43, 84]),
-  lot('jewel', 'Gilded Collar Jewelers', 'market', 52, 80, 8, 6, [56, 79]),
-  lot('designer', 'Royal Paws Designer', 'market', 62, 76, 8, 6, [66, 82]),
+  lot('jewel', 'Gilded Collar Jewelers', 'market', 52, 80, 8, 6, [52, 85]),
+  lot('designer', 'Royal Paws Designer', 'market', 62, 76, 8, 6, [68, 81]),
   lot('goldden', 'Golden Den Furniture', 'market', 72, 80, 8, 6, [79, 85]),
-  lot('luxauto', 'Zoomies Luxury Autos', 'market', 82, 76, 8, 6, [86, 82]),
+  lot('luxauto', 'Zoomies Luxury Autos', 'market', 82, 76, 8, 6, [83, 81]),
   lot('petshop', 'Pawsome Pets', 'market', 16, 86, 8, 3, [20, 85]),
 
   lot('f0', 'Field 1', 'fields', 4, 74, 6, 4, [7, 73]),
@@ -302,11 +302,73 @@ export function buildProposalGrid() {
   for (const n of NOOKS) if (grid[n.ty] && openUp.has(grid[n.ty][n.tx])) grid[n.ty][n.tx] = T.NOOK;
   paintExpansions(grid);
   clearDenFrontage(grid);
+  pavePngApproaches(grid);
   return grid;
 }
 
 const PATH_TILES = new Set([T.WALK, T.ROAD, T.PLAZA, T.STOP]);
 const SOFT = new Set([T.GRASS, T.TREE, T.FENCE, T.WALK]);
+
+// One step south of each painted door, then a short walk through grass or trees to a path.
+// A single pond tile is the step only when the south face meets water (the car lot).
+function pavePngApproaches(grid) {
+  const path = new Set([T.WALK, T.ROAD, T.PLAZA, T.STOP]);
+  const through = new Set([T.GRASS, T.TREE, T.FENCE, T.WALK]);
+  const reachable = new Set();
+  const rq = [[SPAWN.tx, SPAWN.ty]];
+  reachable.add(SPAWN.ty * PROPOSAL_W + SPAWN.tx);
+  for (let i = 0; i < rq.length; i++) {
+    const [x, y] = rq[i];
+    for (const [mx, my] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) {
+      const nx = x + mx;
+      const ny = y + my;
+      if (!grid[ny] || nx < 1 || nx >= PROPOSAL_W - 1) continue;
+      const k = ny * PROPOSAL_W + nx;
+      if (reachable.has(k) || !path.has(grid[ny][nx])) continue;
+      reachable.add(k);
+      rq.push([nx, ny]);
+    }
+  }
+  for (const id of Object.keys(PNG_DOOR)) {
+    if (id === 'cafe' || id === 'goldden') continue;
+    const door = pngDoorTile(id);
+    if (!door) continue;
+    const sx = door[0];
+    const sy = door[1] + 1;
+    if (!grid[sy] || sx < 1 || sx >= PROPOSAL_W - 1) continue;
+    const before = grid[sy][sx];
+    if (before === T.GRASS || before === T.TREE || before === T.FENCE || before === T.WATER) grid[sy][sx] = T.WALK;
+    if (reachable.has(sy * PROPOSAL_W + sx)) continue;
+    const start = sy * PROPOSAL_W + sx;
+    const prev = new Map([[start, -1]]);
+    const q = [[sx, sy]];
+    let hit = null;
+    for (let i = 0; i < q.length && !hit; i++) {
+      const [x, y] = q[i];
+      for (const [mx, my] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) {
+        const nx = x + mx;
+        const ny = y + my;
+        if (!grid[ny] || nx < 1 || nx >= PROPOSAL_W - 1) continue;
+        const k = ny * PROPOSAL_W + nx;
+        if (prev.has(k)) continue;
+        if (reachable.has(k)) { prev.set(k, y * PROPOSAL_W + x); hit = k; break; }
+        if (!through.has(grid[ny][nx])) continue;
+        prev.set(k, y * PROPOSAL_W + x);
+        q.push([nx, ny]);
+      }
+    }
+    if (hit == null) continue;
+    let k = prev.get(hit);
+    while (k !== undefined && k !== -1) {
+      const x = k % PROPOSAL_W;
+      const y = Math.floor(k / PROPOSAL_W);
+      if (grid[y][x] !== T.WALK && grid[y][x] !== T.ROAD && grid[y][x] !== T.PLAZA) grid[y][x] = T.WALK;
+      reachable.add(k);
+      k = prev.get(k);
+    }
+    reachable.add(start);
+  }
+}
 
 // The south face is the footprint's last row. Trees and props within two tiles of it
 // were covering the windows, so that band goes back to open ground before the approach is paved.
@@ -407,7 +469,33 @@ const CAFE_FRONT_OPEN = new Set([1, 2, 4, 5, 7].map((dx) => `${CAFE_LOT.x + dx},
 export const PNG_DOOR = Object.freeze({
   cafe: Object.freeze([1, 5]),
   goldden: Object.freeze([7, 5]),
+  jewel: Object.freeze([0, 5]),
+  designer: Object.freeze([6, 5]),
+  shop: Object.freeze([7, 5]),
+  cars: Object.freeze([2, 5]),
+  fashion: Object.freeze([6, 5]),
+  luxauto: Object.freeze([1, 5]),
+  office: Object.freeze([5, 4]),
+  clubhouse: Object.freeze([4, 4]),
+  launch: Object.freeze([6, 6]),
 });
+
+// Props sit on the paving in front of each facade, off the painted door and the tile south of it.
+export const SHOP_PROPS = Object.freeze([
+  Object.freeze({ id: 'jewel-sign-stand', tx: 55, ty: 86, tw: 1, ax: 14, ay: 39 }),
+  Object.freeze({ id: 'designer-mannequin', tx: 63, ty: 82, tw: 1, ax: 14, ay: 59 }),
+  Object.freeze({ id: 'shop-cushion-bin', tx: 18, ty: 84, tw: 1, ax: 22, ay: 35 }),
+  Object.freeze({ id: 'cars-display-car', tx: 16, ty: 85, tw: 3, ax: 36, ay: 35 }),
+  Object.freeze({ id: 'fashion-clothes-rack', tx: 26, ty: 85, tw: 2, ax: 24, ay: 47 }),
+  Object.freeze({ id: 'luxauto-rope-stanchions', tx: 81, ty: 82, tw: 2, ax: 26, ay: 27 }),
+  Object.freeze({ id: 'office-bench-planter', tx: 58, ty: 21, tw: 2, ax: 30, ay: 27 }),
+  Object.freeze({ id: 'clubhouse-lamp-post', tx: 19, ty: 25, tw: 1, ax: 10, ay: 63, glow: true }),
+  Object.freeze({ id: 'launch-rocket-model', tx: 7, ty: 25, tw: 1, ax: 16, ay: 75 }),
+]);
+
+export function shopPropAt(tx, ty) {
+  return SHOP_PROPS.some((p) => ty === p.ty && tx >= p.tx && tx < p.tx + p.tw);
+}
 
 export function pngDoorTile(id) {
   const lot = lotById(id);
@@ -417,9 +505,12 @@ export function pngDoorTile(id) {
 }
 
 export function isBlocked(tx, ty) {
+  if (shopPropAt(tx, ty)) return true;
   if (CAFE_FRONT_OPEN.has(`${tx},${ty}`)) return false;
-  const den = pngDoorTile('goldden');
-  if (den && tx === den[0] && ty === den[1]) return false;
+  for (const id of Object.keys(PNG_DOOR)) {
+    const door = pngDoorTile(id);
+    if (door && tx === door[0] && ty === door[1]) return false;
+  }
   const tile = tileAt(tx, ty);
   return tile == null || BLOCKED.has(tile);
 }
