@@ -591,6 +591,25 @@ test('png shop interact tiles sit on the manifest door, and an old doorway still
   }
   assert.equal(tileAt(80, 85), T.WALK);
   assert.ok(proposalPath(SPAWN.tx, SPAWN.ty, 80, 85));
+  for (const id of ['fashion', 'jewel']) {
+    const lot = lotById(id);
+    const face = lot.y + lot.h - 1;
+    for (let y = face + 1; y <= face + 4; y++) {
+      for (let x = lot.x - 2; x <= lot.x + lot.w + 1; x++) {
+        if (y >= PROPOSAL_H) continue;
+        const owned = LOTS.some((b) => b.id !== id && x >= b.x && x < b.x + b.w && y >= b.y && y < b.y + b.h);
+        if (!owned) assert.notEqual(tileAt(x, y), T.TREE, `${id} ${x},${y}`);
+      }
+    }
+    const step = [lot.door[0], lot.door[1] + 1];
+    assert.equal(tileAt(step[0], step[1]), T.WALK, id);
+    assert.equal(isBlocked(step[0], step[1]), false, id);
+  }
+  const cars = lotById('cars');
+  for (let x = cars.x; x < cars.x + cars.w; x++) assert.notEqual(tileAt(x, cars.y + cars.h), T.WATER, `cars ${x}`);
+  assert.equal(tileAt(cars.door[0], cars.door[1] + 1), T.WALK);
+  assert.equal(isBlocked(cars.door[0], cars.door[1]), false);
+  assert.equal(isBlocked(cars.door[0], cars.door[1] + 1), false);
   const pond = lotById('eastpond');
   const dock = lotById('eastdock');
   assert.ok(pond.w >= 6 && pond.h >= 4);

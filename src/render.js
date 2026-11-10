@@ -323,6 +323,28 @@ function litFacade(dayId, nightId, doorColumn) {
     if (na < 200) continue;
     if (nr > 180 && ng > 140 && nr > nb + 40 && nr > dr + 40 && dr <= db + 40) on[i] = 1;
   }
+  // A full-width warm band with night on neither side is an awning slab, not a pane.
+  if (!doorColumn) {
+    const slab = new Uint8Array(h);
+    const limit = Math.floor(w * 0.65);
+    for (let y = 0; y < h; y++) {
+      let run = 0, best = 0;
+      for (let x = 0; x <= w; x++) {
+        if (x < w && on[y * w + x]) { run++; if (run > best) best = run; }
+        else run = 0;
+      }
+      if (best >= limit) slab[y] = 1;
+    }
+    const warmRow = (y) => { for (let x = 0; x < w; x++) if (on[y * w + x]) return true; return false; };
+    for (let y = 0; y < h; y++) {
+      if (!slab[y]) continue;
+      const y0 = y;
+      while (y + 1 < h && slab[y + 1]) y++;
+      const above = y0 > 0 && warmRow(y0 - 1) && !slab[y0 - 1];
+      const below = y + 1 < h && warmRow(y + 1) && !slab[y + 1];
+      if (!above && !below) for (let yy = y0; yy <= y; yy++) for (let x = 0; x < w; x++) on[yy * w + x] = 0;
+    }
+  }
   if (doorColumn) {
     const seen = new Uint8Array(n);
     for (let i = 0; i < n; i++) {

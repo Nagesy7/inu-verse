@@ -302,6 +302,9 @@ export function buildProposalGrid() {
   for (const n of NOOKS) if (grid[n.ty] && openUp.has(grid[n.ty][n.tx])) grid[n.ty][n.tx] = T.NOOK;
   paintExpansions(grid);
   clearDenFrontage(grid);
+  clearFrontTrees(grid, 'fashion');
+  clearFrontTrees(grid, 'jewel');
+  paveCarsForecourt(grid);
   pavePngApproaches(grid);
   return grid;
 }
@@ -367,6 +370,37 @@ function pavePngApproaches(grid) {
       k = prev.get(k);
     }
     reachable.add(start);
+  }
+}
+
+// Trees within two tiles of a south face draw up over the door. Put that band back to grass
+// so the C walk can be laid on open ground, the same way as the Golden Den.
+function clearFrontTrees(grid, id) {
+  const lot = LOTS.find((b) => b.id === id);
+  if (!lot) return;
+  const faceY = lot.y + lot.h - 1;
+  // The tree sprite is 132px tall, so trunks up to four tiles south still cover the door.
+  for (let y = faceY; y <= faceY + 4; y++) {
+    for (let x = lot.x - 2; x <= lot.x + lot.w + 1; x++) {
+      if (!grid[y] || x < 1 || x >= PROPOSAL_W - 1) continue;
+      if (x >= lot.x && x < lot.x + lot.w && y >= lot.y && y < lot.y + lot.h) continue;
+      const owned = LOTS.some((b) => b.id !== id && x >= b.x && x < b.x + b.w && y >= b.y && y < b.y + b.h);
+      if (owned) continue;
+      if (grid[y][x] === T.TREE) grid[y][x] = T.GRASS;
+    }
+  }
+}
+
+// The car lot's south face meets the pond. A one-tile C forecourt keeps the door on land.
+function paveCarsForecourt(grid) {
+  const lot = LOTS.find((b) => b.id === 'cars');
+  if (!lot) return;
+  const y = lot.y + lot.h;
+  for (let x = lot.x - 1; x <= lot.x + lot.w; x++) {
+    if (!grid[y] || x < 1 || x >= PROPOSAL_W - 1) continue;
+    const ownedBuilding = LOTS.some((b) => b.id !== 'cars' && !b.water && x >= b.x && x < b.x + b.w && y >= b.y && y < b.y + b.h);
+    if (ownedBuilding) continue;
+    if (grid[y][x] === T.WATER || grid[y][x] === T.TREE || grid[y][x] === T.GRASS || grid[y][x] === T.FENCE) grid[y][x] = T.WALK;
   }
 }
 
