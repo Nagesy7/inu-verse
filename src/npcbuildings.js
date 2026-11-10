@@ -12,6 +12,9 @@ export const TAG = 'npc-buildings-1';
 export const CHOP_CAP = 4;
 export const FLOUR_STOCK = 2;
 export const CLOTH_STOCK = 1;
+export const ORE_CAP = 2;
+export const WEAR_CAP = 3;
+// Ore is unlocked only inside this preview chain. The yard nail smelt still rejects ore.
 
 export const LUMBER = Object.freeze({ id: 'lumber', name: 'Lumber Yard', x: 50, y: 96, w: 6, h: 4, door: Object.freeze([50, 95]), work: Object.freeze([52, 98]), saw: Object.freeze([53, 97]) });
 export const MECHANIC = Object.freeze({ id: 'mechanic', name: "Mechanic's Shop", x: 28, y: 2, w: 5, h: 4, door: Object.freeze([30, 6]), work: Object.freeze([30, 4]), bay: Object.freeze([31, 4]) });
@@ -25,6 +28,12 @@ export const TAILOR = Object.freeze({ id: 'tailor', name: 'Tailor', x: 16, y: 10
 export const BAKERY = Object.freeze({ id: 'bakery', name: 'Bakery', x: 28, y: 109, w: 5, h: 4, door: Object.freeze([32, 113]), work: Object.freeze([32, 111]) });
 export const SCRAP = Object.freeze({ id: 'scrap', name: 'Scrap Yard', x: 40, y: 109, w: 6, h: 4, door: Object.freeze([43, 113]), work: Object.freeze([43, 111]) });
 export const CLOTH = Object.freeze([58, 113]);
+export const FIELD_STREET = 118;
+export const FARM = Object.freeze({ id: 'farm', name: 'Wheat Farm', x: 4, y: 114, w: 6, h: 4, door: Object.freeze([7, 118]), work: Object.freeze([7, 116]) });
+export const MILL = Object.freeze({ id: 'mill', name: 'Flour Mill', x: 14, y: 114, w: 5, h: 4, door: Object.freeze([16, 118]), work: Object.freeze([16, 116]) });
+export const MINE = Object.freeze({ id: 'mine', name: 'Mine', x: 22, y: 114, w: 5, h: 4, door: Object.freeze([24, 118]), work: Object.freeze([24, 116]), hidden: true });
+export const SMELTER = Object.freeze({ id: 'smelter', name: 'Smelter', x: 30, y: 114, w: 5, h: 4, door: Object.freeze([32, 118]), work: Object.freeze([32, 116]), hidden: true });
+export const FORGE = Object.freeze({ id: 'forge', name: 'Forge', x: 38, y: 114, w: 5, h: 4, door: Object.freeze([40, 118]), work: Object.freeze([40, 116]), hidden: true });
 export const HOMES = Object.freeze({
   timber: Object.freeze([12, 40]),
   wrench: Object.freeze([26, 40]),
@@ -33,6 +42,11 @@ export const HOMES = Object.freeze({
   stitch: Object.freeze([16, 113]),
   crumb: Object.freeze([28, 113]),
   bolt: Object.freeze([40, 113]),
+  sprout: Object.freeze([4, 118]),
+  dusty: Object.freeze([14, 118]),
+  pike: Object.freeze([22, 118]),
+  ember: Object.freeze([30, 118]),
+  smith: Object.freeze([38, 118]),
 });
 
 function paintBox(x, y, w, h, tile) {
@@ -49,9 +63,11 @@ function paintQuarter() {
   for (let x = 0; x < MAP_W; x++) MAP[MAP_H - 1][x] = T.TREE;
   for (let x = 4; x <= 60; x++) MAP[QUARTER_STREET][x] = T.WALK;
   for (let y = 106; y <= QUARTER_STREET; y++) MAP[y][52] = T.WALK;
+  for (let x = 4; x <= 60; x++) MAP[FIELD_STREET][x] = T.WALK;
+  for (let y = QUARTER_STREET; y <= FIELD_STREET; y++) MAP[y][58] = T.WALK;
   MAP[104][52] = T.WALK;
   MAP[105][52] = T.WALK;
-  for (const b of [SAWMILL, TAILOR, BAKERY, SCRAP]) paintBox(b.x, b.y, b.w, b.h, T.BUILDING);
+  for (const b of [SAWMILL, TAILOR, BAKERY, SCRAP, FARM, MILL, MINE, SMELTER, FORGE]) paintBox(b.x, b.y, b.w, b.h, T.BUILDING);
 }
 paintQuarter();
 
@@ -103,6 +119,19 @@ export const ROUTES = Object.freeze({
   stitch: mustPath(HOMES.stitch, TAILOR.door, 'stitch'),
   crumb: mustPath(HOMES.crumb, BAKERY.door, 'crumb'),
   bolt: mustPath(HOMES.bolt, SCRAP.door, 'bolt'),
+  sprout: mustPath(HOMES.sprout, FARM.door, 'sprout'),
+  dusty: mustPath(HOMES.dusty, MILL.door, 'dusty'),
+  pike: mustPath(HOMES.pike, MINE.door, 'pike'),
+  ember: mustPath(HOMES.ember, SMELTER.door, 'ember'),
+  smith: mustPath(HOMES.smith, FORGE.door, 'smith'),
+  farmToMill: mustPath(FARM.door, MILL.door, 'sheaf to mill'),
+  millToBakery: mustPath(MILL.door, BAKERY.door, 'flour to bakery'),
+  mineToSmelter: mustPath(MINE.door, SMELTER.door, 'ore to smelter'),
+  smelterToForge: mustPath(SMELTER.door, FORGE.door, 'bars to forge'),
+  forgeToLumber: mustPath(FORGE.door, LUMBER.door, 'axe head to yard'),
+  forgeToSign: mustPath(FORGE.door, SIGN, 'part to mechanic'),
+  lumberToScrap: mustPath(LUMBER.door, SCRAP.door, 'worn tool to scrap'),
+  scrapToSmelter: mustPath(SCRAP.door, SMELTER.door, 'scrap to smelter'),
   toLumber: mustPath(HOMES.porter, LUMBER.door, 'porter to lumber'),
   lumberToSaw: mustPath(LUMBER.door, SAWMILL.door, 'porter log to saw'),
   sawToSign: mustPath(SAWMILL.door, SIGN, 'porter plank to sign'),
@@ -119,18 +148,23 @@ export const ROUTES = Object.freeze({
   stitchHome: mustPath(TAILOR.door, HOMES.stitch, 'stitch home'),
   crumbHome: mustPath(BAKERY.door, HOMES.crumb, 'crumb home'),
   boltHome: mustPath(SCRAP.door, HOMES.bolt, 'bolt home'),
+  sproutHome: mustPath(FARM.door, HOMES.sprout, 'sprout home'),
+  dustyHome: mustPath(MILL.door, HOMES.dusty, 'dusty home'),
+  pikeHome: mustPath(MINE.door, HOMES.pike, 'pike home'),
+  emberHome: mustPath(SMELTER.door, HOMES.ember, 'ember home'),
+  smithHome: mustPath(FORGE.door, HOMES.smith, 'smith home'),
   porterHome: mustPath(LUMBER.door, HOMES.porter, 'porter home'),
   carExit: mustPath(MECHANIC.door, [31, 10], 'car onto the road'),
 });
 
-const CREW = ['timber', 'wrench', 'porter', 'saw', 'stitch', 'crumb', 'bolt'];
+const CREW = ['timber', 'wrench', 'porter', 'saw', 'stitch', 'crumb', 'bolt', 'sprout', 'dusty', 'pike', 'ember', 'smith'];
 
 function overlaps(a, b) {
   return a.x < b.x + b.w && a.x + a.w > b.x && a.y < b.y + b.h && a.y + a.h > b.y;
 }
 
 export function lotProof() {
-  return [LUMBER, MECHANIC, SAWMILL, TAILOR, BAKERY, SCRAP].map((lot) => {
+  return [LUMBER, MECHANIC, SAWMILL, TAILOR, BAKERY, SCRAP, FARM, MILL, MINE, SMELTER, FORGE].map((lot) => {
     const tiles = [];
     for (let y = lot.y; y < lot.y + lot.h; y++) {
       for (let x = lot.x; x < lot.x + lot.w; x++) tiles.push({ x, y, tile: MAP[y][x], solid: isSolid(x, y) });
@@ -146,6 +180,7 @@ export function lotProof() {
       door: [...lot.door],
       doorOnPath: onPath(lot.door[0], lot.door[1]),
       expansion,
+      hidden: !!lot.hidden,
       allEmptyGrass: tiles.every((t) => (t.tile === T.GRASS || t.tile === T.FLOWER) && !t.solid),
       onNewGround: expansion && tiles.every((t) => t.y >= TOWN_H),
       claimPlots: PLOTS.filter((p) => overlaps(lot, p)).map((p) => p.id),
@@ -207,7 +242,36 @@ export function seedState() {
     meal: 0,
     oven: 'knead',
     ovenFrame: 0,
-    i: { timber: 0, wrench: 0, porter: 0, saw: 0, stitch: 0, crumb: 0, bolt: 0 },
+    crop: 0,
+    farmLoop: 'sow',
+    farmFrame: 0,
+    harvested: 0,
+    sheaf: 0,
+    grain: 0,
+    milled: 0,
+    flourDelivered: 0,
+    sailFrame: 0,
+    grindFrame: 0,
+    smeltOre: 0,
+    forgeBars: 0,
+    pickFrame: 0,
+    pourFrame: 0,
+    hammerFrame: 0,
+    vein: ORE_CAP,
+    dug: 0,
+    ore: 0,
+    bars: 0,
+    barsFromScrap: 0,
+    barSpent: 0,
+    axeHeads: 0,
+    forgedParts: 0,
+    axeAtYard: 0,
+    partAtShop: 0,
+    scrapFeed: 0,
+    wear: 2,
+    repaired: 0,
+    replaced: 0,
+    i: { timber: 0, wrench: 0, porter: 0, saw: 0, stitch: 0, crumb: 0, bolt: 0, sprout: 0, dusty: 0, pike: 0, ember: 0, smith: 0 },
   };
 }
 
@@ -262,8 +326,8 @@ function chopStep(s) {
   s.leg = 'pickupLog';
 }
 
-function walkLeg(s, route, next) {
-  if (s.i.porter < route.length - 1) { s.i.porter += 1; return true; }
+function walkLeg(s, route, next, id = 'porter') {
+  if (s.i[id] < route.length - 1) { s.i[id] += 1; return true; }
   next();
   return false;
 }
@@ -368,6 +432,164 @@ function bakeStep(s) {
   s.leg = 'pickupBread';
 }
 
+function frames(s, key, next) {
+  if (s[key] < 3) { s[key] += 1; return true; }
+  s[key] = 0;
+  next();
+  return false;
+}
+
+function supplyStep(s) {
+  if (s.beat === 'grow') {
+    if (s.farmLoop === 'sow') { frames(s, 'farmFrame', () => { s.farmLoop = 'water'; }); return; }
+    if (s.farmLoop === 'water') { frames(s, 'farmFrame', () => { s.farmLoop = 'rise'; }); return; }
+    if (s.farmLoop === 'rise') {
+      if (s.crop < 3) { s.crop += 1; return; }
+      s.farmLoop = 'harvest';
+      return;
+    }
+    if (s.farmLoop === 'harvest') { frames(s, 'farmFrame', () => { s.crop = 4; s.farmLoop = 'sheaf'; }); return; }
+    frames(s, 'farmFrame', () => {
+      if (!s.harvested) { s.harvested = 1; s.sheaf = 1; }
+      s.beat = 'haulSheaf';
+      s.i.sprout = 0;
+    });
+    return;
+  }
+  if (s.beat === 'haulSheaf') {
+    if (s.sheaf === 1 && s.cargo == null) { s.sheaf = 0; s.cargo = 'sheaf'; }
+    walkLeg(s, ROUTES.farmToMill, () => {
+      if (s.cargo === 'sheaf') { s.cargo = null; s.grain = 1; }
+      s.i.sprout = 0;
+      s.beat = 'grind';
+      s.grindFrame = 0;
+      s.sailFrame = 0;
+    }, 'sprout');
+    return;
+  }
+  if (s.beat === 'grind') {
+    s.sailFrame = (s.sailFrame + 1) % 4;
+    if (s.grindFrame < 3) { s.grindFrame += 1; return; }
+    if (s.grain === 1 && s.milled === 0) { s.grain = 0; s.milled = 1; s.cargo = 'flour'; }
+    s.beat = 'haulFlour';
+    s.i.dusty = 0;
+    return;
+  }
+  if (s.beat === 'haulFlour') {
+    walkLeg(s, ROUTES.millToBakery, () => {
+      if (s.cargo === 'flour') { s.cargo = null; s.flour += 1; s.flourDelivered = 1; }
+      s.beat = 'dig';
+      s.pickFrame = 0;
+    }, 'dusty');
+    return;
+  }
+  if (s.beat === 'dig') {
+    if (s.pickFrame < 3) { s.pickFrame += 1; return; }
+    s.pickFrame = 0;
+    if (s.vein > 0 && s.dug < ORE_CAP) { s.vein -= 1; s.dug += 1; s.ore += 1; return; }
+    s.beat = 'haulOre';
+    s.i.pike = 0;
+    return;
+  }
+  if (s.beat === 'haulOre') {
+    if (s.cargo !== 'ore' && s.ore > 0) { s.cargo = 'ore'; s.ore -= 1; s.i.pike = 0; }
+    walkLeg(s, ROUTES.mineToSmelter, () => {
+      if (s.cargo === 'ore') { s.cargo = null; s.smeltOre = (s.smeltOre || 0) + 1; }
+      if (s.ore > 0) return;
+      s.beat = 'pour';
+      s.pourFrame = 0;
+    }, 'pike');
+    return;
+  }
+  if (s.beat === 'pour') {
+    if (s.pourFrame < 3) { s.pourFrame += 1; return; }
+    s.pourFrame = 0;
+    if (s.smeltOre > 0) { s.smeltOre -= 1; s.bars += 1; return; }
+    s.beat = 'haulBar';
+    s.i.ember = 0;
+    return;
+  }
+  if (s.beat === 'haulBar') {
+    if (s.cargo !== 'bar' && s.bars > 0) { s.cargo = 'bar'; s.bars -= 1; s.i.ember = 0; }
+    walkLeg(s, ROUTES.smelterToForge, () => {
+      if (s.cargo === 'bar') { s.cargo = null; s.forgeBars = (s.forgeBars || 0) + 1; }
+      if (s.bars > 0) return;
+      s.beat = 'hammer';
+      s.hammerFrame = 0;
+    }, 'ember');
+    return;
+  }
+  if (s.beat === 'hammer') {
+    if (s.hammerFrame < 3) { s.hammerFrame += 1; return; }
+    s.hammerFrame = 0;
+    if (s.forgeBars > 0 && s.axeHeads === 0) { s.forgeBars -= 1; s.axeHeads = 1; return; }
+    if (s.forgeBars > 0 && s.forgedParts === 0) { s.forgeBars -= 1; s.forgedParts = 1; return; }
+    s.beat = 'haulAxe';
+    s.cargo = 'axe';
+    s.axeHeads = 0;
+    s.leg = 'forgeToLumber';
+    s.i.porter = 0;
+    return;
+  }
+  if (s.beat === 'haulAxe') {
+    walkLeg(s, ROUTES.forgeToLumber, () => {
+      if (s.cargo === 'axe') { s.cargo = null; s.axeAtYard = 1; }
+      s.beat = 'haulPart';
+      s.cargo = 'part';
+      s.forgedParts = 0;
+      s.leg = 'forgeToSign';
+      s.i.porter = 0;
+    });
+    return;
+  }
+  if (s.beat === 'haulPart') {
+    walkLeg(s, ROUTES.forgeToSign, () => {
+      if (s.cargo === 'part') { s.cargo = null; s.partAtShop = 1; }
+      s.beat = 'mend';
+      s.cargo = 'worn';
+      s.leg = 'lumberToScrap';
+      s.i.porter = 0;
+    });
+    return;
+  }
+  if (s.beat === 'mend') {
+    if (s.leg === 'lumberToScrap') {
+      walkLeg(s, ROUTES.lumberToScrap, () => {
+        if (s.cargo === 'worn') { s.cargo = null; s.scrapFeed = 1; }
+        repairTool(s);
+        s.beat = 'homebound';
+        zeroCrew(s);
+      });
+      return;
+    }
+  }
+}
+
+export function repairTool(s) {
+  if (s.repaired || s.wear >= WEAR_CAP || s.scrapFeed < 1) return false;
+  s.scrapFeed -= 1;
+  s.wear = 0;
+  s.repaired = 1;
+  return true;
+}
+
+export function replaceTool(s) {
+  if (s.replaced || s.wear < WEAR_CAP || s.bars < 1) return false;
+  s.bars -= 1;
+  s.barSpent += 1;
+  s.wear = 0;
+  s.replaced = 1;
+  return true;
+}
+
+export function smeltScrap(s) {
+  if (s.scrapFeed < 1 || s.barsFromScrap >= 1) return false;
+  s.scrapFeed -= 1;
+  s.bars += 1;
+  s.barsFromScrap += 1;
+  return true;
+}
+
 export function advance(input) {
   const s = input;
   if (s.beat === 'nextdawn') return s;
@@ -379,7 +601,7 @@ export function advance(input) {
     return s;
   }
   if (s.beat === 'walk') {
-    const ids = ['timber', 'wrench', 'saw', 'stitch', 'crumb', 'bolt'];
+    const ids = ['timber', 'wrench', 'saw', 'stitch', 'crumb', 'bolt', 'sprout', 'dusty', 'pike', 'ember', 'smith'];
     const flags = ids.map((id) => stepAlong(s, id, ROUTES[id]));
     flags.push(stepAlong(s, 'porter', ROUTES.toLumber));
     if (flags.every(Boolean)) s.beat = 'chop';
@@ -479,13 +701,18 @@ export function advance(input) {
     }
     walkLeg(s, ROUTES.bakeryToLumber, () => {
       if (s.cargo === 'bread') { s.cargo = null; s.eaten = 1; s.meal = 1; }
-      s.beat = 'homebound';
-      zeroCrew(s);
+      s.beat = 'grow';
+      s.farmLoop = 'sow';
+      s.farmFrame = 0;
     });
     return s;
   }
+  if (s.beat === 'grow' || s.beat === 'haulSheaf' || s.beat === 'grind' || s.beat === 'haulFlour' || s.beat === 'dig' || s.beat === 'haulOre' || s.beat === 'pour' || s.beat === 'haulBar' || s.beat === 'hammer' || s.beat === 'haulAxe' || s.beat === 'haulPart' || s.beat === 'mend') {
+    supplyStep(s);
+    return s;
+  }
   if (s.beat === 'homebound') {
-    const ids = ['timber', 'wrench', 'saw', 'stitch', 'crumb', 'bolt', 'porter'];
+    const ids = ['timber', 'wrench', 'saw', 'stitch', 'crumb', 'bolt', 'porter', 'sprout', 'dusty', 'pike', 'ember', 'smith'];
     const done = ids.map((id) => stepAlong(s, id, ROUTES[id + 'Home'])).every(Boolean);
     if (done && s.meal === 1) {
       s.beat = 'nextdawn';
@@ -508,6 +735,15 @@ export function clothHeld(s) {
 
 export function flourHeld(s) {
   return s.flour + s.dough + s.bread + s.eaten + (s.cargo === 'bread' ? 1 : 0);
+}
+
+export function fieldHeld(s) {
+  return s.sheaf + s.grain + (s.cargo === 'sheaf' ? 1 : 0) + (s.cargo === 'flour' ? 1 : 0) + s.flourDelivered;
+}
+
+export function metalHeld(s) {
+  const cargo = s.cargo === 'ore' || s.cargo === 'bar' || s.cargo === 'axe' || s.cargo === 'part' ? 1 : 0;
+  return s.ore + (s.smeltOre || 0) + s.bars + (s.forgeBars || 0) + s.axeHeads + s.forgedParts + s.axeAtYard + s.partAtShop + cargo + s.barSpent;
 }
 
 export function scrapHeld(s) {
@@ -533,7 +769,17 @@ export function conserved(s) {
     && s.plankUsed <= 1
     && s.shopPlanks <= 1
     && clothHeld(s) === CLOTH_STOCK
-    && flourHeld(s) === FLOUR_STOCK
+    && flourHeld(s) === FLOUR_STOCK + s.flourDelivered
+    && fieldHeld(s) === s.harvested
+    && s.harvested <= 1
+    && s.milled === (s.cargo === 'flour' ? 1 : 0) + s.flourDelivered
+    && metalHeld(s) === s.dug + s.barsFromScrap
+    && s.dug + s.vein === ORE_CAP
+    && s.dug <= ORE_CAP
+    && s.barsFromScrap <= 1
+    && s.replaced <= 1
+    && s.repaired <= 1
+    && (s.replaced === 0 || s.barSpent === 1)
     && s.eaten <= 1
     && s.meal <= 1
     && partsHeld(s) === s.toolEver
@@ -559,6 +805,8 @@ export function seek(label) {
     if (label === 'working-tailor') return s.beat === 'tailor' && s.leg === 'sew' && s.needle === 2 && s.mannequin === 'bare' && s.shopBolt === 1;
     if (label === 'working-bakery') return s.beat === 'baking' && s.oven === 'knead' && s.ovenFrame === 2 && s.flour === FLOUR_STOCK && s.dough === 0;
     if (label === 'working-scrap') return s.beat === 'pressing' && s.press === 'press' && s.pressFrame === 2 && s.yardTool === 1 && s.scrap === 0;
+    if (label === 'working-farm') return s.beat === 'grow' && s.crop === 3 && s.farmLoop === 'harvest' && s.farmFrame === 1;
+    if (label === 'working-mill') return s.beat === 'grind' && s.grindFrame === 2 && s.grain === 1 && s.sailFrame > 0;
     if (label === 'nextdawn') return s.beat === 'nextdawn';
     return false;
   };
@@ -584,8 +832,8 @@ function porterView(s) {
   return { route: ROUTES.toLumber, i: 0 };
 }
 
-const NAMES = { timber: 'Timber', wrench: 'Wrench', porter: 'Porter', saw: 'Saw', stitch: 'Stitch', crumb: 'Crumb', bolt: 'Bolt' };
-const COATS = { timber: 'tan', wrench: 'gray', porter: 'cream', saw: 'red', stitch: 'golden', crumb: 'cream', bolt: 'dark' };
+const NAMES = { timber: 'Timber', wrench: 'Wrench', porter: 'Porter', saw: 'Saw', stitch: 'Stitch', crumb: 'Crumb', bolt: 'Bolt', sprout: 'Sprout', dusty: 'Dusty', pike: 'Pike', ember: 'Ember', smith: 'Smith' };
+const COATS = { timber: 'tan', wrench: 'gray', porter: 'cream', saw: 'red', stitch: 'golden', crumb: 'cream', bolt: 'dark', sprout: 'tan', dusty: 'gray', pike: 'dark', ember: 'red', smith: 'gray' };
 
 export function crewView(s) {
   const out = {};
@@ -605,6 +853,18 @@ export function crewView(s) {
     } else if (s.beat === 'homebound') {
       route = ROUTES[id + 'Home'];
       i = s.i[id];
+    } else if (id === 'sprout' && s.beat === 'haulSheaf') {
+      route = ROUTES.farmToMill;
+      i = s.i.sprout;
+    } else if (id === 'dusty' && s.beat === 'haulFlour') {
+      route = ROUTES.millToBakery;
+      i = s.i.dusty;
+    } else if (id === 'pike' && s.beat === 'haulOre') {
+      route = ROUTES.mineToSmelter;
+      i = s.i.pike;
+    } else if (id === 'ember' && s.beat === 'haulBar') {
+      route = ROUTES.smelterToForge;
+      i = s.i.ember;
     } else {
       route = ROUTES[id];
       i = route.length - 1;
@@ -613,7 +873,8 @@ export function crewView(s) {
     let tx = route[i][0];
     let ty = route[i][1];
     const nxt = route[Math.min(route.length - 1, i + 1)];
-    const travelling = (s.beat === 'walk' || s.beat === 'homebound' || (id === 'porter' && ROUTES[s.leg] && s.i.porter < route.length - 1)) && i < route.length - 1;
+    const hauling = (id === 'porter' && ROUTES[s.leg]) || (id === 'sprout' && s.beat === 'haulSheaf') || (id === 'dusty' && s.beat === 'haulFlour') || (id === 'pike' && s.beat === 'haulOre') || (id === 'ember' && s.beat === 'haulBar');
+    const travelling = (s.beat === 'walk' || s.beat === 'homebound' || hauling) && i < route.length - 1;
     let face = 'down';
     if (travelling) {
       const dx = nxt[0] - tx;
@@ -643,6 +904,21 @@ export function crewView(s) {
     }
     if (id === 'bolt' && s.beat !== 'home' && s.beat !== 'walk' && s.beat !== 'homebound' && s.beat !== 'nextdawn') {
       tx = SCRAP.door[0]; ty = SCRAP.door[1]; face = 'up'; place = 'scrap';
+    }
+    if (id === 'sprout' && s.beat !== 'home' && s.beat !== 'walk' && s.beat !== 'homebound' && s.beat !== 'nextdawn' && s.beat !== 'haulSheaf') {
+      tx = FARM.door[0]; ty = FARM.door[1]; face = 'up'; place = 'farm';
+    }
+    if (id === 'dusty' && s.beat !== 'home' && s.beat !== 'walk' && s.beat !== 'homebound' && s.beat !== 'nextdawn' && s.beat !== 'haulFlour') {
+      tx = MILL.door[0]; ty = MILL.door[1]; face = 'up'; place = 'mill';
+    }
+    if (id === 'pike' && s.beat !== 'home' && s.beat !== 'walk' && s.beat !== 'homebound' && s.beat !== 'nextdawn' && s.beat !== 'haulOre') {
+      tx = MINE.door[0]; ty = MINE.door[1]; face = 'up'; place = 'mine';
+    }
+    if (id === 'ember' && s.beat !== 'home' && s.beat !== 'walk' && s.beat !== 'homebound' && s.beat !== 'nextdawn' && s.beat !== 'haulBar') {
+      tx = SMELTER.door[0]; ty = SMELTER.door[1]; face = 'up'; place = 'smelter';
+    }
+    if (id === 'smith' && s.beat !== 'home' && s.beat !== 'walk' && s.beat !== 'homebound' && s.beat !== 'nextdawn') {
+      tx = FORGE.door[0]; ty = FORGE.door[1]; face = 'up'; place = 'forge';
     }
     if (id === 'porter' && s.beat === 'sawing') {
       tx = SAWMILL.door[0] - 3; ty = SAWMILL.door[1]; face = 'right'; place = 'sawmill';

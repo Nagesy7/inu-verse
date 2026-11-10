@@ -2,7 +2,7 @@
 // Save key is inuverse.preview.npcwork.v1. This file does not touch inuverse.save.v1.
 import { TILE } from './world.js';
 import {
-  BAKERY, CHIT_CAP, CLOTH_STOCK, DAILY_ISSUE, FLOUR_STOCK, LUMBER, MECHANIC, ROUTES, SAWMILL, SCRAP, SIGN, TAILOR,
+  BAKERY, CHIT_CAP, CLOTH_STOCK, DAILY_ISSUE, FARM, FLOUR_STOCK, LUMBER, MECHANIC, MILL, ROUTES, SAWMILL, SCRAP, SIGN, TAILOR,
   SAVE_KEY, TAG, advance, crewView, seek, seedState,
 } from './npcbuildings.js';
 
@@ -65,6 +65,19 @@ const ART_SRC = {
   carryBread: 'assets/npcwork/overlays/carry-bread-loaf.png',
   carryBroken: 'assets/npcwork/overlays/carry-broken-item.png',
   carryBale: 'assets/npcwork/overlays/carry-scrap-bale.png',
+  wheatFarm: 'assets/npcwork/farm/wheat-farm.png',
+  crops: 'assets/npcwork/farm/crop-stages.png',
+  sow: 'assets/npcwork/farm/work-sow.png',
+  water: 'assets/npcwork/farm/work-water.png',
+  harvest: 'assets/npcwork/farm/work-harvest.png',
+  sheafLoop: 'assets/npcwork/farm/work-sheaf.png',
+  windmill: 'assets/npcwork/mill/windmill.png',
+  sails: 'assets/npcwork/mill/work-sails.png',
+  grind: 'assets/npcwork/mill/work-grind.png',
+  grainPile: 'assets/npcwork/mill/grain-pile.png',
+  flourStack: 'assets/npcwork/mill/flour-stack.png',
+  carrySheaf: 'assets/npcwork/overlays/carry-wheat-sheaf.png',
+  carryFlour: 'assets/npcwork/overlays/carry-flour-sack.png',
 };
 const IMG = {};
 let artLoaded = false;
@@ -161,6 +174,30 @@ function drawSawmill(c, state) {
   label(c, `MILL ${state.millLogs}`, x + 80, y - 8);
 }
 
+function drawFarm(c, state) {
+  const x = FARM.x * TILE;
+  const y = FARM.y * TILE;
+  blit(c, 'wheatFarm', x, y, 192, 128);
+  for (const [dx, dy] of [[40, 52], [72, 52], [40, 84], [72, 84]]) {
+    blitFrame(c, 'crops', state.crop, x + dx, y + dy, 32, 32, 16, 16);
+  }
+  const loop = state.beat === 'grow' && state.farmLoop !== 'rise' ? state.farmLoop : '';
+  const key = loop === 'sow' ? 'sow' : loop === 'water' ? 'water' : loop === 'harvest' ? 'harvest' : loop === 'sheaf' ? 'sheafLoop' : '';
+  if (key) blitFrame(c, key, state.farmFrame % 4, x + 8, y + 28, 176, 88, 88, 44);
+}
+
+function drawMill(c, state) {
+  const x = MILL.x * TILE;
+  const y = MILL.y * TILE;
+  blit(c, 'windmill', x, y, 160, 128);
+  blitFrame(c, 'grainPile', state.grain > 0 ? 1 : 0, x + 20, y + 92, 36, 24, 18, 12);
+  blitFrame(c, 'flourStack', state.milled > 0 && state.flourDelivered === 0 && state.cargo !== 'flour' ? 1 : 0, x + 112, y + 88, 36, 28, 18, 14);
+  if (state.beat === 'grind') {
+    blitFrame(c, 'sails', state.sailFrame % 4, x + 16, y + 36, 128, 80, 64, 40);
+    blitFrame(c, 'grind', state.grindFrame % 4, x + 16, y + 36, 128, 80, 64, 40);
+  }
+}
+
 function drawBakery(c, state) {
   const x = BAKERY.x * TILE;
   const y = BAKERY.y * TILE;
@@ -212,6 +249,7 @@ export function detailText(s, crew) {
     `Porter ${crew.porter.place} · cargo ${s.cargo || 'none'} · sign ${s.shortage} · shop ${s.shopPlanks}`,
     `Bolt ${crew.bolt.place} · scrap used ${s.scrapUsed} · Stitch ${crew.stitch.place} · rack ${s.rack}`,
     `Crumb ${crew.crumb.place} · flour ${s.flour}/${FLOUR_STOCK} · bread eaten ${s.eaten} · cloth ${s.clothStock}/${CLOTH_STOCK}`,
+    `Sprout crop ${s.crop} · Dusty grain ${s.grain} · milled ${s.milled} · Pike ore ${s.dug} · wear ${s.wear}`,
   ].join('\n');
 }
 
@@ -327,11 +365,15 @@ export function createNpcWork(doc = document, storage = globalThis.localStorage)
         if (a.id === 'saw' && state.beat === 'sawing') return false;
         if (a.id === 'crumb' && state.beat === 'baking' && state.leg === 'oven' && state.oven === 'knead') return false;
         if (a.id === 'bolt' && state.beat === 'pressing') return false;
+        if (a.id === 'sprout' && state.beat === 'grow' && state.farmLoop !== 'rise') return false;
+        if (a.id === 'dusty' && state.beat === 'grind') return false;
         return true;
       }).map((a) => {
         let npcOverlay = null;
         if (a.id === 'timber' && a.working) npcOverlay = { key: state.act === 'stack' ? 'stack' : 'chop', frame: state.axe, behind: false };
         else if (a.id === 'porter') npcOverlay = porterOverlay(state, a.face);
+        else if (a.id === 'sprout' && state.cargo === 'sheaf') npcOverlay = { key: 'carrySheaf', frame: 0, behind: a.face === 'up' };
+        else if (a.id === 'dusty' && state.cargo === 'flour') npcOverlay = { key: 'carryFlour', frame: 0, behind: a.face === 'up' };
         return {
           x: a.x, y: a.y, coat: a.coat, outfit: {}, face: a.face, phase: state.phase, moving: a.moving,
           name: a.name, art: null, npcwork: true, npcOverlay,
@@ -345,6 +387,8 @@ export function createNpcWork(doc = document, storage = globalThis.localStorage)
         { y: 192, d: (c) => drawBay(c, state) },
         { y: (SAWMILL.y + SAWMILL.h) * TILE, d: (c) => drawSawmill(c, state) },
         { y: (BAKERY.y + BAKERY.h) * TILE, d: (c) => drawBakery(c, state) },
+        { y: (FARM.y + FARM.h) * TILE, d: (c) => drawFarm(c, state) },
+        { y: (MILL.y + MILL.h) * TILE, d: (c) => drawMill(c, state) },
         { y: (SCRAP.y + SCRAP.h) * TILE, d: (c) => drawScrap(c, state) },
         { y: 3202, d: (c) => {
           for (let i = 0; i < state.logs && i < LOG_SLOTS.length; i++) blit(c, 'log', LOG_SLOTS[i][0], LOG_SLOTS[i][1], 18, 10);

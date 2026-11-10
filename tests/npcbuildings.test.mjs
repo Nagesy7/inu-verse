@@ -2,19 +2,20 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { createHash } from 'node:crypto';
+import { readFileSync } from 'node:fs';
 import { MAP, PLOTS, TOWN_H, TOWN_W, isSolid } from '../src/world.js';
 import { newGame } from '../src/game.js';
 import { save, load, MemoryStorage } from '../src/save.js';
 import {
-  BAKERY, CHOP_CAP, CLOTH, CLOTH_STOCK, DAILY_ISSUE, FLOUR_STOCK, JOIN_WAS, LUMBER, MECHANIC, ROUTES, SAWMILL, SCRAP, SIGN, TAILOR, WORK_JOIN,
-  advance, bakeOne, clothHeld, conserved, crewView, flourHeld, goodsHeld, leftHeld, logLedger, lotProof, onPath, partsHeld, plankTotal, sawOne, scrapHeld, seek, seedState,
+  BAKERY, CHOP_CAP, CLOTH, CLOTH_STOCK, DAILY_ISSUE, FARM, FLOUR_STOCK, FORGE, JOIN_WAS, LUMBER, MECHANIC, MILL, MINE, ORE_CAP, ROUTES, SAWMILL, SCRAP, SIGN, SMELTER, TAILOR, WEAR_CAP, WORK_JOIN,
+  advance, bakeOne, clothHeld, conserved, crewView, fieldHeld, flourHeld, goodsHeld, leftHeld, logLedger, lotProof, metalHeld, onPath, partsHeld, plankTotal, repairTool, replaceTool, sawOne, scrapHeld, seek, seedState, smeltScrap,
 } from '../src/npcbuildings.js';
 
 const TOWN_HASH = '160103ee7669ccba0c95572ac9d543d889f037653d361b61996ad8c9b32d2296';
 
 test('lumber and mechanic stay on empty grass; the new trades sit on the south quarter', () => {
   const proof = lotProof();
-  assert.equal(proof.length, 6);
+  assert.equal(proof.length, 11);
   for (const lot of proof) {
     assert.deepEqual(lot.claimPlots, []);
     assert.equal(lot.doorOnPath, true, lot.id);
@@ -24,7 +25,8 @@ test('lumber and mechanic stay on empty grass; the new trades sit on the south q
   const added = proof.filter((lot) => lot.expansion);
   assert.deepEqual(legacy.map((lot) => lot.id), ['lumber', 'mechanic']);
   for (const lot of legacy) assert.equal(lot.allEmptyGrass, true, lot.id);
-  assert.deepEqual(added.map((lot) => lot.id), ['sawmill', 'tailor', 'bakery', 'scrap']);
+  assert.deepEqual(added.filter((lot) => !lot.hidden).map((lot) => lot.id), ['sawmill', 'tailor', 'bakery', 'scrap', 'farm', 'mill']);
+  assert.deepEqual(added.filter((lot) => lot.hidden).map((lot) => lot.id), ['mine', 'smelter', 'forge']);
   for (const lot of added) {
     assert.equal(lot.onNewGround, true, lot.id);
     assert.ok(lot.tiles.every((t) => t.tile === 3), lot.id);
@@ -38,6 +40,15 @@ test('lumber and mechanic stay on empty grass; the new trades sit on the south q
   assert.deepEqual([...BAKERY.door], [BAKERY.x + 4, BAKERY.y + 4]);
   assert.deepEqual([...SCRAP.door], [SCRAP.x + 3, SCRAP.y + 4]);
   assert.deepEqual([...TAILOR.door], [TAILOR.x + 4, TAILOR.y + 4]);
+  assert.deepEqual([...FARM.door], [FARM.x + 3, FARM.y + 4]);
+  assert.equal(FARM.w, 6);
+  assert.deepEqual([...MILL.door], [MILL.x + 2, MILL.y + 4]);
+  assert.equal(MILL.w, 5);
+  for (const lot of [MINE, SMELTER, FORGE]) {
+    assert.equal(lot.hidden, true);
+    assert.equal(lot.w, 5);
+    assert.deepEqual([...lot.door], [lot.x + 2, lot.y + 4]);
+  }
   assert.equal(MECHANIC.w, 5);
   assert.deepEqual(SIGN, [33, 6]);
   assert.equal(onPath(SIGN[0], SIGN[1]), true);
@@ -178,7 +189,9 @@ test('the porter stands at the mechanic sign with the single plank, and a second
 test('leftover logs and flour are finite and a second conversion does not mint', () => {
   const done = seek('nextdawn');
   assert.equal(done.logs, 3);
-  assert.equal(done.flour, 1);
+  assert.equal(done.flour, 2);
+  assert.equal(done.flourDelivered, 1);
+  assert.equal(done.harvested, 1);
   assert.equal(done.eaten, 1);
   assert.equal(done.meal, 1);
   let sawn = 0;
@@ -191,9 +204,9 @@ test('leftover logs and flour are finite and a second conversion does not mint',
   assert.equal(done.sawed, 4);
   let baked = 0;
   while (bakeOne(done)) baked += 1;
-  assert.equal(baked, 1);
+  assert.equal(baked, 2);
   assert.equal(done.flour, 0);
-  assert.equal(flourHeld(done), FLOUR_STOCK);
+  assert.equal(flourHeld(done), FLOUR_STOCK + 1);
   assert.equal(bakeOne(done), false);
   assert.equal(conserved(done), true);
 });
@@ -250,7 +263,73 @@ test('scrap comes only from the repaired tool and the leftover, and bread gates 
   assert.equal(done.meal, 1);
   assert.equal(done.eaten, 1);
   assert.equal(done.bread, 0);
-  assert.equal(flourHeld(done), FLOUR_STOCK);
+  assert.equal(flourHeld(done), FLOUR_STOCK + 1);
+  assert.equal(done.harvested, 1);
+  assert.equal(fieldHeld(done), 1);
   assert.equal(done.scrapUsed, 1);
   assert.equal(conserved(done), true);
+});
+
+test('wheat is grown once, ground once, and the sack is the bakery flour', () => {
+  for (const [x, y] of ROUTES.farmToMill) assert.equal(onPath(x, y), true);
+  for (const [x, y] of ROUTES.millToBakery) assert.equal(onPath(x, y), true);
+  const ripe = seek('working-farm');
+  assert.equal(ripe.crop, 3);
+  assert.equal(ripe.harvested, 0);
+  assert.equal(crewView(ripe).sprout.place, 'farm');
+  const mill = seek('working-mill');
+  assert.equal(mill.grain, 1);
+  assert.equal(mill.milled, 0);
+  assert.equal(mill.sailFrame > 0, true);
+  assert.equal(crewView(mill).dusty.place, 'mill');
+  const done = seek('nextdawn');
+  assert.equal(done.crop, 4);
+  assert.equal(done.harvested, 1);
+  assert.equal(done.milled, 1);
+  assert.equal(done.flourDelivered, 1);
+  assert.equal(done.sheaf, 0);
+  assert.equal(done.grain, 0);
+  const again = advance(done);
+  assert.equal(again.harvested, 1);
+  assert.equal(again.milled, 1);
+  assert.equal(conserved(done), true);
+});
+
+test('ore is finite in this chain, a tool is repaired before it is replaced, and scrap smelts once', () => {
+  for (const route of [ROUTES.mineToSmelter, ROUTES.smelterToForge, ROUTES.forgeToLumber, ROUTES.forgeToSign, ROUTES.lumberToScrap]) {
+    for (const [x, y] of route) assert.equal(onPath(x, y), true);
+  }
+  const done = seek('nextdawn');
+  assert.equal(done.dug, ORE_CAP);
+  assert.equal(done.vein, 0);
+  assert.equal(done.axeAtYard, 1);
+  assert.equal(done.partAtShop, 1);
+  assert.equal(done.bars, 0);
+  assert.equal(done.wear, 0);
+  assert.equal(done.repaired, 1);
+  assert.equal(done.replaced, 0);
+  assert.equal(metalHeld(done), ORE_CAP);
+  assert.equal(done.scrapFeed, 0);
+  const fresh = seedState();
+  fresh.scrapFeed = 1;
+  assert.equal(smeltScrap(fresh), true);
+  assert.equal(fresh.bars, 1);
+  assert.equal(fresh.barsFromScrap, 1);
+  assert.equal(smeltScrap(fresh), false);
+  assert.equal(metalHeld(fresh), 1);
+  fresh.wear = WEAR_CAP;
+  assert.equal(replaceTool(fresh), true);
+  assert.equal(fresh.bars, 0);
+  assert.equal(fresh.replaced, 1);
+  assert.equal(replaceTool(fresh), false);
+  assert.equal(repairTool(fresh), false);
+  assert.equal(conserved(fresh), true);
+  assert.equal(conserved(done), true);
+  const draw = readFileSync(new URL('../src/npcwork.js', import.meta.url), 'utf8');
+  assert.equal(draw.includes('mine.png'), false);
+  assert.equal(draw.includes('smelter.png'), false);
+  assert.equal(draw.includes('forge.png'), false);
+  assert.equal(draw.includes('wheat-farm.png'), true);
+  assert.equal(draw.includes('windmill.png'), true);
+  assert.equal(draw.includes("beat === 'grind'"), true);
 });
