@@ -88,7 +88,7 @@ test('browser: minimap on + fits the phone HUD, discovers stones by walking, A w
     // minimap tap -> full map; at a stone, tapping another found stone on the map warps there
     if (await p.evaluate(() => getComputedStyle(document.getElementById('minimap')).display === 'none')) await p.tap('#map-peek');
     await p.tap('#minimap'); await p.waitForTimeout(400); assert.ok(await p.evaluate(() => !document.getElementById('mapfull').hidden), 'full map open'); assert.ok(await p.evaluate(() => !document.getElementById('map-warp').hidden), 'warp hint at a stone');
-    const box = await p.evaluate(() => { const c = document.getElementById('mapcv').getBoundingClientRect(), s = __inu.portals.PT.BY_ID.farm; return { x: c.left + (s.tx + 0.5) * c.width / 64, y: c.top + (s.ty + 0.5) * c.height / 106 }; });
+    const box = await p.evaluate(() => { const c = document.getElementById('mapcv').getBoundingClientRect(), s = __inu.portals.PT.BY_ID.farm, tile = c.width / 64; return { x: c.left + (s.tx + 0.5) * tile, y: c.top + (s.ty + 0.5) * tile }; });
     await p.mouse.click(box.x, box.y); await p.waitForTimeout(400);
     assert.equal(await p.evaluate(() => globalThis.__warps), 2, 'warped from the full map'); assert.ok(await p.evaluate(() => document.getElementById('mapfull').hidden));
     await ctx.close(); }
@@ -114,7 +114,7 @@ test('browser: full-map stones are big, visible and tappable at 844x390 + 667x37
     if (await p.evaluate(() => getComputedStyle(document.getElementById('minimap')).display === 'none')) await p.tap('#map-peek');
     await p.tap('#minimap'); await p.waitForFunction(() => !document.getElementById('mapfull').hidden); await p.waitForTimeout(300);
     const R = await p.evaluate(() => { const cv = document.getElementById('mapcv'), c = cv.getBoundingClientRect(), g = cv.getContext('2d'), u = cv.width / c.width, out = {};
-      for (const id of ['farm', 'arcade']) { const s = __inu.portals.PT.BY_ID[id], x = (s.tx + 0.5) * cv.width / 64, y = (s.ty + 0.5) * cv.height / 106; let cyan = 0, ink = 0;
+      for (const id of ['farm', 'arcade']) { const s = __inu.portals.PT.BY_ID[id], tile = cv.width / 64, x = (s.tx + 0.5) * tile, y = (s.ty + 0.5) * tile; let cyan = 0, ink = 0;
         const d = g.getImageData(Math.round(x - 8 * u), Math.round(y - 8 * u), Math.round(16 * u), Math.round(16 * u)).data; for (let i = 0; i < d.length; i += 4) { if (d[i] < 120 && d[i + 1] > 200 && d[i + 2] > 190) cyan++; if (d[i] < 30 && d[i + 1] < 40 && d[i + 2] < 60) ink++; }
         out[id] = { cyan: cyan / u / u, ink: ink / u / u, cx: c.left + x / u, cy: c.top + y / u }; } return out; });
     assert.ok(R.farm.cyan >= 40, `found stone shows a big cyan diamond (${R.farm.cyan} CSS px²) @${vp.width}`); assert.ok(R.farm.ink >= 15, 'ink outline @' + vp.width); assert.ok(R.arcade.cyan < 5 && R.arcade.ink >= 15, 'undiscovered stone: grey outlined, not cyan @' + vp.width);

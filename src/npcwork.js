@@ -1,10 +1,9 @@
-// Opt-in only (?npcwork=1). Draws the lumber yard and the mechanic's shop
-// on empty grass and walks the crew on existing town paths. Save key is
-// inuverse.preview.npcwork.v1. This file does not touch inuverse.save.v1.
+// Opt-in only (?npcwork=1). Draws the workplaces and walks the crew.
+// Save key is inuverse.preview.npcwork.v1. This file does not touch inuverse.save.v1.
 import { TILE } from './world.js';
 import {
-  CHIT_CAP, DAILY_ISSUE, LUMBER, MECHANIC, RECYCLER, SAVE_KEY, TAG,
-  advance, crewView, seek, seedState,
+  BAKERY, CHIT_CAP, CLOTH_STOCK, DAILY_ISSUE, FLOUR_STOCK, LUMBER, MECHANIC, ROUTES, SAWMILL, SCRAP, SIGN, TAILOR,
+  SAVE_KEY, TAG, advance, crewView, seek, seedState,
 } from './npcbuildings.js';
 
 export const NPCWORK_QUERY = 'npcwork';
@@ -22,13 +21,50 @@ const ART_SRC = {
   cartFixed: 'assets/npcwork/props/cart-fixed.png',
   signShort: 'assets/npcwork/props/sign-short-1-plank.png',
   signFilled: 'assets/npcwork/props/sign-filled.png',
-  recyclerEmpty: 'assets/npcwork/props/recycler-empty.png',
-  recyclerTool: 'assets/npcwork/props/recycler-tool.png',
   chop: 'assets/npcwork/overlays/chop-axe-down.png',
   stack: 'assets/npcwork/overlays/stack-log-down.png',
   wrench: 'assets/npcwork/overlays/repair-wrench-up.png',
   carryPlank: 'assets/npcwork/overlays/carry-plank.png',
   carryTool: 'assets/npcwork/overlays/carry-tool.png',
+  carryBolt: 'assets/npcwork/overlays/carry-cloth-bolt.png',
+  carryCoat: 'assets/npcwork/overlays/carry-coat.png',
+  shopInterior: 'assets/npcwork/mechanic/mechanic-shop-interior.png',
+  liftDown: 'assets/npcwork/mechanic/lift-down.png',
+  liftUp: 'assets/npcwork/mechanic/lift-up.png',
+  carBroken: 'assets/npcwork/mechanic/car-broken.png',
+  carFixed: 'assets/npcwork/mechanic/car-fixed.png',
+  carBrokenLift: 'assets/npcwork/mechanic/car-broken-lifted.png',
+  carFixedLift: 'assets/npcwork/mechanic/car-fixed-lifted.png',
+  bonnet: 'assets/npcwork/mechanic/work-bonnet.png',
+  creeper: 'assets/npcwork/mechanic/work-creeper.png',
+  wheel: 'assets/npcwork/mechanic/work-wheel.png',
+  tailorShop: 'assets/npcwork/tailor/tailor-shop.png',
+  rackEmpty: 'assets/npcwork/tailor/rack-empty.png',
+  rackStocked: 'assets/npcwork/tailor/rack-stocked.png',
+  manBare: 'assets/npcwork/tailor/mannequin-bare.png',
+  manDressed: 'assets/npcwork/tailor/mannequin-dressed.png',
+  sew: 'assets/npcwork/tailor/work-sew.png',
+  cut: 'assets/npcwork/tailor/work-cut.png',
+  sawmill: 'assets/npcwork/sawmill/sawmill.png',
+  sawLoop: 'assets/npcwork/sawmill/work-saw.png',
+  logPile: 'assets/npcwork/sawmill/log-pile.png',
+  plankStack: 'assets/npcwork/sawmill/plank-stack.png',
+  bakery: 'assets/npcwork/bakery/bakery.png',
+  knead: 'assets/npcwork/bakery/work-knead.png',
+  ovenDoor: 'assets/npcwork/bakery/oven-door.png',
+  trayEmpty: 'assets/npcwork/bakery/bread-tray-empty.png',
+  trayFull: 'assets/npcwork/bakery/bread-tray-full.png',
+  flourSack: 'assets/npcwork/props/flour-sack.png',
+  scrapYard: 'assets/npcwork/scrapyard/scrap-yard.png',
+  sortLoop: 'assets/npcwork/scrapyard/work-sort.png',
+  pressLoop: 'assets/npcwork/scrapyard/work-press.png',
+  pressIdle: 'assets/npcwork/scrapyard/press-idle.png',
+  brokenHeap: 'assets/npcwork/props/broken-heap.png',
+  partsCrate: 'assets/npcwork/props/parts-crate.png',
+  scrapBale: 'assets/npcwork/props/scrap-bale.png',
+  carryBread: 'assets/npcwork/overlays/carry-bread-loaf.png',
+  carryBroken: 'assets/npcwork/overlays/carry-broken-item.png',
+  carryBale: 'assets/npcwork/overlays/carry-scrap-bale.png',
 };
 const IMG = {};
 let artLoaded = false;
@@ -45,16 +81,19 @@ function loadArt() {
 
 function blit(c, key, x, y, w, h) {
   const im = IMG[key];
-  if (!im) return;
+  if (!im) return false;
   c.imageSmoothingEnabled = false;
   c.drawImage(im, Math.round(x), Math.round(y), w, h);
+  return true;
 }
 
 export function drawNpcOverlay(ctx, o) {
+  if (o.draw) { o.draw(ctx); return; }
   const im = IMG[o.key];
   if (!im) return;
+  const sc = o.scale || 1;
   ctx.imageSmoothingEnabled = false;
-  ctx.drawImage(im, (o.frame || 0) * 48, 0, 48, 60, -48, -88, 96, 120);
+  ctx.drawImage(im, (o.frame || 0) * 48, 0, 48, 60, Math.round(-48 * sc), Math.round(-88 * sc), Math.round(96 * sc), Math.round(120 * sc));
 }
 
 const R = (c, x, y, w, h, col) => { c.fillStyle = col; c.fillRect(Math.round(x), Math.round(y), w, h); };
@@ -71,16 +110,106 @@ function label(c, text, x, y) {
   c.fillText(text, x, y);
 }
 
+function blitFrame(c, key, frame, x, y, dw, dh, fw, fh) {
+  const im = IMG[key];
+  if (!im) return;
+  c.imageSmoothingEnabled = false;
+  c.drawImage(im, frame * fw, 0, fw, fh, x, y, dw, dh);
+}
+
+function drawBay(c, state) {
+  blit(c, 'shopInterior', 896, 64, 160, 128);
+  if (state.car === 'leaving' || state.car === 'out') return;
+  const x = 908;
+  const y = 114;
+  const lifted = state.bay === 'lift' || state.bay === 'bonnet' || state.bay === 'creeper' || state.bay === 'wheel';
+  blit(c, lifted ? 'liftUp' : 'liftDown', x, y, 104, 72);
+  if (state.bay === 'creeper') blitFrame(c, 'creeper', state.bayFrame, x, y, 104, 72, 52, 36);
+  const fixed = state.bay === 'fixed' || state.bay === 'down';
+  const car = lifted ? (fixed ? 'carFixedLift' : 'carBrokenLift') : (fixed ? 'carFixed' : 'carBroken');
+  blit(c, car, x, y, 104, 72);
+  if (state.bay === 'bonnet') blitFrame(c, 'bonnet', state.bayFrame, x, y, 104, 72, 52, 36);
+  if (state.bay === 'wheel') blitFrame(c, 'wheel', state.bayFrame, x, y, 104, 72, 52, 36);
+}
+
+function drawTailorShop(c, state) {
+  const x = TAILOR.x * TILE;
+  const y = TAILOR.y * TILE;
+  blit(c, 'tailorShop', x, y, 160, 128);
+  const wx = x + 12;
+  const wy = y + 46;
+  blit(c, state.rack ? 'rackStocked' : 'rackEmpty', wx, wy, 100, 56);
+  blit(c, state.mannequin === 'dressed' ? 'manDressed' : 'manBare', wx, wy, 100, 56);
+  if (state.leg === 'sew') blitFrame(c, 'sew', state.needle, wx, wy, 100, 56, 50, 28);
+  if (state.leg === 'cut') blitFrame(c, 'cut', state.needle, wx, wy, 100, 56, 50, 28);
+}
+
+function fillFrame(n, steps) {
+  let i = 0;
+  for (let k = 0; k < steps.length; k++) if (n >= steps[k]) i = k;
+  return i;
+}
+
+function drawSawmill(c, state) {
+  const x = SAWMILL.x * TILE;
+  const y = SAWMILL.y * TILE;
+  blit(c, 'sawmill', x, y, 160, 128);
+  blitFrame(c, 'logPile', fillFrame(state.millLogs, [0, 1, 3, 6]), x + 112, y + 94, 36, 26, 18, 13);
+  blitFrame(c, 'plankStack', fillFrame(state.planks, [0, 1, 3, 5]), x + 12, y + 100, 36, 20, 18, 10);
+  if (state.beat === 'sawing') blitFrame(c, 'sawLoop', state.sawFrame, x + 12, y + 48, 136, 72, 68, 36);
+  label(c, `MILL ${state.millLogs}`, x + 80, y - 8);
+}
+
+function drawBakery(c, state) {
+  const x = BAKERY.x * TILE;
+  const y = BAKERY.y * TILE;
+  blit(c, 'bakery', x, y, 160, 128);
+  for (let i = 0; i < state.flour; i++) blit(c, 'flourSack', x - 28, y + 36 + i * 26, 20, 24);
+  blit(c, state.bread >= 1 ? 'trayFull' : 'trayEmpty', x + 12, y + 46, 100, 56);
+  blitFrame(c, 'ovenDoor', state.oven === 'bake' ? 1 : 0, x + 12, y + 46, 100, 56, 50, 28);
+  if (state.beat === 'baking' && state.leg === 'oven' && state.oven === 'knead') blitFrame(c, 'knead', state.ovenFrame, x + 12, y + 46, 100, 56, 50, 28);
+  label(c, `FLOUR ${state.flour}`, x + 40, y - 8);
+}
+
+function drawScrap(c, state) {
+  const x = SCRAP.x * TILE;
+  const y = SCRAP.y * TILE;
+  const pressing = state.beat === 'pressing' && state.press === 'press';
+  const sorting = state.beat === 'pressing' && state.press === 'sort';
+  blit(c, 'scrapYard', x, y, 192, 128);
+  blitFrame(c, 'brokenHeap', fillFrame(state.yardTool + state.yardLeft, [0, 1, 2, 3]), x + 12, y + 44, 44, 28, 22, 14);
+  if (state.press === 'press' || state.pressed || state.scrap || state.scrapUsed || state.cargo === 'scrap') blit(c, 'partsCrate', x + 64, y + 56, 28, 22);
+  if (state.scrap > 0) blit(c, 'scrapBale', x + 154, y + 32, 28, 20);
+  if (pressing) blitFrame(c, 'pressLoop', state.pressFrame, x + 8, y + 24, 176, 92, 88, 46);
+  else blit(c, 'pressIdle', x + 8, y + 24, 176, 92);
+  if (sorting) blitFrame(c, 'sortLoop', state.pressFrame, x + 8, y + 24, 176, 92, 88, 46);
+  label(c, `HEAP ${state.yardTool + state.yardLeft}`, x + 48, y - 8);
+}
+
+function porterOverlay(state, face) {
+  const behind = face === 'up';
+  if (state.cargo === 'plank') return { key: 'carryPlank', frame: 0, behind };
+  if (state.cargo === 'bolt') return { key: 'carryBolt', frame: 0, behind };
+  if (state.cargo === 'coat') return { key: 'carryCoat', frame: 0, behind };
+  if (state.cargo === 'tool') return { key: 'carryTool', frame: 0, behind };
+  if (state.cargo === 'parts') return { key: 'carryBroken', frame: 0, behind, scale: 1.3 };
+  if (state.cargo === 'scrap') return { key: 'carryBale', frame: 0, behind, scale: 1.3 };
+  if (state.cargo === 'bread') return { key: 'carryBread', frame: 0, behind, scale: 1.3 };
+  if (state.cargo === 'log') return { draw: (ctx) => { const im = IMG.log; if (!im) return; ctx.imageSmoothingEnabled = false; ctx.drawImage(im, -40, -82, 72, 40); }, behind };
+  return null;
+}
+
 export function detailText(s, crew) {
   return [
     'TEST',
     'Local preview. Not Bones. Not $KIBBLE. Not a live rule.',
     `Dawn can issue up to ${DAILY_ISSUE} test chits while the total stays under ${CHIT_CAP}. That rate is unbalanced and local only.`,
     `Day ${s.day} · ${s.beat} · test chits ${s.chits}/${CHIT_CAP} · last dawn ${s.lastIssue}`,
-    `Timber ${crew.timber.place} ${crew.timber.moving ? 'walking' : 'still'} · logs ${s.logs} · yard planks ${s.planks}`,
-    `Wrench ${crew.wrench.place} ${crew.wrench.moving ? 'walking' : 'still'} · cart ${s.cart}`,
-    `Porter ${crew.porter.place} ${crew.porter.moving ? 'walking' : 'still'} · cargo ${s.cargo || 'none'}`,
-    `Shop planks ${s.shopPlanks} · recycled ${s.recycled} · notice ${s.shortage}`,
+    `Timber ${crew.timber.place} · logs ${s.logs} · mill ${s.millLogs} · planks cut ${s.sawed}`,
+    `Saw ${crew.saw.place} · Wrench ${crew.wrench.place} · cart ${s.cart} · bay ${s.bay}`,
+    `Porter ${crew.porter.place} · cargo ${s.cargo || 'none'} · sign ${s.shortage} · shop ${s.shopPlanks}`,
+    `Bolt ${crew.bolt.place} · scrap used ${s.scrapUsed} · Stitch ${crew.stitch.place} · rack ${s.rack}`,
+    `Crumb ${crew.crumb.place} · flour ${s.flour}/${FLOUR_STOCK} · bread eaten ${s.eaten} · cloth ${s.clothStock}/${CLOTH_STOCK}`,
   ].join('\n');
 }
 
@@ -144,6 +273,11 @@ export function createNpcWork(doc = document, storage = globalThis.localStorage)
       paint();
       return this.summary();
     },
+    frame(patch) {
+      Object.assign(state, patch);
+      paint();
+      return this.summary();
+    },
     pose(n) { state.phase = n; return state.phase; },
     advance() {
       advance(state);
@@ -169,35 +303,33 @@ export function createNpcWork(doc = document, storage = globalThis.localStorage)
     frameNote() {
       paint();
       const crew = crewView(state);
+      const spot = (id) => ({ place: crew[id].place, moving: crew[id].moving, x: crew[id].x, y: crew[id].y, face: crew[id].face });
       return {
         visible: chip?.textContent || 'TEST',
         detail: pop?.textContent || detailText(state, crew),
         summary: {
-          day: state.day,
-          beat: state.beat,
-          chits: state.chits,
-          lastIssue: state.lastIssue,
-          issuedDawn: state.issuedDawn,
-          logs: state.logs,
-          planks: state.planks,
-          shopPlanks: state.shopPlanks,
-          cart: state.cart,
-          cargo: state.cargo,
-          recycled: state.recycled,
-          shortage: state.shortage,
-          timber: { place: crew.timber.place, moving: crew.timber.moving, x: crew.timber.x, y: crew.timber.y },
-          wrench: { place: crew.wrench.place, moving: crew.wrench.moving, x: crew.wrench.x, y: crew.wrench.y },
-          porter: { place: crew.porter.place, moving: crew.porter.moving, x: crew.porter.x, y: crew.porter.y, cargo: state.cargo },
+          day: state.day, beat: state.beat, leg: state.leg, chits: state.chits, lastIssue: state.lastIssue, issuedDawn: state.issuedDawn,
+          logs: state.logs, millLogs: state.millLogs, planks: state.planks, sawed: state.sawed, shopPlanks: state.shopPlanks, plankUsed: state.plankUsed,
+          cart: state.cart, car: state.car, bay: state.bay, cargo: state.cargo, shortage: state.shortage,
+          flour: state.flour, dough: state.dough, bread: state.bread, eaten: state.eaten, meal: state.meal,
+          clothStock: state.clothStock, rack: state.rack, mannequin: state.mannequin, scrap: state.scrap, scrapUsed: state.scrapUsed, pressed: state.pressed,
+          timber: spot('timber'), wrench: spot('wrench'), porter: spot('porter'), saw: spot('saw'), stitch: spot('stitch'), crumb: spot('crumb'), bolt: spot('bolt'),
         },
       };
     },
     actors() {
-      return Object.values(crewView(state)).map((a) => {
+      return Object.values(crewView(state)).filter((a) => {
+        const bayLoop = state.bay === 'bonnet' || state.bay === 'creeper' || state.bay === 'wheel';
+        if (a.id === 'wrench' && state.beat === 'bay' && bayLoop) return false;
+        if (a.id === 'stitch' && (state.leg === 'sew' || state.leg === 'cut')) return false;
+        if (a.id === 'saw' && state.beat === 'sawing') return false;
+        if (a.id === 'crumb' && state.beat === 'baking' && state.leg === 'oven' && state.oven === 'knead') return false;
+        if (a.id === 'bolt' && state.beat === 'pressing') return false;
+        return true;
+      }).map((a) => {
         let npcOverlay = null;
         if (a.id === 'timber' && a.working) npcOverlay = { key: state.act === 'stack' ? 'stack' : 'chop', frame: state.axe, behind: false };
-        else if (a.id === 'wrench' && a.working) npcOverlay = { key: 'wrench', frame: state.wrenchSwing, behind: false };
-        else if (a.id === 'porter' && state.cargo === 'plank') npcOverlay = { key: 'carryPlank', frame: 0, behind: a.face === 'up' };
-        else if (a.id === 'porter' && state.cargo === 'tool') npcOverlay = { key: 'carryTool', frame: 0, behind: a.face === 'up' };
+        else if (a.id === 'porter') npcOverlay = porterOverlay(state, a.face);
         return {
           x: a.x, y: a.y, coat: a.coat, outfit: {}, face: a.face, phase: state.phase, moving: a.moving,
           name: a.name, art: null, npcwork: true, npcOverlay,
@@ -208,19 +340,32 @@ export function createNpcWork(doc = document, storage = globalThis.localStorage)
     props() {
       const list = [
         { y: 3200, d: (c) => blit(c, 'lumber', 1600, 3072, 192, 128) },
-        { y: 192, d: (c) => blit(c, 'mechanic', 896, 64, 160, 128) },
+        { y: 192, d: (c) => drawBay(c, state) },
+        { y: (SAWMILL.y + SAWMILL.h) * TILE, d: (c) => drawSawmill(c, state) },
+        { y: (BAKERY.y + BAKERY.h) * TILE, d: (c) => drawBakery(c, state) },
+        { y: (SCRAP.y + SCRAP.h) * TILE, d: (c) => drawScrap(c, state) },
         { y: 3202, d: (c) => {
           for (let i = 0; i < state.logs && i < LOG_SLOTS.length; i++) blit(c, 'log', LOG_SLOTS[i][0], LOG_SLOTS[i][1], 18, 10);
           label(c, `LOGS ${state.logs}`, 1712, 3144);
-          if (state.planks >= 1) blit(c, 'plank', 1736, 3128, 34, 8);
         } },
-        { y: 194, d: (c) => {
-          if (state.cart === 'broken' || state.cart === 'fixed') blit(c, state.cart === 'fixed' ? 'cartFixed' : 'cartBroken', 954, 148, 44, 30);
-          if (state.shopPlanks >= 1) blit(c, 'plank', 952, 180, 34, 8);
+        { y: 195, d: (c) => {
+          if (state.shopPlanks >= 1) blit(c, 'plank', 1000, 176, 51, 12);
           blit(c, state.shortage === 'FILLED' ? 'signFilled' : 'signShort', 1010, 155, 40, 18);
           label(c, `SHOP ${state.shopPlanks}`, 1030, 190);
         } },
-        { y: 286, d: (c) => blit(c, state.recycled ? 'recyclerTool' : 'recyclerEmpty', 960, 256, 32, 32) },
+        { y: (TAILOR.y + TAILOR.h) * TILE, d: (c) => drawTailorShop(c, state) },
+        ...(state.car === 'leaving' || state.car === 'out' ? [{
+          y: ROUTES.carExit[Math.min(state.carI, ROUTES.carExit.length - 1)][1] * TILE + 16,
+          d: (c) => {
+            const tile = ROUTES.carExit[Math.min(state.carI, ROUTES.carExit.length - 1)];
+            const x = tile[0] * TILE + 16;
+            const y = tile[1] * TILE + 16;
+            R(c, x - 18, y - 16, 36, 14, '#2f6fbd');
+            R(c, x - 8, y - 22, 18, 8, '#9cc3c2');
+            R(c, x - 14, y - 4, 7, 7, '#141a2e');
+            R(c, x + 8, y - 4, 7, 7, '#141a2e');
+          },
+        }] : []),
       ];
       return list;
     },
