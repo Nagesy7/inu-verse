@@ -1,0 +1,134 @@
+// Phase D is a proposal. These tests lock the migration rules and the district walks.
+// They do not change the live map or the save loader.
+import test from 'node:test';
+import assert from 'node:assert/strict';
+import { readFileSync } from 'node:fs';
+import { TILE, findPath, doorTile, BUILDINGS, MALL_BUILDINGS, GAME_DOORS, ARCADE } from '../src/world.js';
+import { newGame } from '../src/game.js';
+import { save, load, MemoryStorage } from '../src/save.js';
+import { FARM, MILL, BAKERY, LUMBER, SAWMILL, MECHANIC, SCRAP, MINE, SMELTER, FORGE } from '../src/npcbuildings.js';
+import {
+  APPLIED, GRID, LOTS, PROPOSAL_H, PROPOSAL_W, SPAWN, T, TILE_PX,
+  isBlocked, lotById, overlaps, proposalPath, relocate, tileAt, walkSeconds,
+} from '../src/townproposal.js';
+
+const LIVE_SPAWN = { x: 31.5 * TILE, y: 23.5 * TILE };
+
+function liveDoor(id) {
+  const npc = { farm: FARM, mill: MILL, bakery: BAKERY, lumber: LUMBER, sawmill: SAWMILL, mechanic: MECHANIC, scrap: SCRAP, mine: MINE, smelter: SMELTER, forge: FORGE }[id];
+  if (npc) return npc.door;
+  const g = [...GAME_DOORS, ARCADE].find((x) => x.id === id);
+  if (g) return [g.door.tx, g.door.ty];
+  const b = [...BUILDINGS, ...MALL_BUILDINGS].find((x) => x.id === id);
+  const d = doorTile(b);
+  return [d.tx, d.ty];
+}
+
+function liveSteps(door) {
+  const path = findPath(Math.floor(LIVE_SPAWN.x / TILE), Math.floor(LIVE_SPAWN.y / TILE), door[0], door[1]);
+  return path ? path.length - 1 : null;
+}
+
+test('the proposal is not applied to the game', () => {
+  assert.equal(APPLIED, false);
+  const game = readFileSync(new URL('../src/world.js', import.meta.url), 'utf8');
+  const saveSrc = readFileSync(new URL('../src/save.js', import.meta.url), 'utf8');
+  const main = readFileSync(new URL('../src/main.js', import.meta.url), 'utf8');
+  assert.equal(game.includes('townproposal'), false);
+  assert.equal(saveSrc.includes('townproposal'), false);
+  assert.equal(main.includes('townproposal'), false);
+  const css = readFileSync(new URL('../style.css', import.meta.url), 'utf8');
+  assert.match(css, /#stick\{[^}]*width:120px;height:120px;border-radius:50%/);
+});
+
+test('an old save still loads on the same pixel', () => {
+  const store = new MemoryStorage();
+  const game = newGame({ name: 'Kabo', coat: 'tan' });
+  game.player.x = 2.2 * TILE_PX;
+  game.player.y = 34.2 * TILE_PX;
+  save(game, store);
+  const loaded = load(store);
+  assert.equal(loaded.player.x, game.player.x);
+  assert.equal(loaded.player.y, game.player.y);
+  assert.equal(loaded.bones, game.bones);
+});
+
+test('footprints do not overlap, and every door is a free tile on a path from spawn', () => {
+  assert.deepEqual(overlaps(), []);
+  for (const b of LOTS) {
+    assert.ok(b.x > 0 && b.y > 0 && b.x + b.w < PROPOSAL_W && b.y + b.h < PROPOSAL_H, b.id);
+    assert.equal(isBlocked(b.door[0], b.door[1]), false, `${b.id} door`);
+    if (!b.reserved && !b.water) {
+      assert.equal(tileAt(b.x, b.y), T.BUILDING, b.id);
+    }
+    const path = proposalPath(SPAWN.tx, SPAWN.ty, b.door[0], b.door[1]);
+    assert.ok(path && path.length > 1, `${b.id} reachable`);
+  }
+});
+
+test('main street and the avenue are three tiles wide and the spawn is the crossing', () => {
+  for (const x of [20, 60]) {
+    assert.equal(tileAt(x, 29), T.WALK);
+    assert.equal(tileAt(x, 30), T.ROAD);
+    assert.equal(tileAt(x, 31), T.ROAD);
+    assert.equal(tileAt(x, 32), T.ROAD);
+    assert.equal(tileAt(x, 33), T.WALK);
+  }
+  for (const y of [20, 50]) {
+    assert.equal(tileAt(37, y), T.WALK);
+    assert.equal(tileAt(38, y), T.ROAD);
+    assert.equal(tileAt(39, y), T.ROAD);
+    assert.equal(tileAt(40, y), T.ROAD);
+    assert.equal(tileAt(41, y), T.WALK);
+  }
+  assert.equal(isBlocked(SPAWN.tx, SPAWN.ty), false);
+  assert.equal(GRID[SPAWN.ty][SPAWN.tx], T.ROAD);
+});
+
+test('a player on an open tile keeps the pixel, and a player inside a moved building goes to the nearest safe tile', () => {
+  const open = relocate(SPAWN.tx * TILE_PX + 4, SPAWN.ty * TILE_PX + 8);
+  assert.equal(open.moved, false);
+  assert.equal(open.x, SPAWN.tx * TILE_PX + 4);
+
+  const buried = relocate(2.2 * TILE_PX, 34.2 * TILE_PX);
+  assert.equal(buried.moved, true);
+  assert.equal(isBlocked(buried.to.tx, buried.to.ty), false);
+  assert.ok(buried.steps > 0);
+  assert.deepEqual(buried.to, { tx: 2, ty: 33 });
+  assert.equal(buried.x, (buried.to.tx + 0.5) * TILE_PX);
+  assert.deepEqual(relocate(2.2 * TILE_PX, 34.2 * TILE_PX), buried);
+
+  const outside = relocate(LIVE_SPAWN.x, LIVE_SPAWN.y);
+  assert.equal(outside.moved, false);
+  assert.equal(outside.x, LIVE_SPAWN.x);
+  assert.equal(outside.y, LIVE_SPAWN.y);
+});
+
+test('someone standing on the old south quarter is brought back onto the map', () => {
+  const spot = relocate(50.5 * TILE_PX, 96.5 * TILE_PX);
+  assert.equal(spot.moved, true);
+  assert.equal(isBlocked(spot.to.tx, spot.to.ty), false);
+  assert.ok(spot.to.ty < PROPOSAL_H - 1);
+  assert.ok(proposalPath(SPAWN.tx, SPAWN.ty, spot.to.tx, spot.to.ty));
+});
+
+test('each trade chain sits on one short walk, and the long hikes get shorter', () => {
+  const food = ['farm', 'mill', 'bakery', 'cafe'].map((id) => lotById(id).door);
+  const metal = ['mine', 'smelter', 'forge', 'mechanic', 'scrap'].map((id) => lotById(id).door);
+  const timber = ['lumber', 'sawmill'].map((id) => lotById(id).door);
+  for (const group of [food, metal, timber]) {
+    for (let i = 1; i < group.length; i++) {
+      const path = proposalPath(group[0][0], group[0][1], group[i][0], group[i][1]);
+      assert.ok(path.length - 1 <= 28, `${group[i]} chain ${path.length - 1}`);
+    }
+  }
+  const watch = ['cafe', 'bakery', 'farm', 'mill', 'lumber', 'sawmill', 'mechanic', 'mine', 'mall', 'rescue'];
+  const shorter = new Set(['bakery', 'farm', 'mill', 'lumber', 'sawmill', 'mine', 'rescue']);
+  for (const id of watch) {
+    const now = liveSteps(liveDoor(id));
+    const next = proposalPath(SPAWN.tx, SPAWN.ty, ...lotById(id).door);
+    assert.ok(now > 0, id);
+    assert.ok(walkSeconds(next.length - 1) < 22, `${id} ${next.length - 1}`);
+    if (shorter.has(id)) assert.ok(next.length - 1 < now, `${id} ${next.length - 1} vs ${now}`);
+  }
+});
