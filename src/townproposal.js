@@ -1,7 +1,7 @@
 // Preview town layout. The live map stays in place unless main.js turns the preview on.
 import { TILE } from './world.js';
 import { WALK_SPEED } from './mobility.js';
-import { buildGridGround, paintDirtTile } from './tiles.js';
+import { buildGridGround, paintDirtTile, paintPlazaAccent, setPathSheets } from './tiles.js';
 
 export const APPLIED = false;
 export const TILE_PX = TILE;
@@ -15,6 +15,8 @@ const BLOCKED = new Set([T.BUILDING, T.WATER, T.TREE, T.FENCE, T.HILL]);
 
 // Spawn is on the bend where the main path meets the avenue, inside the plaza.
 export const SPAWN = Object.freeze({ tx: 46, ty: 31 });
+// The avenue covers the oval's middle, so the one accent sits on the nearest plaza tile.
+export const PLAZA_ACCENT = Object.freeze({ tx: 42, ty: 29 });
 
 // Centerlines. The main path and the avenue bend. Shortcuts are the narrow cuts between districts.
 export const PATHS = Object.freeze({
@@ -639,7 +641,10 @@ export function edgePlan(x, y) {
 }
 
 let districtArt = null;
-export function setDistrictArt(sheets) { districtArt = sheets || null; }
+export function setDistrictArt(sheets) {
+  districtArt = sheets || null;
+  setPathSheets(sheets?.pathTiles && sheets?.pathEdges ? { tiles: sheets.pathTiles, edges: sheets.pathEdges } : null);
+}
 
 function stamp16(c, im, frame, x, y, dx = 0, dy = 0) {
   if (!im) return;
@@ -662,7 +667,10 @@ export function previewGround() {
     const y = (key / PROPOSAL_W) | 0;
     paintDirtTile(c, x * n, y * n, x, y);
   }
-  if (districtArt?.brick) {
+  const pathOn = !!(districtArt?.pathTiles && districtArt?.pathEdges);
+  if (pathOn) {
+    if (GRID[PLAZA_ACCENT.ty][PLAZA_ACCENT.tx] === T.PLAZA) paintPlazaAccent(c, PLAZA_ACCENT.tx * n, PLAZA_ACCENT.ty * n);
+  } else if (districtArt?.brick) {
     for (let y = 0; y < PROPOSAL_H; y++) {
       for (let x = 0; x < PROPOSAL_W; x++) {
         if (!BRICK.has(cell(x, y))) continue;

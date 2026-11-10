@@ -54,11 +54,43 @@ function road(c, px, py, x, y) { // asphalt: base + speckle + soft wear patches 
   if (h < 0.06) { const ox = px + 3 + (hash(x, y, 78) * 6 | 0), oy = py + 4 + (hash(x, y, 79) * 6 | 0); P(c, ox, oy, PAL.roadD, 3, 1); P(c, ox + 3, oy + 1, PAL.roadD, 2, 1); P(c, ox + 5, oy + 2, PAL.roadD, 1, 2); P(c, ox + 1, oy - 1, PAL.roadD); }
   else if (h < 0.1) { const ox = px + 4 + (hash(x, y, 80) * 5 | 0), oy = py + 5 + (hash(x, y, 81) * 5 | 0); P(c, ox, oy + 1, PAL.oil, 6, 2); P(c, ox + 1, oy, PAL.oil, 4, 4); P(c, ox + 2, oy + 1, '#3a3550', 1, 1); }
 }
+let pathSheets = null;
+const PATH_TILE = new Set([T.WALK, T.PLAZA, 14]);
+export function setPathSheets(sheets) { pathSheets = sheets?.tiles && sheets?.edges ? sheets : null; }
+function usePathC() { return !!(gridAt && pathSheets); }
+export function pathVariant(x, y) { return Math.floor(hash(x, y, 11) * 3) % 3; }
+export function pathKerbPlan(n, s, w, e) {
+  const paved = (q) => PATH_TILE.has(q);
+  const frames = [];
+  if (n === T.BUILDING) frames.push(8);
+  else if (!paved(n)) frames.push(0);
+  if (!paved(s)) frames.push(1);
+  if (!paved(w)) frames.push(2);
+  if (!paved(e)) frames.push(3);
+  return frames;
+}
+function blitSheet(c, im, frame, px, py) { c.drawImage(im, frame * N, 0, N, N, px, py, N, N); }
+function paintPathSlab(c, px, py, x, y) { blitSheet(c, pathSheets.tiles, pathVariant(x, y), px, py); }
+function paintPathKerbs(c, px, py, x, y) {
+  for (const frame of pathKerbPlan(at(x, y - 1), at(x, y + 1), at(x - 1, y), at(x + 1, y))) blitSheet(c, pathSheets.edges, frame, px, py);
+}
+function paintRoadBuildingKerb(c, px, py, x, y) {
+  const n = at(x, y - 1), s = at(x, y + 1), w = at(x - 1, y), e = at(x + 1, y);
+  if (n === T.BUILDING) blitSheet(c, pathSheets.edges, 8, px, py);
+  if (s === T.BUILDING) blitSheet(c, pathSheets.edges, 1, px, py);
+  if (w === T.BUILDING) blitSheet(c, pathSheets.edges, 2, px, py);
+  if (e === T.BUILDING) blitSheet(c, pathSheets.edges, 3, px, py);
+}
+export function paintPlazaAccent(c, px, py) {
+  P(c, px + 6, py + 6, PAL.gold, 4, 4); P(c, px + 7, py + 7, PAL.goldL, 2, 1); P(c, px + 6, py + 9, '#9c7424', 4, 1);
+}
 function walk(c, px, py, x, y) {
+  if (usePathC() && at(x, y) !== 11) { paintPathSlab(c, px, py, x, y); return; }
   P(c, px, py, PAL.walk, N, N);
   for (const [sx, sy] of [[0, 0], [8, 0], [0, 8], [8, 8]]) { const ox = px + sx, oy = py + sy; P(c, ox, oy, PAL.walkL, 7, 1); P(c, ox, oy, PAL.walkL, 1, 7); P(c, ox + 7, oy, PAL.walkD, 1, 8); P(c, ox, oy + 7, PAL.walkD, 8, 1); if (hash(x * 2 + sx, y * 2 + sy) < 0.2) P(c, ox + 3, oy + 3, PAL.walkD, 2, 1); }
 }
 function plaza(c, px, py, x, y) {
+  if (usePathC()) { paintPathSlab(c, px, py, x, y); return; }
   P(c, px, py, PAL.mortar, N, N);
   for (let r = 0; r < 4; r++) for (let k = -1; k < 3; k++) { const bx = px + k * 6 + (r % 2 ? 3 : 0), by = py + r * 4; const x0 = Math.max(px, bx), x1 = Math.min(px + N, bx + 5); if (x1 <= x0) continue;
     const t = hash(x * 4 + k, y * 4 + r); P(c, x0, by, t < 0.3 ? PAL.brickD : t > 0.8 ? PAL.brickL : PAL.brick, x1 - x0, 3); P(c, x0, by, PAL.brickL, x1 - x0, 1); }
@@ -70,6 +102,8 @@ function water(c, px, py, x, y) { P(c, px, py, PAL.w1, N, N); for (let i = 0; i 
 // edges/autotile overlays per tile, using 4 + diagonal neighbours
 function edges(c, px, py, x, y) {
   const t = at(x, y), n = at(x, y - 1), s = at(x, y + 1), w = at(x - 1, y), e = at(x + 1, y);
+  if (usePathC() && PATH_TILE.has(t)) { paintPathKerbs(c, px, py, x, y); return; }
+  if (usePathC() && t === T.ROAD) { paintRoadBuildingKerb(c, px, py, x, y); return; }
   if (t === T.WATER) { // shoreline: sand lip + foam line; inner corners
     const dry = (q) => q !== T.WATER, sd = [[dry(n), 0, 0, N, 3, 0, 3, N, 1], [dry(s), 0, N - 3, N, 3, 0, N - 4, N, 1], [dry(w), 0, 0, 3, N, 3, 0, 1, N], [dry(e), N - 3, 0, 3, N, N - 4, 0, 1, N]];
     for (const [on, ax, ay, aw, ah, fx, fy, fw, fh] of sd) if (on) { P(c, px + ax, py + ay, PAL.sand, aw, ah); P(c, px + fx, py + fy, PAL.foam, fw, fh); }

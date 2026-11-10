@@ -103,6 +103,8 @@ const ART_SRC = {
   carryForged: 'assets/npcwork/overlays/carry-forged-tool.png',
   carryWorn: 'assets/npcwork/overlays/carry-tool-worn.png',
   carryFlour: 'assets/npcwork/overlays/carry-flour-sack.png',
+  pathC: 'assets/path/option-C-tiles.png',
+  pathCEdge: 'assets/path/option-C-edges.png',
   brick: 'assets/district/brick-ground.png',
   brickGrass: 'assets/district/brick-edge-grass.png',
   brickDirt: 'assets/district/brick-edge-dirt.png',
@@ -177,7 +179,7 @@ function loadArt() {
     im.onerror = () => res(false);
     im.src = src;
   }))).then((ok) => {
-    setDistrictArt({ brick: IMG.brick, grassEdge: IMG.brickGrass, dirtEdge: IMG.brickDirt, soot: IMG.soot });
+    setDistrictArt({ brick: IMG.brick, grassEdge: IMG.brickGrass, dirtEdge: IMG.brickDirt, soot: IMG.soot, pathTiles: IMG.pathC, pathEdges: IMG.pathCEdge });
     return ok;
   });
 }

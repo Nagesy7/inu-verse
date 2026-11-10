@@ -4,11 +4,12 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { TILE, findPath, doorTile, BUILDINGS, MALL_BUILDINGS, GAME_DOORS, ARCADE, isSolid, setPreviewCollision, previewCollisionOn } from '../src/world.js';
+import { pathKerbPlan, pathVariant } from '../src/tiles.js';
 import { newGame } from '../src/game.js';
 import { save, load, MemoryStorage } from '../src/save.js';
 import { FARM, MILL, BAKERY, LUMBER, SAWMILL, MECHANIC, SCRAP, MINE, SMELTER, FORGE } from '../src/npcbuildings.js';
 import {
-  APPLIED, FADE_MS, GRID, LIVE_SAVE_KEY, LOTS, NEIGHBOURHOODS, NOOKS, PATHS, PROPOSAL_H, PROPOSAL_W, SPAWN, STOP_KEY, STOP_PX, STOPS, T, TILE_PX,
+  APPLIED, FADE_MS, GRID, LIVE_SAVE_KEY, LOTS, NEIGHBOURHOODS, NOOKS, PATHS, PLAZA_ACCENT, PROPOSAL_H, PROPOSAL_W, SPAWN, STOP_KEY, STOP_PX, STOPS, T, TILE_PX,
   brickFill, edgePlan, EXPANSIONS, hop, isBlocked, isBrickTile, loadStops, lotById, overlaps, preparePreviewPlayer, proposalPath, relocate, sootTiles, stubApproach, stubPast, tileAt, tripSeconds, visitDistrict, walkSeconds, yardTiles,
 } from '../src/townproposal.js';
 
@@ -429,4 +430,34 @@ test('the car factory is a solid metal lot clear of the gates, stops and nooks',
       assert.equal(inside, false, stub.id);
     }
   }
+});
+
+test('option C paves the preview and leaves the live path painters in place', async () => {
+  const { access, readFile } = await import('node:fs/promises');
+  await access('assets/path/option-C-tiles.png');
+  await access('assets/path/option-C-edges.png');
+  const tiles = await readFile(new URL('../src/tiles.js', import.meta.url), 'utf8');
+  const ground = await readFile(new URL('../src/townproposal.js', import.meta.url), 'utf8');
+  const draw = await readFile(new URL('../src/npcwork.js', import.meta.url), 'utf8');
+  assert.match(tiles, /function buildGround/);
+  assert.equal(tiles.includes('option-C'), false);
+  assert.match(tiles, /\(x \+ y\) % 6 === 0/);
+  assert.match(draw, /assets\/path\/option-C-tiles\.png/);
+  assert.match(draw, /assets\/path\/option-C-edges\.png/);
+  assert.equal(draw.includes('option-A'), false);
+  assert.equal(draw.includes('option-B'), false);
+  assert.match(ground, /if \(pathOn\)/);
+  assert.match(ground, /paintPlazaAccent/);
+  assert.equal(GRID[PLAZA_ACCENT.ty][PLAZA_ACCENT.tx], T.PLAZA);
+  assert.equal(isBlocked(PLAZA_ACCENT.tx, PLAZA_ACCENT.ty), false);
+  assert.deepEqual(pathKerbPlan(2, 2, 2, 2), []);
+  assert.deepEqual(pathKerbPlan(8, 14, 2, 2), []);
+  assert.deepEqual(pathKerbPlan(3, 2, 2, 2), [8]);
+  assert.deepEqual(pathKerbPlan(0, 2, 2, 2), [0]);
+  assert.deepEqual(pathKerbPlan(2, 3, 0, 1), [1, 2, 3]);
+  assert.equal(pathVariant(16, 38), pathVariant(16, 38));
+  assert.ok(pathVariant(16, 38) >= 0 && pathVariant(16, 38) <= 2);
+  const seen = new Set();
+  for (let i = 0; i < 40; i++) seen.add(pathVariant(i, 7));
+  assert.ok(seen.size >= 2);
 });
