@@ -19,8 +19,16 @@ export const PAL = {
 const hash = (x, y, s = 0) => { let h = (x * 374761393 + y * 668265263 + s * 2246822519) ^ 0x5bd1e995; h = Math.imul(h ^ (h >>> 13), 1274126177); return ((h ^ (h >>> 16)) >>> 0) / 4294967296; };
 const P = (c, x, y, col, w = 1, h = 1) => { c.fillStyle = col; c.fillRect(x, y, w, h); };
 const mk = (w, h) => { const cv = document.createElement('canvas'); cv.width = w; cv.height = h; const c = cv.getContext('2d'); c.imageSmoothingEnabled = false; return [cv, c]; };
-const isBridge = (x, y) => BRIDGES.some((b) => x >= b.x && x < b.x + b.w && y >= b.y && y < b.y + b.h);
-const at = (x, y) => (x < 0 || y < 0 || x >= MAP_W || y >= MAP_H ? T.TREE : isBridge(x, y) ? T.WATER : MAP[y][x]);
+const isBridge = (x, y) => !gridAt && BRIDGES.some((b) => x >= b.x && x < b.x + b.w && y >= b.y && y < b.y + b.h);
+let gridAt = null;
+const at = (x, y) => {
+  if (gridAt) {
+    const { grid, w, h } = gridAt;
+    if (x < 0 || y < 0 || x >= w || y >= h) return T.TREE;
+    return grid[y][x];
+  }
+  return x < 0 || y < 0 || x >= MAP_W || y >= MAP_H ? T.TREE : isBridge(x, y) ? T.WATER : MAP[y][x];
+};
 const PAVED = new Set([T.ROAD, T.WALK, T.PLAZA]);
 const GREEN = (t) => t === T.GRASS || t === T.FLOWER || t === T.TREE || t === T.HOME || t === T.PLOT || t === T.DIRT;
 
@@ -174,6 +182,31 @@ export function buildGround(extra) {
   roadMarkings(c);
   if (extra) extra(c);
   return cv;
+}
+
+// Same road, pavement, grass and curb painters as the live town, on another grid.
+export function buildGridGround(grid, w, h) {
+  gridAt = { grid, w, h };
+  try {
+    const [cv, c] = mk(w * N, h * N);
+    const paved = new Set([T.ROAD, T.WALK, T.PLAZA]);
+    for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) {
+      const t = grid[y][x], px = x * N, py = y * N;
+      if (t === T.ROAD) road(c, px, py, x, y);
+      else if (t === T.WALK || t === 14 || t === 11) walk(c, px, py, x, y);
+      else if (t === T.PLAZA) plaza(c, px, py, x, y);
+      else if (t === T.WATER) water(c, px, py, x, y);
+      else if (t === T.PLOT || t === T.DIRT) plot(c, px, py, x, y);
+      else if (t === T.BUILDING) {
+        let yy = y;
+        while (yy < h && grid[yy][x] === T.BUILDING) yy++;
+        const below = yy < h ? grid[yy][x] : T.GRASS;
+        (paved.has(below) ? plaza : grass)(c, px, py, x, y);
+      } else grass(c, px, py, x, y);
+    }
+    for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) edges(c, x * N, y * N, x, y);
+    return cv;
+  } finally { gridAt = null; }
 }
 
 // animated water overlay: ripples + sparkles on visible water tiles (native coords, caller scales)

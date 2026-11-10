@@ -1,7 +1,7 @@
 // Preview town layout. The live map stays in place unless main.js turns the preview on.
 import { TILE } from './world.js';
 import { WALK_SPEED } from './mobility.js';
-import { paintDirtTile, paintGrassTile } from './tiles.js';
+import { buildGridGround, paintDirtTile } from './tiles.js';
 
 export const APPLIED = false;
 export const TILE_PX = TILE;
@@ -533,19 +533,21 @@ function buildDistrictPaint() {
   for (let y = 0; y < PROPOSAL_H; y++) for (let x = 0; x < PROPOSAL_W; x++) {
     if (GRID[y][x] === T.PLAZA) BRICK.add(cell(x, y));
   }
+  const foodBrick = [];
   for (const id of ['bakery', 'tailor']) {
     const b = lotById(id);
     for (let x = b.x; x < b.x + b.w; x++) {
-      for (let k = 0; k < 3; k++) {
+      for (let k = 0; k < 2; k++) {
         const y = b.y + b.h + k;
-        if (openGround(x, y)) BRICK.add(cell(x, y));
+        if (GRID[y]?.[x] === T.WALK) {
+          BRICK.add(cell(x, y));
+          foodBrick.push([x, y]);
+        }
       }
     }
-    const east = b.x + b.w;
-    for (let k = 0; k < 3; k++) {
-      const y = b.y + b.h + k;
-      if (openGround(east, y) && !BRICK.has(cell(east, y))) DIRT.add(cell(east, y));
-    }
+  }
+  for (const [x, y] of foodBrick) {
+    if (GRID[y]?.[x + 1] === T.GRASS && !BRICK.has(cell(x + 1, y))) DIRT.add(cell(x + 1, y));
   }
   for (const id of ['mine', 'smelter', 'forge']) {
     const b = lotById(id);
@@ -624,34 +626,21 @@ function stamp16(c, im, frame, x, y, dx = 0, dy = 0) {
   c.drawImage(im, frame * 16, 0, 16, 16, x + dx, y + dy, 16, 16);
 }
 
-const GROUND = {
-  0: '#6a8a4e', 1: '#606878', 2: '#a89878', 3: '#846c4e', 4: '#467896',
-  5: '#3e6040', 8: '#c4b084', 11: '#d2be78', 12: '#6e5032', 13: '#567048',
-  14: '#c44848', 15: '#6e4e96',
-};
+export const PLAZA_FOLK = Object.freeze([
+  { name: 'Nettie', x: 44.5 * TILE_PX, y: 32.5 * TILE_PX, coat: 'cream', face: 'down' },
+  { name: 'Biscuit', x: 49.5 * TILE_PX, y: 34.5 * TILE_PX, coat: 'golden', face: 'left' },
+  { name: 'Momo', x: 41.5 * TILE_PX, y: 35.5 * TILE_PX, coat: 'red', face: 'right' },
+]);
 
 export function previewGround() {
   const n = 16;
-  const cv = document.createElement('canvas');
-  cv.width = PROPOSAL_W * n;
-  cv.height = PROPOSAL_H * n;
+  const cv = buildGridGround(GRID, PROPOSAL_W, PROPOSAL_H);
   const c = cv.getContext('2d');
   c.imageSmoothingEnabled = false;
-  for (let y = 0; y < PROPOSAL_H; y++) {
-    for (let x = 0; x < PROPOSAL_W; x++) {
-      const px = x * n;
-      const py = y * n;
-      if (DIRT.has(cell(x, y))) paintDirtTile(c, px, py, x, y);
-      else if (GRID[y][x] === T.GRASS || GRID[y][x] === T.TREE) paintGrassTile(c, px, py, x, y);
-      else {
-        c.fillStyle = GROUND[GRID[y][x]] || GROUND[0];
-        c.fillRect(px, py, n, n);
-      }
-      if (GRID[y][x] === T.TREE) {
-        c.fillStyle = '#2f4a34';
-        c.fillRect(px + 4, py + 3, 8, 8);
-      }
-    }
+  for (const key of DIRT) {
+    const x = key % PROPOSAL_W;
+    const y = (key / PROPOSAL_W) | 0;
+    paintDirtTile(c, x * n, y * n, x, y);
   }
   if (districtArt?.brick) {
     for (let y = 0; y < PROPOSAL_H; y++) {

@@ -244,6 +244,15 @@ test('district sheets sit on the preview ground and do not change collision', as
   assert.equal(draw.includes("fillText('BRICK'"), false);
   assert.equal(draw.includes("fillText('SOOT'"), false);
   assert.equal(draw.includes('assets/district/awning.png'), true);
+  const ground = await readFile(new URL('../src/townproposal.js', import.meta.url), 'utf8');
+  assert.equal(ground.includes('buildGridGround'), true);
+  assert.equal(ground.includes('#606878'), false);
+  let roadBrick = 0;
+  for (let y = 0; y < PROPOSAL_H; y++) for (let x = 0; x < PROPOSAL_W; x++) {
+    if (isBrickTile(x, y) && GRID[y][x] === T.ROAD) roadBrick++;
+    if (isBrickTile(x, y)) assert.ok(GRID[y][x] === T.PLAZA || GRID[y][x] === T.WALK, `${x},${y}`);
+  }
+  assert.equal(roadBrick, 0);
   let both = 0;
   let brick = 0;
   for (let y = 0; y < PROPOSAL_H; y++) for (let x = 0; x < PROPOSAL_W; x++) {

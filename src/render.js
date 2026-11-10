@@ -243,6 +243,33 @@ function groundExtras(c) {
   }
 }
 
+const WORK_LOTS = new Set(['bakery', 'tailor', 'farm', 'mill', 'mine', 'smelter', 'forge', 'scrap', 'sawmill', 'lumber', 'mechanic']);
+
+export function drawLotBuilding(c, lot) {
+  if (drawTypedFacade(c, lot)) return true;
+  const artId = HOUSE_ART[lot.id] || lot.id;
+  if (drawBuildingArt(c, artId, lot.x, lot.y, lot.w, lot.h)) return true;
+  return drawBuilding(c, { ...lot, name: lot.name || lot.id }, FUNC.shop);
+}
+
+export function proposalProps(grid, w, h, lots) {
+  const S = sprites();
+  const props = [];
+  for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) if (grid[y][x] === 5) props.push(treeProp(x, y));
+  for (let y = 1; y < h - 1; y++) for (let x = 1; x < w - 1; x++) {
+    const t = grid[y][x];
+    const road = grid[y - 1][x] === 1 || grid[y + 1][x] === 1 || grid[y][x - 1] === 1 || grid[y][x + 1] === 1;
+    if (t === 2 && road && hash(x, y, 9) < 0.045) props.push(sp(S.lamp, x * TILE + 4, y * TILE + 24 - 68, y * TILE + 24));
+    if ((t === 8 || t === 2) && hash(x, y, 4) < 0.018) props.push(sp(S.bench, x * TILE, y * TILE + 4, y * TILE + 28));
+  }
+  for (let y = 1; y < h - 1; y++) for (let x = 1; x < w - 1; x++) if (grid[y][x] === 12 && hash(x, y, 3) < 0.5) props.push(sp(S.fence, x * TILE, y * TILE, y * TILE + 24));
+  for (const lot of lots) {
+    if (lot.water || lot.reserved || WORK_LOTS.has(lot.id)) continue;
+    props.push({ y: (lot.y + lot.h) * TILE - 1, d: (c) => { drawLotBuilding(c, lot); } });
+  }
+  return props;
+}
+
 export function prerenderMap() {
   const S = sprites(), props = [];
   const ground = buildGround((c) => { groundExtras(c); luxuryGround(c); farmGround(c); });

@@ -108,7 +108,7 @@ import * as PT from './portals.js'; import * as MM from './minimap.js'; // featu
 import { mountWheel } from './actionwheel.js';
 import { WORKER_JOB, JOBS as JOB_DEFS, ensureJobs, rankOf } from './jobs.js';
 import { renderFriend, renderChapel, renderFurnStore } from './relui.js';
-import { prerenderMap, dynamicProps, buildingsReady, artOverhang } from './render.js';
+import { prerenderMap, proposalProps, dynamicProps, buildingsReady, artOverhang } from './render.js';
 import { N, SCALE, drawWater } from './tiles.js';
 import { feel } from './feel.js';
 import { faceTalk, faceReact } from './face.js';
@@ -123,7 +123,7 @@ import { buildDrawer, drawerOpen } from './hudmenu.js';
 import { layoutSafe } from './safezones.js';
 import { createGroveTown } from './groveview.js';
 import { createNpcWork, drawNpcOverlay, useLayout } from './npcwork.js';
-import { hop, isBlocked as previewBlocked, NOOKS, preparePreviewPlayer, previewGround, proposalPath, PROPOSAL_H, PROPOSAL_W, STOPS, visitDistrict, GRID as previewGrid, T as previewTile } from './townproposal.js';
+import { hop, isBlocked as previewBlocked, LOTS as proposalLots, NOOKS, PLAZA_FOLK, preparePreviewPlayer, previewGround, proposalPath, PROPOSAL_H, PROPOSAL_W, STOPS, visitDistrict, GRID as previewGrid, T as previewTile } from './townproposal.js';
 import { makeDoorState, doorStep, doorExit, outsideOf } from './doors.js';
 import { isDoor, doorList, doorDir, COMMUNITY } from './world.js';
 import { createMultiplayer } from './multiplayer.js';
@@ -253,7 +253,7 @@ function paintHops(here) {
   }
 }
 function persist() { if (state) { for (const u of ENG.checkCollections(state)) toast(`Collection complete: ${u.badge} ${u.name}! Trophy added to your inventory.`, 'good'); save(state, localStorage); if (mode === 'build' && build && !build.readOnly && !build.pack && !build.shop) schedulePublish(); if (mode === 'build' && build?.shop?.own) scheduleShopPublish(); if (hasCustomLook(state) && Date.now() - profSaveT > 15000) { profSaveT = Date.now(); saveProfile(state); } } }
-function townMap() { return NPCW ? { ground: previewGround(), props: [] } : prerenderMap(); }
+function townMap() { return NPCW ? { ground: previewGround(), props: proposalProps(previewGrid, PROPOSAL_W, PROPOSAL_H, proposalLots) } : prerenderMap(); }
 // burn-for-status flair: pulsing pixel halo + sparkles at the feet (world, home and photos)
 function drawFlair(c, col, t) { const r = 40 + Math.sin(t * 3) * 3; c.save(); c.globalAlpha = 0.5; c.fillStyle = col; c.fillRect(-r, 6, r * 2, 12); c.fillRect(-r + 10, 0, r * 2 - 20, 24); c.globalAlpha = 0.22 + Math.sin(t * 4) * 0.08; c.fillRect(-r + 8, -100, r * 2 - 16, 106); c.globalAlpha = 1; for (let i = 0; i < 6; i++) { const a = t * 1.6 + i * 1.047; c.fillStyle = i % 2 ? '#ffffff' : col; c.fillRect(Math.round(Math.cos(a) * 52) - 4, Math.round(-50 + Math.sin(a) * 56) - 4, 8, 8); } c.restore(); }
 function featuredMap() { const nowH = state.clockSec / (DAY_LEN / 24), out = {}; for (const id of Object.keys(FEATURED_SLOTS)) { const r = featuredOf(state, id, nowH); if (r) out[id] = { ...r, label: 'FEATURED' }; const sp = F5.sponsorOf(state, id, nowH); if (sp) out[id] = { ticker: sp.brand, by: sp.by, untilH: sp.untilH, featured: true, sponsored: true, label: 'SPONSORED' }; } return out; }
@@ -953,7 +953,9 @@ function renderWorld() {
   feel.drawGround(ctx);
   if (player.clickMark && player.pw.pts.length) drawMark(ctx, player.clickMark, time);
   const meActor = drive ? [] : [{ x: state.player.x, y: state.player.y, coat: state.player.coat, outfit: state.wardrobe.equipped, face: player.face, phase: player.phase, moving: player.moving, name: FB.titleOf(state) ? `${state.player.name} «${FB.titleOf(state)}»` : state.player.name, me: true, badge: badgeOf(myPack(state)), emote: player.emote, act: ACT.act, art: artKey(state.player.coat, state.wardrobe.equipped), profile: hasCustomLook(state) ? myProfile() : null }];
-  const actors = NPCW ? [...meActor, ...petActors(), ...NPCW.actors()] : [MWd.crierActor(time, artKey), ...npcs.map((n, i) => ({ ...n, npc: true, idx: i, badge: badgeOf(packOfName(state, n.name)) })), ...meActor, ...streetPups(), ...presActors(), ...petActors(), ...crewActors(), ...pupActors(), ...(mpActs = MPL.actors(view, state.player)), ...remotePetActors(mpActs), ...dogWalkActors(view, walkNow(), artKey), ...stepFolk(view), ...mascotActors(state, time)];
+  const actors = NPCW
+    ? [...meActor, ...petActors(), ...NPCW.actors(), ...PLAZA_FOLK.map((f) => ({ ...f, art: artKey(f.coat), moving: false, phase: 0, outfit: {} }))]
+    : [MWd.crierActor(time, artKey), ...npcs.map((n, i) => ({ ...n, npc: true, idx: i, badge: badgeOf(packOfName(state, n.name)) })), ...meActor, ...streetPups(), ...presActors(), ...petActors(), ...crewActors(), ...pupActors(), ...(mpActs = MPL.actors(view, state.player)), ...remotePetActors(mpActs), ...dogWalkActors(view, walkNow(), artKey), ...stepFolk(view), ...mascotActors(state, time)];
   // one depth-sorted list: static props (culled), dynamic props and actors, by ground y
   const L = -ox - 200, Rt = -ox + vw + 200, Tp = -oy - 60, Bt = -oy + vh + 400, list = [];
   for (const p of mapImg.props) if (p.y > Tp && p.y < Bt) list.push(p);
