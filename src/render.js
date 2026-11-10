@@ -277,18 +277,73 @@ export function previewShowsPorch(id) {
   return !!(door && door.side !== 'front' && !PREVIEW_SHOPS[id]);
 }
 
-// The night grade multiplies the facade, which puts the door glass and lantern out.
-// Stamp that bay back on after the grade so the lit leaf stays visible.
+// The night grade multiplies the facade and knocks out the door glass and the lantern.
+// A filled rectangle brought the wall and porch roof back with it. Keep only the pixels
+// that actually light up: warm night pixels on a cool day surface, in the narrow door column.
+let denDoorLit = null;
+function denDoorMask() {
+  if (denDoorLit) return denDoorLit;
+  const night = BIMG['goldden-night'];
+  const day = BIMG.goldden;
+  if (!night?.width || !day?.width || night.width !== day.width || night.height !== day.height) return null;
+  const w = night.width, h = night.height, n = w * h;
+  const [cv, x] = mk(w, h);
+  x.drawImage(night, 0, 0);
+  const img = x.getImageData(0, 0, w, h);
+  const [, dx] = mk(w, h);
+  dx.drawImage(day, 0, 0);
+  const dayPx = dx.getImageData(0, 0, w, h).data;
+  const d = img.data;
+  const on = new Uint8Array(n);
+  for (let i = 0; i < n; i++) {
+    const o = i * 4;
+    const nr = d[o], ng = d[o + 1], nb = d[o + 2], na = d[o + 3];
+    const dr = dayPx[o], db = dayPx[o + 2];
+    if (na < 200) continue;
+    if (nr > 180 && ng > 140 && nr > nb + 40 && nr > dr + 40 && dr <= db + 40) on[i] = 1;
+  }
+  const seen = new Uint8Array(n);
+  for (let i = 0; i < n; i++) {
+    if (!on[i] || seen[i]) continue;
+    const stack = [i];
+    seen[i] = 1;
+    const comp = [];
+    let minX = w, maxX = 0, minY = h, maxY = 0;
+    while (stack.length) {
+      const p = stack.pop();
+      comp.push(p);
+      const px = p % w, py = (p / w) | 0;
+      if (px < minX) minX = px;
+      if (px > maxX) maxX = px;
+      if (py < minY) minY = py;
+      if (py > maxY) maxY = py;
+      const near = [px > 0 ? p - 1 : -1, px < w - 1 ? p + 1 : -1, p - w, p + w];
+      for (const q of near) {
+        if (q < 0 || q >= n || seen[q] || !on[q]) continue;
+        seen[q] = 1;
+        stack.push(q);
+      }
+    }
+    const bw = maxX - minX + 1, bh = maxY - minY + 1;
+    if (!(minX >= w - 28 && bw <= 16 && bh >= 6 && bh <= 40)) for (const p of comp) on[p] = 0;
+  }
+  for (let i = 0; i < n; i++) if (!on[i]) d[i * 4 + 3] = 0;
+  x.putImageData(img, 0, 0);
+  denDoorLit = cv;
+  return cv;
+}
+
 export function punchDenDoor(ctx, ox, oy) {
   if (!globalThis.__inuNight || !ctx) return;
-  const im = BIMG['goldden-night'];
+  const im = denDoorMask();
+  const src = BIMG['goldden-night'];
   const lot = lotById('goldden');
-  if (!im || !lot) return;
-  const x0 = lot.x * TILE + Math.round((lot.w * TILE - im.width) / 2);
-  const y0 = (lot.y + lot.h) * TILE - im.height;
+  if (!im || !src || !lot) return;
+  const x0 = lot.x * TILE + Math.round((lot.w * TILE - src.width) / 2);
+  const y0 = (lot.y + lot.h) * TILE - src.height;
   ctx.save();
   ctx.imageSmoothingEnabled = false;
-  ctx.drawImage(im, 224, 132, 32, 124, x0 + ox + 224, y0 + oy + 132, 32, 124);
+  ctx.drawImage(im, x0 + ox, y0 + oy);
   ctx.restore();
 }
 const CAFE_FURNITURE = [
