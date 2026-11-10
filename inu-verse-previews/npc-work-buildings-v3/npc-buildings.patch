@@ -1,0 +1,1842 @@
+diff --git a/assets/npcwork/bakery/bakery.png b/assets/npcwork/bakery/bakery.png
+new file mode 100644
+index 0000000..1d3d3c8
+Binary files /dev/null and b/assets/npcwork/bakery/bakery.png differ
+diff --git a/assets/npcwork/bakery/bread-tray-empty.png b/assets/npcwork/bakery/bread-tray-empty.png
+new file mode 100644
+index 0000000..4854b54
+Binary files /dev/null and b/assets/npcwork/bakery/bread-tray-empty.png differ
+diff --git a/assets/npcwork/bakery/bread-tray-full.png b/assets/npcwork/bakery/bread-tray-full.png
+new file mode 100644
+index 0000000..27f2fa9
+Binary files /dev/null and b/assets/npcwork/bakery/bread-tray-full.png differ
+diff --git a/assets/npcwork/bakery/oven-door.png b/assets/npcwork/bakery/oven-door.png
+new file mode 100644
+index 0000000..4e16b42
+Binary files /dev/null and b/assets/npcwork/bakery/oven-door.png differ
+diff --git a/assets/npcwork/bakery/work-knead.png b/assets/npcwork/bakery/work-knead.png
+new file mode 100644
+index 0000000..cd5c651
+Binary files /dev/null and b/assets/npcwork/bakery/work-knead.png differ
+diff --git a/assets/npcwork/buildings/lumber-yard.png b/assets/npcwork/buildings/lumber-yard.png
+new file mode 100644
+index 0000000..aa8d0ae
+Binary files /dev/null and b/assets/npcwork/buildings/lumber-yard.png differ
+diff --git a/assets/npcwork/buildings/mechanic-shop.png b/assets/npcwork/buildings/mechanic-shop.png
+new file mode 100644
+index 0000000..d49b48a
+Binary files /dev/null and b/assets/npcwork/buildings/mechanic-shop.png differ
+diff --git a/assets/npcwork/mechanic/car-broken-lifted.png b/assets/npcwork/mechanic/car-broken-lifted.png
+new file mode 100644
+index 0000000..df24c62
+Binary files /dev/null and b/assets/npcwork/mechanic/car-broken-lifted.png differ
+diff --git a/assets/npcwork/mechanic/car-broken.png b/assets/npcwork/mechanic/car-broken.png
+new file mode 100644
+index 0000000..5bac042
+Binary files /dev/null and b/assets/npcwork/mechanic/car-broken.png differ
+diff --git a/assets/npcwork/mechanic/car-fixed-lifted.png b/assets/npcwork/mechanic/car-fixed-lifted.png
+new file mode 100644
+index 0000000..81a5159
+Binary files /dev/null and b/assets/npcwork/mechanic/car-fixed-lifted.png differ
+diff --git a/assets/npcwork/mechanic/car-fixed.png b/assets/npcwork/mechanic/car-fixed.png
+new file mode 100644
+index 0000000..8bfd6ac
+Binary files /dev/null and b/assets/npcwork/mechanic/car-fixed.png differ
+diff --git a/assets/npcwork/mechanic/lift-down.png b/assets/npcwork/mechanic/lift-down.png
+new file mode 100644
+index 0000000..94d9eb2
+Binary files /dev/null and b/assets/npcwork/mechanic/lift-down.png differ
+diff --git a/assets/npcwork/mechanic/lift-up.png b/assets/npcwork/mechanic/lift-up.png
+new file mode 100644
+index 0000000..53efff0
+Binary files /dev/null and b/assets/npcwork/mechanic/lift-up.png differ
+diff --git a/assets/npcwork/mechanic/mechanic-shop-interior.png b/assets/npcwork/mechanic/mechanic-shop-interior.png
+new file mode 100644
+index 0000000..f35f420
+Binary files /dev/null and b/assets/npcwork/mechanic/mechanic-shop-interior.png differ
+diff --git a/assets/npcwork/mechanic/work-bonnet.png b/assets/npcwork/mechanic/work-bonnet.png
+new file mode 100644
+index 0000000..c25067a
+Binary files /dev/null and b/assets/npcwork/mechanic/work-bonnet.png differ
+diff --git a/assets/npcwork/mechanic/work-creeper.png b/assets/npcwork/mechanic/work-creeper.png
+new file mode 100644
+index 0000000..8af6f36
+Binary files /dev/null and b/assets/npcwork/mechanic/work-creeper.png differ
+diff --git a/assets/npcwork/mechanic/work-wheel.png b/assets/npcwork/mechanic/work-wheel.png
+new file mode 100644
+index 0000000..82a5c59
+Binary files /dev/null and b/assets/npcwork/mechanic/work-wheel.png differ
+diff --git a/assets/npcwork/overlays/carry-bread-loaf.png b/assets/npcwork/overlays/carry-bread-loaf.png
+new file mode 100644
+index 0000000..58d7b42
+Binary files /dev/null and b/assets/npcwork/overlays/carry-bread-loaf.png differ
+diff --git a/assets/npcwork/overlays/carry-broken-item.png b/assets/npcwork/overlays/carry-broken-item.png
+new file mode 100644
+index 0000000..b6e5c7a
+Binary files /dev/null and b/assets/npcwork/overlays/carry-broken-item.png differ
+diff --git a/assets/npcwork/overlays/carry-cloth-bolt.png b/assets/npcwork/overlays/carry-cloth-bolt.png
+new file mode 100644
+index 0000000..c789bc9
+Binary files /dev/null and b/assets/npcwork/overlays/carry-cloth-bolt.png differ
+diff --git a/assets/npcwork/overlays/carry-coat.png b/assets/npcwork/overlays/carry-coat.png
+new file mode 100644
+index 0000000..c0312a1
+Binary files /dev/null and b/assets/npcwork/overlays/carry-coat.png differ
+diff --git a/assets/npcwork/overlays/carry-flour-sack.png b/assets/npcwork/overlays/carry-flour-sack.png
+new file mode 100644
+index 0000000..507ed24
+Binary files /dev/null and b/assets/npcwork/overlays/carry-flour-sack.png differ
+diff --git a/assets/npcwork/overlays/carry-parts-crate.png b/assets/npcwork/overlays/carry-parts-crate.png
+new file mode 100644
+index 0000000..a8b1d9d
+Binary files /dev/null and b/assets/npcwork/overlays/carry-parts-crate.png differ
+diff --git a/assets/npcwork/overlays/carry-plank.png b/assets/npcwork/overlays/carry-plank.png
+new file mode 100644
+index 0000000..2393e9f
+Binary files /dev/null and b/assets/npcwork/overlays/carry-plank.png differ
+diff --git a/assets/npcwork/overlays/carry-scrap-bale.png b/assets/npcwork/overlays/carry-scrap-bale.png
+new file mode 100644
+index 0000000..77f2843
+Binary files /dev/null and b/assets/npcwork/overlays/carry-scrap-bale.png differ
+diff --git a/assets/npcwork/overlays/carry-tool.png b/assets/npcwork/overlays/carry-tool.png
+new file mode 100644
+index 0000000..b5f84f4
+Binary files /dev/null and b/assets/npcwork/overlays/carry-tool.png differ
+diff --git a/assets/npcwork/overlays/chop-axe-down.png b/assets/npcwork/overlays/chop-axe-down.png
+new file mode 100644
+index 0000000..91007e7
+Binary files /dev/null and b/assets/npcwork/overlays/chop-axe-down.png differ
+diff --git a/assets/npcwork/overlays/repair-wrench-up.png b/assets/npcwork/overlays/repair-wrench-up.png
+new file mode 100644
+index 0000000..25c73fa
+Binary files /dev/null and b/assets/npcwork/overlays/repair-wrench-up.png differ
+diff --git a/assets/npcwork/overlays/stack-log-down.png b/assets/npcwork/overlays/stack-log-down.png
+new file mode 100644
+index 0000000..c9ff652
+Binary files /dev/null and b/assets/npcwork/overlays/stack-log-down.png differ
+diff --git a/assets/npcwork/props/bread-loaf.png b/assets/npcwork/props/bread-loaf.png
+new file mode 100644
+index 0000000..3212941
+Binary files /dev/null and b/assets/npcwork/props/bread-loaf.png differ
+diff --git a/assets/npcwork/props/broken-heap.png b/assets/npcwork/props/broken-heap.png
+new file mode 100644
+index 0000000..7679a1d
+Binary files /dev/null and b/assets/npcwork/props/broken-heap.png differ
+diff --git a/assets/npcwork/props/broken-item.png b/assets/npcwork/props/broken-item.png
+new file mode 100644
+index 0000000..50c4de7
+Binary files /dev/null and b/assets/npcwork/props/broken-item.png differ
+diff --git a/assets/npcwork/props/cart-broken.png b/assets/npcwork/props/cart-broken.png
+new file mode 100644
+index 0000000..20ed049
+Binary files /dev/null and b/assets/npcwork/props/cart-broken.png differ
+diff --git a/assets/npcwork/props/cart-fixed.png b/assets/npcwork/props/cart-fixed.png
+new file mode 100644
+index 0000000..fa5feea
+Binary files /dev/null and b/assets/npcwork/props/cart-fixed.png differ
+diff --git a/assets/npcwork/props/cloth-bolt.png b/assets/npcwork/props/cloth-bolt.png
+new file mode 100644
+index 0000000..9055d30
+Binary files /dev/null and b/assets/npcwork/props/cloth-bolt.png differ
+diff --git a/assets/npcwork/props/finished-coat.png b/assets/npcwork/props/finished-coat.png
+new file mode 100644
+index 0000000..c768d22
+Binary files /dev/null and b/assets/npcwork/props/finished-coat.png differ
+diff --git a/assets/npcwork/props/flour-sack.png b/assets/npcwork/props/flour-sack.png
+new file mode 100644
+index 0000000..ab63aa2
+Binary files /dev/null and b/assets/npcwork/props/flour-sack.png differ
+diff --git a/assets/npcwork/props/log.png b/assets/npcwork/props/log.png
+new file mode 100644
+index 0000000..ee8c6b2
+Binary files /dev/null and b/assets/npcwork/props/log.png differ
+diff --git a/assets/npcwork/props/parts-crate.png b/assets/npcwork/props/parts-crate.png
+new file mode 100644
+index 0000000..94de7ae
+Binary files /dev/null and b/assets/npcwork/props/parts-crate.png differ
+diff --git a/assets/npcwork/props/plank.png b/assets/npcwork/props/plank.png
+new file mode 100644
+index 0000000..34be146
+Binary files /dev/null and b/assets/npcwork/props/plank.png differ
+diff --git a/assets/npcwork/props/recycler-empty.png b/assets/npcwork/props/recycler-empty.png
+new file mode 100644
+index 0000000..abbd500
+Binary files /dev/null and b/assets/npcwork/props/recycler-empty.png differ
+diff --git a/assets/npcwork/props/recycler-tool.png b/assets/npcwork/props/recycler-tool.png
+new file mode 100644
+index 0000000..545b2bc
+Binary files /dev/null and b/assets/npcwork/props/recycler-tool.png differ
+diff --git a/assets/npcwork/props/repaired-tool.png b/assets/npcwork/props/repaired-tool.png
+new file mode 100644
+index 0000000..c21cb90
+Binary files /dev/null and b/assets/npcwork/props/repaired-tool.png differ
+diff --git a/assets/npcwork/props/scrap-bale.png b/assets/npcwork/props/scrap-bale.png
+new file mode 100644
+index 0000000..f36fdda
+Binary files /dev/null and b/assets/npcwork/props/scrap-bale.png differ
+diff --git a/assets/npcwork/props/sign-filled.png b/assets/npcwork/props/sign-filled.png
+new file mode 100644
+index 0000000..569c40b
+Binary files /dev/null and b/assets/npcwork/props/sign-filled.png differ
+diff --git a/assets/npcwork/props/sign-short-1-plank.png b/assets/npcwork/props/sign-short-1-plank.png
+new file mode 100644
+index 0000000..2471b4f
+Binary files /dev/null and b/assets/npcwork/props/sign-short-1-plank.png differ
+diff --git a/assets/npcwork/sawmill/log-pile.png b/assets/npcwork/sawmill/log-pile.png
+new file mode 100644
+index 0000000..5a28725
+Binary files /dev/null and b/assets/npcwork/sawmill/log-pile.png differ
+diff --git a/assets/npcwork/sawmill/plank-stack.png b/assets/npcwork/sawmill/plank-stack.png
+new file mode 100644
+index 0000000..47a393e
+Binary files /dev/null and b/assets/npcwork/sawmill/plank-stack.png differ
+diff --git a/assets/npcwork/sawmill/sawmill.png b/assets/npcwork/sawmill/sawmill.png
+new file mode 100644
+index 0000000..9feb77e
+Binary files /dev/null and b/assets/npcwork/sawmill/sawmill.png differ
+diff --git a/assets/npcwork/sawmill/work-saw.png b/assets/npcwork/sawmill/work-saw.png
+new file mode 100644
+index 0000000..789e511
+Binary files /dev/null and b/assets/npcwork/sawmill/work-saw.png differ
+diff --git a/assets/npcwork/scrapyard/press-idle.png b/assets/npcwork/scrapyard/press-idle.png
+new file mode 100644
+index 0000000..45ff871
+Binary files /dev/null and b/assets/npcwork/scrapyard/press-idle.png differ
+diff --git a/assets/npcwork/scrapyard/scrap-yard.png b/assets/npcwork/scrapyard/scrap-yard.png
+new file mode 100644
+index 0000000..8478668
+Binary files /dev/null and b/assets/npcwork/scrapyard/scrap-yard.png differ
+diff --git a/assets/npcwork/scrapyard/work-press.png b/assets/npcwork/scrapyard/work-press.png
+new file mode 100644
+index 0000000..e47b4d4
+Binary files /dev/null and b/assets/npcwork/scrapyard/work-press.png differ
+diff --git a/assets/npcwork/scrapyard/work-sort.png b/assets/npcwork/scrapyard/work-sort.png
+new file mode 100644
+index 0000000..7459dcb
+Binary files /dev/null and b/assets/npcwork/scrapyard/work-sort.png differ
+diff --git a/assets/npcwork/tailor/mannequin-bare.png b/assets/npcwork/tailor/mannequin-bare.png
+new file mode 100644
+index 0000000..2c7fc7a
+Binary files /dev/null and b/assets/npcwork/tailor/mannequin-bare.png differ
+diff --git a/assets/npcwork/tailor/mannequin-dressed.png b/assets/npcwork/tailor/mannequin-dressed.png
+new file mode 100644
+index 0000000..e9a8a75
+Binary files /dev/null and b/assets/npcwork/tailor/mannequin-dressed.png differ
+diff --git a/assets/npcwork/tailor/rack-empty.png b/assets/npcwork/tailor/rack-empty.png
+new file mode 100644
+index 0000000..358548f
+Binary files /dev/null and b/assets/npcwork/tailor/rack-empty.png differ
+diff --git a/assets/npcwork/tailor/rack-stocked.png b/assets/npcwork/tailor/rack-stocked.png
+new file mode 100644
+index 0000000..ca9b772
+Binary files /dev/null and b/assets/npcwork/tailor/rack-stocked.png differ
+diff --git a/assets/npcwork/tailor/tailor-shop.png b/assets/npcwork/tailor/tailor-shop.png
+new file mode 100644
+index 0000000..512c270
+Binary files /dev/null and b/assets/npcwork/tailor/tailor-shop.png differ
+diff --git a/assets/npcwork/tailor/work-cut.png b/assets/npcwork/tailor/work-cut.png
+new file mode 100644
+index 0000000..866f820
+Binary files /dev/null and b/assets/npcwork/tailor/work-cut.png differ
+diff --git a/assets/npcwork/tailor/work-sew.png b/assets/npcwork/tailor/work-sew.png
+new file mode 100644
+index 0000000..d0e19ff
+Binary files /dev/null and b/assets/npcwork/tailor/work-sew.png differ
+diff --git a/src/main.js b/src/main.js
+index 3eb821e..8fa7337 100644
+--- a/src/main.js
++++ b/src/main.js
+@@ -122,6 +122,7 @@ import { hubGateProp } from './sceneart.js';
+ import { buildDrawer, drawerOpen } from './hudmenu.js';
+ import { layoutSafe } from './safezones.js';
+ import { createGroveTown } from './groveview.js';
++import { createNpcWork, drawNpcOverlay } from './npcwork.js';
+ import { makeDoorState, doorStep, doorExit, outsideOf } from './doors.js';
+ import { isDoor, doorList, doorDir, COMMUNITY } from './world.js';
+ import { createMultiplayer } from './multiplayer.js';
+@@ -181,6 +182,7 @@ const TFS = TF.makeTownsfolk(seasonTheme().theme), FOLKQ = { shift: 0, lastT: 0
+ const EVX = createEvents({ search: location.search }); let EVVIEW = null, chatSyncT = 0; globalThis.__events = EVX;
+ const parkNotices = mountNotices(document);
+ const GROVE = createGroveTown(document, localStorage);
++const NPCW = createNpcWork(document, localStorage);
+ mountPlaySheet(document);
+ const folkBase = () => (SKYS.pinH != null ? TF.folkSec(SKYS.pinH) + time : TF.folkSec(dayPhase(time + dayOffset).hour)); // a pinned ?tod= still lets them walk
+ const folkSecNow = () => folkBase() + FOLKQ.shift;
+@@ -850,6 +852,7 @@ function updateWorld(dt) {
+   { const vw = innerWidth / ZOOM, vh = innerHeight / ZOOM; stepChat({ now: time, player: p, npcs, hour: dayPhase(time + dayOffset).hour, rain: amb.rain > 0.3, rng, moodLine: (n) => rng() < 0.5 ? MWd.moodLine(n.name, rng) : null, inView: (x, y) => Math.abs(x - cam.x) < vw / 2 - 20 && Math.abs(y - cam.y) < vh / 2 - 30, placeOf: chatPlace }); }
+   PAB.simTick(dt, time, { x: p.x, y: p.y, driving: !!drive, busy: !!panel }, (tx, ty) => (isSolid(tx, ty) ? -1 : MAP[ty][tx]), T); // sim police/rangers: reads a copy of the position only, never blocks play
+   if (!drive) GROVE.step({ x: p.x, y: p.y, now: performance.now(), input: !!player.moving, foreground: document.visibilityState !== 'hidden' });
++  if (!drive && NPCW) NPCW.step(dt);
+   mailAcc += dt; if (mailAcc > 45) { mailAcc = 0; if (rng() < 0.6 && addMail(state, rng)) { toast('New note in your mailbox!', 'good'); persist(); } }
+   // smooth camera
+   const k = 1 - Math.pow(0.004, dt), lead = player.moving ? 10 : 0, fx = { left: -1, right: 1 }[player.face] || 0, fy = { up: -1, down: 1 }[player.face] || 0;
+@@ -900,7 +903,7 @@ function renderWorld() {
+   const view = { x0: -ox, y0: -oy, x1: -ox + vw, y1: -oy + vh };
+   drawGroundLife(ctx, amb, phase, view); drawAliveGround(ctx, ALIVE, view, phase); feel.drawGround(ctx);
+   if (player.clickMark && player.pw.pts.length) drawMark(ctx, player.clickMark, time);
+-  const actors = [MWd.crierActor(time, artKey), ...npcs.map((n, i) => ({ ...n, npc: true, idx: i, badge: badgeOf(packOfName(state, n.name)) })), ...(drive ? [] : [{ x: state.player.x, y: state.player.y, coat: state.player.coat, outfit: state.wardrobe.equipped, face: player.face, phase: player.phase, moving: player.moving, name: FB.titleOf(state) ? `${state.player.name} «${FB.titleOf(state)}»` : state.player.name, me: true, badge: badgeOf(myPack(state)), emote: player.emote, act: ACT.act, art: artKey(state.player.coat, state.wardrobe.equipped), profile: hasCustomLook(state) ? myProfile() : null }]), ...streetPups(), ...presActors(), ...petActors(), ...crewActors(), ...pupActors(), ...(mpActs = MPL.actors(view, state.player)), ...remotePetActors(mpActs), ...dogWalkActors(view, walkNow(), artKey), ...stepFolk(view), ...mascotActors(state, time)];
++  const actors = [MWd.crierActor(time, artKey), ...npcs.map((n, i) => ({ ...n, npc: true, idx: i, badge: badgeOf(packOfName(state, n.name)) })), ...(drive ? [] : [{ x: state.player.x, y: state.player.y, coat: state.player.coat, outfit: state.wardrobe.equipped, face: player.face, phase: player.phase, moving: player.moving, name: FB.titleOf(state) ? `${state.player.name} «${FB.titleOf(state)}»` : state.player.name, me: true, badge: badgeOf(myPack(state)), emote: player.emote, act: ACT.act, art: artKey(state.player.coat, state.wardrobe.equipped), profile: hasCustomLook(state) ? myProfile() : null }]), ...streetPups(), ...presActors(), ...petActors(), ...crewActors(), ...pupActors(), ...(NPCW ? NPCW.actors() : []), ...(mpActs = MPL.actors(view, state.player)), ...remotePetActors(mpActs), ...dogWalkActors(view, walkNow(), artKey), ...stepFolk(view), ...mascotActors(state, time)];
+   // one depth-sorted list: static props (culled), dynamic props and actors, by ground y
+   const L = -ox - 200, Rt = -ox + vw + 200, Tp = -oy - 60, Bt = -oy + vh + 400, list = [];
+   for (const p of mapImg.props) if (p.y > Tp && p.y < Bt) list.push(p);
+@@ -915,6 +918,7 @@ function renderWorld() {
+     for (const F of [CMP.F, ...CMP.remotes.values()]) if (F.c && F.x > L && F.x < Rt && F.y > Tp && F.y < Bt) list.push({ y: F.y + 2, d: (c) => IQC.drawFollower(c, F, time, { rm, fallback: IQC.drawFallbackPup }) }); }
+   for (const p of PT.stoneProps(PFOUND, time, view, { rm: reducedMotion(), near: stoneHere() })) list.push(p); // portal stones
+   for (const p of GROVE.props()) list.push(p); // staged grove chain: logs, saw, shed, porch. Test Splints, not Bones.
++  if (NPCW) for (const p of NPCW.props()) list.push(p);
+   for (const p of sitProps(time, actors.filter((a) => a.act?.kind === 'sit'), reducedMotion())) if (p.y > Tp && p.y < Bt) list.push(p); // swings + café terrace
+   for (const p of catProps(amb, view)) list.push(p); for (const p of leashProps(view, walkNow())) list.push(p);
+   { const ta = EVX.traderAt(); if (ta) { const dx = state.player.x - ta.x, dy = state.player.y - ta.y, near = Math.hypot(dx, dy) < 110; actors.push({ x: ta.x, y: ta.y, coat: EVR.TRADER.coat, outfit: EVR.TRADER.outfit, face: near ? (Math.abs(dx) > Math.abs(dy) ? (dx > 0 ? 'right' : 'left') : dy < 0 ? 'up' : 'down') : 'down', phase: 0, moving: false, name: EVR.TRADER.name, id: 'ev:trader', art: artKey(EVR.TRADER.coat, EVR.TRADER.outfit) }); } }
+@@ -933,12 +937,14 @@ function renderWorld() {
+     if (a.me) { const gl = statusGlow(state); if (gl) drawFlair(ctx, gl, time); }
+     const kt = a.me ? kennelMine() : a.mp ? KN.remoteLook(a) : null; if (kt) { KN.drawAura(ctx, kt.tier, time); KENNEL_TAG.cur = KN.tagFor(kt.tier, kt.preview, kt.flair); }
+     const pz = poseFor(a);
++    if (a.npcOverlay?.behind) drawNpcOverlay(ctx, a.npcOverlay);
+     if (a.profile) { drawProfileShiba(ctx, 0, 0, a.profile, { face: a.face, phase: a.phase, moving: a.moving, name: a.name, scale: 1.5, badge: a.badge, fid: a.me ? 'me' : a.name, emote: a.emote?.kind, pose: pz }); if (a.emote) drawEmote(ctx, 0, -110, a.emote.kind, time); }
+     else drawShiba(ctx, 0, 0, { coat: a.coat, outfit: a.outfit, face: a.face, phase: a.phase, moving: a.moving, name: a.name, scale: 1.5, badge: a.badge, art: a.art, emote: a.emote?.kind, fid: a.me ? 'me' : a.name || a.id, wag: a.wag || (mm?.wag ? 1 : 0), pose: pz });
+     if (a.onboardMascot) drawMascotTag(ctx, a);
+     if (pz) drawPoseFx(ctx, pz, 0, 0, 1.5, time, pz.face);
+     KENNEL_TAG.cur = null; if (a.me && LS.wornPin(state) != null) drawWornPin(ctx, LS.wornPin(state), time);
+-    if (a.worker) { drawVest(ctx, a.face); drawTool(ctx, a.worker); }
++    if (a.worker) { drawVest(ctx, a.face); if (!a.npcOverlay) drawTool(ctx, a.worker); }
++    if (a.npcOverlay && !a.npcOverlay.behind) drawNpcOverlay(ctx, a.npcOverlay);
+     if (a.bread) drawBreadBasket(ctx, a.face);
+     if (mm?.umbrella || a.umbrella) MWd.drawUmbrella(ctx, time, a.idx || 0); else if (mm?.zz && !a.emote) MWd.drawZz(ctx, time + (a.idx || 0)); if (a.crier) MWd.drawBell(ctx, time, crierRing > 0);
+     if (a.emote) drawEmote(ctx, 0, a.name ? -14 : 0, a.emote.kind, time); else if (a.act && ICON_ACTIONS[a.act.kind] && time - a.act.t0 < ICON_ACTIONS[a.act.kind]) drawEmote(ctx, 0, a.name ? -14 : 0, a.act.kind, time); ctx.restore();
+@@ -2541,7 +2547,7 @@ cv.addEventListener('wheel', (e) => { if (mode !== 'world') return; e.preventDef
+   cv.addEventListener('touchend', (e) => { if (e.touches.length < 2) pinch = null; }, { passive: true }); }
+ document.getElementById('zin')?.addEventListener('click', () => setZoom(stepZoom(ZOOM, 1))); document.getElementById('zout')?.addEventListener('click', () => setZoom(stepZoom(ZOOM, -1)));
+ GROVE.place = (x, y) => { state.player.x = x; state.player.y = y; cam.x = x; cam.y = y; };
+-window.__inu = { grove: GROVE, guide, pet: { get f() { return petF; }, PL, remote: RPETS }, portals: { PT, found: PFOUND, warp: (to, from) => warpTo(to, from), here: () => stoneHere(), get view() { return mmView; } }, photo: { get on() { return photo; }, get cam() { return PHC; }, toggle: () => togglePhoto(), ui: PHUI, PHM }, emo: { get act() { return ACT.act; }, action: (k) => doAction(k), seat: () => seatNear(), sit: (id) => { const sp = SPOTS.find((q) => q.id === id); if (sp) { state.player.x = sp.x; state.player.y = sp.y + 10; const sn = seatNear(); if (sn) sitAt(sn); } return ACT.act; }, spots: SPOTS, wheel }, audio: { debug: audioDebug, settings: audioSettings, area: () => sndArea }, open: (k, o) => openPanel(k, o), get time() { return time; }, get player() { return player; }, get zoom() { return ZOOM; }, setZoom, president: pres, presVisit: (k) => startVisit(pres, k, { dayLen: DAY_LEN }), setHour: (h) => { const w = SKY.skyWorldT(skyNow(), DAY_LEN); SKYS.pinH = null; SKYS.shift = timeForHour(h) - (((w % DAY_LEN) + DAY_LEN) % DAY_LEN); syncSky(); }, folk: { T: TFS, Q: FOLKQ, sec: () => folkSecNow(), at: (i, s) => TF.folkAt(i, s), setSec: (s) => { FOLKQ.shift = s - folkBase(); }, find: (name, doing) => { const i = TF.FOLK_NAMES.indexOf(name), o = {}; for (let s = 0; s < TF.FOLK_DAY; s += 2) { TF.folkAt(i, s, o); if (o.doing === doing) return { s, x: o.x, y: o.y }; } return null; } }, setRain: (r) => { SKYS.wx = r ? 'rain' : 'clear'; amb.rain = amb.rainTarget = amb.cloud = amb.cloudTarget = r ? 1 : 0; amb.weatherT = 999; }, sky: SKYS, get amb() { return amb; }, get npcs() { return npcs; }, get mood() { return { ...MOOD.current, shown: MWd.MW.mood }; }, emote: (k) => doEmote(k), cam, get state() { return state; }, get mode() { return mode; }, get panel() { return panel?.kind; }, get panelObj() { return panel; }, mp: MPL, club: { hunt: () => huntNow(), party: () => partyNow(), kennel: () => enterKennel(), room: (id, at) => enterRoom(id, at || null), get rp() { return RP; } } };
++window.__inu = { grove: GROVE, npcwork: NPCW, guide, pet: { get f() { return petF; }, PL, remote: RPETS }, portals: { PT, found: PFOUND, warp: (to, from) => warpTo(to, from), here: () => stoneHere(), get view() { return mmView; } }, photo: { get on() { return photo; }, get cam() { return PHC; }, toggle: () => togglePhoto(), ui: PHUI, PHM }, emo: { get act() { return ACT.act; }, action: (k) => doAction(k), seat: () => seatNear(), sit: (id) => { const sp = SPOTS.find((q) => q.id === id); if (sp) { state.player.x = sp.x; state.player.y = sp.y + 10; const sn = seatNear(); if (sn) sitAt(sn); } return ACT.act; }, spots: SPOTS, wheel }, audio: { debug: audioDebug, settings: audioSettings, area: () => sndArea }, open: (k, o) => openPanel(k, o), get time() { return time; }, get player() { return player; }, get zoom() { return ZOOM; }, setZoom, president: pres, presVisit: (k) => startVisit(pres, k, { dayLen: DAY_LEN }), setHour: (h) => { const w = SKY.skyWorldT(skyNow(), DAY_LEN); SKYS.pinH = null; SKYS.shift = timeForHour(h) - (((w % DAY_LEN) + DAY_LEN) % DAY_LEN); syncSky(); }, folk: { T: TFS, Q: FOLKQ, sec: () => folkSecNow(), at: (i, s) => TF.folkAt(i, s), setSec: (s) => { FOLKQ.shift = s - folkBase(); }, find: (name, doing) => { const i = TF.FOLK_NAMES.indexOf(name), o = {}; for (let s = 0; s < TF.FOLK_DAY; s += 2) { TF.folkAt(i, s, o); if (o.doing === doing) return { s, x: o.x, y: o.y }; } return null; } }, setRain: (r) => { SKYS.wx = r ? 'rain' : 'clear'; amb.rain = amb.rainTarget = amb.cloud = amb.cloudTarget = r ? 1 : 0; amb.weatherT = 999; }, sky: SKYS, get amb() { return amb; }, get npcs() { return npcs; }, get mood() { return { ...MOOD.current, shown: MWd.MW.mood }; }, emote: (k) => doEmote(k), cam, get state() { return state; }, get mode() { return mode; }, get panel() { return panel?.kind; }, get panelObj() { return panel; }, mp: MPL, club: { hunt: () => huntNow(), party: () => partyNow(), kennel: () => enterKennel(), room: (id, at) => enterRoom(id, at || null), get rp() { return RP; } } };
+ // Inu Arcade inside the desktop overlay: its 🏠 button asks us to close the overlay instead of reloading.
+ // framed Arcade (hall peek) -> Verse: ready / exit (close + inu:back-to-verse alias) / score. Origin pinned (districts.js). Score = toast only.
+ addEventListener('message', (e) => { const m = DIS.arcadeMessage(e, new URL(ARCADE.url).origin); if (!m) return; globalThis.__arcadeMsgs = [...(globalThis.__arcadeMsgs || []).slice(-9), m];
+diff --git a/src/npcbuildings.js b/src/npcbuildings.js
+new file mode 100644
+index 0000000..ab69714
+--- /dev/null
++++ b/src/npcbuildings.js
+@@ -0,0 +1,683 @@
++// Opt-in workplace preview. The lumber yard and the mechanic stay on their
++// existing grass. Sawmill, tailor, bakery and scrap yard sit on a south
++// extension so no old building, path or coordinate moves. This module never
++// reads or writes inuverse.save.v1.
++import { MAP, T, isSolid, NETWORK, MAP_W, MAP_H, TOWN_H, PLOTS, TILE } from './world.js';
++
++export const SAVE_KEY = 'inuverse.preview.npcwork.v1';
++export const LIVE_SAVE_KEY = 'inuverse.save.v1';
++export const DAILY_ISSUE = 40;
++export const CHIT_CAP = 160;
++export const TAG = 'npc-buildings-1';
++export const CHOP_CAP = 4;
++export const FLOUR_STOCK = 2;
++export const CLOTH_STOCK = 1;
++
++export const LUMBER = Object.freeze({ id: 'lumber', name: 'Lumber Yard', x: 50, y: 96, w: 6, h: 4, door: Object.freeze([50, 95]), work: Object.freeze([52, 98]), saw: Object.freeze([53, 97]) });
++export const MECHANIC = Object.freeze({ id: 'mechanic', name: "Mechanic's Shop", x: 28, y: 2, w: 5, h: 4, door: Object.freeze([30, 6]), work: Object.freeze([30, 4]), bay: Object.freeze([31, 4]) });
++export const SIGN = Object.freeze([33, 6]);
++// South work quarter. The street is the row under each footprint (lot.y+4), joined to the farm walk through grass (52,104) and the border tree (52,105).
++export const WORK_JOIN = Object.freeze([[52, 104], [52, 105]]);
++export const JOIN_WAS = Object.freeze({ '52,104': T.GRASS, '52,105': T.TREE });
++export const QUARTER_STREET = 113;
++export const SAWMILL = Object.freeze({ id: 'sawmill', name: 'Sawmill', x: 6, y: 109, w: 5, h: 4, door: Object.freeze([8, 113]), work: Object.freeze([8, 111]) });
++export const TAILOR = Object.freeze({ id: 'tailor', name: 'Tailor', x: 16, y: 109, w: 5, h: 4, door: Object.freeze([20, 113]), rack: Object.freeze([23, 113]) });
++export const BAKERY = Object.freeze({ id: 'bakery', name: 'Bakery', x: 28, y: 109, w: 5, h: 4, door: Object.freeze([32, 113]), work: Object.freeze([32, 111]) });
++export const SCRAP = Object.freeze({ id: 'scrap', name: 'Scrap Yard', x: 40, y: 109, w: 6, h: 4, door: Object.freeze([43, 113]), work: Object.freeze([43, 111]) });
++export const CLOTH = Object.freeze([58, 113]);
++export const HOMES = Object.freeze({
++  timber: Object.freeze([12, 40]),
++  wrench: Object.freeze([26, 40]),
++  porter: Object.freeze([19, 40]),
++  saw: Object.freeze([6, 113]),
++  stitch: Object.freeze([16, 113]),
++  crumb: Object.freeze([28, 113]),
++  bolt: Object.freeze([40, 113]),
++});
++
++function paintBox(x, y, w, h, tile) {
++  for (let yy = y; yy < y + h; yy++) for (let xx = x; xx < x + w; xx++) if (MAP[yy]) MAP[yy][xx] = tile;
++}
++
++function paintQuarter() {
++  for (let y = TOWN_H; y < MAP_H; y++) {
++    for (let x = 0; x < MAP_W; x++) {
++      MAP[y][x] = ((x * 73856093) ^ (y * 19349663)) % 23 === 0 ? T.FLOWER : T.GRASS;
++    }
++  }
++  for (let y = TOWN_H; y < MAP_H; y++) { MAP[y][0] = T.TREE; MAP[y][MAP_W - 1] = T.TREE; }
++  for (let x = 0; x < MAP_W; x++) MAP[MAP_H - 1][x] = T.TREE;
++  for (let x = 4; x <= 60; x++) MAP[QUARTER_STREET][x] = T.WALK;
++  for (let y = 106; y <= QUARTER_STREET; y++) MAP[y][52] = T.WALK;
++  MAP[104][52] = T.WALK;
++  MAP[105][52] = T.WALK;
++  for (const b of [SAWMILL, TAILOR, BAKERY, SCRAP]) paintBox(b.x, b.y, b.w, b.h, T.BUILDING);
++}
++paintQuarter();
++
++export function onPath(x, y) {
++  return x > 0 && y > 0 && x < MAP_W - 1 && y < MAP_H - 1 && NETWORK.has(MAP[y][x]) && !isSolid(x, y);
++}
++
++export function pathTiles(from, to) {
++  const [sx, sy] = from;
++  const [tx, ty] = to;
++  if (!onPath(sx, sy) || !onPath(tx, ty)) return null;
++  const key = (x, y) => y * MAP_W + x;
++  const prev = new Map([[key(sx, sy), -1]]);
++  const q = [[sx, sy]];
++  let head = 0;
++  while (head < q.length) {
++    const [x, y] = q[head++];
++    if (x === tx && y === ty) {
++      const path = [];
++      let k = key(x, y);
++      while (k !== -1) {
++        path.push([k % MAP_W, Math.floor(k / MAP_W)]);
++        k = prev.get(k);
++      }
++      return path.reverse();
++    }
++    for (const [dx, dy] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) {
++      const nx = x + dx;
++      const ny = y + dy;
++      if (onPath(nx, ny) && !prev.has(key(nx, ny))) {
++        prev.set(key(nx, ny), key(x, y));
++        q.push([nx, ny]);
++      }
++    }
++  }
++  return null;
++}
++
++function mustPath(from, to, name) {
++  const path = pathTiles(from, to);
++  if (!path) throw new Error(`no path for ${name}: ${from} -> ${to}`);
++  return path;
++}
++
++export const ROUTES = Object.freeze({
++  timber: mustPath(HOMES.timber, LUMBER.door, 'timber'),
++  wrench: mustPath(HOMES.wrench, MECHANIC.door, 'wrench'),
++  saw: mustPath(HOMES.saw, SAWMILL.door, 'saw'),
++  stitch: mustPath(HOMES.stitch, TAILOR.door, 'stitch'),
++  crumb: mustPath(HOMES.crumb, BAKERY.door, 'crumb'),
++  bolt: mustPath(HOMES.bolt, SCRAP.door, 'bolt'),
++  toLumber: mustPath(HOMES.porter, LUMBER.door, 'porter to lumber'),
++  lumberToSaw: mustPath(LUMBER.door, SAWMILL.door, 'porter log to saw'),
++  sawToSign: mustPath(SAWMILL.door, SIGN, 'porter plank to sign'),
++  signToScrap: mustPath(SIGN, SCRAP.door, 'porter parts to scrap'),
++  scrapToSign: mustPath(SCRAP.door, SIGN, 'porter scrap to sign'),
++  signToCloth: mustPath(SIGN, CLOTH, 'porter to cloth'),
++  clothToTailor: mustPath(CLOTH, TAILOR.door, 'porter cloth to tailor'),
++  tailorToRack: mustPath(TAILOR.door, TAILOR.rack, 'porter coat to rack'),
++  rackToBakery: mustPath(TAILOR.rack, BAKERY.door, 'porter to bakery'),
++  bakeryToLumber: mustPath(BAKERY.door, LUMBER.door, 'porter bread to yard'),
++  timberHome: mustPath(LUMBER.door, HOMES.timber, 'timber home'),
++  wrenchHome: mustPath(MECHANIC.door, HOMES.wrench, 'wrench home'),
++  sawHome: mustPath(SAWMILL.door, HOMES.saw, 'saw home'),
++  stitchHome: mustPath(TAILOR.door, HOMES.stitch, 'stitch home'),
++  crumbHome: mustPath(BAKERY.door, HOMES.crumb, 'crumb home'),
++  boltHome: mustPath(SCRAP.door, HOMES.bolt, 'bolt home'),
++  porterHome: mustPath(LUMBER.door, HOMES.porter, 'porter home'),
++  carExit: mustPath(MECHANIC.door, [31, 10], 'car onto the road'),
++});
++
++const CREW = ['timber', 'wrench', 'porter', 'saw', 'stitch', 'crumb', 'bolt'];
++
++function overlaps(a, b) {
++  return a.x < b.x + b.w && a.x + a.w > b.x && a.y < b.y + b.h && a.y + a.h > b.y;
++}
++
++export function lotProof() {
++  return [LUMBER, MECHANIC, SAWMILL, TAILOR, BAKERY, SCRAP].map((lot) => {
++    const tiles = [];
++    for (let y = lot.y; y < lot.y + lot.h; y++) {
++      for (let x = lot.x; x < lot.x + lot.w; x++) tiles.push({ x, y, tile: MAP[y][x], solid: isSolid(x, y) });
++    }
++    const expansion = lot.y >= TOWN_H;
++    return {
++      id: lot.id,
++      name: lot.name,
++      x: lot.x,
++      y: lot.y,
++      w: lot.w,
++      h: lot.h,
++      door: [...lot.door],
++      doorOnPath: onPath(lot.door[0], lot.door[1]),
++      expansion,
++      allEmptyGrass: tiles.every((t) => (t.tile === T.GRASS || t.tile === T.FLOWER) && !t.solid),
++      onNewGround: expansion && tiles.every((t) => t.y >= TOWN_H),
++      claimPlots: PLOTS.filter((p) => overlaps(lot, p)).map((p) => p.id),
++      tiles,
++    };
++  });
++}
++
++export function seedState() {
++  return {
++    tag: TAG,
++    day: 1,
++    beat: 'home',
++    leg: 'toLumber',
++    phase: 0,
++    chits: 0,
++    issuedDawn: 0,
++    lastIssue: 0,
++    cut: 0,
++    act: 'chop',
++    axe: 0,
++    shownChop: false,
++    wrenchSwing: 0,
++    logs: 0,
++    millLogs: 0,
++    planks: 0,
++    sawed: 0,
++    sawFrame: 0,
++    shopPlanks: 0,
++    plankUsed: 0,
++    cart: 'broken',
++    cargo: null,
++    shortage: 'SHORT 1 PLANK',
++    car: 'broken',
++    carI: 0,
++    bay: 'broken',
++    bayFrame: 0,
++    toolMade: 0,
++    leftoverMade: 0,
++    toolEver: 0,
++    yardTool: 0,
++    yardLeft: 0,
++    pressed: 0,
++    press: 'sort',
++    pressFrame: 0,
++    scrap: 0,
++    scrapAtShop: 0,
++    scrapUsed: 0,
++    clothStock: CLOTH_STOCK,
++    shopBolt: 0,
++    needle: 0,
++    mannequin: 'bare',
++    vestReady: 0,
++    rack: 0,
++    flour: FLOUR_STOCK,
++    dough: 0,
++    bread: 0,
++    eaten: 0,
++    meal: 0,
++    oven: 'knead',
++    ovenFrame: 0,
++    i: { timber: 0, wrench: 0, porter: 0, saw: 0, stitch: 0, crumb: 0, bolt: 0 },
++  };
++}
++
++function issueDawn(s) {
++  const n = Math.max(0, Math.min(DAILY_ISSUE, CHIT_CAP - s.chits));
++  s.chits += n;
++  s.issuedDawn += n;
++  s.lastIssue = n;
++}
++
++function stepAlong(s, id, route) {
++  if (s.i[id] < route.length - 1) s.i[id] += 1;
++  return s.i[id] >= route.length - 1;
++}
++
++function zeroCrew(s) {
++  for (const id of CREW) s.i[id] = 0;
++}
++
++export function sawOne(s) {
++  if (s.millLogs > 0) s.millLogs -= 1;
++  else if (s.logs > 0) s.logs -= 1;
++  else return false;
++  s.planks += 1;
++  s.sawed += 1;
++  return true;
++}
++
++export function bakeOne(s) {
++  if (s.flour <= 0) return false;
++  s.flour -= 1;
++  s.bread += 1;
++  return true;
++}
++
++function chopStep(s) {
++  if (s.cut < CHOP_CAP) {
++    if (s.act === 'chop') {
++      if (s.axe < 3) s.axe += 1;
++      else { s.act = 'stack'; s.axe = 0; }
++    } else if (s.axe < 1) s.axe += 1;
++    else { s.cut += 1; s.logs += 1; s.act = 'chop'; s.axe = 0; }
++    return;
++  }
++  if (!s.shownChop) {
++    s.act = 'chop';
++    if (s.axe < 2) s.axe += 1;
++    else s.shownChop = true;
++    return;
++  }
++  s.beat = 'haulLog';
++  s.leg = 'pickupLog';
++}
++
++function walkLeg(s, route, next) {
++  if (s.i.porter < route.length - 1) { s.i.porter += 1; return true; }
++  next();
++  return false;
++}
++
++function bayStep(s) {
++  if (s.shopPlanks >= 1 && s.plankUsed === 0) {
++    s.shopPlanks -= 1;
++    s.plankUsed += 1;
++    return;
++  }
++  s.car = 'repairing';
++  if (s.bay === 'broken') { s.bay = 'lift'; s.bayFrame = 0; return; }
++  if (s.bay === 'lift') { s.bay = 'bonnet'; s.bayFrame = 0; return; }
++  if (s.bay === 'bonnet' || s.bay === 'creeper' || s.bay === 'wheel') {
++    if (s.bayFrame < 3) { s.bayFrame += 1; return; }
++    s.bay = s.bay === 'bonnet' ? 'creeper' : s.bay === 'creeper' ? 'wheel' : 'down';
++    s.bayFrame = 0;
++    return;
++  }
++  if (s.bay === 'down') {
++    s.bay = 'fixed';
++    s.cart = 'fixed';
++    s.car = 'fixed';
++    s.wrenchSwing = 3;
++    if (!s.toolEver) { s.toolEver = 1; s.toolMade = 1; s.leftoverMade = 1; }
++    return;
++  }
++  s.car = 'leaving';
++  if (s.carI < ROUTES.carExit.length - 1) s.carI += 1;
++  else {
++    s.car = 'out';
++    s.beat = 'haulParts';
++    s.leg = 'pickupParts';
++  }
++}
++
++function tailorStep(s) {
++  if (s.i.stitch < ROUTES.stitch.length - 1) { s.i.stitch += 1; return; }
++  if (s.leg === 'sew') {
++    if (s.needle < 3) s.needle += 1;
++    else { s.leg = 'cut'; s.needle = 0; }
++    return;
++  }
++  if (s.leg === 'cut') {
++    if (s.needle < 1) s.needle += 1;
++    else if (s.mannequin === 'bare') {
++      s.mannequin = 'dressed';
++      s.shopBolt = 0;
++      s.vestReady = 1;
++    } else {
++      s.cargo = 'coat';
++      s.vestReady = 0;
++      s.leg = 'tailorToRack';
++      s.i.porter = 0;
++    }
++    return;
++  }
++  const route = ROUTES[s.leg];
++  if (!route) return;
++  if (s.i.porter < route.length - 1) { s.i.porter += 1; return; }
++  if (s.leg === 'signToCloth' && s.cargo == null && s.clothStock === 1) {
++    s.clothStock = 0;
++    s.cargo = 'bolt';
++    s.leg = 'clothToTailor';
++    s.i.porter = 0;
++    return;
++  }
++  if (s.leg === 'clothToTailor' && s.cargo === 'bolt') {
++    s.cargo = null;
++    s.shopBolt = 1;
++    s.leg = 'sew';
++    s.needle = 0;
++    return;
++  }
++  if (s.leg === 'tailorToRack' && s.cargo === 'coat') {
++    s.cargo = null;
++    s.rack = 1;
++    s.beat = 'baking';
++    s.oven = 'knead';
++    s.ovenFrame = 0;
++    s.leg = 'rackToBakery';
++    s.i.porter = 0;
++  }
++}
++
++function bakeStep(s) {
++  if (s.leg === 'rackToBakery') {
++    if (s.i.porter < ROUTES.rackToBakery.length - 1) { s.i.porter += 1; return; }
++    s.leg = 'oven';
++    return;
++  }
++  if (s.oven === 'knead') {
++    if (s.ovenFrame < 3) { s.ovenFrame += 1; return; }
++    if (s.flour >= 1 && s.dough === 0 && s.bread === 0 && s.eaten === 0) { s.flour -= 1; s.dough = 1; }
++    s.oven = 'bake';
++    s.ovenFrame = 0;
++    return;
++  }
++  if (s.ovenFrame < 3) { s.ovenFrame += 1; return; }
++  if (s.dough === 1) { s.dough = 0; s.bread = 1; }
++  s.beat = 'serve';
++  s.leg = 'pickupBread';
++}
++
++export function advance(input) {
++  const s = input;
++  if (s.beat === 'nextdawn') return s;
++  s.phase += 1;
++  if (s.beat === 'home') {
++    issueDawn(s);
++    s.beat = 'walk';
++    zeroCrew(s);
++    return s;
++  }
++  if (s.beat === 'walk') {
++    const ids = ['timber', 'wrench', 'saw', 'stitch', 'crumb', 'bolt'];
++    const flags = ids.map((id) => stepAlong(s, id, ROUTES[id]));
++    flags.push(stepAlong(s, 'porter', ROUTES.toLumber));
++    if (flags.every(Boolean)) s.beat = 'chop';
++    return s;
++  }
++  if (s.beat === 'chop') { chopStep(s); return s; }
++  if (s.beat === 'haulLog') {
++    if (s.leg === 'pickupLog') {
++      if (s.logs >= 1 && s.cargo == null) { s.logs -= 1; s.cargo = 'log'; }
++      s.leg = 'lumberToSaw';
++      s.i.porter = 0;
++      return s;
++    }
++    walkLeg(s, ROUTES.lumberToSaw, () => {
++      if (s.cargo === 'log') { s.cargo = null; s.millLogs += 1; }
++      s.beat = 'sawing';
++      s.sawFrame = 0;
++    });
++    return s;
++  }
++  if (s.beat === 'sawing') {
++    if (s.sawFrame < 3) { s.sawFrame += 1; return s; }
++    if (s.millLogs === 1 && s.sawed === 0) sawOne(s);
++    s.beat = 'haulPlank';
++    s.leg = 'pickupPlank';
++    return s;
++  }
++  if (s.beat === 'haulPlank') {
++    if (s.leg === 'pickupPlank') {
++      if (s.planks >= 1 && s.cargo == null) { s.planks -= 1; s.cargo = 'plank'; }
++      s.leg = 'sawToSign';
++      s.i.porter = 0;
++      return s;
++    }
++    walkLeg(s, ROUTES.sawToSign, () => {
++      if (s.cargo === 'plank') { s.cargo = null; s.shopPlanks += 1; s.shortage = 'FILLED'; }
++      s.beat = 'bay';
++    });
++    return s;
++  }
++  if (s.beat === 'bay') { bayStep(s); return s; }
++  if (s.beat === 'haulParts') {
++    if (s.leg === 'pickupParts') {
++      if (s.toolMade === 1 && s.cargo == null) { s.toolMade = 0; s.leftoverMade = 0; s.cargo = 'parts'; }
++      s.leg = 'signToScrap';
++      s.i.porter = 0;
++      return s;
++    }
++    walkLeg(s, ROUTES.signToScrap, () => {
++      if (s.cargo === 'parts') { s.cargo = null; s.yardTool = 1; s.yardLeft = 1; }
++      s.beat = 'pressing';
++      s.press = 'sort';
++      s.pressFrame = 0;
++    });
++    return s;
++  }
++  if (s.beat === 'pressing') {
++    if (s.press === 'sort') {
++      if (s.pressFrame < 3) { s.pressFrame += 1; return s; }
++      s.press = 'press';
++      s.pressFrame = 0;
++      return s;
++    }
++    if (s.pressFrame < 3) { s.pressFrame += 1; return s; }
++    if (s.yardTool === 1 && s.yardLeft === 1 && s.pressed === 0) {
++      s.yardTool = 0; s.yardLeft = 0; s.pressed = 1; s.scrap = 1;
++      return s;
++    }
++    s.beat = 'haulScrap';
++    s.leg = 'pickupScrap';
++    return s;
++  }
++  if (s.beat === 'haulScrap') {
++    if (s.leg === 'pickupScrap') {
++      if (s.scrap === 1 && s.cargo == null) { s.scrap = 0; s.cargo = 'scrap'; }
++      s.leg = 'scrapToSign';
++      s.i.porter = 0;
++      return s;
++    }
++    walkLeg(s, ROUTES.scrapToSign, () => {
++      if (s.cargo === 'scrap') { s.cargo = null; s.scrapAtShop = 1; s.scrapAtShop = 0; s.scrapUsed = 1; }
++      s.beat = 'tailor';
++      s.leg = 'signToCloth';
++      s.i.porter = 0;
++      s.i.stitch = 0;
++    });
++    return s;
++  }
++  if (s.beat === 'tailor') { tailorStep(s); return s; }
++  if (s.beat === 'baking') { bakeStep(s); return s; }
++  if (s.beat === 'serve') {
++    if (s.leg === 'pickupBread') {
++      if (s.bread === 1 && s.cargo == null) { s.bread = 0; s.cargo = 'bread'; }
++      s.leg = 'bakeryToLumber';
++      s.i.porter = 0;
++      return s;
++    }
++    walkLeg(s, ROUTES.bakeryToLumber, () => {
++      if (s.cargo === 'bread') { s.cargo = null; s.eaten = 1; s.meal = 1; }
++      s.beat = 'homebound';
++      zeroCrew(s);
++    });
++    return s;
++  }
++  if (s.beat === 'homebound') {
++    const ids = ['timber', 'wrench', 'saw', 'stitch', 'crumb', 'bolt', 'porter'];
++    const done = ids.map((id) => stepAlong(s, id, ROUTES[id + 'Home'])).every(Boolean);
++    if (done && s.meal === 1) {
++      s.beat = 'nextdawn';
++      s.day += 1;
++      issueDawn(s);
++    }
++  }
++  return s;
++}
++
++export function logLedger(s) {
++  const logsLeft = s.logs + s.millLogs + (s.cargo === 'log' ? 1 : 0);
++  const planks = s.planks + s.shopPlanks + s.plankUsed + (s.cargo === 'plank' ? 1 : 0);
++  return { produced: s.cut, logsLeft, planks, sum: logsLeft + planks };
++}
++
++export function clothHeld(s) {
++  return s.clothStock + s.shopBolt + s.vestReady + s.rack + (s.cargo === 'bolt' || s.cargo === 'coat' ? 1 : 0);
++}
++
++export function flourHeld(s) {
++  return s.flour + s.dough + s.bread + s.eaten + (s.cargo === 'bread' ? 1 : 0);
++}
++
++export function scrapHeld(s) {
++  return s.scrap + s.scrapAtShop + s.scrapUsed + (s.cargo === 'scrap' ? 1 : 0);
++}
++
++export function partsHeld(s) {
++  const transit = s.cargo === 'parts' ? 1 : 0;
++  return s.toolMade + transit + s.yardTool + s.pressed;
++}
++
++export function leftHeld(s) {
++  const transit = s.cargo === 'parts' ? 1 : 0;
++  return s.leftoverMade + transit + s.yardLeft + s.pressed;
++}
++
++export function conserved(s) {
++  const logs = logLedger(s);
++  return logs.produced === logs.sum
++    && logs.produced <= CHOP_CAP
++    && logs.produced >= 0
++    && s.sawed === logs.planks
++    && s.plankUsed <= 1
++    && s.shopPlanks <= 1
++    && clothHeld(s) === CLOTH_STOCK
++    && flourHeld(s) === FLOUR_STOCK
++    && s.eaten <= 1
++    && s.meal <= 1
++    && partsHeld(s) === s.toolEver
++    && leftHeld(s) === s.toolEver
++    && s.toolEver <= 1
++    && scrapHeld(s) === s.pressed
++    && s.pressed <= 1
++    && (s.cart === 'broken' || s.cart === 'fixed')
++    && s.chits === s.issuedDawn
++    && s.issuedDawn <= DAILY_ISSUE * s.day
++    && s.chits <= CHIT_CAP;
++}
++
++export function seek(label) {
++  const s = seedState();
++  const want = () => {
++    if (label === 'home') return s.beat === 'home';
++    if (label === 'walking') return s.beat === 'walk' && s.i.timber === 15 && s.logs === 0 && s.cart === 'broken';
++    if (label === 'working-lumber') return s.beat === 'chop' && s.logs === 4 && s.shownChop && s.act === 'chop' && s.axe === 2 && s.planks === 0 && s.cart === 'broken';
++    if (label === 'working-saw') return s.beat === 'sawing' && s.sawFrame === 2 && s.millLogs === 1 && s.sawed === 0;
++    if (label === 'working-mechanic') return s.beat === 'bay' && s.bay === 'bonnet' && s.bayFrame === 2 && s.plankUsed === 1 && s.shortage === 'FILLED';
++    if (label === 'delivery') return s.beat === 'haulPlank' && s.leg === 'sawToSign' && s.cargo === 'plank' && s.shopPlanks === 0 && s.shortage === 'SHORT 1 PLANK' && s.i.porter === ROUTES.sawToSign.length - 1;
++    if (label === 'working-tailor') return s.beat === 'tailor' && s.leg === 'sew' && s.needle === 2 && s.mannequin === 'bare' && s.shopBolt === 1;
++    if (label === 'working-bakery') return s.beat === 'baking' && s.oven === 'knead' && s.ovenFrame === 2 && s.flour === FLOUR_STOCK && s.dough === 0;
++    if (label === 'working-scrap') return s.beat === 'pressing' && s.press === 'press' && s.pressFrame === 2 && s.yardTool === 1 && s.scrap === 0;
++    if (label === 'nextdawn') return s.beat === 'nextdawn';
++    return false;
++  };
++  if (want()) return s;
++  for (let n = 0; n < 20000; n++) {
++    advance(s);
++    if (want()) return s;
++  }
++  throw new Error(`no frame ${label} beat=${s.beat} leg=${s.leg} phase=${s.phase}`);
++}
++
++function porterView(s) {
++  if (s.beat === 'home' || s.beat === 'nextdawn' || s.beat === 'walk') return { route: ROUTES.toLumber, i: s.beat === 'walk' ? s.i.porter : 0 };
++  if (s.beat === 'homebound') return { route: ROUTES.porterHome, i: s.i.porter };
++  if (s.leg === 'pickupLog' || s.beat === 'chop') return { route: ROUTES.toLumber, i: ROUTES.toLumber.length - 1 };
++  if (s.leg === 'pickupPlank' || s.beat === 'sawing') return { route: ROUTES.lumberToSaw, i: ROUTES.lumberToSaw.length - 1 };
++  if (s.leg === 'pickupParts' || s.beat === 'bay') return { route: ROUTES.sawToSign, i: ROUTES.sawToSign.length - 1 };
++  if (s.leg === 'sew' || s.leg === 'cut') return { route: ROUTES.clothToTailor, i: ROUTES.clothToTailor.length - 1 };
++  if (s.leg === 'pickupScrap' || s.beat === 'pressing') return { route: ROUTES.signToScrap, i: ROUTES.signToScrap.length - 1 };
++  if (s.leg === 'oven') return { route: ROUTES.rackToBakery, i: ROUTES.rackToBakery.length - 1 };
++  if (s.leg === 'pickupBread') return { route: ROUTES.rackToBakery, i: ROUTES.rackToBakery.length - 1 };
++  if (ROUTES[s.leg]) return { route: ROUTES[s.leg], i: s.i.porter };
++  return { route: ROUTES.toLumber, i: 0 };
++}
++
++const NAMES = { timber: 'Timber', wrench: 'Wrench', porter: 'Porter', saw: 'Saw', stitch: 'Stitch', crumb: 'Crumb', bolt: 'Bolt' };
++const COATS = { timber: 'tan', wrench: 'gray', porter: 'cream', saw: 'red', stitch: 'golden', crumb: 'cream', bolt: 'dark' };
++
++export function crewView(s) {
++  const out = {};
++  for (const id of CREW) {
++    let route;
++    let i;
++    if (id === 'porter') {
++      const p = porterView(s);
++      route = p.route;
++      i = p.i;
++    } else if (s.beat === 'home' || s.beat === 'nextdawn') {
++      route = ROUTES[id];
++      i = 0;
++    } else if (s.beat === 'walk') {
++      route = ROUTES[id];
++      i = s.i[id];
++    } else if (s.beat === 'homebound') {
++      route = ROUTES[id + 'Home'];
++      i = s.i[id];
++    } else {
++      route = ROUTES[id];
++      i = route.length - 1;
++    }
++    i = Math.max(0, Math.min(route.length - 1, i));
++    let tx = route[i][0];
++    let ty = route[i][1];
++    const nxt = route[Math.min(route.length - 1, i + 1)];
++    const travelling = (s.beat === 'walk' || s.beat === 'homebound' || (id === 'porter' && ROUTES[s.leg] && s.i.porter < route.length - 1)) && i < route.length - 1;
++    let face = 'down';
++    if (travelling) {
++      const dx = nxt[0] - tx;
++      const dy = nxt[1] - ty;
++      face = Math.abs(dx) > Math.abs(dy) ? (dx > 0 ? 'right' : 'left') : (dy > 0 ? 'down' : 'up');
++    }
++    let place = 'path';
++    if ((s.beat === 'home' || s.beat === 'nextdawn') && i === 0) place = 'home';
++    if (id === 'timber' && s.beat !== 'home' && s.beat !== 'nextdawn' && s.beat !== 'walk' && s.beat !== 'homebound') {
++      tx = LUMBER.door[0]; ty = LUMBER.door[1]; face = 'up'; place = 'lumber';
++    }
++    if (id === 'wrench' && s.beat === 'bay' && (s.bay === 'bonnet' || s.bay === 'creeper' || s.bay === 'wheel')) {
++      tx = MECHANIC.work[0]; ty = MECHANIC.work[1]; face = 'right'; place = 'mechanic';
++    } else if (id === 'wrench' && s.car === 'leaving') {
++      tx = MECHANIC.door[0]; ty = MECHANIC.door[1]; face = 'down'; place = 'mechanic';
++    } else if (id === 'wrench' && s.beat !== 'home' && s.beat !== 'walk' && s.beat !== 'homebound' && s.beat !== 'nextdawn') {
++      tx = MECHANIC.door[0]; ty = MECHANIC.door[1]; place = 'mechanic';
++    }
++    if (id === 'saw' && s.beat !== 'home' && s.beat !== 'walk' && s.beat !== 'homebound' && s.beat !== 'nextdawn') {
++      tx = SAWMILL.door[0]; ty = SAWMILL.door[1]; face = 'up'; place = 'sawmill';
++    }
++    if (id === 'stitch' && s.beat === 'tailor' && s.i.stitch >= ROUTES.stitch.length - 1) {
++      tx = TAILOR.door[0]; ty = TAILOR.door[1]; face = 'up'; place = 'tailor';
++    }
++    if (id === 'crumb' && s.beat !== 'home' && s.beat !== 'walk' && s.beat !== 'homebound' && s.beat !== 'nextdawn') {
++      tx = BAKERY.door[0]; ty = BAKERY.door[1]; face = 'up'; place = 'bakery';
++    }
++    if (id === 'bolt' && s.beat !== 'home' && s.beat !== 'walk' && s.beat !== 'homebound' && s.beat !== 'nextdawn') {
++      tx = SCRAP.door[0]; ty = SCRAP.door[1]; face = 'up'; place = 'scrap';
++    }
++    if (id === 'porter' && s.beat === 'sawing') {
++      tx = SAWMILL.door[0] - 3; ty = SAWMILL.door[1]; face = 'right'; place = 'sawmill';
++    }
++    if (id === 'porter' && tx === SIGN[0] && ty === SIGN[1]) place = 'sign';
++    else if (id === 'porter' && tx === LUMBER.door[0] && ty === LUMBER.door[1]) place = 'lumber';
++    else if (id === 'porter' && tx === SAWMILL.door[0] && ty === SAWMILL.door[1]) place = 'sawmill';
++    else if (id === 'porter' && tx === SCRAP.door[0] && ty === SCRAP.door[1]) place = 'scrap';
++    else if (id === 'porter' && tx === TAILOR.door[0] && ty === TAILOR.door[1]) place = 'tailor';
++    else if (id === 'porter' && tx === BAKERY.door[0] && ty === BAKERY.door[1]) place = 'bakery';
++    const moving = travelling && !(id !== 'porter' && s.beat !== 'walk' && s.beat !== 'homebound');
++    const working = (id === 'timber' && s.beat === 'chop' && place === 'lumber')
++      || (id === 'wrench' && s.beat === 'bay' && place === 'mechanic')
++      || (id === 'saw' && s.beat === 'sawing')
++      || (id === 'stitch' && (s.leg === 'sew' || s.leg === 'cut'))
++      || (id === 'crumb' && s.beat === 'baking' && s.leg === 'oven')
++      || (id === 'bolt' && s.beat === 'pressing');
++    let px = tx * TILE + 16;
++    if (id === 'wrench' && tx === MECHANIC.work[0] && ty === MECHANIC.work[1]) px = MECHANIC.work[0] * TILE + 6;
++    if (id === 'porter' && place === 'sign') { face = 'down'; }
++    out[id] = {
++      id, tx, ty, x: px, y: ty * TILE + 16, face, moving, place, working,
++      frame: id === 'timber' ? s.axe : id === 'saw' ? s.sawFrame : id === 'crumb' ? s.ovenFrame : id === 'bolt' ? s.pressFrame : s.wrenchSwing,
++      name: NAMES[id],
++      coat: COATS[id],
++      tool: id === 'timber' ? 'axe' : id === 'wrench' ? 'wrench' : '',
++    };
++  }
++  return out;
++}
++
++export function plankTotal(s) {
++  return logLedger(s).planks;
++}
++
++export function goodsHeld(s) {
++  return { bolt: clothHeld(s), vest: s.rack + s.vestReady + (s.cargo === 'coat' ? 1 : 0), sum: clothHeld(s) };
++}
+diff --git a/src/npcwork.js b/src/npcwork.js
+new file mode 100644
+index 0000000..1d8247c
+--- /dev/null
++++ b/src/npcwork.js
+@@ -0,0 +1,373 @@
++// Opt-in only (?npcwork=1). Draws the workplaces and walks the crew.
++// Save key is inuverse.preview.npcwork.v1. This file does not touch inuverse.save.v1.
++import { TILE } from './world.js';
++import {
++  BAKERY, CHIT_CAP, CLOTH_STOCK, DAILY_ISSUE, FLOUR_STOCK, LUMBER, MECHANIC, ROUTES, SAWMILL, SCRAP, SIGN, TAILOR,
++  SAVE_KEY, TAG, advance, crewView, seek, seedState,
++} from './npcbuildings.js';
++
++export const NPCWORK_QUERY = 'npcwork';
++
++export function npcWorkOn(search = '') {
++  return new URLSearchParams(search).get(NPCWORK_QUERY) === '1';
++}
++
++const ART_SRC = {
++  lumber: 'assets/npcwork/buildings/lumber-yard.png',
++  mechanic: 'assets/npcwork/buildings/mechanic-shop.png',
++  log: 'assets/npcwork/props/log.png',
++  plank: 'assets/npcwork/props/plank.png',
++  cartBroken: 'assets/npcwork/props/cart-broken.png',
++  cartFixed: 'assets/npcwork/props/cart-fixed.png',
++  signShort: 'assets/npcwork/props/sign-short-1-plank.png',
++  signFilled: 'assets/npcwork/props/sign-filled.png',
++  chop: 'assets/npcwork/overlays/chop-axe-down.png',
++  stack: 'assets/npcwork/overlays/stack-log-down.png',
++  wrench: 'assets/npcwork/overlays/repair-wrench-up.png',
++  carryPlank: 'assets/npcwork/overlays/carry-plank.png',
++  carryTool: 'assets/npcwork/overlays/carry-tool.png',
++  carryBolt: 'assets/npcwork/overlays/carry-cloth-bolt.png',
++  carryCoat: 'assets/npcwork/overlays/carry-coat.png',
++  shopInterior: 'assets/npcwork/mechanic/mechanic-shop-interior.png',
++  liftDown: 'assets/npcwork/mechanic/lift-down.png',
++  liftUp: 'assets/npcwork/mechanic/lift-up.png',
++  carBroken: 'assets/npcwork/mechanic/car-broken.png',
++  carFixed: 'assets/npcwork/mechanic/car-fixed.png',
++  carBrokenLift: 'assets/npcwork/mechanic/car-broken-lifted.png',
++  carFixedLift: 'assets/npcwork/mechanic/car-fixed-lifted.png',
++  bonnet: 'assets/npcwork/mechanic/work-bonnet.png',
++  creeper: 'assets/npcwork/mechanic/work-creeper.png',
++  wheel: 'assets/npcwork/mechanic/work-wheel.png',
++  tailorShop: 'assets/npcwork/tailor/tailor-shop.png',
++  rackEmpty: 'assets/npcwork/tailor/rack-empty.png',
++  rackStocked: 'assets/npcwork/tailor/rack-stocked.png',
++  manBare: 'assets/npcwork/tailor/mannequin-bare.png',
++  manDressed: 'assets/npcwork/tailor/mannequin-dressed.png',
++  sew: 'assets/npcwork/tailor/work-sew.png',
++  cut: 'assets/npcwork/tailor/work-cut.png',
++  sawmill: 'assets/npcwork/sawmill/sawmill.png',
++  sawLoop: 'assets/npcwork/sawmill/work-saw.png',
++  logPile: 'assets/npcwork/sawmill/log-pile.png',
++  plankStack: 'assets/npcwork/sawmill/plank-stack.png',
++  bakery: 'assets/npcwork/bakery/bakery.png',
++  knead: 'assets/npcwork/bakery/work-knead.png',
++  ovenDoor: 'assets/npcwork/bakery/oven-door.png',
++  trayEmpty: 'assets/npcwork/bakery/bread-tray-empty.png',
++  trayFull: 'assets/npcwork/bakery/bread-tray-full.png',
++  flourSack: 'assets/npcwork/props/flour-sack.png',
++  scrapYard: 'assets/npcwork/scrapyard/scrap-yard.png',
++  sortLoop: 'assets/npcwork/scrapyard/work-sort.png',
++  pressLoop: 'assets/npcwork/scrapyard/work-press.png',
++  pressIdle: 'assets/npcwork/scrapyard/press-idle.png',
++  brokenHeap: 'assets/npcwork/props/broken-heap.png',
++  partsCrate: 'assets/npcwork/props/parts-crate.png',
++  scrapBale: 'assets/npcwork/props/scrap-bale.png',
++  carryBread: 'assets/npcwork/overlays/carry-bread-loaf.png',
++  carryBroken: 'assets/npcwork/overlays/carry-broken-item.png',
++  carryBale: 'assets/npcwork/overlays/carry-scrap-bale.png',
++};
++const IMG = {};
++let artLoaded = false;
++function loadArt() {
++  if (artLoaded || typeof Image === 'undefined') return Promise.resolve(false);
++  artLoaded = true;
++  return Promise.all(Object.entries(ART_SRC).map(([key, src]) => new Promise((res) => {
++    const im = new Image();
++    im.onload = () => { IMG[key] = im; res(true); };
++    im.onerror = () => res(false);
++    im.src = src;
++  })));
++}
++
++function blit(c, key, x, y, w, h) {
++  const im = IMG[key];
++  if (!im) return false;
++  c.imageSmoothingEnabled = false;
++  c.drawImage(im, Math.round(x), Math.round(y), w, h);
++  return true;
++}
++
++export function drawNpcOverlay(ctx, o) {
++  if (o.draw) { o.draw(ctx); return; }
++  const im = IMG[o.key];
++  if (!im) return;
++  const sc = o.scale || 1;
++  ctx.imageSmoothingEnabled = false;
++  ctx.drawImage(im, (o.frame || 0) * 48, 0, 48, 60, Math.round(-48 * sc), Math.round(-88 * sc), Math.round(96 * sc), Math.round(120 * sc));
++}
++
++const R = (c, x, y, w, h, col) => { c.fillStyle = col; c.fillRect(Math.round(x), Math.round(y), w, h); };
++
++const LOG_SLOTS = [[1660, 3160], [1678, 3160], [1696, 3160], [1668, 3150]];
++
++function label(c, text, x, y) {
++  c.font = '8px Silkscreen, monospace';
++  c.textAlign = 'center';
++  c.textBaseline = 'middle';
++  const w = Math.ceil(c.measureText(text).width) + 8;
++  R(c, x - w / 2, y - 6, w, 12, '#121a36');
++  c.fillStyle = '#f6e7b8';
++  c.fillText(text, x, y);
++}
++
++function blitFrame(c, key, frame, x, y, dw, dh, fw, fh) {
++  const im = IMG[key];
++  if (!im) return;
++  c.imageSmoothingEnabled = false;
++  c.drawImage(im, frame * fw, 0, fw, fh, x, y, dw, dh);
++}
++
++function drawBay(c, state) {
++  blit(c, 'shopInterior', 896, 64, 160, 128);
++  if (state.car === 'leaving' || state.car === 'out') return;
++  const x = 908;
++  const y = 114;
++  const lifted = state.bay === 'lift' || state.bay === 'bonnet' || state.bay === 'creeper' || state.bay === 'wheel';
++  blit(c, lifted ? 'liftUp' : 'liftDown', x, y, 104, 72);
++  if (state.bay === 'creeper') blitFrame(c, 'creeper', state.bayFrame, x, y, 104, 72, 52, 36);
++  const fixed = state.bay === 'fixed' || state.bay === 'down';
++  const car = lifted ? (fixed ? 'carFixedLift' : 'carBrokenLift') : (fixed ? 'carFixed' : 'carBroken');
++  blit(c, car, x, y, 104, 72);
++  if (state.bay === 'bonnet') blitFrame(c, 'bonnet', state.bayFrame, x, y, 104, 72, 52, 36);
++  if (state.bay === 'wheel') blitFrame(c, 'wheel', state.bayFrame, x, y, 104, 72, 52, 36);
++}
++
++function drawTailorShop(c, state) {
++  const x = TAILOR.x * TILE;
++  const y = TAILOR.y * TILE;
++  blit(c, 'tailorShop', x, y, 160, 128);
++  const wx = x + 12;
++  const wy = y + 46;
++  blit(c, state.rack ? 'rackStocked' : 'rackEmpty', wx, wy, 100, 56);
++  blit(c, state.mannequin === 'dressed' ? 'manDressed' : 'manBare', wx, wy, 100, 56);
++  if (state.leg === 'sew') blitFrame(c, 'sew', state.needle, wx, wy, 100, 56, 50, 28);
++  if (state.leg === 'cut') blitFrame(c, 'cut', state.needle, wx, wy, 100, 56, 50, 28);
++}
++
++function fillFrame(n, steps) {
++  let i = 0;
++  for (let k = 0; k < steps.length; k++) if (n >= steps[k]) i = k;
++  return i;
++}
++
++function drawSawmill(c, state) {
++  const x = SAWMILL.x * TILE;
++  const y = SAWMILL.y * TILE;
++  blit(c, 'sawmill', x, y, 160, 128);
++  blitFrame(c, 'logPile', fillFrame(state.millLogs, [0, 1, 3, 6]), x + 112, y + 94, 36, 26, 18, 13);
++  blitFrame(c, 'plankStack', fillFrame(state.planks, [0, 1, 3, 5]), x + 12, y + 100, 36, 20, 18, 10);
++  if (state.beat === 'sawing') blitFrame(c, 'sawLoop', state.sawFrame, x + 12, y + 48, 136, 72, 68, 36);
++  label(c, `MILL ${state.millLogs}`, x + 80, y - 8);
++}
++
++function drawBakery(c, state) {
++  const x = BAKERY.x * TILE;
++  const y = BAKERY.y * TILE;
++  blit(c, 'bakery', x, y, 160, 128);
++  for (let i = 0; i < state.flour; i++) blit(c, 'flourSack', x - 28, y + 36 + i * 26, 20, 24);
++  blit(c, state.bread >= 1 ? 'trayFull' : 'trayEmpty', x + 12, y + 46, 100, 56);
++  blitFrame(c, 'ovenDoor', state.oven === 'bake' ? 1 : 0, x + 12, y + 46, 100, 56, 50, 28);
++  if (state.beat === 'baking' && state.leg === 'oven' && state.oven === 'knead') blitFrame(c, 'knead', state.ovenFrame, x + 12, y + 46, 100, 56, 50, 28);
++  label(c, `FLOUR ${state.flour}`, x + 40, y - 8);
++}
++
++function drawScrap(c, state) {
++  const x = SCRAP.x * TILE;
++  const y = SCRAP.y * TILE;
++  const pressing = state.beat === 'pressing' && state.press === 'press';
++  const sorting = state.beat === 'pressing' && state.press === 'sort';
++  blit(c, 'scrapYard', x, y, 192, 128);
++  blitFrame(c, 'brokenHeap', fillFrame(state.yardTool + state.yardLeft, [0, 1, 2, 3]), x + 12, y + 44, 44, 28, 22, 14);
++  if (state.press === 'press' || state.pressed || state.scrap || state.scrapUsed || state.cargo === 'scrap') blit(c, 'partsCrate', x + 64, y + 56, 28, 22);
++  if (state.scrap > 0) blit(c, 'scrapBale', x + 154, y + 32, 28, 20);
++  if (pressing) blitFrame(c, 'pressLoop', state.pressFrame, x + 8, y + 24, 176, 92, 88, 46);
++  else blit(c, 'pressIdle', x + 8, y + 24, 176, 92);
++  if (sorting) blitFrame(c, 'sortLoop', state.pressFrame, x + 8, y + 24, 176, 92, 88, 46);
++  label(c, `HEAP ${state.yardTool + state.yardLeft}`, x + 48, y - 8);
++}
++
++function porterOverlay(state, face) {
++  const behind = face === 'up';
++  if (state.cargo === 'plank') return { key: 'carryPlank', frame: 0, behind };
++  if (state.cargo === 'bolt') return { key: 'carryBolt', frame: 0, behind };
++  if (state.cargo === 'coat') return { key: 'carryCoat', frame: 0, behind };
++  if (state.cargo === 'tool') return { key: 'carryTool', frame: 0, behind };
++  if (state.cargo === 'parts') return { key: 'carryBroken', frame: 0, behind, scale: 1.3 };
++  if (state.cargo === 'scrap') return { key: 'carryBale', frame: 0, behind, scale: 1.3 };
++  if (state.cargo === 'bread') return { key: 'carryBread', frame: 0, behind, scale: 1.3 };
++  if (state.cargo === 'log') return { draw: (ctx) => { const im = IMG.log; if (!im) return; ctx.imageSmoothingEnabled = false; ctx.drawImage(im, -40, -82, 72, 40); }, behind };
++  return null;
++}
++
++export function detailText(s, crew) {
++  return [
++    'TEST',
++    'Local preview. Not Bones. Not $KIBBLE. Not a live rule.',
++    `Dawn can issue up to ${DAILY_ISSUE} test chits while the total stays under ${CHIT_CAP}. That rate is unbalanced and local only.`,
++    `Day ${s.day} · ${s.beat} · test chits ${s.chits}/${CHIT_CAP} · last dawn ${s.lastIssue}`,
++    `Timber ${crew.timber.place} · logs ${s.logs} · mill ${s.millLogs} · planks cut ${s.sawed}`,
++    `Saw ${crew.saw.place} · Wrench ${crew.wrench.place} · cart ${s.cart} · bay ${s.bay}`,
++    `Porter ${crew.porter.place} · cargo ${s.cargo || 'none'} · sign ${s.shortage} · shop ${s.shopPlanks}`,
++    `Bolt ${crew.bolt.place} · scrap used ${s.scrapUsed} · Stitch ${crew.stitch.place} · rack ${s.rack}`,
++    `Crumb ${crew.crumb.place} · flour ${s.flour}/${FLOUR_STOCK} · bread eaten ${s.eaten} · cloth ${s.clothStock}/${CLOTH_STOCK}`,
++  ].join('\n');
++}
++
++export function createNpcWork(doc = document, storage = globalThis.localStorage) {
++  const search = doc?.defaultView?.location?.search || '';
++  if (!npcWorkOn(search)) return null;
++  let state = seedState();
++  let held = false;
++  let acc = 0;
++  const pop = doc?.createElement ? doc.createElement('div') : null;
++  const chip = doc?.createElement ? doc.createElement('button') : null;
++  if (chip) {
++    chip.id = 'npcwork-chip';
++    chip.type = 'button';
++    chip.className = 'btn alt';
++    chip.textContent = 'TEST';
++    chip.setAttribute?.('aria-expanded', 'false');
++  }
++  if (pop) {
++    pop.id = 'npcwork-pop';
++    pop.hidden = true;
++  }
++  const hud = doc.getElementById?.('hud');
++  if (chip && hud) hud.appendChild(chip);
++  else if (chip && doc.body) doc.body.appendChild(chip);
++  if (pop && doc.body) doc.body.appendChild(pop);
++  if (doc.body?.classList) doc.body.classList.add('npcwork');
++  const grove = doc.getElementById?.('grove-strip');
++  if (grove) grove.hidden = true;
++  const paint = () => {
++    if (!pop) return;
++    pop.textContent = detailText(state, crewView(state));
++  };
++  const persist = () => {
++    if (!storage?.setItem) return;
++    storage.setItem(SAVE_KEY, JSON.stringify({ v: 1, tag: TAG, state }));
++  };
++  if (chip) chip.addEventListener?.('click', () => {
++    if (!pop) return;
++    pop.hidden = !pop.hidden;
++    chip.setAttribute?.('aria-expanded', String(!pop.hidden));
++    paint();
++  });
++  const ready = loadArt();
++  paint();
++  persist();
++  return {
++    artReady: ready.then(() => true),
++    saveKey: SAVE_KEY,
++    hold(v) { held = !!v; },
++    reset() {
++      state = seedState();
++      if (storage?.removeItem) storage.removeItem(SAVE_KEY);
++      persist();
++      paint();
++      return this.summary();
++    },
++    seek(label) {
++      state = seek(label);
++      persist();
++      paint();
++      return this.summary();
++    },
++    frame(patch) {
++      Object.assign(state, patch);
++      paint();
++      return this.summary();
++    },
++    pose(n) { state.phase = n; return state.phase; },
++    advance() {
++      advance(state);
++      persist();
++      paint();
++      return this.summary();
++    },
++    step(dt) {
++      if (held) { paint(); return state; }
++      acc += Math.max(0, dt) * 1000;
++      if (acc >= 140) {
++        acc = 0;
++        advance(state);
++        persist();
++      }
++      paint();
++      return state;
++    },
++    summary() {
++      const crew = crewView(state);
++      return { ...state, crew, visible: 'TEST' };
++    },
++    frameNote() {
++      paint();
++      const crew = crewView(state);
++      const spot = (id) => ({ place: crew[id].place, moving: crew[id].moving, x: crew[id].x, y: crew[id].y, face: crew[id].face });
++      return {
++        visible: chip?.textContent || 'TEST',
++        detail: pop?.textContent || detailText(state, crew),
++        summary: {
++          day: state.day, beat: state.beat, leg: state.leg, chits: state.chits, lastIssue: state.lastIssue, issuedDawn: state.issuedDawn,
++          logs: state.logs, millLogs: state.millLogs, planks: state.planks, sawed: state.sawed, shopPlanks: state.shopPlanks, plankUsed: state.plankUsed,
++          cart: state.cart, car: state.car, bay: state.bay, cargo: state.cargo, shortage: state.shortage,
++          flour: state.flour, dough: state.dough, bread: state.bread, eaten: state.eaten, meal: state.meal,
++          clothStock: state.clothStock, rack: state.rack, mannequin: state.mannequin, scrap: state.scrap, scrapUsed: state.scrapUsed, pressed: state.pressed,
++          timber: spot('timber'), wrench: spot('wrench'), porter: spot('porter'), saw: spot('saw'), stitch: spot('stitch'), crumb: spot('crumb'), bolt: spot('bolt'),
++        },
++      };
++    },
++    actors() {
++      return Object.values(crewView(state)).filter((a) => {
++        const bayLoop = state.bay === 'bonnet' || state.bay === 'creeper' || state.bay === 'wheel';
++        if (a.id === 'wrench' && state.beat === 'bay' && bayLoop) return false;
++        if (a.id === 'stitch' && (state.leg === 'sew' || state.leg === 'cut')) return false;
++        if (a.id === 'saw' && state.beat === 'sawing') return false;
++        if (a.id === 'crumb' && state.beat === 'baking' && state.leg === 'oven' && state.oven === 'knead') return false;
++        if (a.id === 'bolt' && state.beat === 'pressing') return false;
++        return true;
++      }).map((a) => {
++        let npcOverlay = null;
++        if (a.id === 'timber' && a.working) npcOverlay = { key: state.act === 'stack' ? 'stack' : 'chop', frame: state.axe, behind: false };
++        else if (a.id === 'porter') npcOverlay = porterOverlay(state, a.face);
++        return {
++          x: a.x, y: a.y, coat: a.coat, outfit: {}, face: a.face, phase: state.phase, moving: a.moving,
++          name: a.name, art: null, npcwork: true, npcOverlay,
++          worker: { tool: '', face: a.face, phase: state.phase, work: 0 },
++        };
++      });
++    },
++    props() {
++      const list = [
++        { y: 3200, d: (c) => blit(c, 'lumber', 1600, 3072, 192, 128) },
++        { y: 192, d: (c) => drawBay(c, state) },
++        { y: (SAWMILL.y + SAWMILL.h) * TILE, d: (c) => drawSawmill(c, state) },
++        { y: (BAKERY.y + BAKERY.h) * TILE, d: (c) => drawBakery(c, state) },
++        { y: (SCRAP.y + SCRAP.h) * TILE, d: (c) => drawScrap(c, state) },
++        { y: 3202, d: (c) => {
++          for (let i = 0; i < state.logs && i < LOG_SLOTS.length; i++) blit(c, 'log', LOG_SLOTS[i][0], LOG_SLOTS[i][1], 18, 10);
++          label(c, `LOGS ${state.logs}`, 1712, 3144);
++        } },
++        { y: 195, d: (c) => {
++          if (state.shopPlanks >= 1) blit(c, 'plank', 1000, 176, 51, 12);
++          blit(c, state.shortage === 'FILLED' ? 'signFilled' : 'signShort', 1010, 155, 40, 18);
++          label(c, `SHOP ${state.shopPlanks}`, 1030, 190);
++        } },
++        { y: (TAILOR.y + TAILOR.h) * TILE, d: (c) => drawTailorShop(c, state) },
++        ...(state.car === 'leaving' || state.car === 'out' ? [{
++          y: ROUTES.carExit[Math.min(state.carI, ROUTES.carExit.length - 1)][1] * TILE + 16,
++          d: (c) => {
++            const tile = ROUTES.carExit[Math.min(state.carI, ROUTES.carExit.length - 1)];
++            const x = tile[0] * TILE + 16;
++            const y = tile[1] * TILE + 16;
++            R(c, x - 18, y - 16, 36, 14, '#2f6fbd');
++            R(c, x - 8, y - 22, 18, 8, '#9cc3c2');
++            R(c, x - 14, y - 4, 7, 7, '#141a2e');
++            R(c, x + 8, y - 4, 7, 7, '#141a2e');
++          },
++        }] : []),
++      ];
++      return list;
++    },
++  };
++}
+diff --git a/src/workers.js b/src/workers.js
+index 7e2649c..94a6d81 100644
+--- a/src/workers.js
++++ b/src/workers.js
+@@ -41,7 +41,29 @@ export function drawTool(c, w) { const s = w.face === 'left' ? -1 : 1, a = Math.
+     case 'shears': R(c, X(18), -30, 4, 10, '#c9cede'); R(c, X(18) + a * 4, -36, 3, 8, '#c9cede'); R(c, X(18) - 2, -22, 8, 4, '#c8323c'); break;
+     case 'ladder': if (w.work > 0 || w.billboard) { for (let i = 0; i < 7; i++) R(c, X(10) - 8, -12 - i * 12, 18, 2, '#c9cede'); R(c, X(10) - 8, -88, 2, 88, '#9aa0b4'); R(c, X(10) + 8, -88, 2, 88, '#9aa0b4'); } R(c, X(18), -34 + a * 6, 10, 4, '#2f6fbd'); R(c, X(18) + 4, -30 + a * 6, 2, 8, '#141a2e'); break;
+     case 'cone': R(c, X(18) - 5, -6, 10, 4, '#141a2e'); R(c, X(18) - 4, -20, 8, 14, '#ff6a1e'); R(c, X(18) - 3, -16, 6, 3, '#f4f2ea'); break;
+-    case 'wrench': R(c, X(18), -34 + a * 3, 3, 14, '#9aa0b4'); R(c, X(18) - 2, -36 + a * 3, 7, 4, '#9aa0b4'); break;
++    case 'wrench': {
++      if (Number.isInteger(w.frame)) {
++        const f = ((w.frame % 4) + 4) % 4;
++        const dy = [-28, -8, 14, 28][f];
++        const dx = [8, 18, 30, 18][f];
++        R(c, X(dx), -28 + dy, 3, 16, '#9aa0b4');
++        R(c, X(dx) - 4, -32 + dy, 11, 5, '#d5dae2');
++        R(c, X(dx) - 4, -32 + dy, 11, 2, '#f4f6f8');
++        break;
++      }
++      R(c, X(18), -34 + a * 3, 3, 14, '#9aa0b4'); R(c, X(18) - 2, -36 + a * 3, 7, 4, '#9aa0b4'); break;
++    }
++    case 'axe': {
++      const f = Number.isInteger(w.frame) ? ((w.frame % 4) + 4) % 4 : (a > 0.4 ? 0 : a > 0 ? 1 : a > -0.4 ? 2 : 3);
++      const head = [-48, -16, 18, 42][f];
++      R(c, X(12), -34 + head, 4, 28, '#9a6a3c');
++      R(c, X(12), -30 + head, 1, 28, '#c48a48');
++      R(c, X(2), -46 + head, 22, 10, '#c9cede');
++      R(c, X(2), -46 + head, 22, 3, '#f4f2ea');
++      R(c, X(2), -38 + head, 22, 2, '#8a909c');
++      if (f === 2) { R(c, X(20), -4, 10, 3, '#e2b070'); R(c, X(24), 0, 6, 2, '#a87440'); }
++      break;
++    }
+     case 'roller': R(c, X(18), -40 + a * 6, 2, 22, '#9a6a3c'); R(c, X(18) - 5, -46 + a * 6, 12, 6, '#f4f2ea'); R(c, X(18) - 5, -42 + a * 6, 12, 2, '#7ab0e0'); break;
+     case 'bin': R(c, X(-26) - 8, -24, 16, 24, '#141a2e'); R(c, X(-26) - 7, -23, 14, 22, '#3f9450'); R(c, X(-26) - 8, -26, 16, 3, '#2a6a38'); R(c, X(-26) - 6, -2, 4, 4, '#22232c'); break;
+     case 'net': R(c, X(16), -48 + a * 4, 2, 40, '#9a6a3c'); R(c, X(16) - 6, -56 + a * 4, 14, 10, 'rgba(230,240,255,.7)'); R(c, X(16) - 6, -56 + a * 4, 14, 1, '#141a2e'); break;
+diff --git a/src/world.js b/src/world.js
+index 7dc78eb..fc64690 100644
+--- a/src/world.js
++++ b/src/world.js
+@@ -1,4 +1,6 @@
+-export const TILE = 32, MAP_W = 64, MAP_H = 106;
++// The live town is 64×106. The preview grows south only, so every old (x, y) stays put.
++export const TILE = 32, TOWN_W = 64, TOWN_H = 106;
++export const MAP_W = TOWN_W, MAP_H = TOWN_H + 16;
+ export const T = { GRASS: 0, ROAD: 1, WALK: 2, BUILDING: 3, WATER: 4, TREE: 5, PLOT: 6, FLOWER: 7, PLAZA: 8, HOME: 9, DIRT: 10 };
+ const SOLID = new Set([T.BUILDING, T.WATER, T.TREE, T.PLOT, T.HOME]);
+ 
+@@ -82,8 +84,8 @@ import { SIM_SOLIDS, SIM_SPOTS } from './sim/place.js'; import { shardSpot } fro
+ export function buildMap() {
+   const g = Array.from({ length: MAP_H }, () => new Array(MAP_W).fill(T.GRASS));
+   const fill = (x0, y0, w, h, t) => { for (let y = y0; y < y0 + h; y++) for (let x = x0; x < x0 + w; x++) if (g[y] && g[y][x] !== undefined) g[y][x] = t; };
+-  // decorative flowers (deterministic)
+-  for (let y = 0; y < MAP_H; y++) for (let x = 0; x < MAP_W; x++) if (((x * 73856093) ^ (y * 19349663)) % 23 === 0) g[y][x] = T.FLOWER;
++  // decorative flowers (deterministic). Only the original town; the south extension is sealed until the work quarter is painted.
++  for (let y = 0; y < TOWN_H; y++) for (let x = 0; x < TOWN_W; x++) if (((x * 73856093) ^ (y * 19349663)) % 23 === 0) g[y][x] = T.FLOWER;
+   // streets: 3-tile (96px) roads = two 1.5-tile lanes, sidewalks either side
+   for (const r of ROADS) { fill(1, r - 1, MAP_W - 2, 1, T.WALK); fill(1, r, MAP_W - 2, 3, T.ROAD); fill(1, r + 3, MAP_W - 2, 1, T.WALK); }
+   fill(AVENUE - 1, 6, 1, 40, T.WALK); fill(AVENUE, 6, 3, 39, T.ROAD); fill(AVENUE + 3, 6, 1, 40, T.WALK);
+@@ -112,8 +114,9 @@ export function buildMap() {
+   for (const r of SIM_SOLIDS) fill(r.x, r.y, r.w, r.h, T.BUILDING); // sim layer: Bureau desk + banner pole, precinct kiosk, ranger station (solid)
+   for (const b of [BARN, MARKET, CRAFT]) fill(b.x, b.y, b.w, b.h, T.BUILDING);
+   for (const l of BIZ_LOTS) { fill(l.x, l.y, l.w, l.h, T.BUILDING); if (!l.prime) fill(l.x - 1, l.y + l.h, l.w + 2, 1, T.WALK); }
+-  // trees: border + some park trees
+-  for (let y = 0; y < MAP_H; y++) for (let x = 0; x < MAP_W; x++) if (x === 0 || y === 0 || x === MAP_W - 1 || y === MAP_H - 1) g[y][x] = T.TREE;
++  // trees: the original border stays on y = TOWN_H - 1 so no existing coordinate moves. Rows below it stay water until the quarter is opened.
++  for (let y = 0; y < TOWN_H; y++) for (let x = 0; x < MAP_W; x++) if (x === 0 || y === 0 || x === MAP_W - 1 || y === TOWN_H - 1) g[y][x] = T.TREE;
++  for (let y = TOWN_H; y < MAP_H; y++) for (let x = 0; x < MAP_W; x++) g[y][x] = T.WATER;
+   for (const [x, y] of [[2, 2], [16, 3], [19, 5], [22, 2], [25, 7], [3, 9], [27, 3], [15, 9], [61, 14], [60, 24], [34, 38], [57, 36], [58, 39], [35, 35]])
+     if (g[y][x] === T.GRASS || g[y][x] === T.FLOWER) g[y][x] = T.TREE;
+   return g;
+@@ -228,7 +231,7 @@ export function moveBody(b, dx, dy, r = 6) {
+ export const NETWORK = new Set([T.ROAD, T.WALK, T.PLAZA, T.DIRT]);
+ export const DIRT_LINKS = [];
+ { const hz = (x, y) => { let h = (x * 374761393 + y * 668265263) ^ 0x2f1e; h = Math.imul(h ^ (h >>> 13), 1274126177); return ((h ^ (h >>> 16)) >>> 0) / 4294967296; };
+-  const open = (x, y) => x > 0 && y > 0 && x < MAP_W - 1 && y < MAP_H - 1 && !DECOR_SET.has(y * MAP_W + x) && (MAP[y][x] === T.GRASS || MAP[y][x] === T.FLOWER || MAP[y][x] === T.TREE || NETWORK.has(MAP[y][x]));
++  const open = (x, y) => x > 0 && y > 0 && x < TOWN_W - 1 && y < TOWN_H - 1 && !DECOR_SET.has(y * MAP_W + x) && (MAP[y][x] === T.GRASS || MAP[y][x] === T.FLOWER || MAP[y][x] === T.TREE || NETWORK.has(MAP[y][x]));
+   for (const it of interactables(null)) { const { tx, ty } = it; if (!open(tx, ty) || NETWORK.has(MAP[ty][tx])) continue;
+     const dist = new Map([[ty * MAP_W + tx, 0]]), prev = new Map(), q = [[0, tx, ty]]; let end = null;
+     while (q.length) { let bi = 0; for (let i = 1; i < q.length; i++) if (q[i][0] < q[bi][0]) bi = i; const [d, x, y] = q.splice(bi, 1)[0], k = y * MAP_W + x;
+diff --git a/style.css b/style.css
+index 811f133..1226b70 100644
+--- a/style.css
++++ b/style.css
+@@ -961,6 +961,10 @@ body.inworld #grove-strip{order:4}
+ #play-body{display:flex;flex-direction:column;gap:8px}
+ #play-body .chip,#play-body #btn-sound,#play-body #feed-tick{position:static!important;display:flex!important;min-height:44px;height:auto;font-size:14px!important;max-width:100%!important;white-space:normal!important;top:auto!important;left:auto!important;right:auto!important}
+ body.inworld #grove-strip{position:static!important;display:flex!important;align-items:center;gap:8px;top:auto!important;bottom:auto!important;left:auto!important;right:auto!important;width:auto!important;max-width:100%!important;flex:1 1 280px;pointer-events:auto;font-size:13px;line-height:1.35;padding:4px 8px;margin:0}
++body.npcwork #grove-strip{display:none!important}
++body.inworld #npcwork-chip{order:4;display:inline-flex!important;align-items:center;justify-content:center;box-sizing:border-box;min-width:44px;min-height:44px;height:44px;padding:0 12px;font:13px/44px Silkscreen,monospace}
++#npcwork-pop{position:fixed;z-index:36;top:calc(var(--iv-hud-extent, 64px) + 8px);left:max(8px,env(safe-area-inset-left));width:min(300px,calc(100vw - 16px));max-height:46dvh;overflow:auto;white-space:pre-wrap;background:#fff6e4;color:#3f2715;border:4px solid #d4a640;box-shadow:0 0 0 3px #0c1022;padding:10px;font:13px/1.4 Silkscreen,monospace}
++#npcwork-pop[hidden]{display:none!important}
+ #grove-note{margin:0;flex:1}
+ body.inworld #notice-tray{position:static!important;top:auto!important;right:auto!important;left:auto!important;width:auto!important;max-width:none!important;z-index:auto}
+ body.inworld #notice-toggle{box-sizing:border-box;width:auto;min-width:44px;height:44px;min-height:44px;padding:0 12px;font-size:13px;white-space:nowrap}
+diff --git a/tests/grove-browser.test.mjs b/tests/grove-browser.test.mjs
+index 7286533..d1da6c3 100644
+--- a/tests/grove-browser.test.mjs
++++ b/tests/grove-browser.test.mjs
+@@ -792,6 +792,8 @@ test('chromium: one porch batch is walked, and stock, funds, and a finished porc
+       const s = rec.state;
+       s.budget = 0; s.you = 8; s.hold = 0; s.npcHold = 0; s.stoolHold = 0; s.salvageHold = 0; s.sprigWallet = 0;
+       s.holes = 2; s.logs = 4; s.boards = 0; s.job = null; s.gateJob = null; s.stoolJob = null; s.salvageJob = null;
++      s.regenMs = 0; s.sprig = 0; s.sprigLeg = 0;
++      if (s.play) { s.play.lastNow = null; s.play.x = null; s.play.y = null; }
+       if (s.salvage) {
+         s.salvage.done = true;
+         for (const item of s.salvage.items) {
+@@ -841,6 +843,8 @@ test('chromium: one porch batch is walked, and stock, funds, and a finished porc
+       const s = rec.state;
+       s.budget = 8; s.you = 0; s.hold = 0; s.npcHold = 0; s.stoolHold = 0; s.salvageHold = 0; s.sprigWallet = 0;
+       s.holes = 2; s.logs = 0; s.boards = 0; s.job = null; s.gateJob = null; s.stoolJob = null; s.salvageJob = null;
++      s.regenMs = 0; s.sprig = 0; s.sprigLeg = 0;
++      if (s.play) { s.play.lastNow = null; s.play.x = null; s.play.y = null; }
+       if (s.salvage) {
+         s.salvage.done = false;
+         for (const item of s.salvage.items) {
+diff --git a/tests/npcbuildings.test.mjs b/tests/npcbuildings.test.mjs
+new file mode 100644
+index 0000000..d34ae16
+--- /dev/null
++++ b/tests/npcbuildings.test.mjs
+@@ -0,0 +1,256 @@
++// Workplace preview: paths stay on path tiles, each chain conserves stock, old saves do not move.
++import test from 'node:test';
++import assert from 'node:assert/strict';
++import { createHash } from 'node:crypto';
++import { MAP, PLOTS, TOWN_H, TOWN_W, isSolid } from '../src/world.js';
++import { newGame } from '../src/game.js';
++import { save, load, MemoryStorage } from '../src/save.js';
++import {
++  BAKERY, CHOP_CAP, CLOTH, CLOTH_STOCK, DAILY_ISSUE, FLOUR_STOCK, JOIN_WAS, LUMBER, MECHANIC, ROUTES, SAWMILL, SCRAP, SIGN, TAILOR, WORK_JOIN,
++  advance, bakeOne, clothHeld, conserved, crewView, flourHeld, goodsHeld, leftHeld, logLedger, lotProof, onPath, partsHeld, plankTotal, sawOne, scrapHeld, seek, seedState,
++} from '../src/npcbuildings.js';
++
++const TOWN_HASH = '160103ee7669ccba0c95572ac9d543d889f037653d361b61996ad8c9b32d2296';
++
++test('lumber and mechanic stay on empty grass; the new trades sit on the south quarter', () => {
++  const proof = lotProof();
++  assert.equal(proof.length, 6);
++  for (const lot of proof) {
++    assert.deepEqual(lot.claimPlots, []);
++    assert.equal(lot.doorOnPath, true, lot.id);
++    assert.equal(PLOTS.some((p) => p.x === lot.x && p.y === lot.y), false);
++  }
++  const legacy = proof.filter((lot) => !lot.expansion);
++  const added = proof.filter((lot) => lot.expansion);
++  assert.deepEqual(legacy.map((lot) => lot.id), ['lumber', 'mechanic']);
++  for (const lot of legacy) assert.equal(lot.allEmptyGrass, true, lot.id);
++  assert.deepEqual(added.map((lot) => lot.id), ['sawmill', 'tailor', 'bakery', 'scrap']);
++  for (const lot of added) {
++    assert.equal(lot.onNewGround, true, lot.id);
++    assert.ok(lot.tiles.every((t) => t.tile === 3), lot.id);
++  }
++  assert.deepEqual(LUMBER.door, [50, 95]);
++  assert.deepEqual(MECHANIC.door, [30, 6]);
++  assert.equal(SAWMILL.w, 5);
++  assert.equal(BAKERY.w, 5);
++  assert.equal(SCRAP.w, 6);
++  assert.deepEqual([...SAWMILL.door], [SAWMILL.x + 2, SAWMILL.y + 4]);
++  assert.deepEqual([...BAKERY.door], [BAKERY.x + 4, BAKERY.y + 4]);
++  assert.deepEqual([...SCRAP.door], [SCRAP.x + 3, SCRAP.y + 4]);
++  assert.deepEqual([...TAILOR.door], [TAILOR.x + 4, TAILOR.y + 4]);
++  assert.equal(MECHANIC.w, 5);
++  assert.deepEqual(SIGN, [33, 6]);
++  assert.equal(onPath(SIGN[0], SIGN[1]), true);
++  assert.equal(onPath(CLOTH[0], CLOTH[1]), true);
++});
++
++test('the south quarter joins the farm walk without shifting any other town tile', () => {
++  assert.deepEqual(WORK_JOIN, [[52, 104], [52, 105]]);
++  assert.equal(MAP[104][52], 2);
++  assert.equal(MAP[105][52], 2);
++  const hash = createHash('sha256');
++  for (let y = 0; y < TOWN_H; y++) {
++    const row = MAP[y].slice();
++    for (const [x, yy] of WORK_JOIN) if (yy === y) row[x] = JOIN_WAS[`${x},${yy}`];
++    hash.update(row.join(','));
++  }
++  assert.equal(hash.digest('hex'), TOWN_HASH);
++  assert.equal(TOWN_W, 64);
++  assert.equal(TOWN_H, 106);
++  assert.ok(SAWMILL.y >= TOWN_H && TAILOR.y >= TOWN_H && BAKERY.y >= TOWN_H && SCRAP.y >= TOWN_H);
++});
++
++test('an old save reloads the player on the same tile', () => {
++  const st = new MemoryStorage();
++  const game = newGame({ name: 'Kabo', coat: 'tan' });
++  const x = game.player.x;
++  const y = game.player.y;
++  save(game, st);
++  const loaded = load(st);
++  assert.equal(loaded.player.x, x);
++  assert.equal(loaded.player.y, y);
++  const tx = Math.floor(x / 32);
++  const ty = Math.floor(y / 32);
++  assert.ok(tx > 0 && ty > 0 && tx < TOWN_W && ty < TOWN_H);
++  assert.equal(WORK_JOIN.some(([jx, jy]) => jx === tx && jy === ty), false);
++  assert.equal(isSolid(tx, ty), false);
++  assert.equal(MAP[ty][tx], MAP[ty][tx]);
++  const again = load(st);
++  assert.equal(again.player.x, x);
++  assert.equal(again.player.y, y);
++});
++
++test('every commute tile is a path tile', () => {
++  for (const [name, route] of Object.entries(ROUTES)) {
++    assert.ok(route.length >= 3, name);
++    for (const [x, y] of route) assert.equal(onPath(x, y), true, `${name} ${x},${y} tile ${MAP[y][x]} solid ${isSolid(x, y)}`);
++  }
++  assert.ok(ROUTES.sawToSign.length > 16);
++  assert.ok(ROUTES.timber.length > 16);
++  assert.ok(ROUTES.signToScrap.length > 16);
++});
++
++test('nothing is produced while the crew is still walking', () => {
++  const s = seek('walking');
++  const crew = crewView(s);
++  assert.equal(s.logs, 0);
++  assert.equal(s.planks, 0);
++  assert.equal(s.cart, 'broken');
++  assert.equal(s.cargo, null);
++  assert.equal(crew.timber.moving, true);
++  assert.equal(crew.timber.place, 'path');
++  assert.equal(crew.wrench.moving, true);
++  assert.equal(crew.porter.moving, true);
++  assert.equal(s.chits, DAILY_ISSUE);
++  assert.equal(conserved(s), true);
++});
++
++test('timber chops at the yard, then the saw turns one delivered log into one plank', () => {
++  const home = seek('home');
++  assert.equal(home.beat, 'home');
++  assert.equal(crewView(home).timber.place, 'home');
++  assert.equal(home.chits, 0);
++  const yard = seek('working-lumber');
++  const y = crewView(yard);
++  assert.equal(y.timber.place, 'lumber');
++  assert.equal(y.timber.moving, false);
++  assert.equal(y.timber.face, 'up');
++  assert.equal(y.timber.tx, LUMBER.door[0]);
++  assert.equal(y.timber.working, true);
++  assert.equal(yard.logs, CHOP_CAP);
++  assert.equal(yard.sawed, 0);
++  const mill = seek('working-saw');
++  assert.equal(mill.millLogs, 1);
++  assert.equal(mill.logs, 3);
++  assert.equal(crewView(mill).saw.place, 'sawmill');
++  assert.equal(crewView(mill).saw.working, true);
++  const shop = seek('working-mechanic');
++  assert.equal(shop.plankUsed, 1);
++  assert.equal(shop.shortage, 'FILLED');
++  assert.equal(shop.bay, 'bonnet');
++  assert.equal(shop.logs, 3);
++  assert.equal(logLedger(shop).sum, CHOP_CAP);
++  assert.equal(conserved(yard) && conserved(mill) && conserved(shop), true);
++});
++
++test('the porter stands at the mechanic sign with the single plank, and a second pass does not mint another', () => {
++  const mid = seek('delivery');
++  const p = crewView(mid);
++  assert.equal(mid.cargo, 'plank');
++  assert.equal(mid.shopPlanks, 0);
++  assert.equal(plankTotal(mid), 1);
++  assert.equal(p.porter.tx, SIGN[0]);
++  assert.equal(p.porter.ty, SIGN[1]);
++  assert.equal(p.porter.place, 'sign');
++  assert.equal(p.porter.face, 'down');
++  assert.notEqual(p.porter.ty, 55);
++  assert.equal(mid.shortage, 'SHORT 1 PLANK');
++  const done = seek('nextdawn');
++  const home = crewView(done);
++  assert.equal(done.day, 2);
++  assert.equal(done.plankUsed, 1);
++  assert.equal(done.shopPlanks, 0);
++  assert.equal(done.sawed, 1);
++  assert.equal(done.logs, 3);
++  assert.equal(done.millLogs, 0);
++  assert.equal(done.cut, 4);
++  assert.equal(logLedger(done).sum, 4);
++  assert.equal(done.cart, 'fixed');
++  assert.equal(done.car, 'out');
++  assert.equal(done.shortage, 'FILLED');
++  assert.equal(done.scrapUsed, 1);
++  assert.equal(done.pressed, 1);
++  assert.equal(partsHeld(done), 1);
++  assert.equal(leftHeld(done), 1);
++  assert.equal(scrapHeld(done), 1);
++  assert.equal(home.timber.place, 'home');
++  assert.equal(home.wrench.place, 'home');
++  assert.equal(home.porter.place, 'home');
++  assert.equal(done.chits, DAILY_ISSUE * 2);
++  assert.equal(conserved(done), true);
++  const again = advance(done);
++  assert.equal(again.sawed, 1);
++  assert.equal(again.scrapUsed, 1);
++  assert.equal(again.chits, DAILY_ISSUE * 2);
++  assert.equal(again.cut, 4);
++});
++
++test('leftover logs and flour are finite and a second conversion does not mint', () => {
++  const done = seek('nextdawn');
++  assert.equal(done.logs, 3);
++  assert.equal(done.flour, 1);
++  assert.equal(done.eaten, 1);
++  assert.equal(done.meal, 1);
++  let sawn = 0;
++  while (sawOne(done)) sawn += 1;
++  assert.equal(sawn, 3);
++  assert.equal(done.logs, 0);
++  assert.equal(done.sawed, 4);
++  assert.equal(logLedger(done).planks, 4);
++  assert.equal(sawOne(done), false);
++  assert.equal(done.sawed, 4);
++  let baked = 0;
++  while (bakeOne(done)) baked += 1;
++  assert.equal(baked, 1);
++  assert.equal(done.flour, 0);
++  assert.equal(flourHeld(done), FLOUR_STOCK);
++  assert.equal(bakeOne(done), false);
++  assert.equal(conserved(done), true);
++});
++
++test('the mechanic stays 5x4 and the car leaves on path tiles', () => {
++  assert.equal(MECHANIC.w, 5);
++  assert.equal(MECHANIC.h, 4);
++  for (const [x, y] of ROUTES.carExit) assert.equal(onPath(x, y), true, `${x},${y}`);
++  const mid = seek('working-mechanic');
++  assert.equal(mid.plankUsed, 1);
++  let s = mid;
++  for (let n = 0; n < 80 && s.car !== 'out'; n++) s = advance(s);
++  assert.equal(s.car, 'out');
++  assert.equal(s.cart, 'fixed');
++  const again = advance(s);
++  assert.equal(again.car, 'out');
++  assert.equal(again.plankUsed, 1);
++});
++
++test('one cloth bolt becomes one test coat and is not minted twice', () => {
++  for (const [x, y] of ROUTES.clothToTailor) assert.equal(onPath(x, y), true);
++  for (const [x, y] of ROUTES.tailorToRack) assert.equal(onPath(x, y), true);
++  assert.equal(onPath(TAILOR.rack[0], TAILOR.rack[1]), true);
++  const sewing = seek('working-tailor');
++  assert.equal(sewing.mannequin, 'bare');
++  assert.equal(sewing.shopBolt, 1);
++  assert.equal(goodsHeld(sewing).sum, 1);
++  assert.equal(crewView(sewing).stitch.place, 'tailor');
++  assert.equal(crewView(sewing).stitch.working, true);
++  const done = seek('nextdawn');
++  assert.equal(done.rack, 1);
++  assert.equal(done.mannequin, 'dressed');
++  assert.equal(done.clothStock, 0);
++  assert.equal(clothHeld(done), CLOTH_STOCK);
++  assert.equal(goodsHeld(done).sum, 1);
++  const twice = advance(done);
++  assert.equal(twice.rack, 1);
++  assert.equal(goodsHeld(twice).sum, 1);
++  assert.equal(twice.clothStock, 0);
++});
++
++test('scrap comes only from the repaired tool and the leftover, and bread gates the next shift', () => {
++  const scrap = seek('working-scrap');
++  assert.equal(scrap.yardTool, 1);
++  assert.equal(scrap.yardLeft, 1);
++  assert.equal(scrap.scrap, 0);
++  assert.equal(scrap.pressed, 0);
++  assert.equal(crewView(scrap).bolt.working, true);
++  const bake = seek('working-bakery');
++  assert.equal(bake.oven, 'knead');
++  assert.equal(bake.flour, FLOUR_STOCK);
++  assert.equal(crewView(bake).crumb.working, true);
++  const done = seek('nextdawn');
++  assert.equal(done.meal, 1);
++  assert.equal(done.eaten, 1);
++  assert.equal(done.bread, 0);
++  assert.equal(flourHeld(done), FLOUR_STOCK);
++  assert.equal(done.scrapUsed, 1);
++  assert.equal(conserved(done), true);
++});
+diff --git a/tests/npcwork.test.mjs b/tests/npcwork.test.mjs
+new file mode 100644
+index 0000000..8e6df78
+--- /dev/null
++++ b/tests/npcwork.test.mjs
+@@ -0,0 +1,54 @@
++// The building preview is off unless ?npcwork=1, and it does not write the live save.
++import test from 'node:test';
++import assert from 'node:assert/strict';
++import { createNpcWork, npcWorkOn } from '../src/npcwork.js';
++import { LIVE_SAVE_KEY, SAVE_KEY } from '../src/npcbuildings.js';
++
++function mem() {
++  const m = new Map();
++  return {
++    getItem: (k) => (m.has(k) ? m.get(k) : null),
++    setItem: (k, v) => m.set(k, String(v)),
++    removeItem: (k) => m.delete(k),
++  };
++}
++function doc(search) {
++  return {
++    body: { appendChild() {}, classList: { add() {} } },
++    defaultView: { location: { search } },
++    createElement() {
++      return { id: '', type: '', hidden: true, textContent: '', setAttribute() {}, addEventListener() {} };
++    },
++    getElementById() { return null; },
++  };
++}
++
++test('the work preview is off unless the query flag is set', () => {
++  assert.equal(npcWorkOn(''), false);
++  assert.equal(npcWorkOn('?yard=1'), false);
++  assert.equal(createNpcWork(doc(''), mem()), null);
++  assert.equal(npcWorkOn('?npcwork=1'), true);
++});
++
++test('a flagged preview stores its own key and does not change the live save', () => {
++  const store = mem();
++  const live = '{"bones":4,"kibble":2}';
++  store.setItem(LIVE_SAVE_KEY, live);
++  const work = createNpcWork(doc('?npcwork=1'), store);
++  assert.equal(work.saveKey, SAVE_KEY);
++  assert.notEqual(SAVE_KEY, LIVE_SAVE_KEY);
++  assert.equal(store.getItem(LIVE_SAVE_KEY), live);
++  const home = work.seek('home');
++  assert.equal(home.logs, 0);
++  assert.equal(home.crew.timber.place, 'home');
++  assert.equal(home.chits, 0);
++  const walking = work.seek('walking');
++  assert.equal(walking.logs, 0);
++  assert.equal(walking.crew.timber.moving, true);
++  assert.equal(store.getItem(LIVE_SAVE_KEY), live);
++  assert.ok(store.getItem(SAVE_KEY).includes('npc-buildings-1'));
++  const note = work.frameNote();
++  assert.equal(note.visible, 'TEST');
++  assert.match(note.detail, /unbalanced and local only/);
++  assert.match(note.detail, /logs 0/);
++});
+diff --git a/tests/portals.test.mjs b/tests/portals.test.mjs
+index 324a95e..e8d99f0 100644
+--- a/tests/portals.test.mjs
++++ b/tests/portals.test.mjs
+@@ -88,7 +88,7 @@ test('browser: minimap on + fits the phone HUD, discovers stones by walking, A w
+     // minimap tap -> full map; at a stone, tapping another found stone on the map warps there
+     if (await p.evaluate(() => getComputedStyle(document.getElementById('minimap')).display === 'none')) await p.tap('#map-peek');
+     await p.tap('#minimap'); await p.waitForTimeout(400); assert.ok(await p.evaluate(() => !document.getElementById('mapfull').hidden), 'full map open'); assert.ok(await p.evaluate(() => !document.getElementById('map-warp').hidden), 'warp hint at a stone');
+-    const box = await p.evaluate(() => { const c = document.getElementById('mapcv').getBoundingClientRect(), s = __inu.portals.PT.BY_ID.farm; return { x: c.left + (s.tx + 0.5) * c.width / 64, y: c.top + (s.ty + 0.5) * c.height / 106 }; });
++    const box = await p.evaluate(() => { const c = document.getElementById('mapcv').getBoundingClientRect(), s = __inu.portals.PT.BY_ID.farm, tile = c.width / 64; return { x: c.left + (s.tx + 0.5) * tile, y: c.top + (s.ty + 0.5) * tile }; });
+     await p.mouse.click(box.x, box.y); await p.waitForTimeout(400);
+     assert.equal(await p.evaluate(() => globalThis.__warps), 2, 'warped from the full map'); assert.ok(await p.evaluate(() => document.getElementById('mapfull').hidden));
+     await ctx.close(); }
+@@ -114,7 +114,7 @@ test('browser: full-map stones are big, visible and tappable at 844x390 + 667x37
+     if (await p.evaluate(() => getComputedStyle(document.getElementById('minimap')).display === 'none')) await p.tap('#map-peek');
+     await p.tap('#minimap'); await p.waitForFunction(() => !document.getElementById('mapfull').hidden); await p.waitForTimeout(300);
+     const R = await p.evaluate(() => { const cv = document.getElementById('mapcv'), c = cv.getBoundingClientRect(), g = cv.getContext('2d'), u = cv.width / c.width, out = {};
+-      for (const id of ['farm', 'arcade']) { const s = __inu.portals.PT.BY_ID[id], x = (s.tx + 0.5) * cv.width / 64, y = (s.ty + 0.5) * cv.height / 106; let cyan = 0, ink = 0;
++      for (const id of ['farm', 'arcade']) { const s = __inu.portals.PT.BY_ID[id], tile = cv.width / 64, x = (s.tx + 0.5) * tile, y = (s.ty + 0.5) * tile; let cyan = 0, ink = 0;
+         const d = g.getImageData(Math.round(x - 8 * u), Math.round(y - 8 * u), Math.round(16 * u), Math.round(16 * u)).data; for (let i = 0; i < d.length; i += 4) { if (d[i] < 120 && d[i + 1] > 200 && d[i + 2] > 190) cyan++; if (d[i] < 30 && d[i + 1] < 40 && d[i + 2] < 60) ink++; }
+         out[id] = { cyan: cyan / u / u, ink: ink / u / u, cx: c.left + x / u, cy: c.top + y / u }; } return out; });
+     assert.ok(R.farm.cyan >= 40, `found stone shows a big cyan diamond (${R.farm.cyan} CSS px²) @${vp.width}`); assert.ok(R.farm.ink >= 15, 'ink outline @' + vp.width); assert.ok(R.arcade.cyan < 5 && R.arcade.ink >= 15, 'undiscovered stone: grey outlined, not cyan @' + vp.width);
