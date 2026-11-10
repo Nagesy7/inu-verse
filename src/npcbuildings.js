@@ -14,7 +14,8 @@ export const FLOUR_STOCK = 2;
 export const CLOTH_STOCK = 1;
 export const ORE_CAP = 2;
 export const WEAR_CAP = 3;
-// Ore is unlocked only inside this preview chain. The yard nail smelt still rejects ore.
+// Ore is unlocked only inside this preview chain. Yard nails are still not made from ore.
+// Ember is the smelter. Anvil hammers at the forge and does not smelt.
 
 export const LUMBER = Object.freeze({ id: 'lumber', name: 'Lumber Yard', x: 50, y: 96, w: 6, h: 4, door: Object.freeze([50, 95]), work: Object.freeze([52, 98]), saw: Object.freeze([53, 97]) });
 export const MECHANIC = Object.freeze({ id: 'mechanic', name: "Mechanic's Shop", x: 28, y: 2, w: 5, h: 4, door: Object.freeze([30, 6]), work: Object.freeze([30, 4]), bay: Object.freeze([31, 4]) });
@@ -31,9 +32,9 @@ export const CLOTH = Object.freeze([58, 113]);
 export const FIELD_STREET = 118;
 export const FARM = Object.freeze({ id: 'farm', name: 'Wheat Farm', x: 4, y: 114, w: 6, h: 4, door: Object.freeze([7, 118]), work: Object.freeze([7, 116]) });
 export const MILL = Object.freeze({ id: 'mill', name: 'Flour Mill', x: 14, y: 114, w: 5, h: 4, door: Object.freeze([16, 118]), work: Object.freeze([16, 116]) });
-export const MINE = Object.freeze({ id: 'mine', name: 'Mine', x: 22, y: 114, w: 5, h: 4, door: Object.freeze([24, 118]), work: Object.freeze([24, 116]), hidden: true });
-export const SMELTER = Object.freeze({ id: 'smelter', name: 'Smelter', x: 30, y: 114, w: 5, h: 4, door: Object.freeze([32, 118]), work: Object.freeze([32, 116]), hidden: true });
-export const FORGE = Object.freeze({ id: 'forge', name: 'Forge', x: 38, y: 114, w: 5, h: 4, door: Object.freeze([40, 118]), work: Object.freeze([40, 116]), hidden: true });
+export const MINE = Object.freeze({ id: 'mine', name: 'Mine', x: 22, y: 114, w: 5, h: 4, door: Object.freeze([24, 118]), work: Object.freeze([24, 116]) });
+export const SMELTER = Object.freeze({ id: 'smelter', name: 'Smelter', x: 30, y: 114, w: 5, h: 4, door: Object.freeze([32, 118]), work: Object.freeze([32, 116]) });
+export const FORGE = Object.freeze({ id: 'forge', name: 'Forge', x: 38, y: 114, w: 5, h: 4, door: Object.freeze([40, 118]), work: Object.freeze([40, 116]) });
 export const HOMES = Object.freeze({
   timber: Object.freeze([12, 40]),
   wrench: Object.freeze([26, 40]),
@@ -832,7 +833,7 @@ function porterView(s) {
   return { route: ROUTES.toLumber, i: 0 };
 }
 
-const NAMES = { timber: 'Timber', wrench: 'Wrench', porter: 'Porter', saw: 'Saw', stitch: 'Stitch', crumb: 'Crumb', bolt: 'Bolt', sprout: 'Sprout', dusty: 'Dusty', pike: 'Pike', ember: 'Ember', smith: 'Smith' };
+const NAMES = { timber: 'Timber', wrench: 'Wrench', porter: 'Porter', saw: 'Saw', stitch: 'Stitch', crumb: 'Crumb', bolt: 'Bolt', sprout: 'Sprout', dusty: 'Dusty', pike: 'Pike', ember: 'Ember', smith: 'Anvil' };
 const COATS = { timber: 'tan', wrench: 'gray', porter: 'cream', saw: 'red', stitch: 'golden', crumb: 'cream', bolt: 'dark', sprout: 'tan', dusty: 'tan', pike: 'dark', ember: 'red', smith: 'gray' };
 
 export function crewView(s) {

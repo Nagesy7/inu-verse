@@ -25,8 +25,8 @@ test('lumber and mechanic stay on empty grass; the new trades sit on the south q
   const added = proof.filter((lot) => lot.expansion);
   assert.deepEqual(legacy.map((lot) => lot.id), ['lumber', 'mechanic']);
   for (const lot of legacy) assert.equal(lot.allEmptyGrass, true, lot.id);
-  assert.deepEqual(added.filter((lot) => !lot.hidden).map((lot) => lot.id), ['sawmill', 'tailor', 'bakery', 'scrap', 'farm', 'mill']);
-  assert.deepEqual(added.filter((lot) => lot.hidden).map((lot) => lot.id), ['mine', 'smelter', 'forge']);
+  assert.deepEqual(added.filter((lot) => !lot.hidden).map((lot) => lot.id), ['sawmill', 'tailor', 'bakery', 'scrap', 'farm', 'mill', 'mine', 'smelter', 'forge']);
+  assert.deepEqual(added.filter((lot) => lot.hidden).map((lot) => lot.id), []);
   for (const lot of added) {
     assert.equal(lot.onNewGround, true, lot.id);
     assert.ok(lot.tiles.every((t) => t.tile === 3), lot.id);
@@ -45,9 +45,13 @@ test('lumber and mechanic stay on empty grass; the new trades sit on the south q
   assert.deepEqual([...MILL.door], [MILL.x + 2, MILL.y + 4]);
   assert.equal(MILL.w, 5);
   for (const lot of [MINE, SMELTER, FORGE]) {
-    assert.equal(lot.hidden, true);
+    assert.equal(lot.hidden, undefined);
     assert.equal(lot.w, 5);
+    assert.equal(lot.h, 4);
     assert.deepEqual([...lot.door], [lot.x + 2, lot.y + 4]);
+    assert.equal(isSolid(lot.x + 1, lot.y + 1), true, lot.id);
+    assert.equal(isSolid(lot.door[0], lot.door[1]), false, lot.id);
+    assert.equal(onPath(lot.door[0], lot.door[1]), true, lot.id);
   }
   assert.equal(MECHANIC.w, 5);
   assert.deepEqual(SIGN, [33, 6]);
@@ -326,9 +330,11 @@ test('ore is finite in this chain, a tool is repaired before it is replaced, and
   assert.equal(conserved(fresh), true);
   assert.equal(conserved(done), true);
   const draw = readFileSync(new URL('../src/npcwork.js', import.meta.url), 'utf8');
-  assert.equal(draw.includes('mine.png'), false);
-  assert.equal(draw.includes('smelter.png'), false);
-  assert.equal(draw.includes('forge.png'), false);
+  assert.equal(draw.includes('mine.png'), true);
+  assert.equal(draw.includes('smelter.png'), true);
+  assert.equal(draw.includes('forge.png'), true);
+  assert.equal(draw.includes('work-ore-in.png'), true);
+  assert.equal(crewView(done).smith.name, 'Anvil');
   assert.equal(draw.includes('wheat-farm.png'), true);
   assert.equal(draw.includes('windmill.png'), true);
   assert.equal(draw.includes("beat === 'grind'"), true);

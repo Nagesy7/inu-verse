@@ -2,7 +2,7 @@
 // Save key is inuverse.preview.npcwork.v1. This file does not touch inuverse.save.v1.
 import { TILE } from './world.js';
 import {
-  BAKERY, CHIT_CAP, CLOTH_STOCK, DAILY_ISSUE, FARM, FLOUR_STOCK, LUMBER, MECHANIC, MILL, ROUTES, SAWMILL, SCRAP, SIGN, TAILOR,
+  BAKERY, CHIT_CAP, CLOTH_STOCK, DAILY_ISSUE, FARM, FLOUR_STOCK, FORGE, LUMBER, MECHANIC, MILL, MINE, ROUTES, SAWMILL, SCRAP, SIGN, SMELTER, TAILOR,
   SAVE_KEY, TAG, advance, crewView, seek, seedState,
 } from './npcbuildings.js';
 
@@ -78,6 +78,25 @@ const ART_SRC = {
   flourStack: 'assets/npcwork/mill/flour-stack.png',
   sheafProp: 'assets/npcwork/props/wheat-sheaf.png',
   carrySheaf: 'assets/npcwork/overlays/carry-wheat-sheaf.png',
+  mine: 'assets/npcwork/mine/mine.png',
+  pick: 'assets/npcwork/mine/work-pick.png',
+  cartLoop: 'assets/npcwork/mine/work-cart.png',
+  orePile: 'assets/npcwork/mine/ore-pile.png',
+  cartEmpty: 'assets/npcwork/mine/ore-cart-empty.png',
+  cartFull: 'assets/npcwork/mine/ore-cart-full.png',
+  smelter: 'assets/npcwork/smelter/smelter.png',
+  oreIn: 'assets/npcwork/smelter/work-ore-in.png',
+  pour: 'assets/npcwork/smelter/work-pour.png',
+  barStack: 'assets/npcwork/smelter/bar-stack.png',
+  forge: 'assets/npcwork/forge/forge.png',
+  hammerAxe: 'assets/npcwork/forge/work-hammer-axe.png',
+  hammerPart: 'assets/npcwork/forge/work-hammer-part.png',
+  axeHead: 'assets/npcwork/props/axe-head.png',
+  carPart: 'assets/npcwork/props/car-part.png',
+  carryOre: 'assets/npcwork/overlays/carry-ore.png',
+  carryBar: 'assets/npcwork/overlays/carry-metal-bar.png',
+  carryForged: 'assets/npcwork/overlays/carry-forged-tool.png',
+  carryWorn: 'assets/npcwork/overlays/carry-tool-worn.png',
   carryFlour: 'assets/npcwork/overlays/carry-flour-sack.png',
 };
 const IMG = {};
@@ -210,6 +229,48 @@ function drawMill(c, state) {
   }
 }
 
+function drawMine(c, state) {
+  const x = MINE.x * TILE;
+  const y = MINE.y * TILE;
+  blit(c, 'mine', x, y, 160, 128);
+  blitFrame(c, 'orePile', Math.max(0, Math.min(3, state.ore)), x + 108, y + 88, 40, 28, 20, 14);
+  blit(c, state.ore > 0 ? 'cartFull' : 'cartEmpty', x + 24, y + 84, 36, 28);
+  if (state.beat !== 'dig') return;
+  const loading = state.ore > 0 && state.pickFrame === 0;
+  blitFrame(c, loading ? 'cartLoop' : 'pick', loading ? state.phase % 4 : state.pickFrame % 4, x + 8, y + 36, 144, 84, 72, 42);
+}
+
+function drawSmelter(c, state) {
+  const x = SMELTER.x * TILE;
+  const y = SMELTER.y * TILE;
+  blit(c, 'smelter', x, y, 160, 128);
+  blitFrame(c, 'barStack', Math.max(0, Math.min(3, state.bars)), x + 116, y + 92, 32, 24, 16, 12);
+  // Scrap bales reuse the ore-in hopper. The pour sheet is the glow and the bar coming out.
+  const scrapIn = state.scrapFeed > 0 || state.cargo === 'scrap';
+  if (scrapIn) blitFrame(c, 'oreIn', state.phase % 4, x + 12, y + 40, 136, 80, 68, 40);
+  else if (state.beat === 'pour') {
+    const key = state.pourFrame < 2 ? 'oreIn' : 'pour';
+    blitFrame(c, key, state.pourFrame % 4, x + 12, y + 40, 136, 80, 68, 40);
+  }
+}
+
+function drawForge(c, state) {
+  const x = FORGE.x * TILE;
+  const y = FORGE.y * TILE;
+  blit(c, 'forge', x, y, 160, 128);
+  if (state.axeHeads > 0) {
+    const sit = bottomCentre(x + 48, y + 110, 24, 20);
+    blit(c, 'axeHead', sit.x, sit.y, 24, 20);
+  }
+  if (state.forgedParts > 0) {
+    const sit = bottomCentre(x + 112, y + 110, 24, 20);
+    blit(c, 'carPart', sit.x, sit.y, 24, 20);
+  }
+  if (state.beat === 'hammer') {
+    blitFrame(c, state.axeHeads === 0 ? 'hammerAxe' : 'hammerPart', state.hammerFrame % 4, x + 12, y + 44, 136, 76, 68, 38);
+  }
+}
+
 function drawBakery(c, state) {
   const x = BAKERY.x * TILE;
   const y = BAKERY.y * TILE;
@@ -247,6 +308,8 @@ function porterOverlay(state, face) {
   if (state.cargo === 'scrap') return { key: 'carryBale', frame: 0, behind, scale: 1.3 };
   if (state.cargo === 'bread') return { key: 'carryBread', frame: 0, behind, scale: 1.3 };
   if (state.cargo === 'log') return { draw: (ctx) => { const im = IMG.log; if (!im) return; ctx.imageSmoothingEnabled = false; ctx.drawImage(im, -40, -82, 72, 40); }, behind };
+  if (state.cargo === 'axe' || state.cargo === 'part') return { key: 'carryForged', frame: 0, behind };
+  if (state.cargo === 'worn') return { key: 'carryWorn', frame: 0, behind };
   return null;
 }
 
@@ -379,6 +442,9 @@ export function createNpcWork(doc = document, storage = globalThis.localStorage)
         if (a.id === 'bolt' && state.beat === 'pressing') return false;
         if (a.id === 'sprout' && state.beat === 'grow' && state.farmLoop !== 'rise') return false;
         if (a.id === 'dusty' && state.beat === 'grind') return false;
+        if (a.id === 'pike' && state.beat === 'dig') return false;
+        if (a.id === 'ember' && (state.beat === 'pour' || state.scrapFeed > 0)) return false;
+        if (a.id === 'smith' && state.beat === 'hammer') return false;
         return true;
       }).map((a) => {
         let npcOverlay = null;
@@ -386,6 +452,8 @@ export function createNpcWork(doc = document, storage = globalThis.localStorage)
         else if (a.id === 'porter') npcOverlay = porterOverlay(state, a.face);
         else if (a.id === 'sprout' && state.cargo === 'sheaf') npcOverlay = { key: 'carrySheaf', frame: 0, behind: a.face === 'up' };
         else if (a.id === 'dusty' && state.cargo === 'flour') npcOverlay = { key: 'carryFlour', frame: 0, behind: a.face === 'up' };
+        else if (a.id === 'pike' && state.cargo === 'ore') npcOverlay = { key: 'carryOre', frame: 0, behind: a.face === 'up' };
+        else if (a.id === 'ember' && state.cargo === 'bar') npcOverlay = { key: 'carryBar', frame: 0, behind: a.face === 'up' };
         return {
           x: a.x, y: a.y, coat: a.coat, outfit: {}, face: a.face, phase: state.phase, moving: a.moving,
           name: a.name, art: null, npcwork: true, npcOverlay,
@@ -401,6 +469,9 @@ export function createNpcWork(doc = document, storage = globalThis.localStorage)
         { y: (BAKERY.y + BAKERY.h) * TILE, d: (c) => drawBakery(c, state) },
         { y: (FARM.y + FARM.h) * TILE, d: (c) => drawFarm(c, state) },
         { y: (MILL.y + MILL.h) * TILE, d: (c) => drawMill(c, state) },
+        { y: (MINE.y + MINE.h) * TILE, d: (c) => drawMine(c, state) },
+        { y: (SMELTER.y + SMELTER.h) * TILE, d: (c) => drawSmelter(c, state) },
+        { y: (FORGE.y + FORGE.h) * TILE, d: (c) => drawForge(c, state) },
         { y: (SCRAP.y + SCRAP.h) * TILE, d: (c) => drawScrap(c, state) },
         { y: 3202, d: (c) => {
           for (let i = 0; i < state.logs && i < LOG_SLOTS.length; i++) blit(c, 'log', LOG_SLOTS[i][0], LOG_SLOTS[i][1], 18, 10);
