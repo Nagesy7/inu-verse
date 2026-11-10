@@ -124,6 +124,7 @@ function drawBay(c, state) {
   const y = 114;
   const lifted = state.bay === 'lift' || state.bay === 'bonnet' || state.bay === 'creeper' || state.bay === 'wheel';
   blit(c, lifted ? 'liftUp' : 'liftDown', x, y, 104, 72);
+  // v1.2.1 draws the creeper body under the car and the head past the nose, so it stays behind the car.
   if (state.bay === 'creeper') blitFrame(c, 'creeper', state.bayFrame, x, y, 104, 72, 52, 36);
   const fixed = state.bay === 'fixed' || state.bay === 'down';
   const car = lifted ? (fixed ? 'carFixedLift' : 'carBrokenLift') : (fixed ? 'carFixed' : 'carBroken');
@@ -140,8 +141,8 @@ function drawTailorShop(c, state) {
   const wy = y + 46;
   blit(c, state.rack ? 'rackStocked' : 'rackEmpty', wx, wy, 100, 56);
   blit(c, state.mannequin === 'dressed' ? 'manDressed' : 'manBare', wx, wy, 100, 56);
-  if (state.leg === 'sew') blitFrame(c, 'sew', state.needle, wx, wy, 100, 56, 50, 28);
-  if (state.leg === 'cut') blitFrame(c, 'cut', state.needle, wx, wy, 100, 56, 50, 28);
+  if (state.leg === 'sew') blitFrame(c, 'sew', state.needle % 4, wx, wy, 100, 56, 50, 28);
+  if (state.leg === 'cut') blitFrame(c, 'cut', state.needle % 4, wx, wy, 100, 56, 50, 28);
 }
 
 function fillFrame(n, steps) {
@@ -156,7 +157,7 @@ function drawSawmill(c, state) {
   blit(c, 'sawmill', x, y, 160, 128);
   blitFrame(c, 'logPile', fillFrame(state.millLogs, [0, 1, 3, 6]), x + 112, y + 94, 36, 26, 18, 13);
   blitFrame(c, 'plankStack', fillFrame(state.planks, [0, 1, 3, 5]), x + 12, y + 100, 36, 20, 18, 10);
-  if (state.beat === 'sawing') blitFrame(c, 'sawLoop', state.sawFrame, x + 12, y + 48, 136, 72, 68, 36);
+  if (state.beat === 'sawing') blitFrame(c, 'sawLoop', state.sawFrame % 4, x + 12, y + 48, 136, 72, 68, 36);
   label(c, `MILL ${state.millLogs}`, x + 80, y - 8);
 }
 
@@ -177,11 +178,12 @@ function drawScrap(c, state) {
   const pressing = state.beat === 'pressing' && state.press === 'press';
   const sorting = state.beat === 'pressing' && state.press === 'sort';
   blit(c, 'scrapYard', x, y, 192, 128);
+  if (!pressing) blit(c, 'pressIdle', x + 8, y + 24, 176, 92);
+  // Stock sits above the idle press so the heap, crate and bale are not swallowed by that layer.
   blitFrame(c, 'brokenHeap', fillFrame(state.yardTool + state.yardLeft, [0, 1, 2, 3]), x + 12, y + 44, 44, 28, 22, 14);
   if (state.press === 'press' || state.pressed || state.scrap || state.scrapUsed || state.cargo === 'scrap') blit(c, 'partsCrate', x + 64, y + 56, 28, 22);
   if (state.scrap > 0) blit(c, 'scrapBale', x + 154, y + 32, 28, 20);
   if (pressing) blitFrame(c, 'pressLoop', state.pressFrame, x + 8, y + 24, 176, 92, 88, 46);
-  else blit(c, 'pressIdle', x + 8, y + 24, 176, 92);
   if (sorting) blitFrame(c, 'sortLoop', state.pressFrame, x + 8, y + 24, 176, 92, 88, 46);
   label(c, `HEAP ${state.yardTool + state.yardLeft}`, x + 48, y - 8);
 }
