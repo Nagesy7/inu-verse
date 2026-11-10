@@ -105,6 +105,7 @@ const ART_SRC = {
   carryFlour: 'assets/npcwork/overlays/carry-flour-sack.png',
   pathC: 'assets/path/option-C-tiles.png',
   pathCEdge: 'assets/path/option-C-edges.png',
+  pathInlay: 'assets/path/plaza-centre-inlay-C.png',
   brick: 'assets/district/brick-ground.png',
   brickGrass: 'assets/district/brick-edge-grass.png',
   brickDirt: 'assets/district/brick-edge-dirt.png',
@@ -179,7 +180,7 @@ function loadArt() {
     im.onerror = () => res(false);
     im.src = src;
   }))).then((ok) => {
-    setDistrictArt({ brick: IMG.brick, grassEdge: IMG.brickGrass, dirtEdge: IMG.brickDirt, soot: IMG.soot, pathTiles: IMG.pathC, pathEdges: IMG.pathCEdge });
+    setDistrictArt({ brick: IMG.brick, grassEdge: IMG.brickGrass, dirtEdge: IMG.brickDirt, soot: IMG.soot, pathTiles: IMG.pathC, pathEdges: IMG.pathCEdge, inlay: IMG.pathInlay });
     return ok;
   });
 }

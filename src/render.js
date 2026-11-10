@@ -1,4 +1,5 @@
 import { treeProp, extraTreeProps, ALIVE, flagWave } from './alive.js';
+import { plazaPlanters } from './townproposal.js';
 // Pixel-art world rendering: chunky gold-trimmed buildings, navy/gold palette.
 import { DOORS, FEATURED_SIGN } from './world.js';
 import { TILE, MAP_W, MAP_H, MAP, T, BUILDINGS, PLOTS, NPC_HOMES, STALL_SLOTS, CLUBHOUSE, MALL_BUILDINGS, LEADERS, BRIDGES, DECOR } from './world.js';
@@ -263,6 +264,7 @@ export function proposalProps(grid, w, h, lots) {
     if ((t === 8 || t === 2) && hash(x, y, 4) < 0.018) props.push(sp(S.bench, x * TILE, y * TILE + 4, y * TILE + 28));
   }
   for (let y = 1; y < h - 1; y++) for (let x = 1; x < w - 1; x++) if (grid[y][x] === 12 && hash(x, y, 3) < 0.5) props.push(sp(S.fence, x * TILE, y * TILE, y * TILE + 24));
+  for (const [x, y] of plazaPlanters()) props.push({ y: y * TILE + 28, d: (c) => c.drawImage(S.streetTree, x * TILE - 14, y * TILE + 28 - S.streetTree.height * 3, 60, S.streetTree.height * 3) });
   for (const lot of lots) {
     if (lot.water || lot.reserved || WORK_LOTS.has(lot.id)) continue;
     props.push({ y: (lot.y + lot.h) * TILE - 1, d: (c) => { drawLotBuilding(c, lot); } });

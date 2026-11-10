@@ -15,8 +15,8 @@ const BLOCKED = new Set([T.BUILDING, T.WATER, T.TREE, T.FENCE, T.HILL]);
 
 // Spawn is on the bend where the main path meets the avenue, inside the plaza.
 export const SPAWN = Object.freeze({ tx: 46, ty: 31 });
-// The avenue covers the oval's middle, so the one accent sits on the nearest plaza tile.
-export const PLAZA_ACCENT = Object.freeze({ tx: 42, ty: 29 });
+// Centre of the oval in buildProposalGrid. Tile centres sit on half-integers, so this point is a corner.
+export const OVAL_CENTRE = Object.freeze({ x: 46, y: 31 });
 
 // Centerlines. The main path and the avenue bend. Shortcuts are the narrow cuts between districts.
 export const PATHS = Object.freeze({
@@ -187,8 +187,8 @@ export function buildProposalGrid() {
   // Irregular plaza: an oval plus a lobe, with a bite taken out so it is not a disk.
   for (let y = 1; y < PROPOSAL_H - 1; y++) {
     for (let x = 1; x < PROPOSAL_W - 1; x++) {
-      const dx = (x + 0.5 - 46) / 16;
-      const dy = (y + 0.5 - 31) / 11;
+      const dx = (x + 0.5 - OVAL_CENTRE.x) / 16;
+      const dy = (y + 0.5 - OVAL_CENTRE.y) / 11;
       const lobe = ((x + 0.5 - 34) / 6) ** 2 + ((y + 0.5 - 26) / 5) ** 2;
       if (dx * dx + dy * dy <= 1 || lobe <= 1) grid[y][x] = T.PLAZA;
     }
@@ -651,6 +651,42 @@ function stamp16(c, im, frame, x, y, dx = 0, dy = 0) {
   c.drawImage(im, frame * 16, 0, 16, 16, x + dx, y + dy, 16, 16);
 }
 
+function pavedSurface(x, y) {
+  const t = GRID[y]?.[x];
+  return t === T.PLAZA || t === T.WALK;
+}
+
+// The 2x2 diamond is anchored with its north-west tile here. It is used only when all four tiles are the paved surface.
+export function plazaInlayAt() {
+  const tx = Math.floor(OVAL_CENTRE.x) - 1;
+  const ty = Math.floor(OVAL_CENTRE.y) - 1;
+  const quad = [[tx, ty], [tx + 1, ty], [tx, ty + 1], [tx + 1, ty + 1]];
+  if (quad.every(([x, y]) => pavedSurface(x, y))) return { kind: 'diamond', tx, ty, tiles: quad };
+  let best = null;
+  let bestD = Infinity;
+  for (let y = 0; y < PROPOSAL_H; y++) for (let x = 0; x < PROPOSAL_W; x++) {
+    if (GRID[y][x] !== T.PLAZA) continue;
+    const d = (x + 0.5 - OVAL_CENTRE.x) ** 2 + (y + 0.5 - OVAL_CENTRE.y) ** 2;
+    if (d < bestD) { bestD = d; best = [x, y]; }
+  }
+  return { kind: 'single', tx: best[0], ty: best[1], tiles: [[best[0], best[1]]] };
+}
+
+export const PLAZA_INLAY = plazaInlayAt();
+
+export function plazaPlanters() {
+  const skip = new Set(PLAZA_INLAY.tiles.map(([x, y]) => `${x},${y}`));
+  const out = [];
+  for (let y = 2; y < PROPOSAL_H - 2; y++) for (let x = 2; x < PROPOSAL_W - 2; x++) {
+    if (GRID[y][x] !== T.PLAZA || (x + y * 3) % 11 !== 0 || skip.has(`${x},${y}`)) continue;
+    if (STOPS.some((s) => x >= s.tx - 1 && x <= s.tx + 2 && y >= s.ty - 1 && y <= s.ty + 2)) continue;
+    const besideRoad = [[1, 0], [-1, 0], [0, 1], [0, -1]].some(([dx, dy]) => GRID[y + dy][x + dx] === T.ROAD);
+    if (besideRoad) continue;
+    out.push([x, y]);
+  }
+  return out;
+}
+
 export const PLAZA_FOLK = Object.freeze([
   { name: 'Nettie', x: 44.5 * TILE_PX, y: 32.5 * TILE_PX, coat: 'cream', face: 'down' },
   { name: 'Biscuit', x: 49.5 * TILE_PX, y: 34.5 * TILE_PX, coat: 'golden', face: 'left' },
@@ -668,8 +704,16 @@ export function previewGround() {
     paintDirtTile(c, x * n, y * n, x, y);
   }
   const pathOn = !!(districtArt?.pathTiles && districtArt?.pathEdges);
-  if (pathOn) {
-    if (GRID[PLAZA_ACCENT.ty][PLAZA_ACCENT.tx] === T.PLAZA) paintPlazaAccent(c, PLAZA_ACCENT.tx * n, PLAZA_ACCENT.ty * n);
+  if (pathOn && districtArt?.inlay) {
+    const { kind, tx, ty } = PLAZA_INLAY;
+    if (kind === 'diamond') {
+      stamp16(c, districtArt.inlay, 1, tx * n, ty * n);
+      stamp16(c, districtArt.inlay, 2, (tx + 1) * n, ty * n);
+      stamp16(c, districtArt.inlay, 3, tx * n, (ty + 1) * n);
+      stamp16(c, districtArt.inlay, 4, (tx + 1) * n, (ty + 1) * n);
+    } else stamp16(c, districtArt.inlay, 0, tx * n, ty * n);
+  } else if (pathOn) {
+    paintPlazaAccent(c, PLAZA_INLAY.tx * n, PLAZA_INLAY.ty * n);
   } else if (districtArt?.brick) {
     for (let y = 0; y < PROPOSAL_H; y++) {
       for (let x = 0; x < PROPOSAL_W; x++) {

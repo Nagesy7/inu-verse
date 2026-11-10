@@ -9,7 +9,8 @@ import { newGame } from '../src/game.js';
 import { save, load, MemoryStorage } from '../src/save.js';
 import { FARM, MILL, BAKERY, LUMBER, SAWMILL, MECHANIC, SCRAP, MINE, SMELTER, FORGE } from '../src/npcbuildings.js';
 import {
-  APPLIED, FADE_MS, GRID, LIVE_SAVE_KEY, LOTS, NEIGHBOURHOODS, NOOKS, PATHS, PLAZA_ACCENT, PROPOSAL_H, PROPOSAL_W, SPAWN, STOP_KEY, STOP_PX, STOPS, T, TILE_PX,
+  APPLIED, FADE_MS, GRID, LIVE_SAVE_KEY, LOTS, NEIGHBOURHOODS, NOOKS, OVAL_CENTRE, PATHS, PLAZA_INLAY, PROPOSAL_H, PROPOSAL_W, SPAWN, STOP_KEY, STOP_PX, STOPS, T, TILE_PX,
+  plazaPlanters,
   brickFill, edgePlan, EXPANSIONS, hop, isBlocked, isBrickTile, loadStops, lotById, overlaps, preparePreviewPlayer, proposalPath, relocate, sootTiles, stubApproach, stubPast, tileAt, tripSeconds, visitDistrict, walkSeconds, yardTiles,
 } from '../src/townproposal.js';
 
@@ -447,9 +448,32 @@ test('option C paves the preview and leaves the live path painters in place', as
   assert.equal(draw.includes('option-A'), false);
   assert.equal(draw.includes('option-B'), false);
   assert.match(ground, /if \(pathOn\)/);
-  assert.match(ground, /paintPlazaAccent/);
-  assert.equal(GRID[PLAZA_ACCENT.ty][PLAZA_ACCENT.tx], T.PLAZA);
-  assert.equal(isBlocked(PLAZA_ACCENT.tx, PLAZA_ACCENT.ty), false);
+  assert.match(draw, /plaza-centre-inlay-C\.png/);
+  await access('assets/path/plaza-centre-inlay-C.png');
+  await access('assets/race/ribbon-book-pager.png');
+  assert.equal(draw.includes('ribbon-book-pager'), false);
+  assert.equal(OVAL_CENTRE.x, 46);
+  assert.equal(OVAL_CENTRE.y, 31);
+  const quad = [[45, 30], [46, 30], [45, 31], [46, 31]];
+  assert.equal(quad.every(([x, y]) => GRID[y][x] === T.PLAZA || GRID[y][x] === T.WALK), false);
+  assert.equal(PLAZA_INLAY.kind, 'single');
+  assert.equal(GRID[PLAZA_INLAY.ty][PLAZA_INLAY.tx], T.PLAZA);
+  assert.equal(isBlocked(PLAZA_INLAY.tx, PLAZA_INLAY.ty), false);
+  let nearer = false;
+  for (let y = 0; y < PROPOSAL_H; y++) for (let x = 0; x < PROPOSAL_W; x++) {
+    if (GRID[y][x] !== T.PLAZA) continue;
+    const d = (x + 0.5 - 46) ** 2 + (y + 0.5 - 31) ** 2;
+    const here = (PLAZA_INLAY.tx + 0.5 - 46) ** 2 + (PLAZA_INLAY.ty + 0.5 - 31) ** 2;
+    if (d < here) nearer = true;
+  }
+  assert.equal(nearer, false);
+  assert.deepEqual(pathKerbPlan(8, 2, 8, 2), []);
+  assert.deepEqual(pathKerbPlan(2, 1, 2, 2), [1]);
+  const fountain = lotById('fountain');
+  const shadow = pathKerbPlan(GRID[fountain.y + fountain.h - 1][fountain.x], T.PLAZA, T.PLAZA, T.PLAZA);
+  assert.deepEqual(shadow, [8]);
+  assert.ok(plazaPlanters().length > 4);
+  assert.equal(plazaPlanters().some(([x, y]) => x === PLAZA_INLAY.tx && y === PLAZA_INLAY.ty), false);
   assert.deepEqual(pathKerbPlan(2, 2, 2, 2), []);
   assert.deepEqual(pathKerbPlan(8, 14, 2, 2), []);
   assert.deepEqual(pathKerbPlan(3, 2, 2, 2), [8]);
