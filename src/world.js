@@ -140,7 +140,10 @@ export const DECOR = [];
   for (let x = PEN.x; x < PEN.x + PEN.w; x++) for (const y of [PEN.y, PEN.y + PEN.h - 1]) if (!(y === PEN.y && (x === 42 || x === 43))) DECOR.push({ x, y, kind: 'fence' });
   for (let y = PEN.y + 1; y < PEN.y + PEN.h - 1; y++) for (const x of [PEN.x, PEN.x + PEN.w - 1]) DECOR.push({ x, y, kind: 'fence' }); } // showroom display cars + valet limo
 const DECOR_SET = new Set(DECOR.map((d) => d.y * MAP_W + d.x));
-export const isSolid = (tx, ty) => tx < 0 || ty < 0 || tx >= MAP_W || ty >= MAP_H || SOLID.has(MAP[ty][tx]) || DECOR_SET.has(ty * MAP_W + tx);
+export function isSolid(tx, ty) {
+  if (previewHooks) return previewHooks.solid(tx, ty);
+  return tx < 0 || ty < 0 || tx >= MAP_W || ty >= MAP_H || SOLID.has(MAP[ty][tx]) || DECOR_SET.has(ty * MAP_W + tx);
+}
 
 // Interaction points: tile player should stand on
 export function interactables(state) {
@@ -197,7 +200,13 @@ export function nearestInteractable(state, px, py, maxDist = 1.6) {
   return best;
 }
 
+let previewHooks = null;
+export function setPreviewCollision(hooks) { previewHooks = hooks || null; }
+export function previewCollisionOn() { return !!previewHooks; }
+export function activeMapSize() { return previewHooks?.size || { w: MAP_W, h: MAP_H }; }
+
 export function findPath(sx, sy, tx, ty) {
+  if (previewHooks) return previewHooks.find(sx, sy, tx, ty);
   if (isSolid(tx, ty)) return null;
   const key = (x, y) => y * MAP_W + x;
   const prev = new Map([[key(sx, sy), -1]]);

@@ -3,13 +3,13 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
-import { TILE, findPath, doorTile, BUILDINGS, MALL_BUILDINGS, GAME_DOORS, ARCADE } from '../src/world.js';
+import { TILE, findPath, doorTile, BUILDINGS, MALL_BUILDINGS, GAME_DOORS, ARCADE, isSolid, setPreviewCollision, previewCollisionOn } from '../src/world.js';
 import { newGame } from '../src/game.js';
 import { save, load, MemoryStorage } from '../src/save.js';
 import { FARM, MILL, BAKERY, LUMBER, SAWMILL, MECHANIC, SCRAP, MINE, SMELTER, FORGE } from '../src/npcbuildings.js';
 import {
   APPLIED, FADE_MS, GRID, LIVE_SAVE_KEY, LOTS, NEIGHBOURHOODS, NOOKS, PATHS, PROPOSAL_H, PROPOSAL_W, SPAWN, STOP_KEY, STOP_PX, STOPS, T, TILE_PX,
-  hop, isBlocked, loadStops, lotById, overlaps, proposalPath, relocate, tileAt, tripSeconds, visitDistrict, walkSeconds,
+  edgePlan, EXPANSIONS, hop, isBlocked, isBrickTile, loadStops, lotById, overlaps, preparePreviewPlayer, proposalPath, relocate, sootTiles, stubApproach, stubPast, tileAt, tripSeconds, visitDistrict, walkSeconds, yardTiles,
 } from '../src/townproposal.js';
 
 const LIVE_SPAWN = { x: 31.5 * TILE, y: 23.5 * TILE };
@@ -29,6 +29,27 @@ function liveSteps(door) {
   return path ? path.length - 1 : null;
 }
 
+test('a south-quarter save is rescued in the preview and the live coordinates are what get stored', () => {
+  const game = newGame({ name: 'Kabo', coat: 'tan' });
+  game.player.x = 50.5 * TILE;
+  game.player.y = 96.5 * TILE;
+  const homeY = game.player.y;
+  const moved = preparePreviewPlayer(game.player);
+  assert.equal(moved.moved, true);
+  assert.notEqual(game.player.y, homeY);
+  assert.equal(isBlocked(Math.floor(game.player.x / TILE), Math.floor(game.player.y / TILE)), false);
+  const store = new MemoryStorage();
+  save(game, store);
+  const raw = JSON.parse(store.getItem('inuverse.save.v1'));
+  assert.equal(raw.player.y, homeY);
+  assert.equal(raw.player.previewHome, undefined);
+  setPreviewCollision({ solid: isBlocked, find: proposalPath, size: { w: PROPOSAL_W, h: PROPOSAL_H } });
+  assert.equal(previewCollisionOn(), true);
+  assert.equal(isSolid(0, 0), true);
+  setPreviewCollision(null);
+  assert.equal(previewCollisionOn(), false);
+});
+
 test('the proposal is not applied to the game', () => {
   assert.equal(APPLIED, false);
   const game = readFileSync(new URL('../src/world.js', import.meta.url), 'utf8');
@@ -36,7 +57,8 @@ test('the proposal is not applied to the game', () => {
   const main = readFileSync(new URL('../src/main.js', import.meta.url), 'utf8');
   assert.equal(game.includes('townproposal'), false);
   assert.equal(saveSrc.includes('townproposal'), false);
-  assert.equal(main.includes('townproposal'), false);
+  assert.equal(main.includes('setPreviewCollision'), true);
+  assert.equal(previewCollisionOn(), false);
   const css = readFileSync(new URL('../style.css', import.meta.url), 'utf8');
   assert.match(css, /#stick\{[^}]*width:120px;height:120px;border-radius:50%/);
 });
@@ -200,7 +222,79 @@ test('hidden corners sit off the road and give nothing', () => {
     assert.equal(isBlocked(n.tx, n.ty), false, n.id);
     assert.ok(proposalPath(SPAWN.tx, SPAWN.ty, n.tx, n.ty), n.id);
   }
-  const files = NEIGHBOURHOODS.flatMap((n) => n.need);
-  assert.deepEqual(files, ['brick-ground 16×16, one tile, warm', 'awning 32×16, shared by the bakery and the tailor', 'soot-decal 16×16']);
+  assert.deepEqual(NEIGHBOURHOODS.flatMap((n) => n.need), []);
   for (const n of NEIGHBOURHOODS) assert.ok(n.reuse.length > 0, n.id);
+});
+
+test('district sheets sit on the preview ground and do not change collision', async () => {
+  const { access } = await import('node:fs/promises');
+  for (const file of [
+    'assets/district/brick-ground.png',
+    'assets/district/brick-edge-grass.png',
+    'assets/district/brick-edge-dirt.png',
+    'assets/district/awning.png',
+    'assets/district/soot-decal.png',
+    'assets/pets/stray-pebble.png',
+    'assets/pets/stray-honey.png',
+    'assets/news/paper-pup.png',
+  ]) await access(file);
+  const { readFile } = await import('node:fs/promises');
+  const draw = await readFile(new URL('../src/npcwork.js', import.meta.url), 'utf8');
+  assert.equal(draw.includes("fillText('AWNING'"), false);
+  assert.equal(draw.includes("fillText('BRICK'"), false);
+  assert.equal(draw.includes("fillText('SOOT'"), false);
+  assert.equal(draw.includes('assets/district/awning.png'), true);
+  let both = 0;
+  let brick = 0;
+  for (let y = 0; y < PROPOSAL_H; y++) for (let x = 0; x < PROPOSAL_W; x++) {
+    if (!isBrickTile(x, y)) continue;
+    brick++;
+    const t = GRID[y][x];
+    assert.equal(isBlocked(x, y), false, `${x},${y}`);
+    assert.notEqual(t, T.BUILDING);
+    const plan = edgePlan(x, y);
+    const mats = plan.map((p) => p.mat);
+    const dirtAt = mats.indexOf('dirt');
+    const grassAt = mats.indexOf('grass');
+    if (dirtAt >= 0 && grassAt >= 0) {
+      both++;
+      assert.ok(dirtAt < grassAt);
+    }
+  }
+  assert.ok(brick > 20);
+  assert.ok(both > 0);
+  const yard = yardTiles();
+  const soot = sootTiles();
+  assert.ok(yard.length > 8);
+  assert.ok(Math.abs(soot.length / yard.length - 0.25) < 0.12);
+});
+
+test('expansion stubs are closed gates with a wide way back to the streets', () => {
+  const edges = new Set(EXPANSIONS.map((s) => s.edge));
+  for (const edge of ['N', 'E', 'S', 'W']) assert.ok(edges.has(edge), edge);
+  assert.equal(EXPANSIONS.filter((s) => s.id === 'frog-shore').length, 1);
+  const ids = new Set();
+  const perp = { north: [1, 0], south: [1, 0], east: [0, 1], west: [0, 1] };
+  for (const stub of EXPANSIONS) {
+    assert.equal(ids.has(stub.id), false, stub.id);
+    ids.add(stub.id);
+    assert.equal(stub.connectsTo, null, stub.id);
+    assert.ok(['north', 'south', 'east', 'west'].includes(stub.direction), stub.id);
+    assert.equal(isBlocked(...stub.tile), true, stub.id);
+    const past = stubPast(stub);
+    assert.equal(isBlocked(...past), true, `${stub.id} past`);
+    const [ax, ay] = stubApproach(stub);
+    assert.equal(isBlocked(ax, ay), false, `${stub.id} approach`);
+    assert.equal(tileAt(ax, ay), T.WALK, stub.id);
+    assert.ok(proposalPath(SPAWN.tx, SPAWN.ty, ax, ay), stub.id);
+    const [px, py] = perp[stub.direction];
+    for (const side of [-1, 0, 1]) {
+      const x = ax + px * side;
+      const y = ay + py * side;
+      assert.equal(tileAt(x, y), T.WALK, `${stub.id} ${x},${y}`);
+      assert.equal(STOPS.some((s) => x >= s.tx && x < s.tx + 2 && y >= s.ty && y < s.ty + 2), false);
+      assert.equal(NOOKS.some((n) => n.tx === x && n.ty === y), false);
+      assert.equal(LOTS.some((b) => !b.water && x >= b.x && x < b.x + b.w && y >= b.y && y < b.y + b.h), false);
+    }
+  }
 });

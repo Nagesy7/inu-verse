@@ -1,6 +1,7 @@
 // Opt-in only (?npcwork=1). Draws the workplaces and walks the crew.
 // Save key is inuverse.preview.npcwork.v1. This file does not touch inuverse.save.v1.
 import { TILE } from './world.js';
+import { EXPANSIONS, hop, lotById, NOOKS, setDistrictArt, STOPS, stubApproach, visitDistrict } from './townproposal.js';
 import {
   BAKERY, CHIT_CAP, CLOTH_STOCK, DAILY_ISSUE, FARM, FLOUR_STOCK, FORGE, LUMBER, MECHANIC, MILL, MINE, ROUTES, SAWMILL, SCRAP, SIGN, SMELTER, TAILOR,
   SAVE_KEY, TAG, advance, crewView, seek, seedState,
@@ -98,6 +99,11 @@ const ART_SRC = {
   carryForged: 'assets/npcwork/overlays/carry-forged-tool.png',
   carryWorn: 'assets/npcwork/overlays/carry-tool-worn.png',
   carryFlour: 'assets/npcwork/overlays/carry-flour-sack.png',
+  brick: 'assets/district/brick-ground.png',
+  brickGrass: 'assets/district/brick-edge-grass.png',
+  brickDirt: 'assets/district/brick-edge-dirt.png',
+  awning: 'assets/district/awning.png',
+  soot: 'assets/district/soot-decal.png',
 };
 const IMG = {};
 let artLoaded = false;
@@ -109,7 +115,10 @@ function loadArt() {
     im.onload = () => { IMG[key] = im; res(true); };
     im.onerror = () => res(false);
     im.src = src;
-  })));
+  }))).then((ok) => {
+    setDistrictArt({ brick: IMG.brick, grassEdge: IMG.brickGrass, dirtEdge: IMG.brickDirt, soot: IMG.soot });
+    return ok;
+  });
 }
 
 function blit(c, key, x, y, w, h) {
@@ -134,7 +143,27 @@ const R = (c, x, y, w, h, col) => { c.fillStyle = col; c.fillRect(Math.round(x),
 
 const LOG_SLOTS = [[1660, 3160], [1678, 3160], [1696, 3160], [1668, 3150]];
 
+let laidOut = false;
+let focus = null;
+let labelsOn = false;
+const seenNooks = new Set();
+export function useLayout(on) { laidOut = !!on; }
+export function setFocus(x, y) { focus = { x, y }; }
+export function toggleLabels() { labelsOn = !labelsOn; return labelsOn; }
+
+function place(lot) {
+  if (!laidOut) return { x: lot.x * TILE, y: lot.y * TILE };
+  const p = lotById(lot.id);
+  return { x: (p?.x ?? lot.x) * TILE, y: (p?.y ?? lot.y) * TILE };
+}
+
+function nearFocus(x, y) {
+  if (labelsOn || !focus) return true;
+  return Math.hypot(focus.x - x, focus.y - y) < 220;
+}
+
 function label(c, text, x, y) {
+  if (!nearFocus(x, y)) return;
   c.font = '8px Silkscreen, monospace';
   c.textAlign = 'center';
   c.textBaseline = 'middle';
@@ -158,10 +187,11 @@ function blitFrame(c, key, frame, x, y, dw, dh, fw, fh) {
 }
 
 function drawBay(c, state) {
-  blit(c, 'shopInterior', 896, 64, 160, 128);
+  const bay = laidOut ? place(MECHANIC) : { x: 896, y: 64 };
+  blit(c, 'shopInterior', bay.x, bay.y, 160, 128);
   if (state.car === 'leaving' || state.car === 'out') return;
-  const x = 908;
-  const y = 114;
+  const x = bay.x + 12;
+  const y = bay.y + 50;
   const lifted = state.bay === 'lift' || state.bay === 'bonnet' || state.bay === 'creeper' || state.bay === 'wheel';
   blit(c, lifted ? 'liftUp' : 'liftDown', x, y, 104, 72);
   // v1.2.1 draws the creeper body under the car and the head past the nose, so it stays behind the car.
@@ -173,15 +203,24 @@ function drawBay(c, state) {
   if (state.bay === 'wheel') blitFrame(c, 'wheel', state.bayFrame, x, y, 104, 72, 52, 36);
 }
 
+function drawDistrictAwning(c, x, y, frame) {
+  blitFrame(c, 'awning', frame, x + 32, y + 26, 64, 32, 32, 16);
+}
+
 function drawTailorShop(c, state) {
-  const x = TAILOR.x * TILE;
-  const y = TAILOR.y * TILE;
+  const { x, y } = place(TAILOR);
   blit(c, 'tailorShop', x, y, 160, 128);
+  drawDistrictAwning(c, x, y, 1);
   const wx = x + 12;
   const wy = y + 46;
   blit(c, state.rack ? 'rackStocked' : 'rackEmpty', wx, wy, 100, 56);
   blit(c, state.mannequin === 'dressed' ? 'manDressed' : 'manBare', wx, wy, 100, 56);
-  if (state.leg === 'sew') blitFrame(c, 'sew', state.needle % 4, wx, wy, 100, 56, 50, 28);
+  if (state.leg === 'sew') {
+    blitFrame(c, 'sew', state.needle % 4, wx, wy, 100, 56, 50, 28);
+    const tip = [18, 20, 22, 20][state.needle % 4];
+    R(c, wx + 46, wy + tip, 2, 8, '#f4f7fb');
+    R(c, wx + 46, wy + tip + 6, 2, 2, '#9aa4b0');
+  }
   if (state.leg === 'cut') blitFrame(c, 'cut', state.needle % 4, wx, wy, 100, 56, 50, 28);
 }
 
@@ -192,8 +231,7 @@ function fillFrame(n, steps) {
 }
 
 function drawSawmill(c, state) {
-  const x = SAWMILL.x * TILE;
-  const y = SAWMILL.y * TILE;
+  const { x, y } = place(SAWMILL);
   blit(c, 'sawmill', x, y, 160, 128);
   blitFrame(c, 'logPile', fillFrame(state.millLogs, [0, 1, 3, 6]), x + 112, y + 94, 36, 26, 18, 13);
   blitFrame(c, 'plankStack', fillFrame(state.planks, [0, 1, 3, 5]), x + 12, y + 100, 36, 20, 18, 10);
@@ -202,8 +240,7 @@ function drawSawmill(c, state) {
 }
 
 function drawFarm(c, state) {
-  const x = FARM.x * TILE;
-  const y = FARM.y * TILE;
+  const { x, y } = place(FARM);
   blit(c, 'wheatFarm', x, y, 192, 128);
   for (const [dx, dy] of [[40, 52], [72, 52], [40, 84], [72, 84]]) {
     blitFrame(c, 'crops', state.crop, x + dx, y + dy, 32, 32, 16, 16);
@@ -218,8 +255,7 @@ function drawFarm(c, state) {
 }
 
 function drawMill(c, state) {
-  const x = MILL.x * TILE;
-  const y = MILL.y * TILE;
+  const { x, y } = place(MILL);
   blit(c, 'windmill', x, y, 160, 128);
   blitFrame(c, 'grainPile', state.grain > 0 ? 1 : 0, x + 20, y + 92, 36, 24, 18, 12);
   blitFrame(c, 'flourStack', state.milled > 0 && state.flourDelivered === 0 && state.cargo !== 'flour' ? 1 : 0, x + 112, y + 88, 36, 28, 18, 14);
@@ -230,8 +266,7 @@ function drawMill(c, state) {
 }
 
 function drawMine(c, state) {
-  const x = MINE.x * TILE;
-  const y = MINE.y * TILE;
+  const { x, y } = place(MINE);
   blit(c, 'mine', x, y, 160, 128);
   blitFrame(c, 'orePile', Math.max(0, Math.min(3, state.ore)), x + 108, y + 88, 40, 28, 20, 14);
   blit(c, state.ore > 0 ? 'cartFull' : 'cartEmpty', x + 24, y + 84, 36, 28);
@@ -241,8 +276,7 @@ function drawMine(c, state) {
 }
 
 function drawSmelter(c, state) {
-  const x = SMELTER.x * TILE;
-  const y = SMELTER.y * TILE;
+  const { x, y } = place(SMELTER);
   blit(c, 'smelter', x, y, 160, 128);
   blitFrame(c, 'barStack', Math.max(0, Math.min(3, state.bars)), x + 116, y + 92, 32, 24, 16, 12);
   // Scrap bales reuse the ore-in hopper. The pour sheet is the glow and the bar coming out.
@@ -255,8 +289,7 @@ function drawSmelter(c, state) {
 }
 
 function drawForge(c, state) {
-  const x = FORGE.x * TILE;
-  const y = FORGE.y * TILE;
+  const { x, y } = place(FORGE);
   blit(c, 'forge', x, y, 160, 128);
   if (state.axeHeads > 0) {
     const sit = bottomCentre(x + 48, y + 110, 24, 20);
@@ -272,19 +305,22 @@ function drawForge(c, state) {
 }
 
 function drawBakery(c, state) {
-  const x = BAKERY.x * TILE;
-  const y = BAKERY.y * TILE;
+  const { x, y } = place(BAKERY);
   blit(c, 'bakery', x, y, 160, 128);
+  drawDistrictAwning(c, x, y, 0);
   for (let i = 0; i < state.flour; i++) blit(c, 'flourSack', x - 28, y + 36 + i * 26, 20, 24);
   blit(c, state.bread >= 1 ? 'trayFull' : 'trayEmpty', x + 12, y + 46, 100, 56);
   blitFrame(c, 'ovenDoor', state.oven === 'bake' ? 1 : 0, x + 12, y + 46, 100, 56, 50, 28);
+  c.globalAlpha = state.oven === 'bake' ? 0.85 : 0.45;
+  R(c, x + 22, y + 62, 14, 10, '#ffb15a');
+  R(c, x + 26, y + 64, 6, 6, '#ffe08a');
+  c.globalAlpha = 1;
   if (state.beat === 'baking' && state.leg === 'oven' && state.oven === 'knead') blitFrame(c, 'knead', state.ovenFrame, x + 12, y + 46, 100, 56, 50, 28);
   label(c, `FLOUR ${state.flour}`, x + 40, y - 8);
 }
 
 function drawScrap(c, state) {
-  const x = SCRAP.x * TILE;
-  const y = SCRAP.y * TILE;
+  const { x, y } = place(SCRAP);
   const pressing = state.beat === 'pressing' && state.press === 'press';
   const sorting = state.beat === 'pressing' && state.press === 'sort';
   blit(c, 'scrapYard', x, y, 192, 128);
@@ -292,7 +328,7 @@ function drawScrap(c, state) {
   // Stock sits above the idle press so the heap, crate and bale are not swallowed by that layer.
   blitFrame(c, 'brokenHeap', fillFrame(state.yardTool + state.yardLeft, [0, 1, 2, 3]), x + 12, y + 44, 44, 28, 22, 14);
   if (state.press === 'press' || state.pressed || state.scrap || state.scrapUsed || state.cargo === 'scrap') blit(c, 'partsCrate', x + 64, y + 56, 28, 22);
-  if (state.scrap > 0) blit(c, 'scrapBale', x + 154, y + 32, 28, 20);
+  blit(c, 'scrapBale', x + 140, y + 52, 40, 32);
   if (pressing) blitFrame(c, 'pressLoop', state.pressFrame, x + 8, y + 24, 176, 92, 88, 46);
   if (sorting) blitFrame(c, 'sortLoop', state.pressFrame, x + 8, y + 24, 176, 92, 88, 46);
   label(c, `HEAP ${state.yardTool + state.yardLeft}`, x + 48, y - 8);
@@ -365,6 +401,7 @@ export function createNpcWork(doc = document, storage = globalThis.localStorage)
   if (chip) chip.addEventListener?.('click', () => {
     if (!pop) return;
     pop.hidden = !pop.hidden;
+    toggleLabels();
     chip.setAttribute?.('aria-expanded', String(!pop.hidden));
     paint();
   });
@@ -382,6 +419,7 @@ export function createNpcWork(doc = document, storage = globalThis.localStorage)
       paint();
       return this.summary();
     },
+    pose(patch) { Object.assign(state, patch || {}); return this.summary(); },
     seek(label) {
       state = seek(label);
       persist();
@@ -454,35 +492,64 @@ export function createNpcWork(doc = document, storage = globalThis.localStorage)
         else if (a.id === 'dusty' && state.cargo === 'flour') npcOverlay = { key: 'carryFlour', frame: 0, behind: a.face === 'up' };
         else if (a.id === 'pike' && state.cargo === 'ore') npcOverlay = { key: 'carryOre', frame: 0, behind: a.face === 'up' };
         else if (a.id === 'ember' && state.cargo === 'bar') npcOverlay = { key: 'carryBar', frame: 0, behind: a.face === 'up' };
+        const seat = { sprout: 'farm', dusty: 'mill', pike: 'mine', ember: 'smelter', smith: 'forge', timber: 'lumber', saw: 'sawmill', crumb: 'bakery', stitch: 'tailor', bolt: 'scrap', wrench: 'mechanic' };
+        let x = a.x;
+        let y = a.y;
+        if (laidOut && seat[a.id]) {
+          const p = lotById(seat[a.id]);
+          if (p) { x = p.door[0] * TILE + 16; y = p.door[1] * TILE + 16; }
+        }
+        const named = !laidOut || nearFocus(x, y);
         return {
-          x: a.x, y: a.y, coat: a.coat, outfit: {}, face: a.face, phase: state.phase, moving: a.moving,
-          name: a.name, art: null, npcwork: true, npcOverlay,
+          x, y, coat: a.coat, outfit: {}, face: a.face, phase: state.phase, moving: a.moving,
+          name: named ? a.name : '', art: null, npcwork: true, npcOverlay,
           worker: { tool: '', face: a.face, phase: state.phase, work: 0 },
         };
       });
     },
     props() {
+      const lumber = place(LUMBER);
+      const mech = place(MECHANIC);
       const list = [
-        { y: 3200, d: (c) => blit(c, 'lumber', 1600, 3072, 192, 128) },
-        { y: 192, d: (c) => drawBay(c, state) },
-        { y: (SAWMILL.y + SAWMILL.h) * TILE, d: (c) => drawSawmill(c, state) },
-        { y: (BAKERY.y + BAKERY.h) * TILE, d: (c) => drawBakery(c, state) },
-        { y: (FARM.y + FARM.h) * TILE, d: (c) => drawFarm(c, state) },
-        { y: (MILL.y + MILL.h) * TILE, d: (c) => drawMill(c, state) },
-        { y: (MINE.y + MINE.h) * TILE, d: (c) => drawMine(c, state) },
-        { y: (SMELTER.y + SMELTER.h) * TILE, d: (c) => drawSmelter(c, state) },
-        { y: (FORGE.y + FORGE.h) * TILE, d: (c) => drawForge(c, state) },
-        { y: (SCRAP.y + SCRAP.h) * TILE, d: (c) => drawScrap(c, state) },
-        { y: 3202, d: (c) => {
-          for (let i = 0; i < state.logs && i < LOG_SLOTS.length; i++) blit(c, 'log', LOG_SLOTS[i][0], LOG_SLOTS[i][1], 18, 10);
-          label(c, `LOGS ${state.logs}`, 1712, 3144);
+        { y: lumber.y + 128, d: (c) => blit(c, 'lumber', lumber.x, lumber.y, 192, 128) },
+        { y: place(MECHANIC).y + 140, d: (c) => drawBay(c, state) },
+        { y: place(SAWMILL).y + 128, d: (c) => drawSawmill(c, state) },
+        { y: place(BAKERY).y + 128, d: (c) => drawBakery(c, state) },
+        { y: place(FARM).y + 128, d: (c) => drawFarm(c, state) },
+        { y: place(MILL).y + 128, d: (c) => drawMill(c, state) },
+        { y: place(MINE).y + 128, d: (c) => drawMine(c, state) },
+        { y: place(SMELTER).y + 128, d: (c) => drawSmelter(c, state) },
+        { y: place(FORGE).y + 128, d: (c) => drawForge(c, state) },
+        { y: place(SCRAP).y + 128, d: (c) => drawScrap(c, state) },
+        { y: lumber.y + 130, d: (c) => {
+          for (let i = 0; i < state.logs && i < LOG_SLOTS.length; i++) blit(c, 'log', lumber.x + 16 + (i % 3) * 20, lumber.y + 96 + Math.floor(i / 3) * 12, 18, 10);
+          label(c, `LOGS ${state.logs}`, lumber.x + 96, lumber.y - 8);
         } },
-        { y: 195, d: (c) => {
-          if (state.shopPlanks >= 1) blit(c, 'plank', 1000, 176, 51, 12);
-          blit(c, state.shortage === 'FILLED' ? 'signFilled' : 'signShort', 1010, 155, 40, 18);
-          label(c, `SHOP ${state.shopPlanks}`, 1030, 190);
+        { y: mech.y + 140, d: (c) => {
+          if (state.shopPlanks >= 1) blit(c, 'plank', mech.x + 104, mech.y + 112, 51, 12);
+          blit(c, state.shortage === 'FILLED' ? 'signFilled' : 'signShort', mech.x + 114, mech.y + 91, 40, 18);
+          label(c, state.shortage === 'FILLED' ? 'FILLED' : `SHOP ${state.shopPlanks}`, mech.x + 134, mech.y + 80);
+          if (state.shortage !== 'FILLED') label(c, 'SHORT 1 PLANK', mech.x + 134, mech.y + 64);
         } },
-        { y: (TAILOR.y + TAILOR.h) * TILE, d: (c) => drawTailorShop(c, state) },
+        { y: 8, d: (c) => {
+          if (!laidOut) return;
+          for (const s of STOPS) R(c, s.tx * TILE + 4, s.ty * TILE + 4, 56, 56, '#e07070');
+          c.font = '8px Silkscreen, monospace';
+          c.textAlign = 'center';
+          c.textBaseline = 'middle';
+          for (const stub of EXPANSIONS) {
+            const [tx, ty] = stubApproach(stub);
+            const x = tx * TILE + 16;
+            const y = ty * TILE + 8;
+            R(c, x - 40, y - 28, 80, 22, '#3a2a16');
+            R(c, x - 38, y - 26, 76, 18, '#f4e3c8');
+            c.fillStyle = '#3a2a16';
+            c.fillText('COMING SOON', x, y - 16);
+            R(c, x - 2, y - 8, 4, 16, '#6a4428');
+          }
+          for (const n of NOOKS) R(c, n.tx * TILE + 8, n.ty * TILE + 8, 16, 16, '#8a6ad0');
+        } },
+        { y: place(TAILOR).y + 128, d: (c) => drawTailorShop(c, state) },
         ...(state.car === 'leaving' || state.car === 'out' ? [{
           y: ROUTES.carExit[Math.min(state.carI, ROUTES.carExit.length - 1)][1] * TILE + 16,
           d: (c) => {
@@ -497,6 +564,16 @@ export function createNpcWork(doc = document, storage = globalThis.localStorage)
         }] : []),
       ];
       return list;
+    },
+    focus(x, y) { setFocus(x, y); },
+    nearestNook(px, py) {
+      let best = null;
+      let bd = 48;
+      for (const n of NOOKS) {
+        const d = Math.hypot(px - (n.tx + 0.5) * TILE, py - (n.ty + 0.5) * TILE);
+        if (d < bd) { bd = d; best = n; }
+      }
+      return best;
     },
   };
 }

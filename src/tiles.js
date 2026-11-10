@@ -248,4 +248,6 @@ export function sprites() {
   if (!SPR.tree) Object.assign(SPR, { tree: tree('green'), sakura: tree('sakura'), lamp: lamp(), bench: bench(), sign: sign(), crate: crate(), bush: bush(null), bushP: bush('#ff8fb6'), bushY: bush('#ffd84a'), hedge: hedge(), fence: fence(), mailbox: mailbox(), rail: rail(), streetTree: streetTree(), light0: trafficLight(0), light1: trafficLight(1), light2: trafficLight(2) });
   return SPR;
 }
+export function paintGrassTile(c, px, py, x, y) { grass(c, px, py, x, y); }
+export function paintDirtTile(c, px, py, x, y) { plot(c, px, py, x, y); }
 export { hash, mk, P };

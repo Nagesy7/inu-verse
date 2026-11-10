@@ -1,5 +1,5 @@
 import { CHAPEL as CHAPEL_POS, LOTS as BIZ_LOTS } from './world.js';
-import { TILE, MAP_W, MAP_H, MAP, T, BUILDINGS, PLOTS, NPC_HOMES, CLUBHOUSE, MALL_BUILDINGS, STATUE, LEADERS, PLOT_COST, findPath, moveBody, nearestInteractable, interactables, isSolid } from './world.js';
+import { TILE, MAP_W, MAP_H, MAP, T, BUILDINGS, PLOTS, NPC_HOMES, CLUBHOUSE, MALL_BUILDINGS, STATUE, LEADERS, PLOT_COST, findPath, moveBody, nearestInteractable, interactables, isSolid, setPreviewCollision, activeMapSize } from './world.js';
 import { COATS, newGame, claimPlot, reconcilePlots, buyFurniture, placeFurniture, moveFurniture, storeFurniture, sellPlaced, sellFromInventory, upgrade, swapBonesToKibble, BONES_PER_KIBBLE } from './game.js';
 import { FURNITURE, WALLS, FLOORS, ROOM_W, ROOM_H, canPlace, itemAt, footprint } from './furniture.js';
 import { MENU, STATIONS, newShift, tickShift, addToTray, clearTray, serve, finishShift, SHIFT_LEN, startCook, clearTable, seatCustomer, takeOrder, NUM_TABLES, TABLES_START, cookAtStation, selectQueue, seatSelected } from './cafe.js';
@@ -122,7 +122,8 @@ import { hubGateProp } from './sceneart.js';
 import { buildDrawer, drawerOpen } from './hudmenu.js';
 import { layoutSafe } from './safezones.js';
 import { createGroveTown } from './groveview.js';
-import { createNpcWork, drawNpcOverlay } from './npcwork.js';
+import { createNpcWork, drawNpcOverlay, useLayout } from './npcwork.js';
+import { hop, isBlocked as previewBlocked, NOOKS, preparePreviewPlayer, previewGround, proposalPath, PROPOSAL_H, PROPOSAL_W, STOPS, visitDistrict, GRID as previewGrid, T as previewTile } from './townproposal.js';
 import { makeDoorState, doorStep, doorExit, outsideOf } from './doors.js';
 import { isDoor, doorList, doorDir, COMMUNITY } from './world.js';
 import { createMultiplayer } from './multiplayer.js';
@@ -183,6 +184,10 @@ const EVX = createEvents({ search: location.search }); let EVVIEW = null, chatSy
 const parkNotices = mountNotices(document);
 const GROVE = createGroveTown(document, localStorage);
 const NPCW = createNpcWork(document, localStorage);
+if (NPCW) {
+  setPreviewCollision({ solid: previewBlocked, find: proposalPath, size: { w: PROPOSAL_W, h: PROPOSAL_H } });
+  useLayout(true);
+}
 mountPlaySheet(document);
 const folkBase = () => (SKYS.pinH != null ? TF.folkSec(SKYS.pinH) + time : TF.folkSec(dayPhase(time + dayOffset).hour)); // a pinned ?tod= still lets them walk
 const folkSecNow = () => folkBase() + FOLKQ.shift;
@@ -216,7 +221,39 @@ function toast(msg, cls = '') { if (cls === 'good') faceReact('me', 'joy'); else
   if ($('#toast').children.length >= 4) $('#toast').firstElementChild.remove();
   const d = document.createElement('div'); d.dataset.msg = msg; d.className = 'toast ' + cls; d.textContent = msg; $('#toast').appendChild(d); d._t = setTimeout(() => d.remove(), 2200); }
 let profSaveT = 0;
+const nookSeen = new Set();
+let hopBox = null;
+function paintHops(here) {
+  if (!hopBox) {
+    hopBox = document.createElement('div');
+    hopBox.id = 'town-hops';
+    document.body.appendChild(hopBox);
+  }
+  if (!here) { hopBox.hidden = true; return; }
+  const open = visitDistrict(localStorage, here.district);
+  const others = STOPS.filter((s) => s.district !== here.district && open.unlocked.includes(s.district));
+  hopBox.hidden = false;
+  const html = others.map((s) => `<button type="button" data-stop="${s.district}" style="min-width:44px;min-height:44px">${s.name}</button>`).join('');
+  if (hopBox.dataset.html !== html) {
+    hopBox.dataset.html = html;
+    hopBox.innerHTML = html || '<span>Stop unlocked</span>';
+    hopBox.querySelectorAll('button').forEach((btn) => btn.onclick = () => {
+      const ride = hop(localStorage, here.district, btn.dataset.stop);
+      if (!ride.ok) return;
+      cv.style.transition = 'opacity .45s linear';
+      cv.style.opacity = '0';
+      setTimeout(() => {
+        state.player.x = (ride.tx + 0.5) * TILE;
+        state.player.y = (ride.ty + 0.5) * TILE;
+        cam.x = state.player.x;
+        cam.y = state.player.y;
+        cv.style.opacity = '1';
+      }, ride.fadeMs);
+    });
+  }
+}
 function persist() { if (state) { for (const u of ENG.checkCollections(state)) toast(`Collection complete: ${u.badge} ${u.name}! Trophy added to your inventory.`, 'good'); save(state, localStorage); if (mode === 'build' && build && !build.readOnly && !build.pack && !build.shop) schedulePublish(); if (mode === 'build' && build?.shop?.own) scheduleShopPublish(); if (hasCustomLook(state) && Date.now() - profSaveT > 15000) { profSaveT = Date.now(); saveProfile(state); } } }
+function townMap() { return NPCW ? { ground: previewGround(), props: [] } : prerenderMap(); }
 // burn-for-status flair: pulsing pixel halo + sparkles at the feet (world, home and photos)
 function drawFlair(c, col, t) { const r = 40 + Math.sin(t * 3) * 3; c.save(); c.globalAlpha = 0.5; c.fillStyle = col; c.fillRect(-r, 6, r * 2, 12); c.fillRect(-r + 10, 0, r * 2 - 20, 24); c.globalAlpha = 0.22 + Math.sin(t * 4) * 0.08; c.fillRect(-r + 8, -100, r * 2 - 16, 106); c.globalAlpha = 1; for (let i = 0; i < 6; i++) { const a = t * 1.6 + i * 1.047; c.fillStyle = i % 2 ? '#ffffff' : col; c.fillRect(Math.round(Math.cos(a) * 52) - 4, Math.round(-50 + Math.sin(a) * 56) - 4, 8, 8); } c.restore(); }
 function featuredMap() { const nowH = state.clockSec / (DAY_LEN / 24), out = {}; for (const id of Object.keys(FEATURED_SLOTS)) { const r = featuredOf(state, id, nowH); if (r) out[id] = { ...r, label: 'FEATURED' }; const sp = F5.sponsorOf(state, id, nowH); if (sp) out[id] = { ticker: sp.brand, by: sp.by, untilH: sp.untilH, featured: true, sponsored: true, label: 'SPONSORED' }; } return out; }
@@ -309,9 +346,10 @@ function titleScreen() {
 function startGame(s) { loadProfile(s).catch(() => {}); IQC.ensureChoice(s); loadCompanionProfile(); ENG.ensureEngage(s); ENG.addSeasonXp(s, 'login', Math.floor((s.clockSec || 0) / DAY_LEN)); F5.ensureFly5(s); F5.holderCheck(s); OB.ensureOnboard(s); s.town ||= makeTown(rng); townH = -1; seedTokens(s, rng); REL.ensureRel(s); ensureFarm(s); ensureBiz(s); s.clockSec ??= 0; catchUp(s, Date.now(), { season: seasonOf(Math.floor(s.clockSec / DAY_LEN)), rain: false }); hourIdx = Math.floor(s.clockSec / (DAY_LEN / 24));
   state = s; state.kibble ??= DEMO ? 20 : 0; if (!DEMO) state.kibble = 0; ensureWardrobe(state); ensurePacks(state); ensureMall(state); state.clockSec ??= 0; lastEarned = state.stats.bonesEarned; mode = 'world'; LS.ensureStreak(state); setTimeout(() => syncStreak(), 0);
   setTimeout(() => refreshPlotOwners(), 0);
+  if (NPCW) preparePreviewPlayer(s.player);
   buildDrawer(document, { joystick: joyApi, bork: () => { initAudio(); bork(); player.emote = { kind: 'bork', t: 1.2 }; emoteBubble('me', 'bork', time); } }); $('#title').hidden = true; $('#hud').hidden = false; $('#minimap-wrap').hidden = false; document.body.classList.add('inworld');
-  makeAlive(); mapImg = prerenderMap(); npcs = spawnNpcs(rng, 6); npcs.forEach((n) => { n.art = artKey(n.coat); }); amb = makeAmbient(42); snapWeather();
-  Promise.all([artReady, buildingsReady, document.fonts?.load('8px Silkscreen').catch(() => {})]).then(() => { mapImg = prerenderMap(); });
+  makeAlive(); mapImg = townMap(); npcs = spawnNpcs(rng, 6); npcs.forEach((n) => { n.art = artKey(n.coat); }); amb = makeAmbient(42); snapWeather();
+  Promise.all([artReady, buildingsReady, document.fonts?.load('8px Silkscreen').catch(() => {})]).then(() => { mapImg = townMap(); });
   feel.fade(); $('#hud').classList.add('in');
   // ?spawn=<building> (from a game's 🏠 Back to Inu Verse): stand just outside that building's door.
   { const sp = new URLSearchParams(location.search).get('spawn'), d = sp && [ARCADE, ...GAME_DOORS].find((x) => x.id === sp);
@@ -384,7 +422,8 @@ function npcAtWorld(wx, wy) { let best = null, bd = 22; const cands = [...npcs.m
   for (const c of cands) { const dx = Math.abs(wx - c.x), dy = c.y - wy; if (dy < -10 || dy > 44) continue; const d = Math.hypot(dx, Math.max(0, dy - 18)); if (dx < 16 && d < bd) { bd = d; best = c; } } return best; }
 function planTo(goal, { target = null, npcT = null, run = false, mark = true } = {}) {
   const sx = Math.floor(state.player.x / TILE), sy = Math.floor(state.player.y / TILE);
-  const raw = MOB.astar(sx, sy, goal[0], goal[1], solidT, { w: MAP_W, h: MAP_H }); if (!raw) { player.clickMark = null; return false; }
+  const bounds = activeMapSize();
+  const raw = MOB.astar(sx, sy, goal[0], goal[1], solidT, { w: bounds.w, h: bounds.h }); if (!raw) { player.clickMark = null; return false; }
   const pts = MOB.smoothPath(raw, solidT, TILE).slice(1), end = raw[raw.length - 1];
   Object.assign(player.pw, { pts: pts.length ? pts : [end], goal: end, run, stuckT: 0, lastD: Infinity, replans: player.pw.goal && player.pw.goal[0] === end[0] && player.pw.goal[1] === end[1] ? player.pw.replans : 0 });
   player.path = player.pw.pts; player.target = target; player.npcT = npcT;
@@ -593,7 +632,7 @@ function crewActors() { return crew.filter((w) => w.on).map((w) => ({ x: w.x, y:
 function crewProps() { const out = []; for (const w of crew) { if (!w.on) continue; if (w.cones) out.push({ y: w.cones[0][1] * TILE, d: (x) => drawCones(x, w) }); if (w.truck) out.push({ y: w.y - 30, d: (x) => drawCar(x, w.x - 40, w.y - 36, { col: '#2f8a4a', kind: 'pickup', dir: w.face === 'left' ? 'west' : 'east' }) }); }
   return out; }
 // the trader cart wins over a field/sign under it (only within its small talk radius) so you can always trade
-function nearIt(x, y) { return !drive && EVX.nearTrader(x, y) ? null : nearestInteractable(state, x, y); }
+function nearIt(x, y) { if (NPCW) return null; return !drive && EVX.nearTrader(x, y) ? null : nearestInteractable(state, x, y); }
 function nearPup() { for (const w of crew) if (w.on && Math.hypot(w.x - state.player.x, w.y - state.player.y) < 40) return { workerRef: w, name: w.name }; const pet = activePet(state); if (pet && !drive && Math.hypot(petF.x - state.player.x, petF.y - state.player.y) < 34) return { pet, name: pet.name }; if (presidentPresent(pres) && Math.hypot(pres.x - state.player.x, pres.y - state.player.y) < 40) return { president: true, name: 'President Inu' }; let b = null, bd = 36; for (const n of npcs) { const d = Math.hypot(n.x - state.player.x, n.y - state.player.y); if (d < bd) { bd = d; b = n; } }
   if (!b && !drive && EVX.nearTrader(state.player.x, state.player.y)) return { trader: true, name: EVR.TRADER.name };
   if (!b && !drive) { const f = TF.nearestFolk(TFS, state.player.x, state.player.y); if (f) return { folk: f, name: f.folkName }; } return b; } // townsfolk: chat only, no rewards
@@ -852,14 +891,23 @@ function updateWorld(dt) {
   { const vw = innerWidth / ZOOM, vh = innerHeight / ZOOM; stepChat({ now: time, player: p, npcs, hour: dayPhase(time + dayOffset).hour, rain: amb.rain > 0.3, rng, moodLine: (n) => rng() < 0.5 ? MWd.moodLine(n.name, rng) : null, inView: (x, y) => Math.abs(x - cam.x) < vw / 2 - 20 && Math.abs(y - cam.y) < vh / 2 - 30, placeOf: chatPlace }); }
   PAB.simTick(dt, time, { x: p.x, y: p.y, driving: !!drive, busy: !!panel }, (tx, ty) => (isSolid(tx, ty) ? -1 : MAP[ty][tx]), T); // sim police/rangers: reads a copy of the position only, never blocks play
   if (!drive) GROVE.step({ x: p.x, y: p.y, now: performance.now(), input: !!player.moving, foreground: document.visibilityState !== 'hidden' });
-  if (!drive && NPCW) NPCW.step(dt);
+  if (!drive && NPCW) {
+    NPCW.step(dt);
+    NPCW.focus(p.x, p.y);
+    const nearStop = STOPS.find((s) => Math.hypot(p.x - (s.tx + 1) * TILE, p.y - (s.ty + 1) * TILE) < 70);
+    if (nearStop) visitDistrict(localStorage, nearStop.district);
+    const nook = NPCW.nearestNook(p.x, p.y);
+    if (nook && !nookSeen.has(nook.id)) { nookSeen.add(nook.id); toast(nook.text, ''); }
+    paintHops(nearStop);
+  }
   mailAcc += dt; if (mailAcc > 45) { mailAcc = 0; if (rng() < 0.6 && addMail(state, rng)) { toast('New note in your mailbox!', 'good'); persist(); } }
   // smooth camera
   const k = 1 - Math.pow(0.004, dt), lead = player.moving ? 10 : 0, fx = { left: -1, right: 1 }[player.face] || 0, fy = { up: -1, down: 1 }[player.face] || 0;
   guide.update(dt); onboardUi.drawNpc(dt); const tc = guide.camTarget(), kk = tc ? 1 - Math.pow(0.02, dt) : k;
   if (photo && PHC) ZOOM = PHM.photoZoom(PHC); const pnx = photo && PHC ? PHC.pan.x : 0, pny = photo && PHC ? PHC.pan.y : 0;
   cam.x += ((tc ? tc.x : p.x + fx * lead + pnx) - cam.x) * kk; cam.y += ((tc ? tc.y : (drive || photo) ? p.y + fy * lead * 0.6 + pny : liftTarget(p.y + fy * lead * 0.6, p.x, p.y, FDOORS, ZOOM, innerHeight)) - cam.y) * kk; // facadecam: lift at front doors so tall signs clear the HUD (not while driving / in photo mode)
-  Object.assign(cam, clampCam(cam.x, cam.y, innerWidth / ZOOM, innerHeight / ZOOM, MAP_W * TILE, MAP_H * TILE));
+  const mapSize = activeMapSize();
+  Object.assign(cam, clampCam(cam.x, cam.y, innerWidth / ZOOM, innerHeight / ZOOM, mapSize.w * TILE, mapSize.h * TILE));
   if (globalThis.__camLock) { cam.x = __camLock.x; cam.y = __camLock.y; } // debug/screenshot camera lock
   const it = !panel && nearIt(p.x, p.y);
   const pr = $('#prompt');
@@ -894,33 +942,35 @@ function renderWorld() {
   const G = mapImg.ground, sx = Math.max(0, Math.floor(-ox / SCALE)), sy = Math.max(0, Math.floor(-oy / SCALE)), sw = Math.min(G.width - sx, Math.ceil(vw / SCALE) + 1), sh = Math.min(G.height - sy, Math.ceil(vh / SCALE) + 1);
   ctx.drawImage(G, sx, sy, sw, sh, ox + sx * SCALE, oy + sy * SCALE, sw * SCALE, sh * SCALE);
   ctx.save(); ctx.translate(ox, oy);
-  { // animated water (native pixels, scaled)
+  if (!NPCW) { // animated water (native pixels, scaled). The preview paints its own pond on the proposal ground.
     const tx0 = Math.floor(-ox / TILE) - 1, ty0 = Math.floor(-oy / TILE) - 1; ctx.save(); ctx.scale(SCALE, SCALE); drawWater(ctx, time, tx0, ty0, tx0 + Math.ceil(vw / TILE) + 2, ty0 + Math.ceil(vh / TILE) + 2); ctx.restore(); }
   const phase = dayPhase(time + dayOffset);
   globalThis.__inuNight = phase.dark;
-  const dyn = [...HUB_GATES.map((g) => hubGateProp(g, time)), hubSignProp(62, 58, time), ...dynamicProps(state, time, myPack(state)), ...presidentProps(pres, time), ...doorProps(time), ...carWorldProps(), ...crewProps(), ...adProps(trend, adRot, adIdx, !!globalThis.__inuNight, time, featuredMap()), ...confettiProps(), ...partyWorldProps(ox, oy, vw, vh), ...squareProps(state, time, Math.floor(gameDay() / 7)), ...arcadeProps(time, arcadeTop), ...MWd.statueProps(time, { drawShiba, artLoaded: () => !!ART['shiba-golden'] }), ...MWd.newsProps(time), ...KN.wallProps(KIBBLE_PLAZA.wall, KEN.wall, time, TILE), ...RD.gateProps(KIBBLE_PLAZA.raid, time, TILE), ...MWd.firepitProps(time), ...plazaCentreProps(time, seasonTheme().theme, { low: bldgFxLow(), night: bldgNightK(), glow: pushGlow }), ...MWd.plazaSkyProps(time), ...PAB.bureauProps(time, { drawShiba }, state.player), ...HS.shardProps(time, TILE, !!state.hunt?.shard)];
+  const dyn = NPCW ? [] : [...HUB_GATES.map((g) => hubGateProp(g, time)), hubSignProp(62, 58, time), ...dynamicProps(state, time, myPack(state)), ...presidentProps(pres, time), ...doorProps(time), ...carWorldProps(), ...crewProps(), ...adProps(trend, adRot, adIdx, !!globalThis.__inuNight, time, featuredMap()), ...confettiProps(), ...partyWorldProps(ox, oy, vw, vh), ...squareProps(state, time, Math.floor(gameDay() / 7)), ...arcadeProps(time, arcadeTop), ...MWd.statueProps(time, { drawShiba, artLoaded: () => !!ART['shiba-golden'] }), ...MWd.newsProps(time), ...KN.wallProps(KIBBLE_PLAZA.wall, KEN.wall, time, TILE), ...RD.gateProps(KIBBLE_PLAZA.raid, time, TILE), ...MWd.firepitProps(time), ...plazaCentreProps(time, seasonTheme().theme, { low: bldgFxLow(), night: bldgNightK(), glow: pushGlow }), ...MWd.plazaSkyProps(time), ...PAB.bureauProps(time, { drawShiba }, state.player), ...HS.shardProps(time, TILE, !!state.hunt?.shard)];
   for (const d of dyn) if (d.flat) d.d(ctx);
   const view = { x0: -ox, y0: -oy, x1: -ox + vw, y1: -oy + vh };
-  drawGroundLife(ctx, amb, phase, view); drawAliveGround(ctx, ALIVE, view, phase); feel.drawGround(ctx);
+  if (!NPCW) { drawGroundLife(ctx, amb, phase, view); drawAliveGround(ctx, ALIVE, view, phase); }
+  feel.drawGround(ctx);
   if (player.clickMark && player.pw.pts.length) drawMark(ctx, player.clickMark, time);
-  const actors = [MWd.crierActor(time, artKey), ...npcs.map((n, i) => ({ ...n, npc: true, idx: i, badge: badgeOf(packOfName(state, n.name)) })), ...(drive ? [] : [{ x: state.player.x, y: state.player.y, coat: state.player.coat, outfit: state.wardrobe.equipped, face: player.face, phase: player.phase, moving: player.moving, name: FB.titleOf(state) ? `${state.player.name} «${FB.titleOf(state)}»` : state.player.name, me: true, badge: badgeOf(myPack(state)), emote: player.emote, act: ACT.act, art: artKey(state.player.coat, state.wardrobe.equipped), profile: hasCustomLook(state) ? myProfile() : null }]), ...streetPups(), ...presActors(), ...petActors(), ...crewActors(), ...pupActors(), ...(NPCW ? NPCW.actors() : []), ...(mpActs = MPL.actors(view, state.player)), ...remotePetActors(mpActs), ...dogWalkActors(view, walkNow(), artKey), ...stepFolk(view), ...mascotActors(state, time)];
+  const meActor = drive ? [] : [{ x: state.player.x, y: state.player.y, coat: state.player.coat, outfit: state.wardrobe.equipped, face: player.face, phase: player.phase, moving: player.moving, name: FB.titleOf(state) ? `${state.player.name} «${FB.titleOf(state)}»` : state.player.name, me: true, badge: badgeOf(myPack(state)), emote: player.emote, act: ACT.act, art: artKey(state.player.coat, state.wardrobe.equipped), profile: hasCustomLook(state) ? myProfile() : null }];
+  const actors = NPCW ? [...meActor, ...petActors(), ...NPCW.actors()] : [MWd.crierActor(time, artKey), ...npcs.map((n, i) => ({ ...n, npc: true, idx: i, badge: badgeOf(packOfName(state, n.name)) })), ...meActor, ...streetPups(), ...presActors(), ...petActors(), ...crewActors(), ...pupActors(), ...(mpActs = MPL.actors(view, state.player)), ...remotePetActors(mpActs), ...dogWalkActors(view, walkNow(), artKey), ...stepFolk(view), ...mascotActors(state, time)];
   // one depth-sorted list: static props (culled), dynamic props and actors, by ground y
   const L = -ox - 200, Rt = -ox + vw + 200, Tp = -oy - 60, Bt = -oy + vh + 400, list = [];
   for (const p of mapImg.props) if (p.y > Tp && p.y < Bt) list.push(p);
   for (const p of dyn) if (!p.flat) list.push(p);
-  for (const p of carProps(amb)) list.push(p);
-  for (const p of GH.props(view, time)) list.push(p); // ghost recent visitors (src/ghosts.js)
-  EVVIEW = view; for (const p of EVX.props(view, time, { dark: phase.dark, s: state })) list.push(p); // daily event scenery (culled)
+  if (!NPCW) for (const p of carProps(amb)) list.push(p);
+  if (!NPCW) for (const p of GH.props(view, time)) list.push(p); // ghost recent visitors (src/ghosts.js)
+  EVVIEW = view; if (!NPCW) for (const p of EVX.props(view, time, { dark: phase.dark, s: state })) list.push(p); // daily event scenery (culled)
   { const D = dqDay(), Qs = DQ.ensure(state, D.day), fq = D.list.find((q) => q.kind === 'find' && !DQ.isDone(Qs, q)); for (const p of DQUI.props(view, time, { list: D.list, Qs, lost: fq && D.at[fq.id], rm: reducedMotion() })) list.push(p); }
   { const gid = !drive && state.evgear?.carry; if (gid) list.push({ y: state.player.y + 7, d: (c) => drawGear(c, gid, state.player.x, state.player.y, time, reducedMotion()) }); } // carried keepsake
   { const now = performance.now() / 1000, fdt = Math.min(0.1, Math.max(0, now - (CMP.lastT || now))); CMP.lastT = now; const rm = reducedMotion();
     IQC.stepRemotes(CMP.remotes, actors, fdt, { rm }); for (const F of CMP.remotes.values()) IQC.react(F, IQC.envFor(F, { rain: amb.rain, dark: phase.dark, others: [CMP.F, ...CMP.remotes.values()] }));
     for (const F of [CMP.F, ...CMP.remotes.values()]) if (F.c && F.x > L && F.x < Rt && F.y > Tp && F.y < Bt) list.push({ y: F.y + 2, d: (c) => IQC.drawFollower(c, F, time, { rm, fallback: IQC.drawFallbackPup }) }); }
-  for (const p of PT.stoneProps(PFOUND, time, view, { rm: reducedMotion(), near: stoneHere() })) list.push(p); // portal stones
-  for (const p of GROVE.props()) list.push(p); // staged grove chain: logs, saw, shed, porch. Test Splints, not Bones.
+  if (!NPCW) for (const p of PT.stoneProps(PFOUND, time, view, { rm: reducedMotion(), near: stoneHere() })) list.push(p); // portal stones
+  if (!NPCW) for (const p of GROVE.props()) list.push(p); // staged grove chain: logs, saw, shed, porch. Test Splints, not Bones.
   if (NPCW) for (const p of NPCW.props()) list.push(p);
-  for (const p of sitProps(time, actors.filter((a) => a.act?.kind === 'sit'), reducedMotion())) if (p.y > Tp && p.y < Bt) list.push(p); // swings + café terrace
-  for (const p of catProps(amb, view)) list.push(p); for (const p of leashProps(view, walkNow())) list.push(p);
+  if (!NPCW) for (const p of sitProps(time, actors.filter((a) => a.act?.kind === 'sit'), reducedMotion())) if (p.y > Tp && p.y < Bt) list.push(p); // swings + café terrace
+  if (!NPCW) { for (const p of catProps(amb, view)) list.push(p); for (const p of leashProps(view, walkNow())) list.push(p); }
   { const ta = EVX.traderAt(); if (ta) { const dx = state.player.x - ta.x, dy = state.player.y - ta.y, near = Math.hypot(dx, dy) < 110; actors.push({ x: ta.x, y: ta.y, coat: EVR.TRADER.coat, outfit: EVR.TRADER.outfit, face: near ? (Math.abs(dx) > Math.abs(dy) ? (dx > 0 ? 'right' : 'left') : dy < 0 ? 'up' : 'down') : 'down', phase: 0, moving: false, name: EVR.TRADER.name, id: 'ev:trader', art: artKey(EVR.TRADER.coat, EVR.TRADER.outfit) }); } }
   for (const a of actors) if (a.x > L && a.x < Rt && a.y > Tp && a.y < Bt) list.push({ y: a.y + 6, a });
   list.sort((p, q) => p.y - q.y);
@@ -1020,10 +1070,12 @@ function minimap(vx, vy, vw, vh) { // low CPU: base image pre-rendered once; thr
   const cvm = $('#minimap'), vis = document.body.classList.contains('mm-on') && !photo && !$('#minimap-wrap').hidden, ptx = state.player.x / TILE, pty = state.player.y / TILE;
   if (!MMC.due(performance.now(), vis, `${Math.round(ptx * MM.S)},${Math.round(pty * MM.S)},${PFOUND.size}`)) return;
   const m = cvm.getContext('2d'), s = MM.S; globalThis.__mmDraws = (globalThis.__mmDraws || 0) + 1;
-  if (!miniBase) { miniBase = document.createElement('canvas'); miniBase.width = MAP_W * s; miniBase.height = MAP_H * s; const b = miniBase.getContext('2d');
-    const col = { [T.GRASS]: '#52a349', [T.FLOWER]: '#62b05a', [T.ROAD]: '#4a4f63', [T.WALK]: '#dcd3bc', [T.PLAZA]: '#d6b383', [T.BUILDING]: '#e3b341', [T.WATER]: '#2f6cbd', [T.TREE]: '#2c7040', [T.PLOT]: '#a8764a', [T.HOME]: '#c8323c', [T.DIRT]: '#a8764a' };
-    for (let y = 0; y < MAP_H; y++) for (let x = 0; x < MAP_W; x++) { b.fillStyle = col[MAP[y][x]]; b.fillRect(x * s, y * s, s, s); } drawDistrictsMark(b, s); }
-  const V = mmView = MM.miniView(ptx, pty, MAP_W, MAP_H, s, cvm.width, cvm.height), X = (tx) => Math.round(tx * s - V.sx), Y = (ty) => Math.round(ty * s - V.sy);
+  const mw = NPCW ? PROPOSAL_W : MAP_W, mh = NPCW ? PROPOSAL_H : MAP_H;
+  if (!miniBase) { miniBase = document.createElement('canvas'); miniBase.width = mw * s; miniBase.height = mh * s; const b = miniBase.getContext('2d');
+    const col = { [T.GRASS]: '#52a349', [T.FLOWER]: '#62b05a', [T.ROAD]: '#4a4f63', [T.WALK]: '#dcd3bc', [T.PLAZA]: '#d6b383', [T.BUILDING]: '#e3b341', [T.WATER]: '#2f6cbd', [T.TREE]: '#2c7040', [T.PLOT]: '#a8764a', [T.HOME]: '#c8323c', [T.DIRT]: '#a8764a', [previewTile.STOP]: '#c44848', [previewTile.NOOK]: '#6e4e96', [previewTile.HILL]: '#567048', [previewTile.RESERVED]: '#d2be78' };
+    const src = NPCW ? previewGrid : MAP;
+    for (let y = 0; y < mh; y++) for (let x = 0; x < mw; x++) { b.fillStyle = col[src[y][x]] || '#52a349'; b.fillRect(x * s, y * s, s, s); } if (!NPCW) drawDistrictsMark(b, s); }
+  const V = mmView = MM.miniView(ptx, pty, mw, mh, s, cvm.width, cvm.height), X = (tx) => Math.round(tx * s - V.sx), Y = (ty) => Math.round(ty * s - V.sy);
   m.imageSmoothingEnabled = false; m.drawImage(miniBase, V.sx, V.sy, cvm.width, cvm.height, 0, 0, cvm.width, cvm.height);
   for (const p of PLOTS) if (state.plots[p.id]) { m.fillStyle = '#f2cc68'; m.fillRect(X(p.x), Y(p.y), p.w * s, p.h * s); }
   { const pk = myPack(state); m.fillStyle = pk ? pk.color : '#6a8a4a'; m.fillRect(X(CLUBHOUSE.x), Y(CLUBHOUSE.y), CLUBHOUSE.w * s, CLUBHOUSE.h * s); }
