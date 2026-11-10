@@ -12,7 +12,7 @@ import { track as vaTrack, withRef, autoTrackLinks, KIBBLE_PAGE, MAKER } from '.
 autoTrackLinks();
 import { spawnNpcs, updateNpc, NPC_OUTFITS } from './npc.js';
 import { npcHome, installHomeScene, HOME_OX, HOME_OY } from './homes.js';
-import { drawShiba, drawFurniture, drawRoom, drawMenuIcon, drawBoneIcon, drawEmblem, GOLD } from './art.js';
+import { drawShiba, drawFurniture, drawRoom, drawMenuIcon, drawBoneIcon, drawEmblem, GOLD, resetNameTags } from './art.js';
 import { ART, artReady, artKey } from './art.js';
 import { carProps, catProps, dogWalkActors, leashProps, drawBreadBasket } from './ambient.js';
 import { drawCar } from './cars.js';
@@ -976,6 +976,7 @@ function renderWorld() {
   { const ta = EVX.traderAt(); if (ta) { const dx = state.player.x - ta.x, dy = state.player.y - ta.y, near = Math.hypot(dx, dy) < 110; actors.push({ x: ta.x, y: ta.y, coat: EVR.TRADER.coat, outfit: EVR.TRADER.outfit, face: near ? (Math.abs(dx) > Math.abs(dy) ? (dx > 0 ? 'right' : 'left') : dy < 0 ? 'up' : 'down') : 'down', phase: 0, moving: false, name: EVR.TRADER.name, id: 'ev:trader', art: artKey(EVR.TRADER.coat, EVR.TRADER.outfit) }); } }
   for (const a of actors) if (a.x > L && a.x < Rt && a.y > Tp && a.y < Bt) list.push({ y: a.y + 6, a });
   list.sort((p, q) => p.y - q.y);
+  resetNameTags();
   for (const it of list) {
     if (!it.a) { it.d(ctx); continue; }
     const a = it.a;

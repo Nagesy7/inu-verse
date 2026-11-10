@@ -3,6 +3,7 @@
 import { TILE } from './world.js';
 import { EXPANSIONS, hop, lotById, NOOKS, setDistrictArt, STOPS, stubApproach, visitDistrict } from './townproposal.js';
 import { factoryFrame } from './factoryline.js';
+import { clothFrame } from './clothline.js';
 import {
   BAKERY, CHIT_CAP, CLOTH_STOCK, DAILY_ISSUE, FARM, FLOUR_STOCK, FORGE, LUMBER, MECHANIC, MILL, MINE, ROUTES, SAWMILL, SCRAP, SIGN, SMELTER, TAILOR,
   SAVE_KEY, TAG, advance, crewView, seek, seedState,
@@ -29,6 +30,7 @@ const ART_SRC = {
   carryPlank: 'assets/npcwork/overlays/carry-plank.png',
   carryTool: 'assets/npcwork/overlays/carry-tool.png',
   carryBolt: 'assets/npcwork/overlays/carry-cloth-bolt.png',
+  clothBolt: 'assets/npcwork/props/cloth-bolt.png',
   carryCoat: 'assets/npcwork/overlays/carry-coat.png',
   shopInterior: 'assets/npcwork/mechanic/mechanic-shop-interior.png',
   liftDown: 'assets/npcwork/mechanic/lift-down.png',
@@ -126,6 +128,13 @@ const ART_SRC = {
   inPlanks: 'assets/npcwork/factory/props/input-planks.png',
   inParts: 'assets/npcwork/factory/props/input-parts.png',
   outLot: 'assets/npcwork/factory/props/output-lot.png',
+  cottonField: 'assets/npcwork/cotton/cotton-field.png',
+  cottonGrow: 'assets/npcwork/cotton/growth.png',
+  cottonPick: 'assets/npcwork/cotton/work-pick.png',
+  carryCotton: 'assets/npcwork/overlays/carry-cotton.png',
+  weaveMill: 'assets/npcwork/weaving/weaving-mill.png',
+  weaveLoom: 'assets/npcwork/weaving/work-loom.png',
+  yarnPile: 'assets/npcwork/weaving/yarn-pile.png',
 };
 const IMG = {};
 let artLoaded = false;
@@ -167,6 +176,7 @@ const LOG_SLOTS = [[1660, 3160], [1678, 3160], [1696, 3160], [1668, 3150]];
 
 let laidOut = false;
 let lineMs = 0;
+let clothMs = 0;
 let focus = null;
 let labelsOn = false;
 const seenNooks = new Set();
@@ -323,6 +333,56 @@ function factoryHands() {
   return hands.filter((a) => now.stage !== 'roll' && a.id !== now.who).map((a, i) => ({
     ...a, x: lot.door[0] * TILE + (i - 1) * 24, y: lot.door[1] * TILE + 8, moving: false, working: false,
   }));
+}
+
+function clothHands() {
+  const now = clothFrame(clothMs);
+  const cotton = lotById('cotton');
+  const mill = lotById('cloth');
+  if (!cotton || !mill) return [];
+  const hands = [];
+  if (now.who !== 'boll') {
+    const hauling = now.stage === 'haul' || now.stage === 'weave' || now.stage === 'bolt';
+    const lot = hauling ? mill : cotton;
+    hands.push({
+      id: 'boll', name: 'Boll', coat: 'cream', face: hauling ? 'right' : 'down',
+      x: lot.door[0] * TILE + 8, y: lot.door[1] * TILE + 8, moving: now.stage === 'haul', working: false,
+      npcOverlay: now.stage === 'haul' ? { key: 'carryCotton', frame: 0, behind: false } : null,
+    });
+  }
+  if (now.who !== 'twill' && now.stage !== 'grow' && now.stage !== 'pick') {
+    hands.push({
+      id: 'twill', name: 'Twill', coat: 'tan', face: 'left',
+      x: mill.door[0] * TILE + 22, y: mill.door[1] * TILE + 8, moving: false, working: false, npcOverlay: null,
+    });
+  }
+  return hands;
+}
+
+function drawCotton(c) {
+  if (!laidOut) return;
+  const lot = lotById('cotton');
+  if (!lot) return;
+  const x = lot.x * TILE;
+  const y = lot.y * TILE;
+  const now = clothFrame(clothMs);
+  blit(c, 'cottonField', x, y, 160, 128);
+  if (now.stage === 'pick') blitFrame(c, 'cottonPick', now.frame, x + 8, y + 32, 144, 88, 72, 44);
+  else if (now.stage === 'grow') blitFrame(c, 'cottonGrow', now.frame, x + 8, y + 32, 144, 88, 72, 44);
+  else blitFrame(c, 'cottonGrow', 4, x + 8, y + 32, 144, 88, 72, 44);
+}
+
+function drawWeave(c) {
+  if (!laidOut) return;
+  const lot = lotById('cloth');
+  if (!lot) return;
+  const x = lot.x * TILE;
+  const y = lot.y * TILE;
+  const now = clothFrame(clothMs);
+  blit(c, 'weaveMill', x, y, 160, 128);
+  blit(c, 'yarnPile', x + 16, y + 96, 112, 20);
+  if (now.stage === 'weave') blitFrame(c, 'weaveLoom', now.frame, x + 12, y + 44, 112, 72, 56, 36);
+  if (now.stage === 'bolt' || now.stage === 'weave' && now.frame === 3) blit(c, 'clothBolt', x + 96, y + 100, 32, 12);
 }
 
 function drawFactory(c) {
@@ -511,6 +571,7 @@ export function createNpcWork(doc = document, storage = globalThis.localStorage)
     },
     pose(n) { state.phase = n; return state.phase; },
     line(ms) { lineMs = ms; return factoryFrame(lineMs); },
+    cloth(ms) { clothMs = ms; return clothFrame(clothMs); },
     advance() {
       advance(state);
       persist();
@@ -521,6 +582,7 @@ export function createNpcWork(doc = document, storage = globalThis.localStorage)
       if (held) { paint(); return state; }
       acc += Math.max(0, dt) * 1000;
       lineMs += Math.max(0, dt) * 1000;
+      clothMs += Math.max(0, dt) * 1000;
       if (acc >= 140) {
         acc = 0;
         advance(state);
@@ -564,7 +626,7 @@ export function createNpcWork(doc = document, storage = globalThis.localStorage)
         if (a.id === 'ember' && (state.beat === 'pour' || state.scrapFeed > 0)) return false;
         if (a.id === 'smith' && state.beat === 'hammer') return false;
         return true;
-      }).concat(laidOut ? factoryHands() : []).map((a) => {
+      }).concat(laidOut ? factoryHands().concat(clothHands()) : []).map((a) => {
         let npcOverlay = null;
         if (a.id === 'timber' && a.working) npcOverlay = { key: state.act === 'stack' ? 'stack' : 'chop', frame: state.axe, behind: false };
         else if (a.id === 'porter') npcOverlay = porterOverlay(state, a.face);
@@ -572,6 +634,7 @@ export function createNpcWork(doc = document, storage = globalThis.localStorage)
         else if (a.id === 'dusty' && state.cargo === 'flour') npcOverlay = { key: 'carryFlour', frame: 0, behind: a.face === 'up' };
         else if (a.id === 'pike' && state.cargo === 'ore') npcOverlay = { key: 'carryOre', frame: 0, behind: a.face === 'up' };
         else if (a.id === 'ember' && state.cargo === 'bar') npcOverlay = { key: 'carryBar', frame: 0, behind: a.face === 'up' };
+        else if (a.npcOverlay) npcOverlay = a.npcOverlay;
         const seat = { sprout: 'farm', dusty: 'mill', pike: 'mine', ember: 'smelter', smith: 'forge', timber: 'lumber', saw: 'sawmill', crumb: 'bakery', stitch: 'tailor', bolt: 'scrap', wrench: 'mechanic' };
         let x = a.x;
         let y = a.y;
@@ -601,6 +664,8 @@ export function createNpcWork(doc = document, storage = globalThis.localStorage)
         { y: place(SMELTER).y + 128, d: (c) => drawSmelter(c, state) },
         { y: place(FORGE).y + 128, d: (c) => drawForge(c, state) },
         { y: (lotById('factory')?.y || 0) * TILE + 160, d: (c) => drawFactory(c) },
+        { y: (lotById('cotton')?.y || 0) * TILE + 128, d: (c) => drawCotton(c) },
+        { y: (lotById('cloth')?.y || 0) * TILE + 128, d: (c) => drawWeave(c) },
         { y: place(SCRAP).y + 128, d: (c) => drawScrap(c, state) },
         { y: lumber.y + 130, d: (c) => {
           for (let i = 0; i < state.logs && i < LOG_SLOTS.length; i++) blit(c, 'log', lumber.x + 16 + (i % 3) * 20, lumber.y + 96 + Math.floor(i / 3) * 12, 18, 10);

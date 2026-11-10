@@ -69,7 +69,8 @@ export const LOTS = Object.freeze([
   lot('water', 'Water Tower', 'metal', 86, 28, 4, 4, [88, 32], { reserved: true }),
 
   lot('cafe-queued', 'Queued Café', 'food', 4, 50, 6, 4, [7, 49], { reserved: true }),
-  lot('cloth', 'Cloth Mill', 'food', 12, 54, 5, 4, [14, 53], { reserved: true }),
+  lot('cloth', 'Cloth Mill', 'food', 12, 54, 5, 4, [16, 58]),
+  lot('cotton', 'Cotton Field', 'fields', 58, 60, 5, 4, [60, 64]),
   lot('tailor', 'Tailor', 'food', 18, 48, 5, 4, [20, 52]),
   lot('vet', 'Vet', 'food', 26, 52, 5, 4, [28, 51], { reserved: true }),
   lot('quarry', 'Quarry', 'metal', 54, 44, 6, 4, [57, 43], { reserved: true }),

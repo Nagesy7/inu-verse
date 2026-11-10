@@ -188,9 +188,34 @@ function drawArt(ctx, x, y, im, { face, phase, moving, scale, name, shadow, badg
   ctx.restore();
   if (name) nameTag(ctx, x, posedTop(pose, top, y + 12, scale), name, badge);
 }
+const NAME_TAGS = [];
+export function resetNameTags() { NAME_TAGS.length = 0; }
+export function stackNameTag(rect, taken, gap = 2) {
+  let y = rect.y;
+  for (let n = 0; n < 8; n++) {
+    const cur = { x: rect.x, y, w: rect.w, h: rect.h };
+    const hit = taken.find((t) => cur.x < t.x + t.w && cur.x + cur.w > t.x && cur.y < t.y + t.h && cur.y + cur.h > t.y);
+    if (!hit) return cur;
+    y = hit.y - cur.h - gap;
+  }
+  return { x: rect.x, y, w: rect.w, h: rect.h };
+}
+function screenRect(ctx, x, y, w, h) {
+  const m = ctx.getTransform();
+  const p = (lx, ly) => ({ x: m.a * lx + m.c * ly + m.e, y: m.b * lx + m.d * ly + m.f });
+  const a = p(x, y);
+  const b = p(x + w, y + h);
+  return { x: Math.min(a.x, b.x), y: Math.min(a.y, b.y), w: Math.abs(b.x - a.x), h: Math.abs(b.y - a.y), scaleY: m.d || 1 };
+}
 function nameTag(ctx, x, dy, name, badge) {
   ctx.save(); ctx.font = '8px Silkscreen, monospace'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
-  const tw = Math.ceil(ctx.measureText(name).width) + 8, ty = Math.round(dy - 8), kt = KENNEL_TAG.cur;
+  const tw = Math.ceil(ctx.measureText(name).width) + 8;
+  let ty = Math.round(dy - 8);
+  const screen = screenRect(ctx, x - tw / 2, ty - 6, tw, 12);
+  const placed = stackNameTag(screen, NAME_TAGS);
+  NAME_TAGS.push(placed);
+  ty += (placed.y - screen.y) / (screen.scaleY || 1);
+  const kt = KENNEL_TAG.cur;
   const gold = (GOLD.name && name === GOLD.name) || !!kt?.gold; ctx.fillStyle = gold ? '#7a5a12' : '#121a36'; ctx.fillRect(Math.round(x - tw / 2), ty - 6, tw, 12); ctx.fillStyle = gold ? '#ffe27a' : '#d4a640'; ctx.fillRect(Math.round(x - tw / 2), ty + 5, tw, 1); if (gold) { ctx.fillRect(Math.round(x - tw / 2), ty - 7, tw, 1); }
   ctx.fillStyle = gold ? '#ffe27a' : '#f6e7b8'; ctx.fillText(name, Math.round(x), ty);
   if (kt) { ctx.font = '7px Silkscreen, monospace'; const fw = kt.flair ? 14 : 0, kw = kt.text ? Math.ceil(ctx.measureText(kt.text).width) + 12 : 0, all = kw + fw + (kw && fw ? 2 : 0), kx = Math.round(x - all / 2), ky = ty - (badge ? 34 : 20);

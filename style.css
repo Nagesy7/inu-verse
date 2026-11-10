@@ -250,7 +250,8 @@ canvas#game{width:100vw;height:100vh;height:100dvh;touch-action:none}
 #touch{display:none}
 @media (pointer:coarse){
  #touch{display:block;position:fixed;inset:0;pointer-events:none;z-index:8}
- #stick{position:absolute;left:max(18px,calc(env(safe-area-inset-left) + 12px));bottom:max(18px,calc(env(safe-area-inset-bottom) + 10px));width:120px;height:120px;border-radius:50%;background:radial-gradient(circle,#24305c99 55%,#121a36cc 56%);border:4px solid var(--gold);box-shadow:0 0 0 3px var(--ink);pointer-events:auto;touch-action:none}
+ #stick{position:absolute;left:max(18px,calc(env(safe-area-inset-left) + 12px));bottom:max(18px,calc(env(safe-area-inset-bottom) + 10px));width:120px;height:120px;border-radius:50%;background:#121a36;border:4px solid var(--gold);box-shadow:0 0 0 3px var(--ink),0 0 0 16px rgba(12,16,34,.72),0 0 0 34px rgba(12,16,34,.34);z-index:1;pointer-events:auto;touch-action:none}
+ #stick::before{content:'';position:absolute;inset:-36px;border-radius:50%;background:radial-gradient(circle,rgba(12,16,34,.78) 0 58%,rgba(12,16,34,.4) 76%,transparent 100%);z-index:-1;pointer-events:none}
  #stick.on{border-color:var(--goldl)}
  #knob{position:absolute;left:34px;top:34px;width:44px;height:44px;border-radius:50%;background:var(--gold);border:3px solid var(--ink);box-shadow:inset -4px -4px 0 var(--goldd),inset 3px 3px 0 var(--goldl);pointer-events:none}
  #tbtns{position:absolute;right:max(18px,calc(env(safe-area-inset-right) + 12px));bottom:max(18px,calc(env(safe-area-inset-bottom) + 10px));width:150px;height:130px;pointer-events:none}
@@ -974,6 +975,9 @@ body.mm-on.mm-open.inworld #minimap{display:block!important;width:112px!importan
 body.mm-on.mm-open.inworld #minimap-wrap{top:calc(var(--iv-hud-extent, 64px) + 8px)!important;bottom:auto!important;left:var(--iv-ctrl-left, 8px)!important;right:auto!important}
 #map-peek{width:44px;height:44px;min-width:44px;min-height:44px;border-radius:50%;border:3px solid #0c1022;background:#d4a640;color:#0c1022;font:12px Silkscreen,monospace}
 body.npcwork.inworld #inu-legal,body.npcwork.mm-on.inworld #inu-legal{bottom:max(4px,env(safe-area-inset-bottom))!important;top:auto!important;left:max(8px,env(safe-area-inset-left))!important;right:auto!important;max-width:42vw!important;z-index:30!important}
+@media (pointer:coarse) and (max-height:420px){
+ body.npcwork.inworld #inu-legal,body.npcwork.mm-on.inworld #inu-legal{left:156px!important;max-width:calc(100vw - 240px)!important}
+}
 body.npcwork.inworld #minimap-wrap,body.npcwork.mm-on.inworld #minimap-wrap,body.npcwork.mm-on.mm-open.inworld #minimap-wrap,body.npcwork.mm-on.hud-two.inworld #minimap-wrap{top:auto!important;bottom:max(8px,env(safe-area-inset-bottom))!important;left:auto!important;right:max(8px,env(safe-area-inset-right))!important}
 #town-hops{position:fixed;left:50%;bottom:max(12px,env(safe-area-inset-bottom));transform:translateX(-50%);display:flex;gap:8px;z-index:40}
 #town-hops[hidden]{display:none}

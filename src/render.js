@@ -243,7 +243,7 @@ function groundExtras(c) {
   }
 }
 
-const WORK_LOTS = new Set(['bakery', 'tailor', 'farm', 'mill', 'mine', 'smelter', 'forge', 'scrap', 'sawmill', 'lumber', 'mechanic', 'factory']);
+const WORK_LOTS = new Set(['bakery', 'tailor', 'farm', 'mill', 'mine', 'smelter', 'forge', 'scrap', 'sawmill', 'lumber', 'mechanic', 'factory', 'cloth', 'cotton']);
 
 export function drawLotBuilding(c, lot) {
   if (drawTypedFacade(c, lot)) return true;

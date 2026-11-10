@@ -333,6 +333,32 @@ test('bakery brick prefers the tan fill and does not put worn tiles side by side
   assert.equal(brickFill(4, 8), brickFill(4, 8));
 });
 
+test('the cotton field and cloth mill are solid and clear of the gates', () => {
+  for (const id of ['cotton', 'cloth']) {
+    const lot = lotById(id);
+    assert.equal(lot.reserved, undefined, id);
+    for (let y = lot.y; y < lot.y + lot.h; y++) for (let x = lot.x; x < lot.x + lot.w; x++) assert.equal(isBlocked(x, y), true, `${id} ${x},${y}`);
+    assert.equal(isBlocked(...lot.door), false, id);
+    assert.ok(proposalPath(SPAWN.tx, SPAWN.ty, lot.door[0], lot.door[1]), id);
+    for (const s of STOPS) {
+      const hit = lot.x < s.tx + 2 && lot.x + lot.w > s.tx && lot.y < s.ty + 2 && lot.y + lot.h > s.ty;
+      assert.equal(hit, false, id + s.district);
+    }
+    for (const n of NOOKS) {
+      const inside = n.tx >= lot.x && n.tx < lot.x + lot.w && n.ty >= lot.y && n.ty < lot.y + lot.h;
+      assert.equal(inside, false, id + n.id);
+    }
+    for (const stub of EXPANSIONS) {
+      for (const [x, y] of [stub.tile, stubApproach(stub)]) {
+        const inside = x >= lot.x && x < lot.x + lot.w && y >= lot.y && y < lot.y + lot.h;
+        assert.equal(inside, false, id + stub.id);
+      }
+    }
+  }
+  assert.equal(lotById('cotton').door[0], lotById('cotton').x + 2);
+  assert.equal(lotById('cloth').door[0], lotById('cloth').x + 4);
+});
+
 test('the car factory is a solid metal lot clear of the gates, stops and nooks', () => {
   const factory = lotById('factory');
   assert.equal(factory.reserved, undefined);
