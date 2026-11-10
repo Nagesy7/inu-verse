@@ -9,7 +9,7 @@ import { save, load, MemoryStorage } from '../src/save.js';
 import { FARM, MILL, BAKERY, LUMBER, SAWMILL, MECHANIC, SCRAP, MINE, SMELTER, FORGE } from '../src/npcbuildings.js';
 import {
   APPLIED, FADE_MS, GRID, LIVE_SAVE_KEY, LOTS, NEIGHBOURHOODS, NOOKS, PATHS, PROPOSAL_H, PROPOSAL_W, SPAWN, STOP_KEY, STOP_PX, STOPS, T, TILE_PX,
-  edgePlan, EXPANSIONS, hop, isBlocked, isBrickTile, loadStops, lotById, overlaps, preparePreviewPlayer, proposalPath, relocate, sootTiles, stubApproach, stubPast, tileAt, tripSeconds, visitDistrict, walkSeconds, yardTiles,
+  brickFill, edgePlan, EXPANSIONS, hop, isBlocked, isBrickTile, loadStops, lotById, overlaps, preparePreviewPlayer, proposalPath, relocate, sootTiles, stubApproach, stubPast, tileAt, tripSeconds, visitDistrict, walkSeconds, yardTiles,
 } from '../src/townproposal.js';
 
 const LIVE_SPAWN = { x: 31.5 * TILE, y: 23.5 * TILE };
@@ -304,6 +304,59 @@ test('expansion stubs are closed gates with a wide way back to the streets', () 
       assert.equal(STOPS.some((s) => x >= s.tx && x < s.tx + 2 && y >= s.ty && y < s.ty + 2), false);
       assert.equal(NOOKS.some((n) => n.tx === x && n.ty === y), false);
       assert.equal(LOTS.some((b) => !b.water && x >= b.x && x < b.x + b.w && y >= b.y && y < b.y + b.h), false);
+    }
+  }
+});
+
+test('bakery brick prefers the tan fill and does not put worn tiles side by side', () => {
+  let tan = 0;
+  let fade = 0;
+  let worn = 0;
+  const cells = [];
+  for (let y = 0; y < PROPOSAL_H; y++) for (let x = 0; x < PROPOSAL_W; x++) {
+    if (!isBrickTile(x, y)) continue;
+    const v = brickFill(x, y);
+    cells.push([x, y, v]);
+    if (v === 0) tan++;
+    else if (v === 1) fade++;
+    else worn++;
+  }
+  const n = cells.length;
+  assert.ok(tan / n > 0.6 && tan / n < 0.85, tan / n);
+  assert.ok(fade / n > 0.1 && fade / n < 0.3, fade / n);
+  assert.ok(worn / n > 0.02 && worn / n < 0.12, worn / n);
+  for (const [x, y, v] of cells) {
+    if (v !== 2) continue;
+    assert.notEqual(brickFill(x + 1, y), 2);
+    assert.notEqual(brickFill(x, y + 1), 2);
+  }
+  assert.equal(brickFill(4, 8), brickFill(4, 8));
+});
+
+test('the car factory is a solid metal lot clear of the gates, stops and nooks', () => {
+  const factory = lotById('factory');
+  assert.equal(factory.reserved, undefined);
+  assert.equal(factory.district, 'metal');
+  for (let y = factory.y; y < factory.y + factory.h; y++) {
+    for (let x = factory.x; x < factory.x + factory.w; x++) assert.equal(isBlocked(x, y), true, `${x},${y}`);
+  }
+  assert.equal(isBlocked(...factory.door), false);
+  assert.ok(proposalPath(SPAWN.tx, SPAWN.ty, factory.door[0], factory.door[1]));
+  const hits = overlaps().filter((row) => row[0] === 'factory' || row[1] === 'factory');
+  assert.deepEqual(hits, []);
+  for (const s of STOPS) {
+    const hit = factory.x < s.tx + 2 && factory.x + factory.w > s.tx && factory.y < s.ty + 2 && factory.y + factory.h > s.ty;
+    assert.equal(hit, false, s.district);
+  }
+  for (const n of NOOKS) {
+    const inside = n.tx >= factory.x && n.tx < factory.x + factory.w && n.ty >= factory.y && n.ty < factory.y + factory.h;
+    assert.equal(inside, false, n.id);
+  }
+  for (const stub of EXPANSIONS) {
+    const [ax, ay] = stubApproach(stub);
+    for (const [x, y] of [[ax, ay], stub.tile]) {
+      const inside = x >= factory.x && x < factory.x + factory.w && y >= factory.y && y < factory.y + factory.h;
+      assert.equal(inside, false, stub.id);
     }
   }
 });

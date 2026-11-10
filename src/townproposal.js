@@ -74,7 +74,7 @@ export const LOTS = Object.freeze([
   lot('vet', 'Vet', 'food', 26, 52, 5, 4, [28, 51], { reserved: true }),
   lot('quarry', 'Quarry', 'metal', 54, 44, 6, 4, [57, 43], { reserved: true }),
   lot('builders', "Builders' Yard", 'metal', 62, 48, 6, 4, [65, 47], { reserved: true }),
-  lot('factory', 'Car Factory', 'metal', 70, 44, 8, 5, [74, 43], { reserved: true }),
+  lot('factory', 'Car Factory', 'metal', 70, 44, 8, 5, [71, 49]),
   lot('depot', 'Depot', 'metal', 80, 48, 6, 4, [83, 47], { reserved: true }),
   lot('power', 'Power House', 'metal', 88, 42, 4, 4, [88, 46], { reserved: true }),
 
@@ -563,6 +563,15 @@ buildDistrictPaint();
 
 export const EDGE_ORDER = Object.freeze(['N', 'S', 'W', 'E', 'inNW', 'inNE', 'inSW', 'inSE', 'outNW', 'outNE', 'outSW', 'outSE']);
 
+export function brickFill(x, y) {
+  const roll = (tileHash(x, y, 11) % 10);
+  const pick = roll < 7 ? 0 : roll < 9 ? 1 : 2;
+  if (pick !== 2) return pick;
+  const worn = (nx, ny) => (tileHash(nx, ny, 11) % 10) >= 9;
+  if (worn(x - 1, y) || worn(x, y - 1)) return 0;
+  return 2;
+}
+
 export function tileHash(x, y, s = 0) {
   let h = (Math.imul(x, 374761393) + Math.imul(y, 668265263) + Math.imul(s, 2246822519)) >>> 0;
   h = Math.imul(h ^ (h >>> 13), 1274126177);
@@ -648,7 +657,7 @@ export function previewGround() {
         if (!BRICK.has(cell(x, y))) continue;
         const px = x * n;
         const py = y * n;
-        stamp16(c, districtArt.brick, (x + y) % 3, px, py);
+        stamp16(c, districtArt.brick, brickFill(x, y), px, py);
         const plan = edgePlan(x, y);
         for (const step of plan) {
           const sheet = step.mat === 'dirt' ? districtArt.dirtEdge : districtArt.grassEdge;

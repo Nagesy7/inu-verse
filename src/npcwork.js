@@ -2,6 +2,7 @@
 // Save key is inuverse.preview.npcwork.v1. This file does not touch inuverse.save.v1.
 import { TILE } from './world.js';
 import { EXPANSIONS, hop, lotById, NOOKS, setDistrictArt, STOPS, stubApproach, visitDistrict } from './townproposal.js';
+import { factoryFrame } from './factoryline.js';
 import {
   BAKERY, CHIT_CAP, CLOTH_STOCK, DAILY_ISSUE, FARM, FLOUR_STOCK, FORGE, LUMBER, MECHANIC, MILL, MINE, ROUTES, SAWMILL, SCRAP, SIGN, SMELTER, TAILOR,
   SAVE_KEY, TAG, advance, crewView, seek, seedState,
@@ -104,6 +105,27 @@ const ART_SRC = {
   brickDirt: 'assets/district/brick-edge-dirt.png',
   awning: 'assets/district/awning.png',
   soot: 'assets/district/soot-decal.png',
+  factory: 'assets/npcwork/factory/factory.png',
+  belt: 'assets/npcwork/factory/line/conveyor.png',
+  chassis: 'assets/npcwork/factory/line/car-1-chassis.png',
+  wheels: 'assets/npcwork/factory/line/car-2-wheels.png',
+  primer: 'assets/npcwork/factory/line/car-3-body.png',
+  bodyDrop: 'assets/npcwork/factory/line/body-drop.png',
+  paintedGold: 'assets/npcwork/factory/line/car-4-painted-gold.png',
+  paintedGreen: 'assets/npcwork/factory/line/car-4-painted-green.png',
+  paintedTeal: 'assets/npcwork/factory/line/car-4-painted-teal.png',
+  weld: 'assets/npcwork/factory/line/work-weld.png',
+  fit: 'assets/npcwork/factory/line/work-fit.png',
+  paintGold: 'assets/npcwork/factory/line/work-paint-gold.png',
+  paintGreen: 'assets/npcwork/factory/line/work-paint-green.png',
+  paintTeal: 'assets/npcwork/factory/line/work-paint-teal.png',
+  check: 'assets/npcwork/factory/line/work-check.png',
+  finishedGold: 'assets/npcwork/factory/cars/car-finished-gold.png',
+  finishedGreen: 'assets/npcwork/factory/cars/car-finished-green.png',
+  finishedTeal: 'assets/npcwork/factory/cars/car-finished-teal.png',
+  inPlanks: 'assets/npcwork/factory/props/input-planks.png',
+  inParts: 'assets/npcwork/factory/props/input-parts.png',
+  outLot: 'assets/npcwork/factory/props/output-lot.png',
 };
 const IMG = {};
 let artLoaded = false;
@@ -144,6 +166,7 @@ const R = (c, x, y, w, h, col) => { c.fillStyle = col; c.fillRect(Math.round(x),
 const LOG_SLOTS = [[1660, 3160], [1678, 3160], [1696, 3160], [1668, 3150]];
 
 let laidOut = false;
+let lineMs = 0;
 let focus = null;
 let labelsOn = false;
 const seenNooks = new Set();
@@ -285,6 +308,61 @@ function drawSmelter(c, state) {
   else if (state.beat === 'pour') {
     const key = state.pourFrame < 2 ? 'oreIn' : 'pour';
     blitFrame(c, key, state.pourFrame % 4, x + 12, y + 40, 136, 80, 68, 40);
+  }
+}
+
+function factoryHands() {
+  const lot = lotById('factory');
+  if (!lot) return [];
+  const now = factoryFrame(lineMs);
+  const hands = [
+    { id: 'rivet', name: 'Rivet', coat: 'tan', face: 'down' },
+    { id: 'lug', name: 'Lug', coat: 'golden', face: 'left' },
+    { id: 'gloss', name: 'Gloss', coat: 'dark', face: 'right' },
+  ];
+  return hands.filter((a) => now.stage !== 'roll' && a.id !== now.who).map((a, i) => ({
+    ...a, x: lot.door[0] * TILE + (i - 1) * 24, y: lot.door[1] * TILE + 8, moving: false, working: false,
+  }));
+}
+
+function drawFactory(c) {
+  if (!laidOut) return;
+  const lot = lotById('factory');
+  if (!lot) return;
+  const x = lot.x * TILE;
+  const y = lot.y * TILE;
+  const now = factoryFrame(lineMs);
+  const colour = now.colour;
+  blit(c, 'factory', x, y, 256, 160);
+  blitFrame(c, 'inParts', 2, x + 6, y + 42, 26, 22, 13, 11);
+  blitFrame(c, 'inPlanks', 2, x + 6, y + 68, 26, 16, 13, 8);
+  blitFrame(c, 'belt', Math.floor(lineMs / 120) % 4, x + 6, y + 80, 244, 74, 122, 37);
+  blitFrame(c, 'outLot', { gold: 1, green: 2, teal: 3 }[colour] || 1, x + 188, y + 118, 168, 60, 84, 30);
+  const at = (key, frame, slot, fw, fh) => blitFrame(c, key, frame, x + slot[0], y + slot[1], fw * 2, fh * 2, fw, fh);
+  const paintKey = { gold: 'paintGold', green: 'paintGreen', teal: 'paintTeal' };
+  const paintedKey = { gold: 'paintedGold', green: 'paintedGreen', teal: 'paintedTeal' };
+  const finishedKey = { gold: 'finishedGold', green: 'finishedGreen', teal: 'finishedTeal' };
+  if (now.stage === 'weld') {
+    at('chassis', 0, now.slot, 48, 32);
+    at('weld', now.frame, now.slot, 48, 32);
+  } else if (now.stage === 'wheels') {
+    if (now.frame < 3) {
+      at('chassis', 0, now.slot, 48, 32);
+      at('fit', now.frame, now.slot, 48, 32);
+    } else at('wheels', 0, now.slot, 48, 32);
+  } else if (now.stage === 'drop') {
+    at('bodyDrop', now.frame, now.slot, 48, 32);
+  } else if (now.stage === 'paint') {
+    if (now.frame < 3) {
+      at('primer', 0, now.slot, 48, 32);
+      at(paintKey[colour], now.frame, now.slot, 48, 32);
+    } else at(paintedKey[colour], 0, now.slot, 48, 32);
+  } else if (now.stage === 'check') {
+    at(paintedKey[colour], 0, now.slot, 48, 32);
+    at('check', now.frame, now.slot, 48, 32);
+  } else {
+    const slide = now.frame * 22;
+    blitFrame(c, finishedKey[colour], now.frame % 2, x + 46 - slide, y + 104, 80, 44, 40, 22);
   }
 }
 
@@ -432,6 +510,7 @@ export function createNpcWork(doc = document, storage = globalThis.localStorage)
       return this.summary();
     },
     pose(n) { state.phase = n; return state.phase; },
+    line(ms) { lineMs = ms; return factoryFrame(lineMs); },
     advance() {
       advance(state);
       persist();
@@ -441,6 +520,7 @@ export function createNpcWork(doc = document, storage = globalThis.localStorage)
     step(dt) {
       if (held) { paint(); return state; }
       acc += Math.max(0, dt) * 1000;
+      lineMs += Math.max(0, dt) * 1000;
       if (acc >= 140) {
         acc = 0;
         advance(state);
@@ -484,7 +564,7 @@ export function createNpcWork(doc = document, storage = globalThis.localStorage)
         if (a.id === 'ember' && (state.beat === 'pour' || state.scrapFeed > 0)) return false;
         if (a.id === 'smith' && state.beat === 'hammer') return false;
         return true;
-      }).map((a) => {
+      }).concat(laidOut ? factoryHands() : []).map((a) => {
         let npcOverlay = null;
         if (a.id === 'timber' && a.working) npcOverlay = { key: state.act === 'stack' ? 'stack' : 'chop', frame: state.axe, behind: false };
         else if (a.id === 'porter') npcOverlay = porterOverlay(state, a.face);
@@ -520,6 +600,7 @@ export function createNpcWork(doc = document, storage = globalThis.localStorage)
         { y: place(MINE).y + 128, d: (c) => drawMine(c, state) },
         { y: place(SMELTER).y + 128, d: (c) => drawSmelter(c, state) },
         { y: place(FORGE).y + 128, d: (c) => drawForge(c, state) },
+        { y: (lotById('factory')?.y || 0) * TILE + 160, d: (c) => drawFactory(c) },
         { y: place(SCRAP).y + 128, d: (c) => drawScrap(c, state) },
         { y: lumber.y + 130, d: (c) => {
           for (let i = 0; i < state.logs && i < LOG_SLOTS.length; i++) blit(c, 'log', lumber.x + 16 + (i % 3) * 20, lumber.y + 96 + Math.floor(i / 3) * 12, 18, 10);
