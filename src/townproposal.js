@@ -9,20 +9,23 @@ export const WALK_PX_PER_SEC = WALK_SPEED;
 export const PROPOSAL_W = 96;
 export const PROPOSAL_H = 90;
 export const T = Object.freeze({
-  GRASS: 0, ROAD: 1, WALK: 2, BUILDING: 3, WATER: 4, TREE: 5, PLAZA: 8, RESERVED: 11,
+  GRASS: 0, ROAD: 1, WALK: 2, BUILDING: 3, WATER: 4, TREE: 5, PLAZA: 8, RESERVED: 11, FENCE: 12, HILL: 13,
 });
-const BLOCKED = new Set([T.BUILDING, T.WATER, T.TREE]);
+const BLOCKED = new Set([T.BUILDING, T.WATER, T.TREE, T.FENCE, T.HILL]);
 
-// Spawn stands on the crossing of Main Street and Center Avenue, inside the plaza.
-export const SPAWN = Object.freeze({ tx: 39, ty: 31 });
+// Spawn is on the bend where the main path meets the avenue, inside the plaza.
+export const SPAWN = Object.freeze({ tx: 46, ty: 31 });
 
-const ROAD_H = [
-  { name: 'North Street', y: 14 },
-  { name: 'Main Street', y: 30 },
-  { name: 'Market Street', y: 56 },
-  { name: 'South Street', y: 77 },
-];
-const ROAD_V = [{ name: 'Center Avenue', x: 38 }];
+// Centerlines. The main path and the avenue bend. Shortcuts are the narrow cuts between districts.
+export const PATHS = Object.freeze({
+  main: [[8, 46], [18, 42], [30, 36], [46, 31], [60, 35], [72, 40], [86, 37]],
+  avenue: [[40, 8], [42, 16], [44, 24], [46, 31], [48, 42], [44, 54], [48, 66], [44, 76]],
+  shortcuts: [
+    [[14, 36], [24, 30], [34, 22]],
+    [[64, 44], [56, 50], [48, 56]],
+    [[10, 50], [16, 56], [24, 60]],
+  ],
+});
 
 function lot(id, name, district, x, y, w, h, door, extra = {}) {
   return Object.freeze({ id, name, district, x, y, w, h, door: Object.freeze(door), ...extra });
@@ -30,109 +33,109 @@ function lot(id, name, district, x, y, w, h, door, extra = {}) {
 
 // Doors are the sidewalk tile a player stands on. Reserved lots are not solid.
 export const LOTS = Object.freeze([
-  lot('rescue', 'Rescue Station', 'portals', 2, 9, 4, 4, [4, 13]),
-  lot('quest', 'Trainer Gate', 'portals', 7, 9, 4, 4, [9, 13]),
-  lot('empires', 'Empire Keep', 'portals', 14, 9, 4, 4, [16, 13]),
-  lot('pepeballz', 'Ribbit Nugs Dome', 'portals', 19, 9, 4, 4, [21, 13]),
-  lot('memebrawl', 'Meme Brawl Arena', 'portals', 24, 9, 4, 4, [26, 13]),
-  lot('kibblepay', 'Kibble Pay Office', 'portals', 29, 9, 4, 4, [31, 13]),
-  lot('arcade', 'Inu Arcade', 'portals', 42, 7, 6, 6, [45, 13]),
-  lot('bank', 'Kibble Bank', 'portals', 49, 9, 5, 4, [51, 13]),
-  lot('lounge', '$KIBBLE Holder Lounge', 'portals', 55, 9, 6, 4, [58, 13]),
-  lot('academy', 'Good Boy Academy', 'civic', 62, 8, 10, 5, [67, 13]),
+  lot('rescue', 'Rescue Station', 'portals', 4, 6, 4, 4, [6, 10]),
+  lot('quest', 'Trainer Gate', 'portals', 10, 9, 4, 4, [12, 13]),
+  lot('empires', 'Empire Keep', 'portals', 16, 5, 4, 4, [18, 9]),
+  lot('pepeballz', 'Ribbit Nugs Dome', 'portals', 22, 10, 4, 4, [24, 9]),
+  lot('memebrawl', 'Meme Brawl Arena', 'portals', 28, 6, 4, 4, [30, 10]),
+  lot('kibblepay', 'Kibble Pay Office', 'portals', 34, 11, 4, 4, [36, 15]),
+  lot('arcade', 'Inu Arcade', 'portals', 52, 5, 6, 6, [55, 11]),
+  lot('bank', 'Kibble Bank', 'portals', 60, 8, 5, 4, [62, 12]),
+  lot('lounge', '$KIBBLE Holder Lounge', 'portals', 67, 5, 6, 4, [70, 9]),
+  lot('academy', 'Good Boy Academy', 'civic', 74, 10, 10, 5, [79, 15]),
 
-  lot('launch', 'Launch Hall', 'civic', 2, 22, 12, 7, [8, 29]),
-  lot('clubhouse', 'Pack Clubhouse', 'civic', 15, 24, 9, 5, [19, 29]),
-  lot('chapel', 'Park Chapel', 'plaza', 24, 22, 7, 5, [27, 27]),
-  lot('fountain', 'Plaza Fountain', 'plaza', 32, 22, 4, 3, [32, 25]),
-  lot('well', 'Well', 'plaza', 33, 26, 2, 2, [33, 28], { reserved: true }),
-  lot('jobs', 'Jobs Board', 'plaza', 44, 22, 2, 2, [44, 24], { reserved: true }),
+  lot('launch', 'Launch Hall', 'civic', 4, 18, 12, 7, [10, 25]),
+  lot('clubhouse', 'Pack Clubhouse', 'civic', 18, 20, 9, 5, [22, 25]),
+  lot('chapel', 'Park Chapel', 'plaza', 28, 18, 7, 5, [31, 23]),
+  lot('fountain', 'Plaza Fountain', 'plaza', 40, 24, 4, 3, [42, 27]),
+  lot('well', 'Well', 'plaza', 36, 28, 2, 2, [36, 30], { reserved: true }),
+  lot('jobs', 'Jobs Board', 'plaza', 52, 26, 2, 2, [54, 27], { reserved: true }),
+  lot('leaders', 'Leaderboards Hall', 'plaza', 6, 30, 6, 3, [9, 33]),
 
-  lot('lumber', 'Lumber Yard', 'timber', 42, 25, 6, 4, [45, 29]),
-  lot('sawmill', 'Sawmill', 'timber', 49, 25, 5, 4, [51, 29]),
-  lot('office', "President's Office", 'civic', 58, 24, 10, 5, [63, 29]),
+  lot('lumber', 'Lumber Yard', 'timber', 24, 14, 6, 4, [27, 18]),
+  lot('sawmill', 'Sawmill', 'timber', 40, 16, 5, 4, [42, 20]),
+  lot('office', "President's Office", 'civic', 58, 16, 10, 5, [63, 21]),
 
-  lot('cafe', 'Shiba Sips Café', 'food', 2, 34, 8, 6, [6, 33]),
-  lot('bakery', 'Bakery', 'food', 11, 34, 5, 4, [13, 33]),
-  lot('mill', 'Flour Mill', 'food', 17, 34, 5, 4, [19, 33]),
-  lot('farm', 'Wheat Farm', 'food', 23, 34, 6, 4, [26, 33]),
-  lot('leaders', 'Leaderboards Hall', 'plaza', 30, 34, 6, 3, [33, 33]),
+  lot('cafe', 'Shiba Sips Café', 'food', 4, 38, 8, 6, [8, 44]),
+  lot('bakery', 'Bakery', 'food', 14, 34, 5, 4, [16, 38]),
+  lot('mill', 'Flour Mill', 'food', 20, 42, 5, 4, [22, 41]),
+  lot('farm', 'Wheat Farm', 'food', 26, 32, 6, 4, [29, 36]),
 
-  lot('mine', 'Mine', 'metal', 42, 34, 5, 4, [44, 33]),
-  lot('smelter', 'Smelter', 'metal', 48, 34, 5, 4, [50, 33]),
-  lot('forge', 'Forge', 'metal', 54, 34, 5, 4, [56, 33]),
-  lot('mechanic', "Mechanic's Shop", 'metal', 60, 34, 5, 4, [62, 33]),
-  lot('scrap', 'Scrap Yard', 'metal', 66, 34, 6, 4, [69, 33]),
-  lot('water', 'Water Tower', 'metal', 74, 34, 4, 4, [76, 33], { reserved: true }),
+  lot('mine', 'Mine', 'metal', 54, 30, 5, 4, [56, 34]),
+  lot('smelter', 'Smelter', 'metal', 60, 36, 5, 4, [62, 35]),
+  lot('forge', 'Forge', 'metal', 66, 31, 5, 4, [68, 35]),
+  lot('mechanic', "Mechanic's Shop", 'metal', 72, 37, 5, 4, [74, 36]),
+  lot('scrap', 'Scrap Yard', 'metal', 78, 32, 6, 4, [81, 36]),
+  lot('water', 'Water Tower', 'metal', 86, 28, 4, 4, [88, 32], { reserved: true }),
 
-  lot('cafe-queued', 'Queued Café', 'food', 2, 43, 6, 4, [5, 42], { reserved: true }),
-  lot('cloth', 'Cloth Mill', 'food', 9, 43, 5, 4, [11, 42], { reserved: true }),
-  lot('tailor', 'Tailor', 'food', 15, 43, 5, 4, [17, 42]),
-  lot('vet', 'Vet', 'food', 21, 43, 5, 4, [23, 42], { reserved: true }),
-  lot('quarry', 'Quarry', 'metal', 42, 43, 6, 4, [45, 42], { reserved: true }),
-  lot('builders', "Builders' Yard", 'metal', 49, 43, 6, 4, [52, 42], { reserved: true }),
-  lot('factory', 'Car Factory', 'metal', 56, 43, 8, 5, [60, 42], { reserved: true }),
-  lot('depot', 'Depot', 'metal', 66, 43, 6, 4, [69, 42], { reserved: true }),
-  lot('power', 'Power House', 'metal', 74, 43, 4, 4, [76, 42], { reserved: true }),
+  lot('cafe-queued', 'Queued Café', 'food', 4, 50, 6, 4, [7, 49], { reserved: true }),
+  lot('cloth', 'Cloth Mill', 'food', 12, 54, 5, 4, [14, 53], { reserved: true }),
+  lot('tailor', 'Tailor', 'food', 18, 48, 5, 4, [20, 52]),
+  lot('vet', 'Vet', 'food', 26, 52, 5, 4, [28, 51], { reserved: true }),
+  lot('quarry', 'Quarry', 'metal', 54, 44, 6, 4, [57, 43], { reserved: true }),
+  lot('builders', "Builders' Yard", 'metal', 62, 48, 6, 4, [65, 47], { reserved: true }),
+  lot('factory', 'Car Factory', 'metal', 70, 44, 8, 5, [74, 43], { reserved: true }),
+  lot('depot', 'Depot', 'metal', 80, 48, 6, 4, [83, 47], { reserved: true }),
+  lot('power', 'Power House', 'metal', 88, 42, 4, 4, [88, 46], { reserved: true }),
 
-  lot('L1', 'Farm Lane Lot 1', 'homes', 2, 51, 6, 4, [5, 55]),
-  lot('L2', 'Farm Lane Lot 2', 'homes', 9, 51, 6, 4, [12, 55]),
-  lot('L3', 'Farm Lane Lot 3', 'homes', 16, 51, 6, 4, [19, 55]),
-  lot('L4', 'Farm Lane Lot 4', 'homes', 23, 51, 6, 4, [26, 55]),
-  lot('market', 'Farmers Market', 'homes', 30, 52, 6, 3, [33, 55]),
-  lot('h1', "Mochi's Home", 'homes', 42, 50, 6, 5, [45, 55]),
-  lot('h2', "Kuro's Home", 'homes', 48, 50, 6, 5, [51, 55]),
-  lot('h3', "Hana's Home", 'homes', 54, 50, 6, 5, [57, 55]),
-  lot('h4', "Taro's Home", 'homes', 60, 50, 6, 5, [63, 55]),
-  lot('P1', 'Prime Lot 1', 'homes', 68, 51, 6, 4, [71, 55]),
-  lot('P2', 'Prime Lot 2', 'homes', 74, 51, 6, 4, [77, 55]),
-  lot('cottage1', 'Cottage 1', 'homes', 81, 50, 4, 4, [83, 55], { reserved: true }),
-  lot('cottage2', 'Cottage 2', 'homes', 86, 50, 4, 4, [88, 55], { reserved: true }),
-  lot('cottage3', 'Cottage 3', 'homes', 81, 43, 4, 4, [83, 42], { reserved: true }),
-  lot('cottage4', 'Cottage 4', 'homes', 86, 43, 4, 4, [88, 42], { reserved: true }),
+  lot('L1', 'Farm Lane Lot 1', 'homes', 4, 60, 6, 4, [7, 59]),
+  lot('L2', 'Farm Lane Lot 2', 'homes', 12, 64, 6, 4, [15, 63]),
+  lot('L3', 'Farm Lane Lot 3', 'homes', 20, 59, 6, 4, [23, 63]),
+  lot('L4', 'Farm Lane Lot 4', 'homes', 28, 64, 6, 4, [31, 63]),
+  lot('market', 'Farmers Market', 'homes', 36, 58, 6, 3, [39, 57]),
+  lot('h1', "Mochi's Home", 'homes', 44, 52, 6, 5, [47, 57]),
+  lot('h2', "Kuro's Home", 'homes', 52, 58, 6, 5, [55, 57]),
+  lot('h3', "Hana's Home", 'homes', 60, 52, 6, 5, [63, 57]),
+  lot('h4', "Taro's Home", 'homes', 68, 58, 6, 5, [71, 57]),
+  lot('P1', 'Prime Lot 1', 'homes', 76, 54, 6, 4, [79, 53]),
+  lot('P2', 'Prime Lot 2', 'homes', 84, 58, 6, 4, [87, 57]),
+  lot('cottage1', 'Cottage 1', 'homes', 86, 50, 4, 4, [86, 54], { reserved: true }),
+  lot('cottage2', 'Cottage 2', 'homes', 4, 70, 4, 4, [6, 69], { reserved: true }),
+  lot('cottage3', 'Cottage 3', 'homes', 84, 66, 4, 4, [86, 65], { reserved: true }),
+  lot('cottage4', 'Cottage 4', 'homes', 90, 52, 4, 4, [90, 56], { reserved: true }),
 
-  lot('p1', 'Plot 1', 'homes', 42, 60, 6, 6, [45, 59]),
-  lot('p2', 'Plot 2', 'homes', 48, 60, 6, 6, [51, 59]),
-  lot('p3', 'Plot 3', 'homes', 54, 60, 6, 6, [57, 59]),
-  lot('p4', 'Plot 4', 'homes', 60, 60, 6, 6, [63, 59]),
-  lot('p5', 'Plot 5', 'homes', 66, 60, 6, 6, [69, 59]),
-  lot('p6', 'Plot 6', 'homes', 72, 60, 6, 6, [75, 59]),
-  lot('p7', 'Plot 7', 'homes', 78, 60, 6, 6, [81, 59]),
-  lot('p8', 'Plot 8', 'homes', 84, 60, 6, 6, [87, 59]),
+  lot('p1', 'Plot 1', 'homes', 34, 66, 6, 6, [37, 65]),
+  lot('p2', 'Plot 2', 'homes', 42, 70, 6, 6, [45, 69]),
+  lot('p3', 'Plot 3', 'homes', 50, 65, 6, 6, [53, 71]),
+  lot('p4', 'Plot 4', 'homes', 58, 70, 6, 6, [61, 69]),
+  lot('p5', 'Plot 5', 'homes', 66, 66, 6, 6, [69, 72]),
+  lot('p6', 'Plot 6', 'homes', 12, 72, 6, 6, [15, 71]),
+  lot('p7', 'Plot 7', 'homes', 20, 68, 6, 6, [23, 74]),
+  lot('p8', 'Plot 8', 'homes', 74, 70, 6, 6, [77, 69]),
 
-  lot('cars', 'Zoomies Motors', 'market', 2, 70, 10, 6, [7, 76]),
-  lot('shop', 'Paws & Pillows', 'market', 13, 70, 9, 6, [17, 76]),
-  lot('fashion', 'Fetch Fashion', 'market', 23, 70, 7, 6, [26, 76]),
-  lot('mall', 'Kibble Mall', 'market', 31, 68, 14, 8, [38, 76]),
-  lot('jewel', 'Gilded Collar Jewelers', 'market', 46, 70, 8, 6, [50, 76]),
-  lot('designer', 'Royal Paws Designer', 'market', 55, 70, 8, 6, [59, 76]),
-  lot('goldden', 'Golden Den Furniture', 'market', 64, 70, 8, 6, [68, 76]),
-  lot('luxauto', 'Zoomies Luxury Autos', 'market', 73, 70, 8, 6, [77, 76]),
-  lot('petshop', 'Pawsome Pets', 'market', 82, 70, 8, 6, [86, 76]),
+  lot('cars', 'Zoomies Motors', 'market', 4, 80, 10, 6, [9, 79]),
+  lot('shop', 'Paws & Pillows', 'market', 16, 78, 9, 6, [20, 77]),
+  lot('fashion', 'Fetch Fashion', 'market', 28, 82, 7, 6, [31, 81]),
+  lot('mall', 'Kibble Mall', 'market', 36, 76, 14, 8, [43, 84]),
+  lot('jewel', 'Gilded Collar Jewelers', 'market', 52, 80, 8, 6, [56, 79]),
+  lot('designer', 'Royal Paws Designer', 'market', 62, 76, 8, 6, [66, 82]),
+  lot('goldden', 'Golden Den Furniture', 'market', 72, 80, 8, 6, [76, 79]),
+  lot('luxauto', 'Zoomies Luxury Autos', 'market', 82, 76, 8, 6, [86, 82]),
+  lot('petshop', 'Pawsome Pets', 'market', 16, 86, 8, 3, [20, 85]),
 
-  lot('f0', 'Field 1', 'fields', 2, 81, 6, 4, [5, 80]),
-  lot('f1', 'Field 2', 'fields', 9, 81, 6, 4, [12, 80]),
-  lot('f2', 'Field 3', 'fields', 16, 81, 6, 4, [19, 80]),
-  lot('f3', 'Field 4', 'fields', 23, 81, 6, 4, [26, 80]),
-  lot('barn', 'Big Barn', 'fields', 30, 81, 8, 5, [34, 80]),
-  lot('pond', 'Fishing Pond', 'fields', 40, 82, 10, 4, [44, 80], { water: true }),
-  lot('dock', 'Fishing Dock', 'fields', 40, 80, 8, 1, [44, 80], { reserved: true }),
-  lot('craft', 'Crafting Station', 'fields', 51, 81, 4, 3, [53, 80]),
-  lot('pen', 'Animal Pen', 'fields', 56, 81, 10, 7, [61, 80]),
-  lot('cosy', 'Cosy Corner Furniture', 'fields', 67, 81, 5, 5, [69, 80]),
-  lot('royal', 'Maison Royale', 'fields', 73, 81, 7, 5, [76, 80]),
-  lot('rail', 'Cart / Rail Line', 'reserve', 93, 14, 2, 72, [93, 31], { reserved: true }),
+  lot('f0', 'Field 1', 'fields', 4, 74, 6, 4, [7, 73]),
+  lot('f1', 'Field 2', 'fields', 36, 86, 6, 3, [39, 85]),
+  lot('f2', 'Field 3', 'fields', 44, 60, 6, 4, [47, 64]),
+  lot('f3', 'Field 4', 'fields', 4, 66, 6, 3, [7, 65]),
+  lot('barn', 'Big Barn', 'fields', 26, 74, 8, 5, [30, 73]),
+  lot('pond', 'Fishing Pond', 'fields', 6, 86, 8, 3, [15, 84], { water: true }),
+  lot('dock', 'Fishing Dock', 'fields', 14, 84, 2, 2, [15, 83], { reserved: true }),
+  lot('craft', 'Crafting Station', 'fields', 52, 74, 4, 3, [54, 73]),
+  lot('pen', 'Animal Pen', 'fields', 70, 86, 10, 3, [69, 87]),
+  lot('cosy', 'Cosy Corner Furniture', 'fields', 82, 84, 5, 5, [84, 83]),
+  lot('royal', 'Maison Royale', 'fields', 58, 86, 7, 3, [61, 85]),
+  lot('rail', 'Cart / Rail Line', 'reserve', 90, 18, 4, 6, [90, 24], { reserved: true }),
 ]);
 
 export const STONES = Object.freeze([
-  { id: 'civic', name: 'North Street', tx: 5, ty: 17 },
-  { id: 'plaza', name: 'Central Plaza', tx: 34, ty: 27 },
-  { id: 'timber', name: 'Timber Lane', tx: 55, ty: 24 },
-  { id: 'food', name: 'Food Lane', tx: 6, ty: 41 },
-  { id: 'metal', name: 'Metal Lane', tx: 50, ty: 41 },
-  { id: 'homes', name: 'Home Street', tx: 5, ty: 49 },
-  { id: 'mall', name: 'Market Street', tx: 40, ty: 76 },
-  { id: 'fields', name: 'Field Lane', tx: 14, ty: 80 },
+  { id: 'civic', name: 'North Bend', tx: 8, ty: 14 },
+  { id: 'plaza', name: 'Central Plaza', tx: 34, ty: 28 },
+  { id: 'timber', name: 'Timber Lane', tx: 46, ty: 18 },
+  { id: 'food', name: 'Food Lane', tx: 10, ty: 46 },
+  { id: 'metal', name: 'Metal Lane', tx: 64, ty: 40 },
+  { id: 'homes', name: 'Home Green', tx: 40, ty: 62 },
+  { id: 'mall', name: 'Mall Bend', tx: 48, ty: 74 },
+  { id: 'fields', name: 'Pond Shore', tx: 22, ty: 80 },
 ]);
 
 function paint(grid, x, y, w, h, tile) {
@@ -143,30 +146,129 @@ function paint(grid, x, y, w, h, tile) {
   }
 }
 
-export function buildProposalGrid() {
-  const grid = Array.from({ length: PROPOSAL_H }, () => new Array(PROPOSAL_W).fill(T.GRASS));
-  paint(grid, 18, 18, 44, 24, T.PLAZA);
-  for (const road of ROAD_H) {
-    paint(grid, 1, road.y - 1, PROPOSAL_W - 2, 1, T.WALK);
-    paint(grid, 1, road.y, PROPOSAL_W - 2, 3, T.ROAD);
-    paint(grid, 1, road.y + 3, PROPOSAL_W - 2, 1, T.WALK);
-  }
-  for (const road of ROAD_V) {
-    paint(grid, road.x - 1, 1, 1, PROPOSAL_H - 2, T.WALK);
-    paint(grid, road.x, 1, 3, PROPOSAL_H - 2, T.ROAD);
-    paint(grid, road.x + 3, 1, 1, PROPOSAL_H - 2, T.WALK);
-  }
-  paint(grid, 2, 41, 36, 2, T.WALK);
-  paint(grid, 42, 41, 36, 2, T.WALK);
-  for (let y = 0; y < PROPOSAL_H; y++) {
-    for (let x = 0; x < PROPOSAL_W; x++) {
-      if (x === 0 || y === 0 || x === PROPOSAL_W - 1 || y === PROPOSAL_H - 1) grid[y][x] = T.TREE;
+function disk(grid, cx, cy, r, tile) {
+  const R = Math.ceil(r);
+  for (let y = Math.floor(cy) - R; y <= Math.ceil(cy) + R; y++) {
+    for (let x = Math.floor(cx) - R; x <= Math.ceil(cx) + R; x++) {
+      if (x < 1 || y < 1 || x >= PROPOSAL_W - 1 || y >= PROPOSAL_H - 1) continue;
+      const dx = x + 0.5 - cx;
+      const dy = y + 0.5 - cy;
+      if (dx * dx + dy * dy <= r * r) grid[y][x] = tile;
     }
   }
+}
+
+function stroke(grid, points, radius, tile) {
+  for (let i = 0; i < points.length - 1; i++) {
+    const [x0, y0] = points[i];
+    const [x1, y1] = points[i + 1];
+    const n = Math.max(1, Math.ceil(Math.hypot(x1 - x0, y1 - y0) * 2));
+    for (let s = 0; s <= n; s++) {
+      const t = s / n;
+      disk(grid, x0 + (x1 - x0) * t, y0 + (y1 - y0) * t, radius, tile);
+    }
+  }
+}
+
+function wide(grid, points) {
+  stroke(grid, points, 2.35, T.WALK);
+  stroke(grid, points, 1.25, T.ROAD);
+}
+
+export function buildProposalGrid() {
+  const grid = Array.from({ length: PROPOSAL_H }, () => new Array(PROPOSAL_W).fill(T.GRASS));
+  // Irregular plaza: an oval plus a lobe, with a bite taken out so it is not a disk.
+  for (let y = 1; y < PROPOSAL_H - 1; y++) {
+    for (let x = 1; x < PROPOSAL_W - 1; x++) {
+      const dx = (x + 0.5 - 46) / 16;
+      const dy = (y + 0.5 - 31) / 11;
+      const lobe = ((x + 0.5 - 34) / 6) ** 2 + ((y + 0.5 - 26) / 5) ** 2;
+      if (dx * dx + dy * dy <= 1 || lobe <= 1) grid[y][x] = T.PLAZA;
+    }
+  }
+  disk(grid, 58, 36, 4.2, T.GRASS);
+  wide(grid, PATHS.main);
+  wide(grid, PATHS.avenue);
+  wide(grid, [[6, 12], [18, 11], [30, 13], [40, 12]]);
+  wide(grid, [[52, 12], [64, 11], [76, 14], [42, 16]]);
+  for (const lane of PATHS.shortcuts) stroke(grid, lane, 1.35, T.WALK);
+  stroke(grid, [[90, 20], [88, 32], [92, 46], [89, 58], [92, 70], [88, 82]], 1.15, T.RESERVED);
+  // Pond shore is a blob, not a rectangle. The dock is the walkable lip.
+  for (let y = 85; y <= 88; y++) {
+    for (let x = 6; x <= 16; x++) {
+      const dx = (x - 10) / 5;
+      const dy = (y - 87) / 2.4;
+      const bite = ((x - 14) / 2) ** 2 + ((y - 88) / 1.4) ** 2;
+      if (dx * dx + dy * dy <= 1 && bite > 0.4) grid[y][x] = T.WATER;
+    }
+  }
+  disk(grid, 10, 22, 2.4, T.HILL);
+  disk(grid, 88, 70, 2.6, T.HILL);
+  for (let y = 1; y < PROPOSAL_H - 1; y++) {
+    for (let x = 1; x < PROPOSAL_W - 1; x++) {
+      if (grid[y][x] === T.HILL && (Math.abs(x - 46) < 3 && Math.abs(y - 31) < 3)) grid[y][x] = T.GRASS;
+    }
+  }
+  stroke(grid, [[70, 84], [74, 84], [78, 85], [82, 84]], 0.6, T.FENCE);
   for (const b of LOTS) {
-    if (b.water) paint(grid, b.x, b.y, b.w, b.h, T.WATER);
+    if (b.water) continue;
     else if (b.reserved) paint(grid, b.x, b.y, b.w, b.h, T.RESERVED);
     else paint(grid, b.x, b.y, b.w, b.h, T.BUILDING);
+  }
+  for (let y = 1; y < PROPOSAL_H - 1; y++) {
+    for (let x = 1; x < PROPOSAL_W - 1; x++) {
+      if (grid[y][x] !== T.GRASS) continue;
+      const edge = x < 2 + Math.round(Math.sin(y * 0.37) * 1.4 + 1)
+        || x > PROPOSAL_W - 4 - Math.round(Math.sin(y * 0.23 + 1) * 1.6)
+        || y < 2 + Math.round(Math.sin(x * 0.31) * 1.2)
+        || y > PROPOSAL_H - 4 - Math.round(Math.cos(x * 0.19) * 1.5);
+      if (edge) grid[y][x] = T.TREE;
+    }
+  }
+  for (const [cx, cy, r] of [[14, 28, 1.6], [70, 22, 1.5], [24, 70, 1.7]]) {
+    const R = Math.ceil(r);
+    for (let y = cy - R; y <= cy + R; y++) {
+      for (let x = cx - R; x <= cx + R; x++) {
+        if (grid[y]?.[x] !== T.GRASS) continue;
+        if ((x + 0.5 - cx) ** 2 + (y + 0.5 - cy) ** 2 <= r * r) grid[y][x] = T.TREE;
+      }
+    }
+  }
+  for (let y = 0; y < PROPOSAL_H; y++) {
+    for (let x = 0; x < PROPOSAL_W; x++) {
+      if (x === 0 || y === 0 || x === PROPOSAL_W - 1 || y === PROPOSAL_H - 1) {
+        if (grid[y][x] === T.GRASS || grid[y][x] === T.TREE) grid[y][x] = T.TREE;
+      }
+    }
+  }
+  const openUp = new Set([T.TREE, T.HILL, T.GRASS]);
+  const carve = (points) => {
+    for (let i = 0; i < points.length - 1; i++) {
+      const [x0, y0] = points[i];
+      const [x1, y1] = points[i + 1];
+      const n = Math.max(1, Math.ceil(Math.hypot(x1 - x0, y1 - y0) * 2));
+      for (let s = 0; s <= n; s++) {
+        const t = s / n;
+        const cx = x0 + (x1 - x0) * t;
+        const cy = y0 + (y1 - y0) * t;
+        for (let y = Math.floor(cy) - 1; y <= Math.ceil(cy) + 1; y++) {
+          for (let x = Math.floor(cx) - 1; x <= Math.ceil(cx) + 1; x++) {
+            if (!grid[y] || !openUp.has(grid[y][x])) continue;
+            if ((x + 0.5 - cx) ** 2 + (y + 0.5 - cy) ** 2 <= 1.4) grid[y][x] = T.WALK;
+          }
+        }
+      }
+    }
+  };
+  carve([[44, 76], [50, 82], [56, 87]]);
+  carve([[14, 78], [15, 84]]);
+  for (const b of LOTS) {
+    const [x, y] = b.door;
+    for (const [dx, dy] of [[0, 0], [1, 0], [-1, 0], [0, 1], [0, -1]]) {
+      const xx = x + dx;
+      const yy = y + dy;
+      if (grid[yy] && openUp.has(grid[yy][xx])) grid[yy][xx] = T.WALK;
+    }
   }
   return grid;
 }

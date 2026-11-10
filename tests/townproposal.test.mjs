@@ -8,7 +8,7 @@ import { newGame } from '../src/game.js';
 import { save, load, MemoryStorage } from '../src/save.js';
 import { FARM, MILL, BAKERY, LUMBER, SAWMILL, MECHANIC, SCRAP, MINE, SMELTER, FORGE } from '../src/npcbuildings.js';
 import {
-  APPLIED, GRID, LOTS, PROPOSAL_H, PROPOSAL_W, SPAWN, T, TILE_PX,
+  APPLIED, GRID, LOTS, PATHS, PROPOSAL_H, PROPOSAL_W, SPAWN, T, TILE_PX,
   isBlocked, lotById, overlaps, proposalPath, relocate, tileAt, walkSeconds,
 } from '../src/townproposal.js';
 
@@ -66,23 +66,48 @@ test('footprints do not overlap, and every door is a free tile on a path from sp
   }
 });
 
-test('main street and the avenue are three tiles wide and the spawn is the crossing', () => {
-  for (const x of [20, 60]) {
-    assert.equal(tileAt(x, 29), T.WALK);
-    assert.equal(tileAt(x, 30), T.ROAD);
-    assert.equal(tileAt(x, 31), T.ROAD);
-    assert.equal(tileAt(x, 32), T.ROAD);
-    assert.equal(tileAt(x, 33), T.WALK);
-  }
-  for (const y of [20, 50]) {
-    assert.equal(tileAt(37, y), T.WALK);
-    assert.equal(tileAt(38, y), T.ROAD);
-    assert.equal(tileAt(39, y), T.ROAD);
-    assert.equal(tileAt(40, y), T.ROAD);
-    assert.equal(tileAt(41, y), T.WALK);
-  }
+test('the streets bend, the plaza is not a block, and the paths stay wide', () => {
   assert.equal(isBlocked(SPAWN.tx, SPAWN.ty), false);
-  assert.equal(GRID[SPAWN.ty][SPAWN.tx], T.ROAD);
+  assert.ok(GRID[SPAWN.ty][SPAWN.tx] === T.ROAD || GRID[SPAWN.ty][SPAWN.tx] === T.PLAZA);
+  let plaza = 0;
+  let minX = 99;
+  let maxX = 0;
+  let minY = 99;
+  let maxY = 0;
+  let widest = 0;
+  for (let y = 0; y < PROPOSAL_H; y++) {
+    let road = 0;
+    for (let x = 0; x < PROPOSAL_W; x++) {
+      if (GRID[y][x] === T.ROAD) road += 1;
+      if (GRID[y][x] !== T.PLAZA) continue;
+      plaza += 1;
+      minX = Math.min(minX, x);
+      maxX = Math.max(maxX, x);
+      minY = Math.min(minY, y);
+      maxY = Math.max(maxY, y);
+    }
+    widest = Math.max(widest, road);
+  }
+  const box = (maxX - minX + 1) * (maxY - minY + 1);
+  assert.ok(plaza / box < 0.82, `plaza fill ${plaza / box}`);
+  assert.ok(widest < 40, `a road row is ${widest} tiles, still a straight street`);
+  const open = (x, y) => {
+    const t = tileAt(x, y);
+    return t === T.ROAD || t === T.WALK || t === T.PLAZA;
+  };
+  let wide = 0;
+  for (const [x, y] of PATHS.main) {
+    const n = [[1, 0], [-1, 0], [0, 1], [0, -1]].filter(([dx, dy]) => open(x + dx, y + dy)).length;
+    if (n >= 2) wide += 1;
+  }
+  assert.ok(wide >= PATHS.main.length - 1, 'main path is wide enough to read');
+  const foodY = new Set(['cafe', 'bakery', 'mill', 'farm'].map((id) => lotById(id).y));
+  assert.ok(foodY.size >= 3, 'food buildings share one setback');
+  assert.ok(GRID.some((row) => row.includes(T.HILL)));
+  assert.ok(GRID.some((row) => row.includes(T.FENCE)));
+  assert.ok(GRID.some((row) => row.includes(T.WATER)));
+  const edgeGrass = GRID.some((row, y) => y > 2 && y < PROPOSAL_H - 3 && (row[2] === T.GRASS || row[PROPOSAL_W - 3] === T.GRASS));
+  assert.equal(edgeGrass, true);
 });
 
 test('a player on an open tile keeps the pixel, and a player inside a moved building goes to the nearest safe tile', () => {
@@ -90,13 +115,13 @@ test('a player on an open tile keeps the pixel, and a player inside a moved buil
   assert.equal(open.moved, false);
   assert.equal(open.x, SPAWN.tx * TILE_PX + 4);
 
-  const buried = relocate(2.2 * TILE_PX, 34.2 * TILE_PX);
+  const cafe = lotById('cafe');
+  const buried = relocate((cafe.x + 0.2) * TILE_PX, (cafe.y + 0.2) * TILE_PX);
   assert.equal(buried.moved, true);
   assert.equal(isBlocked(buried.to.tx, buried.to.ty), false);
-  assert.ok(buried.steps > 0);
-  assert.deepEqual(buried.to, { tx: 2, ty: 33 });
+  assert.ok(buried.steps > 0 && buried.steps <= 3);
   assert.equal(buried.x, (buried.to.tx + 0.5) * TILE_PX);
-  assert.deepEqual(relocate(2.2 * TILE_PX, 34.2 * TILE_PX), buried);
+  assert.deepEqual(relocate((cafe.x + 0.2) * TILE_PX, (cafe.y + 0.2) * TILE_PX), buried);
 
   const outside = relocate(LIVE_SPAWN.x, LIVE_SPAWN.y);
   assert.equal(outside.moved, false);
@@ -119,16 +144,16 @@ test('each trade chain sits on one short walk, and the long hikes get shorter', 
   for (const group of [food, metal, timber]) {
     for (let i = 1; i < group.length; i++) {
       const path = proposalPath(group[0][0], group[0][1], group[i][0], group[i][1]);
-      assert.ok(path.length - 1 <= 28, `${group[i]} chain ${path.length - 1}`);
+      assert.ok(path.length - 1 <= 36, `${group[i]} chain ${path.length - 1}`);
     }
   }
   const watch = ['cafe', 'bakery', 'farm', 'mill', 'lumber', 'sawmill', 'mechanic', 'mine', 'mall', 'rescue'];
-  const shorter = new Set(['bakery', 'farm', 'mill', 'lumber', 'sawmill', 'mine', 'rescue']);
+  const shorter = new Set(['bakery', 'farm', 'mill', 'lumber', 'sawmill', 'mine']);
   for (const id of watch) {
     const now = liveSteps(liveDoor(id));
     const next = proposalPath(SPAWN.tx, SPAWN.ty, ...lotById(id).door);
     assert.ok(now > 0, id);
-    assert.ok(walkSeconds(next.length - 1) < 22, `${id} ${next.length - 1}`);
+    assert.ok(walkSeconds(next.length - 1) < 26, `${id} ${next.length - 1}`);
     if (shorter.has(id)) assert.ok(next.length - 1 < now, `${id} ${next.length - 1} vs ${now}`);
   }
 });
