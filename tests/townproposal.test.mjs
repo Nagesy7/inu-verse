@@ -8,8 +8,8 @@ import { newGame } from '../src/game.js';
 import { save, load, MemoryStorage } from '../src/save.js';
 import { FARM, MILL, BAKERY, LUMBER, SAWMILL, MECHANIC, SCRAP, MINE, SMELTER, FORGE } from '../src/npcbuildings.js';
 import {
-  APPLIED, GRID, LOTS, PATHS, PROPOSAL_H, PROPOSAL_W, SPAWN, T, TILE_PX,
-  isBlocked, lotById, overlaps, proposalPath, relocate, tileAt, walkSeconds,
+  APPLIED, FADE_MS, GRID, LIVE_SAVE_KEY, LOTS, NEIGHBOURHOODS, NOOKS, PATHS, PROPOSAL_H, PROPOSAL_W, SPAWN, STOP_KEY, STOP_PX, STOPS, T, TILE_PX,
+  hop, isBlocked, loadStops, lotById, overlaps, proposalPath, relocate, tileAt, tripSeconds, visitDistrict, walkSeconds,
 } from '../src/townproposal.js';
 
 const LIVE_SPAWN = { x: 31.5 * TILE, y: 23.5 * TILE };
@@ -156,4 +156,51 @@ test('each trade chain sits on one short walk, and the long hikes get shorter', 
     assert.ok(walkSeconds(next.length - 1) < 26, `${id} ${next.length - 1}`);
     if (shorter.has(id)) assert.ok(next.length - 1 < now, `${id} ${next.length - 1} vs ${now}`);
   }
+});
+
+test('each district has one cart stop, unlocked only in the preview save', () => {
+  const districts = new Set(STOPS.map((s) => s.district));
+  assert.equal(districts.size, STOPS.length);
+  assert.equal(STOP_PX, 64);
+  assert.ok(STOP_PX >= 44);
+  for (const s of STOPS) {
+    assert.equal(tileAt(s.tx, s.ty), T.STOP, s.district);
+    assert.equal(isBlocked(s.tx, s.ty), false);
+    assert.ok(proposalPath(SPAWN.tx, SPAWN.ty, s.tx, s.ty), s.district);
+    for (const b of LOTS) {
+      const hit = s.tx < b.x + b.w && s.tx + 2 > b.x && s.ty < b.y + b.h && s.ty + 2 > b.y;
+      assert.equal(hit, false, `${s.district} overlaps ${b.id}`);
+    }
+  }
+  const store = new MemoryStorage();
+  store.setItem(LIVE_SAVE_KEY, '{"v":1,"bones":3}');
+  assert.deepEqual(loadStops(store).unlocked, []);
+  visitDistrict(store, 'food');
+  assert.deepEqual(loadStops(store).unlocked, ['food']);
+  assert.equal(hop(store, 'food', 'metal').ok, false);
+  visitDistrict(store, 'metal');
+  const ride = hop(store, 'food', 'metal');
+  assert.equal(ride.ok, true);
+  assert.equal(ride.fadeMs, FADE_MS);
+  assert.equal(store.getItem(LIVE_SAVE_KEY), '{"v":1,"bones":3}');
+  assert.ok(store.getItem(STOP_KEY).includes('food'));
+  const walking = tripSeconds('food', 'metal', []);
+  const riding = tripSeconds('food', 'metal', ['food', 'metal']);
+  assert.ok(walking > 5);
+  assert.equal(riding, FADE_MS / 1000);
+  assert.ok(riding < walking);
+});
+
+test('hidden corners sit off the road and give nothing', () => {
+  assert.ok(NOOKS.some((n) => n.hook === 'lore:mine-ruins'));
+  for (const n of NOOKS) {
+    assert.equal(n.bones, 0);
+    assert.equal(n.cosmetic, false);
+    assert.notEqual(tileAt(n.tx, n.ty), T.ROAD, n.id);
+    assert.equal(isBlocked(n.tx, n.ty), false, n.id);
+    assert.ok(proposalPath(SPAWN.tx, SPAWN.ty, n.tx, n.ty), n.id);
+  }
+  const files = NEIGHBOURHOODS.flatMap((n) => n.need);
+  assert.deepEqual(files, ['brick-ground 16×16, one tile, warm', 'awning 32×16, shared by the bakery and the tailor', 'soot-decal 16×16']);
+  for (const n of NEIGHBOURHOODS) assert.ok(n.reuse.length > 0, n.id);
 });

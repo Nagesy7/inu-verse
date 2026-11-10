@@ -9,7 +9,7 @@ export const WALK_PX_PER_SEC = WALK_SPEED;
 export const PROPOSAL_W = 96;
 export const PROPOSAL_H = 90;
 export const T = Object.freeze({
-  GRASS: 0, ROAD: 1, WALK: 2, BUILDING: 3, WATER: 4, TREE: 5, PLAZA: 8, RESERVED: 11, FENCE: 12, HILL: 13,
+  GRASS: 0, ROAD: 1, WALK: 2, BUILDING: 3, WATER: 4, TREE: 5, PLAZA: 8, RESERVED: 11, FENCE: 12, HILL: 13, STOP: 14, NOOK: 15,
 });
 const BLOCKED = new Set([T.BUILDING, T.WATER, T.TREE, T.FENCE, T.HILL]);
 
@@ -270,10 +270,10 @@ export function buildProposalGrid() {
       if (grid[yy] && openUp.has(grid[yy][xx])) grid[yy][xx] = T.WALK;
     }
   }
+  for (const s of STOPS) paint(grid, s.tx, s.ty, 2, 2, T.STOP);
+  for (const n of NOOKS) if (grid[n.ty] && openUp.has(grid[n.ty][n.tx])) grid[n.ty][n.tx] = T.NOOK;
   return grid;
 }
-
-export const GRID = buildProposalGrid();
 
 export function tileAt(tx, ty) {
   if (tx < 0 || ty < 0 || tx >= PROPOSAL_W || ty >= PROPOSAL_H) return null;
@@ -345,6 +345,124 @@ export function relocate(px, py) {
     to: best,
     steps: bestD,
   };
+}
+
+// One cart stop per district. 2×2 tiles is 64 world px, which stays at least 44 css px at zoom 1 and zoom 2.
+export const STOP_PX = 64;
+export const FADE_MS = 450;
+export const STOP_KEY = 'inuverse.preview.townstops.v1';
+export const LIVE_SAVE_KEY = 'inuverse.save.v1';
+export const STOPS = Object.freeze([
+  { district: 'plaza', name: 'Plaza bench', tx: 34, ty: 34 },
+  { district: 'food', name: 'Bakery cart', tx: 10, ty: 46 },
+  { district: 'timber', name: 'Sawmill cart', tx: 36, ty: 22 },
+  { district: 'metal', name: 'Forge cart', tx: 64, ty: 40 },
+  { district: 'homes', name: 'Market bench', tx: 40, ty: 62 },
+  { district: 'market', name: 'Mall cart', tx: 40, ty: 74 },
+  { district: 'portals', name: 'North bench', tx: 20, ty: 16 },
+  { district: 'fields', name: 'Pond bench', tx: 26, ty: 80 },
+]);
+
+// Off the road. Notes and markers give nothing. The ruins hook is for a later batch.
+export const NOOKS = Object.freeze([
+  { id: 'awning-thread', district: 'food', tx: 12, ty: 48, kind: 'note', text: 'A loose thread under the awning matches the tailor coat.', bones: 0, cosmetic: false, hook: null },
+  { id: 'cold-slag', district: 'metal', tx: 84, ty: 34, kind: 'marker', text: 'The slag is cold. Nothing to take.', bones: 0, cosmetic: false, hook: null },
+  { id: 'sawdust-ring', district: 'timber', tx: 18, ty: 18, kind: 'note', text: 'Sawdust in a ring, as if someone sat out of the rain.', bones: 0, cosmetic: false, hook: null },
+  { id: 'hedge-pocket', district: 'homes', tx: 32, ty: 62, kind: 'note', text: 'A pocket of shade behind the hedge. No one is waiting.', bones: 0, cosmetic: false, hook: null },
+  { id: 'shore-mark', district: 'fields', tx: 22, ty: 84, kind: 'marker', text: 'A scratch in the stone by the shore. It does not pay.', bones: 0, cosmetic: false, hook: 'lore:mine-ruins' },
+  { id: 'well-lip', district: 'plaza', tx: 34, ty: 26, kind: 'note', text: 'Someone scratched a paw on the well lip.', bones: 0, cosmetic: false, hook: null },
+]);
+
+export const GRID = buildProposalGrid();
+
+export const NEIGHBOURHOODS = Object.freeze([
+  {
+    id: 'food',
+    ground: 'Existing walk tile, with flower tiles in the corners',
+    reuse: ['bakery/bakery.png', 'tailor/tailor-shop.png', 'planter', 'bushP'],
+    need: ['brick-ground 16×16, one tile, warm', 'awning 32×16, shared by the bakery and the tailor'],
+  },
+  {
+    id: 'metal',
+    ground: 'Existing dirt tile inside the yard, road on the path',
+    reuse: ['forge/forge.png', 'smelter/smelter.png', 'mine/mine.png', 'props/scrap-bale.png', 'smelter/work-pour.png'],
+    need: ['soot-decal 16×16'],
+  },
+  {
+    id: 'timber',
+    ground: 'Existing grass and tree tiles',
+    reuse: ['buildings/lumber-yard.png', 'sawmill/sawmill.png', 'props/log.png', 'sawmill/work-saw.png'],
+    need: [],
+  },
+  {
+    id: 'fields',
+    ground: 'Existing grass, with the water tile for the pond blob',
+    reuse: ['farm/wheat-farm.png', 'mill/windmill.png', 'farm/crop-stages.png'],
+    need: [],
+  },
+  {
+    id: 'homes',
+    ground: 'Existing grass and flower tiles',
+    reuse: ['hedge', 'planter'],
+    need: [],
+  },
+  {
+    id: 'market',
+    ground: 'Existing plaza tile',
+    reuse: ['palm', 'fountain', 'planter'],
+    need: [],
+  },
+  {
+    id: 'plaza',
+    ground: 'Existing plaza tile',
+    reuse: ['fountain'],
+    need: [],
+  },
+  {
+    id: 'portals',
+    ground: 'Existing grass',
+    reuse: ['portal stone'],
+    need: [],
+  },
+]);
+
+export function emptyStops() {
+  return { v: 1, unlocked: [] };
+}
+
+export function loadStops(storage) {
+  try {
+    const raw = storage?.getItem?.(STOP_KEY);
+    const s = raw ? JSON.parse(raw) : null;
+    if (!s || s.v !== 1 || !Array.isArray(s.unlocked)) return emptyStops();
+    const known = new Set(STOPS.map((x) => x.district));
+    return { v: 1, unlocked: s.unlocked.filter((id) => known.has(id)) };
+  } catch {
+    return emptyStops();
+  }
+}
+
+export function visitDistrict(storage, district) {
+  const s = loadStops(storage);
+  if (!STOPS.some((x) => x.district === district)) return s;
+  if (!s.unlocked.includes(district)) s.unlocked.push(district);
+  storage.setItem(STOP_KEY, JSON.stringify(s));
+  return s;
+}
+
+export function hop(storage, from, to) {
+  const s = loadStops(storage);
+  if (from === to || !s.unlocked.includes(from) || !s.unlocked.includes(to)) return { ok: false };
+  const dest = STOPS.find((x) => x.district === to);
+  return { ok: true, fadeMs: FADE_MS, tx: dest.tx, ty: dest.ty + 2 };
+}
+
+export function tripSeconds(from, to, unlocked) {
+  if (unlocked?.includes(from) && unlocked?.includes(to) && from !== to) return FADE_MS / 1000;
+  const a = STOPS.find((x) => x.district === from);
+  const b = STOPS.find((x) => x.district === to);
+  const path = proposalPath(a.tx, a.ty, b.tx, b.ty);
+  return path ? walkSeconds(path.length - 1) : null;
 }
 
 export function overlaps() {
