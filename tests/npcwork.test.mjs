@@ -1,7 +1,7 @@
 // The building preview is off unless ?npcwork=1, and it does not write the live save.
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { createNpcWork, npcWorkOn } from '../src/npcwork.js';
+import { SHEAF_WORLD, bottomCentre, createNpcWork, npcWorkOn } from '../src/npcwork.js';
 import { LIVE_SAVE_KEY, SAVE_KEY } from '../src/npcbuildings.js';
 
 function mem() {
@@ -51,4 +51,14 @@ test('a flagged preview stores its own key and does not change the live save', (
   assert.equal(note.visible, 'TEST');
   assert.match(note.detail, /unbalanced and local only/);
   assert.match(note.detail, /logs 0/);
+});
+
+test('the larger sheaf sits on its bottom centre and the carry sheet stays 48x60', () => {
+  assert.deepEqual(SHEAF_WORLD, { w: 48, h: 54 });
+  const old = bottomCentre(200, 300, 32, 36);
+  const next = bottomCentre(200, 300, SHEAF_WORLD.w, SHEAF_WORLD.h);
+  assert.equal(next.y + SHEAF_WORLD.h, 300);
+  assert.equal(next.x + SHEAF_WORLD.w / 2, 200);
+  assert.equal(old.y, 264);
+  assert.equal(next.y, 246);
 });

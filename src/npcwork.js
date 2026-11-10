@@ -76,6 +76,7 @@ const ART_SRC = {
   grind: 'assets/npcwork/mill/work-grind.png',
   grainPile: 'assets/npcwork/mill/grain-pile.png',
   flourStack: 'assets/npcwork/mill/flour-stack.png',
+  sheafProp: 'assets/npcwork/props/wheat-sheaf.png',
   carrySheaf: 'assets/npcwork/overlays/carry-wheat-sheaf.png',
   carryFlour: 'assets/npcwork/overlays/carry-flour-sack.png',
 };
@@ -100,6 +101,7 @@ function blit(c, key, x, y, w, h) {
   return true;
 }
 
+// Carry sheets stay 48×60, anchor (24, 44) at the actor's feet. The sheaf prop is a separate 24×27.
 export function drawNpcOverlay(ctx, o) {
   if (o.draw) { o.draw(ctx); return; }
   const im = IMG[o.key];
@@ -121,6 +123,12 @@ function label(c, text, x, y) {
   R(c, x - w / 2, y - 6, w, 12, '#121a36');
   c.fillStyle = '#f6e7b8';
   c.fillText(text, x, y);
+}
+
+// Wheat sheaf is 24×27 native, drawn at 2×. Bottom-centre sits on the ground point.
+export const SHEAF_WORLD = Object.freeze({ w: 48, h: 54 });
+export function bottomCentre(ax, ay, w, h) {
+  return { x: ax - w / 2, y: ay - h };
 }
 
 function blitFrame(c, key, frame, x, y, dw, dh, fw, fh) {
@@ -184,6 +192,10 @@ function drawFarm(c, state) {
   const loop = state.beat === 'grow' && state.farmLoop !== 'rise' ? state.farmLoop : '';
   const key = loop === 'sow' ? 'sow' : loop === 'water' ? 'water' : loop === 'harvest' ? 'harvest' : loop === 'sheaf' ? 'sheafLoop' : '';
   if (key) blitFrame(c, key, state.farmFrame % 4, x + 8, y + 28, 176, 88, 88, 44);
+  if (state.sheaf === 1) {
+    const sit = bottomCentre(x + 128, y + 112, SHEAF_WORLD.w, SHEAF_WORLD.h);
+    blit(c, 'sheafProp', sit.x, sit.y, SHEAF_WORLD.w, SHEAF_WORLD.h);
+  }
 }
 
 function drawMill(c, state) {

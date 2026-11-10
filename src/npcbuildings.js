@@ -833,7 +833,7 @@ function porterView(s) {
 }
 
 const NAMES = { timber: 'Timber', wrench: 'Wrench', porter: 'Porter', saw: 'Saw', stitch: 'Stitch', crumb: 'Crumb', bolt: 'Bolt', sprout: 'Sprout', dusty: 'Dusty', pike: 'Pike', ember: 'Ember', smith: 'Smith' };
-const COATS = { timber: 'tan', wrench: 'gray', porter: 'cream', saw: 'red', stitch: 'golden', crumb: 'cream', bolt: 'dark', sprout: 'tan', dusty: 'gray', pike: 'dark', ember: 'red', smith: 'gray' };
+const COATS = { timber: 'tan', wrench: 'gray', porter: 'cream', saw: 'red', stitch: 'golden', crumb: 'cream', bolt: 'dark', sprout: 'tan', dusty: 'tan', pike: 'dark', ember: 'red', smith: 'gray' };
 
 export function crewView(s) {
   const out = {};
