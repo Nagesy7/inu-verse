@@ -337,7 +337,17 @@ export function tileAt(tx, ty) {
   return GRID[ty][tx];
 }
 
+// Café front row stays open between the easel and the two tables so a player can walk past them.
+const CAFE_LOT = { x: 4, y: 38, h: 6 };
+export const CAFE_PROPS = Object.freeze([
+  { id: 'easel', tx: CAFE_LOT.x, ty: CAFE_LOT.y + CAFE_LOT.h - 1 },
+  { id: 'table', tx: CAFE_LOT.x + 3, ty: CAFE_LOT.y + CAFE_LOT.h - 1 },
+  { id: 'table', tx: CAFE_LOT.x + 6, ty: CAFE_LOT.y + CAFE_LOT.h - 1 },
+]);
+const CAFE_FRONT_OPEN = new Set([1, 2, 4, 5, 7].map((dx) => `${CAFE_LOT.x + dx},${CAFE_LOT.y + CAFE_LOT.h - 1}`));
+
 export function isBlocked(tx, ty) {
+  if (CAFE_FRONT_OPEN.has(`${tx},${ty}`)) return false;
   const tile = tileAt(tx, ty);
   return tile == null || BLOCKED.has(tile);
 }

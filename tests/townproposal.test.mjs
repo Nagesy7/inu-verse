@@ -3,14 +3,14 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
-import { TILE, findPath, doorTile, BUILDINGS, MALL_BUILDINGS, GAME_DOORS, ARCADE, isSolid, setPreviewCollision, previewCollisionOn } from '../src/world.js';
+import { TILE, findPath, doorTile, BUILDINGS, MALL_BUILDINGS, GAME_DOORS, ARCADE, isSolid, setPreviewCollision, previewCollisionOn, DOORS } from '../src/world.js';
 import { pathKerbPlan, pathVariant } from '../src/tiles.js';
 import { newGame } from '../src/game.js';
 import { save, load, MemoryStorage } from '../src/save.js';
 import { FARM, MILL, BAKERY, LUMBER, SAWMILL, MECHANIC, SCRAP, MINE, SMELTER, FORGE } from '../src/npcbuildings.js';
 import {
   APPLIED, FADE_MS, GRID, LIVE_SAVE_KEY, LOTS, NEIGHBOURHOODS, NOOKS, OVAL_CENTRE, PATHS, PLAZA_INLAY, PROPOSAL_H, PROPOSAL_W, SPAWN, STOP_KEY, STOP_PX, STOPS, T, TILE_PX,
-  plazaPlanters,
+  plazaPlanters, CAFE_PROPS,
   brickFill, edgePlan, EXPANSIONS, hop, isBlocked, isBrickTile, loadStops, lotById, overlaps, preparePreviewPlayer, proposalPath, relocate, sootTiles, stubApproach, stubPast, tileAt, tripSeconds, visitDistrict, walkSeconds, yardTiles,
 } from '../src/townproposal.js';
 
@@ -484,4 +484,31 @@ test('option C paves the preview and leaves the live path painters in place', as
   const seen = new Set();
   for (let i = 0; i < 40; i++) seen.add(pathVariant(i, 7));
   assert.ok(seen.size >= 2);
+});
+
+test('preview cafe furniture is a small block and the live painters stay in front', async () => {
+  const { readFile, access } = await import('node:fs/promises');
+  for (const file of ['assets/buildings/cafe.png', 'assets/buildings/cafe-night-lit.png', 'assets/buildings/goldden.png', 'assets/buildings/goldden-night-lit.png', 'assets/buildings/cafe-easel.png', 'assets/buildings/cafe-table.png']) await access(file);
+  const render = await readFile(new URL('../src/render.js', import.meta.url), 'utf8');
+  assert.match(render, /if \(b\.id === 'mall'\) return drawMallFacade/);
+  assert.match(render, /drawTypedFacade\(c, b\)/);
+  assert.match(render, /else drawDoors\(c, b\)/);
+  assert.match(render, /PREVIEW_SHOPS/);
+  assert.equal(render.includes('drawDoors(c, lot)'), false);
+  const cafe = lotById('cafe');
+  const front = cafe.y + cafe.h - 1;
+  for (const prop of CAFE_PROPS) {
+    assert.equal(prop.ty, front);
+    assert.equal(isBlocked(prop.tx, prop.ty), true, prop.id);
+  }
+  for (const dx of [1, 2, 4, 5, 7]) assert.equal(isBlocked(cafe.x + dx, front), false, dx);
+  assert.equal(isBlocked(cafe.door[0], cafe.door[1]), false);
+  assert.ok(proposalPath(SPAWN.tx, SPAWN.ty, cafe.door[0], cafe.door[1]));
+  const den = [...BUILDINGS, ...MALL_BUILDINGS].find((b) => b.id === 'goldden');
+  const stand = doorTile(den);
+  assert.equal(DOORS.goldden.side, 'right');
+  assert.equal(stand.tx, den.x + den.w);
+  assert.equal(stand.ty, den.y + den.h - 1);
+  assert.equal(stand.tx - (den.x + 7), 1);
+  assert.equal(stand.ty, den.y + 5);
 });

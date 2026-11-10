@@ -165,8 +165,18 @@ function legacyNpcHouse(c, h) { const I = NPC_INTERIORS[h.id]; house(c, h.x * TI
 
 // ---------- square front-facing building art (drop-in: assets/buildings/<id>.png + manifest.json) ----------
 export const BIMG = {};
-export const buildingsReady = typeof Image === 'undefined' ? Promise.resolve() : fetch('assets/buildings/manifest.json').then((r) => r.json()).then((m) => Promise.all(m.buildings.map((b) => new Promise((res) => {
-  const im = new Image(); im.onload = () => { BIMG[b.id] = im; res(); }; im.onerror = () => res(); im.src = 'assets/buildings/' + b.file; })))).catch(() => {});
+function loadBuilding(id, file) {
+  return new Promise((res) => {
+    const im = new Image(); im.onload = () => { BIMG[id] = im; res(); }; im.onerror = () => res(); im.src = 'assets/buildings/' + file;
+  });
+}
+export const buildingsReady = typeof Image === 'undefined' ? Promise.resolve() : fetch('assets/buildings/manifest.json').then((r) => r.json()).then((m) => Promise.all([
+  ...m.buildings.map((b) => loadBuilding(b.id, b.file)),
+  loadBuilding('cafe-night', 'cafe-night-lit.png'),
+  loadBuilding('goldden-night', 'goldden-night-lit.png'),
+  loadBuilding('cafe-easel', 'cafe-easel.png'),
+  loadBuilding('cafe-table', 'cafe-table.png'),
+])).catch(() => {});
 // tiles above each footprint that its (bottom-aligned, taller) art covers: roofs and signs a ghost / ghost name must not sit on
 export function artOverhang() { const out = [];
   for (const b of [...BUILDINGS, ...MALL_BUILDINGS, CLUBHOUSE, { ...LEADERS, id: 'leaders' }]) { const im = b && BIMG[b.id]; if (!im) continue;
@@ -246,7 +256,35 @@ function groundExtras(c) {
 
 const WORK_LOTS = new Set(['bakery', 'tailor', 'farm', 'mill', 'mine', 'smelter', 'forge', 'scrap', 'sawmill', 'lumber', 'mechanic', 'factory', 'cloth', 'cotton', 'goods', 'depot', 'tower', 'shed', 'sip', 'vet', 'cot0', 'cot1', 'cot2']);
 
+// Preview-only facades. The live loop still paints these two from bldgfx.js.
+const PREVIEW_SHOPS = {
+  cafe: { night: 'cafe-night', sign: [74, 78, 108, 8] },
+  goldden: { night: 'goldden-night', sign: [82, 70, 92, 10] },
+};
+const CAFE_FURNITURE = [
+  { id: 'cafe-easel', ix: 4, iy: 206, w: 28, h: 48 },
+  { id: 'cafe-table', ix: 90, iy: 208, w: 50, h: 46 },
+  { id: 'cafe-table', ix: 167, iy: 208, w: 50, h: 46 },
+];
+
+function drawPreviewShop(c, lot) {
+  const spec = PREVIEW_SHOPS[lot.id];
+  const night = !!globalThis.__inuNight && BIMG[spec.night];
+  const id = night ? spec.night : lot.id;
+  if (!drawBuildingArt(c, id, lot.x, lot.y, lot.w, lot.h)) return false;
+  const im = BIMG[id];
+  const k = Math.max(1, Math.floor((lot.w * TILE) / im.width));
+  const w = im.width * k;
+  const h = im.height * k;
+  const x0 = lot.x * TILE + Math.round((lot.w * TILE - w) / 2);
+  const y0 = (lot.y + lot.h) * TILE - h;
+  const [rx, ry, rw, rh] = spec.sign;
+  pixelText(c, String(lot.name || '').toUpperCase(), x0 + (rx + rw / 2) * k, y0 + (ry + rh / 2) * k, rw * k - 2, rh * k, '#ffe7a3', '#2a160c');
+  return true;
+}
+
 export function drawLotBuilding(c, lot) {
+  if (PREVIEW_SHOPS[lot.id] && drawPreviewShop(c, lot)) return true;
   if (drawTypedFacade(c, lot)) return true;
   const artId = HOUSE_ART[lot.id] || lot.id;
   if (drawBuildingArt(c, artId, lot.x, lot.y, lot.w, lot.h)) return true;
@@ -267,7 +305,15 @@ export function proposalProps(grid, w, h, lots) {
   for (const [x, y] of plazaPlanters()) props.push({ y: y * TILE + 28, d: (c) => c.drawImage(S.streetTree, x * TILE - 14, y * TILE + 28 - S.streetTree.height * 3, 60, S.streetTree.height * 3) });
   for (const lot of lots) {
     if (lot.water || lot.reserved || WORK_LOTS.has(lot.id)) continue;
-    props.push({ y: (lot.y + lot.h) * TILE - 1, d: (c) => { drawLotBuilding(c, lot); } });
+    const front = lot.id === 'cafe' ? (lot.y + lot.h - 1) * TILE : (lot.y + lot.h) * TILE - 1;
+    props.push({ y: front, d: (c) => { drawLotBuilding(c, lot); } });
+    if (lot.id !== 'cafe') continue;
+    const x0 = lot.x * TILE;
+    const y0 = (lot.y + lot.h) * TILE - 256;
+    for (const piece of CAFE_FURNITURE) props.push({
+      y: y0 + piece.iy + piece.h,
+      d: (c) => { const im = BIMG[piece.id]; if (im) c.drawImage(im, x0 + piece.ix, y0 + piece.iy, piece.w, piece.h); },
+    });
   }
   return props;
 }
