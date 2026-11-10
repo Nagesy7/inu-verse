@@ -4,6 +4,7 @@ import { TILE } from './world.js';
 import { EXPANSIONS, hop, lotById, NOOKS, setDistrictArt, STOPS, stubApproach, visitDistrict } from './townproposal.js';
 import { factoryFrame } from './factoryline.js';
 import { clothFrame } from './clothline.js';
+import { cafeFrame, depotFrame, marketShown, powerFrame, serveFrame, vetFrame } from './townline.js';
 import {
   BAKERY, CHIT_CAP, CLOTH_STOCK, DAILY_ISSUE, FARM, FLOUR_STOCK, FORGE, LUMBER, MECHANIC, MILL, MINE, ROUTES, SAWMILL, SCRAP, SIGN, SMELTER, TAILOR,
   SAVE_KEY, TAG, advance, crewView, seek, seedState,
@@ -135,6 +136,35 @@ const ART_SRC = {
   weaveMill: 'assets/npcwork/weaving/weaving-mill.png',
   weaveLoom: 'assets/npcwork/weaving/work-loom.png',
   yarnPile: 'assets/npcwork/weaving/yarn-pile.png',
+  marketHall: 'assets/npcwork/market/market.png',
+  marketServe: 'assets/npcwork/market/work-serve.png',
+  dispBread: 'assets/npcwork/market/display-bread.png',
+  dispCoats: 'assets/npcwork/market/display-coats.png',
+  dispPlanks: 'assets/npcwork/market/display-planks.png',
+  dispMetal: 'assets/npcwork/market/display-metal.png',
+  dispCar: 'assets/npcwork/market/display-car.png',
+  depotBld: 'assets/npcwork/depot/depot.png',
+  depotLoad: 'assets/npcwork/depot/work-load.png',
+  truckSide: 'assets/npcwork/depot/truck-side.png',
+  towerBld: 'assets/npcwork/power/water-tower.png',
+  towerPump: 'assets/npcwork/power/work-pump.png',
+  wattWalk: 'assets/npcwork/power/work-walk.png',
+  shedBld: 'assets/npcwork/power/power-shed.png',
+  lightOff: 'assets/npcwork/power/light-off.png',
+  lightOn: 'assets/npcwork/power/light-on.png',
+  cafeBld: 'assets/npcwork/cafe/cafe.png',
+  cafeBarista: 'assets/npcwork/cafe/work-barista.png',
+  cafeBreak: 'assets/npcwork/cafe/work-break.png',
+  vetBld: 'assets/npcwork/vet/vet.png',
+  vetCheck: 'assets/npcwork/vet/work-checkup.png',
+  cot0: 'assets/npcwork/houses/cottage-0.png',
+  cot1: 'assets/npcwork/houses/cottage-1.png',
+  cot2: 'assets/npcwork/houses/cottage-2.png',
+  glowWindow: 'assets/npcwork/lights/glow-window.png',
+  glowDoor: 'assets/npcwork/lights/glow-door.png',
+  carryParcel: 'assets/npcwork/overlays/carry-parcel.png',
+  carryToy: 'assets/npcwork/overlays/carry-toy-car.png',
+  carryMarketLoaf: 'assets/npcwork/overlays/carry-market-loaf.png',
 };
 const IMG = {};
 let artLoaded = false;
@@ -177,6 +207,20 @@ const LOG_SLOTS = [[1660, 3160], [1678, 3160], [1696, 3160], [1668, 3150]];
 let laidOut = false;
 let lineMs = 0;
 let clothMs = 0;
+let townMs = 0;
+let shelfOverride = null;
+let shownStocks = { bread: 0, coats: 0, planks: 0, metal: 0, car: 0 };
+
+function rememberStocks(state) {
+  if (shelfOverride) { shownStocks = shelfOverride; return; }
+  shownStocks = {
+    bread: (state.bread || 0) + (state.cargo === 'bread' ? 1 : 0),
+    coats: (state.rack || 0) + (state.vestReady || 0) + (state.cargo === 'coat' ? 1 : 0),
+    planks: (state.planks || 0) + (state.shopPlanks || 0),
+    metal: (state.bars || 0) + (state.forgeBars || 0),
+    car: 0,
+  };
+}
 let focus = null;
 let labelsOn = false;
 const seenNooks = new Set();
@@ -385,6 +429,121 @@ function drawWeave(c) {
   if (now.stage === 'bolt' || now.stage === 'weave' && now.frame === 3) blit(c, 'clothBolt', x + 96, y + 100, 32, 12);
 }
 
+const DISP = { bread: 'dispBread', coats: 'dispCoats', planks: 'dispPlanks', metal: 'dispMetal', car: 'dispCar' };
+
+function hand(id, name, coat, lotId, face, overlay) {
+  const lot = lotById(lotId);
+  if (!lot) return null;
+  return {
+    id, name, coat, face, moving: false, working: false, npcOverlay: overlay || null,
+    x: lot.door[0] * TILE + 8, y: lot.door[1] * TILE + 8,
+  };
+}
+
+function townHands() {
+  const serve = serveFrame(townMs);
+  const cafe = cafeFrame(townMs);
+  const depot = depotFrame(townMs);
+  const power = powerFrame(townMs);
+  const vet = vetFrame(townMs);
+  const hands = [];
+  if (serve.who !== 'pip') hands.push(hand('pip', 'Pip', 'tan', 'goods', 'left'));
+  if (depot.who !== 'dash') {
+    const carrying = depot.stage === 'roll' ? { key: 'carryParcel', frame: 0, behind: false } : null;
+    hands.push(hand('dash', 'Dash', 'red', 'depot', 'right', carrying));
+  }
+  if (power.who !== 'watt') hands.push(hand('watt', 'Watt', 'dark', power.stage === 'shed' ? 'shed' : 'tower', 'down'));
+  if (cafe.who !== 'bean') hands.push(hand('bean', 'Bean', 'golden', 'sip', 'left'));
+  if (vet.who !== 'clover') hands.push(hand('clover', 'Clover', 'gray', 'vet', 'left'));
+  return hands.filter(Boolean);
+}
+
+function drawMarket(c) {
+  if (!laidOut) return;
+  const lot = lotById('goods');
+  if (!lot) return;
+  const x = lot.x * TILE;
+  const y = lot.y * TILE;
+  const shown = marketShown(townMs, shownStocks);
+  const now = serveFrame(townMs);
+  blit(c, 'marketHall', x, y, 192, 128);
+  blitFrame(c, DISP[shown.kind], shown.frame, x + 12, y + 40, 168, 80, 84, 40);
+  if (now.stage === 'serve') blitFrame(c, 'marketServe', now.frame, x + 12, y + 40, 168, 80, 84, 40);
+}
+
+function drawDepot(c) {
+  if (!laidOut) return;
+  const lot = lotById('depot');
+  if (!lot) return;
+  const x = lot.x * TILE;
+  const y = lot.y * TILE;
+  const now = depotFrame(townMs);
+  blit(c, 'depotBld', x, y, 160, 128);
+  const wheel = Math.floor(townMs / 120) % 2;
+  const truckFrame = now.stage === 'roll' ? 2 + wheel : wheel;
+  blitFrame(c, 'truckSide', truckFrame, x + 20, y + 96, 80, 44, 40, 22);
+  if (now.stage === 'load') blitFrame(c, 'depotLoad', now.frame, x + 12, y + 44, 108, 76, 54, 38);
+}
+
+function drawTower(c) {
+  if (!laidOut) return;
+  const lot = lotById('tower');
+  if (!lot) return;
+  const x = lot.x * TILE;
+  const y = lot.y * TILE;
+  const now = powerFrame(townMs);
+  blit(c, 'towerBld', x, y, 96, 96);
+  if (now.stage === 'pump') blitFrame(c, 'towerPump', now.frame, x + 16, y + 32, 64, 56, 32, 28);
+  if (now.stage === 'walk') blitFrame(c, 'wattWalk', now.frame, x + 8, y + 70, 96, 56, 48, 28);
+}
+
+function drawShed(c) {
+  if (!laidOut) return;
+  const lot = lotById('shed');
+  if (!lot) return;
+  const x = lot.x * TILE;
+  const y = lot.y * TILE;
+  const now = powerFrame(townMs);
+  blit(c, 'shedBld', x, y, 128, 96);
+  blit(c, now.stage === 'shed' ? 'lightOn' : 'lightOff', x + 16, y + 32, 28, 24);
+}
+
+function drawSip(c) {
+  if (!laidOut) return;
+  const lot = lotById('sip');
+  if (!lot) return;
+  const x = lot.x * TILE;
+  const y = lot.y * TILE;
+  const now = cafeFrame(townMs);
+  blit(c, 'cafeBld', x, y, 128, 128);
+  if (now.stage === 'barista') blitFrame(c, 'cafeBarista', now.frame, x + 12, y + 36, 80, 68, 40, 34);
+  if (now.stage === 'break') blitFrame(c, 'cafeBreak', now.frame, x + 12, y + 36, 80, 68, 40, 34);
+}
+
+function drawVet(c) {
+  if (!laidOut) return;
+  const lot = lotById('vet');
+  if (!lot) return;
+  const x = lot.x * TILE;
+  const y = lot.y * TILE;
+  const now = vetFrame(townMs);
+  blit(c, 'vetBld', x, y, 128, 128);
+  if (now.stage === 'checkup') blitFrame(c, 'vetCheck', now.frame, x + 12, y + 36, 80, 68, 40, 34);
+}
+
+function drawCottage(c, id, key) {
+  if (!laidOut) return;
+  const lot = lotById(id);
+  if (!lot) return;
+  const x = lot.x * TILE;
+  const y = lot.y * TILE;
+  blit(c, key, x, y, 96, 96);
+  if (globalThis.__inuNight) {
+    blit(c, 'glowWindow', x + 14, y + 36, 20, 20);
+    blit(c, 'glowDoor', x + 42, y + 52, 12, 12);
+  }
+}
+
 function drawFactory(c) {
   if (!laidOut) return;
   const lot = lotById('factory');
@@ -572,6 +731,8 @@ export function createNpcWork(doc = document, storage = globalThis.localStorage)
     pose(n) { state.phase = n; return state.phase; },
     line(ms) { lineMs = ms; return factoryFrame(lineMs); },
     cloth(ms) { clothMs = ms; return clothFrame(clothMs); },
+    town(ms) { townMs = ms; rememberStocks(state); return { serve: serveFrame(townMs), cafe: cafeFrame(townMs), market: marketShown(townMs, shownStocks) }; },
+    shelf(stocks) { shelfOverride = stocks; rememberStocks(state); return marketShown(townMs, shownStocks); },
     advance() {
       advance(state);
       persist();
@@ -583,6 +744,8 @@ export function createNpcWork(doc = document, storage = globalThis.localStorage)
       acc += Math.max(0, dt) * 1000;
       lineMs += Math.max(0, dt) * 1000;
       clothMs += Math.max(0, dt) * 1000;
+      townMs += Math.max(0, dt) * 1000;
+      rememberStocks(state);
       if (acc >= 140) {
         acc = 0;
         advance(state);
@@ -613,6 +776,7 @@ export function createNpcWork(doc = document, storage = globalThis.localStorage)
       };
     },
     actors() {
+      rememberStocks(state);
       return Object.values(crewView(state)).filter((a) => {
         const bayLoop = state.bay === 'bonnet' || state.bay === 'creeper' || state.bay === 'wheel';
         if (a.id === 'wrench' && state.beat === 'bay' && bayLoop) return false;
@@ -626,7 +790,7 @@ export function createNpcWork(doc = document, storage = globalThis.localStorage)
         if (a.id === 'ember' && (state.beat === 'pour' || state.scrapFeed > 0)) return false;
         if (a.id === 'smith' && state.beat === 'hammer') return false;
         return true;
-      }).concat(laidOut ? factoryHands().concat(clothHands()) : []).map((a) => {
+      }).concat(laidOut ? factoryHands().concat(clothHands(), townHands()) : []).map((a) => {
         let npcOverlay = null;
         if (a.id === 'timber' && a.working) npcOverlay = { key: state.act === 'stack' ? 'stack' : 'chop', frame: state.axe, behind: false };
         else if (a.id === 'porter') npcOverlay = porterOverlay(state, a.face);
@@ -651,6 +815,7 @@ export function createNpcWork(doc = document, storage = globalThis.localStorage)
       });
     },
     props() {
+      rememberStocks(state);
       const lumber = place(LUMBER);
       const mech = place(MECHANIC);
       const list = [
@@ -666,6 +831,15 @@ export function createNpcWork(doc = document, storage = globalThis.localStorage)
         { y: (lotById('factory')?.y || 0) * TILE + 160, d: (c) => drawFactory(c) },
         { y: (lotById('cotton')?.y || 0) * TILE + 128, d: (c) => drawCotton(c) },
         { y: (lotById('cloth')?.y || 0) * TILE + 128, d: (c) => drawWeave(c) },
+        { y: (lotById('goods')?.y || 0) * TILE + 128, d: (c) => drawMarket(c) },
+        { y: (lotById('depot')?.y || 0) * TILE + 128, d: (c) => drawDepot(c) },
+        { y: (lotById('tower')?.y || 0) * TILE + 96, d: (c) => drawTower(c) },
+        { y: (lotById('shed')?.y || 0) * TILE + 96, d: (c) => drawShed(c) },
+        { y: (lotById('sip')?.y || 0) * TILE + 128, d: (c) => drawSip(c) },
+        { y: (lotById('vet')?.y || 0) * TILE + 128, d: (c) => drawVet(c) },
+        { y: (lotById('cot0')?.y || 0) * TILE + 96, d: (c) => drawCottage(c, 'cot0', 'cot0') },
+        { y: (lotById('cot1')?.y || 0) * TILE + 96, d: (c) => drawCottage(c, 'cot1', 'cot1') },
+        { y: (lotById('cot2')?.y || 0) * TILE + 96, d: (c) => drawCottage(c, 'cot2', 'cot2') },
         { y: place(SCRAP).y + 128, d: (c) => drawScrap(c, state) },
         { y: lumber.y + 130, d: (c) => {
           for (let i = 0; i < state.logs && i < LOG_SLOTS.length; i++) blit(c, 'log', lumber.x + 16 + (i % 3) * 20, lumber.y + 96 + Math.floor(i / 3) * 12, 18, 10);

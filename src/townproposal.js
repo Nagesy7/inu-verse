@@ -66,39 +66,39 @@ export const LOTS = Object.freeze([
   lot('forge', 'Forge', 'metal', 66, 31, 5, 4, [68, 35]),
   lot('mechanic', "Mechanic's Shop", 'metal', 72, 37, 5, 4, [74, 36]),
   lot('scrap', 'Scrap Yard', 'metal', 78, 32, 6, 4, [81, 36]),
-  lot('water', 'Water Tower', 'metal', 86, 28, 4, 4, [88, 32], { reserved: true }),
+  lot('tower', 'Water Tower', 'metal', 86, 28, 3, 3, [87, 31]),
 
-  lot('cafe-queued', 'Queued Café', 'food', 4, 50, 6, 4, [7, 49], { reserved: true }),
+  lot('sip', 'Café', 'food', 4, 50, 4, 4, [7, 54]),
   lot('cloth', 'Cloth Mill', 'food', 12, 54, 5, 4, [16, 58]),
   lot('cotton', 'Cotton Field', 'fields', 58, 60, 5, 4, [60, 64]),
   lot('tailor', 'Tailor', 'food', 18, 48, 5, 4, [20, 52]),
-  lot('vet', 'Vet', 'food', 26, 52, 5, 4, [28, 51], { reserved: true }),
+  lot('vet', 'Vet Clinic', 'food', 26, 52, 4, 4, [29, 56]),
   lot('quarry', 'Quarry', 'metal', 54, 44, 6, 4, [57, 43], { reserved: true }),
   lot('builders', "Builders' Yard", 'metal', 62, 48, 6, 4, [65, 47], { reserved: true }),
   lot('factory', 'Car Factory', 'metal', 70, 44, 8, 5, [71, 49]),
-  lot('depot', 'Depot', 'metal', 80, 48, 6, 4, [83, 47], { reserved: true }),
-  lot('power', 'Power House', 'metal', 88, 42, 4, 4, [88, 46], { reserved: true }),
+  lot('depot', 'Delivery Depot', 'metal', 80, 48, 5, 4, [82, 52]),
+  lot('shed', 'Power Shed', 'metal', 88, 42, 4, 3, [91, 45]),
 
   lot('L1', 'Farm Lane Lot 1', 'homes', 4, 60, 6, 4, [7, 59]),
   lot('L2', 'Farm Lane Lot 2', 'homes', 12, 64, 6, 4, [15, 63]),
   lot('L3', 'Farm Lane Lot 3', 'homes', 20, 59, 6, 4, [23, 63]),
   lot('L4', 'Farm Lane Lot 4', 'homes', 28, 64, 6, 4, [31, 63]),
-  lot('market', 'Farmers Market', 'homes', 36, 58, 6, 3, [39, 57]),
+  lot('market', 'Farmers Market', 'homes', 36, 58, 4, 3, [39, 57]),
   lot('h1', "Mochi's Home", 'homes', 44, 52, 6, 5, [47, 57]),
   lot('h2', "Kuro's Home", 'homes', 52, 58, 6, 5, [55, 57]),
   lot('h3', "Hana's Home", 'homes', 60, 52, 6, 5, [63, 57]),
   lot('h4', "Taro's Home", 'homes', 68, 58, 6, 5, [71, 57]),
   lot('P1', 'Prime Lot 1', 'homes', 76, 54, 6, 4, [79, 53]),
   lot('P2', 'Prime Lot 2', 'homes', 84, 58, 6, 4, [87, 57]),
-  lot('cottage1', 'Cottage 1', 'homes', 86, 50, 4, 4, [86, 54], { reserved: true }),
-  lot('cottage2', 'Cottage 2', 'homes', 4, 70, 4, 4, [6, 69], { reserved: true }),
-  lot('cottage3', 'Cottage 3', 'homes', 84, 66, 4, 4, [86, 65], { reserved: true }),
+  lot('cot0', 'Cottage', 'homes', 86, 50, 3, 3, [87, 53]),
+  lot('cot1', 'Cottage', 'homes', 4, 70, 3, 3, [5, 73]),
+  lot('cot2', 'Cottage', 'homes', 84, 66, 3, 3, [85, 69]),
   lot('cottage4', 'Cottage 4', 'homes', 90, 52, 4, 4, [90, 56], { reserved: true }),
 
   lot('p1', 'Plot 1', 'homes', 34, 66, 6, 6, [37, 65]),
   lot('p2', 'Plot 2', 'homes', 42, 70, 6, 6, [45, 69]),
   lot('p3', 'Plot 3', 'homes', 50, 65, 6, 6, [53, 71]),
-  lot('p4', 'Plot 4', 'homes', 58, 70, 6, 6, [61, 69]),
+  lot('p4', 'Plot 4', 'homes', 58, 70, 6, 5, [61, 69]),
   lot('p5', 'Plot 5', 'homes', 66, 66, 6, 6, [69, 72]),
   lot('p6', 'Plot 6', 'homes', 12, 72, 6, 6, [15, 71]),
   lot('p7', 'Plot 7', 'homes', 20, 68, 6, 6, [23, 74]),
@@ -116,7 +116,7 @@ export const LOTS = Object.freeze([
 
   lot('f0', 'Field 1', 'fields', 4, 74, 6, 4, [7, 73]),
   lot('f1', 'Field 2', 'fields', 36, 86, 6, 3, [39, 85]),
-  lot('f2', 'Field 3', 'fields', 44, 60, 6, 4, [47, 64]),
+  lot('f2', 'Field 3', 'fields', 46, 60, 6, 4, [47, 64]),
   lot('f3', 'Field 4', 'fields', 4, 66, 6, 3, [7, 65]),
   lot('barn', 'Big Barn', 'fields', 26, 74, 8, 5, [30, 73]),
   lot('pond', 'Fishing Pond', 'fields', 6, 86, 8, 3, [15, 84], { water: true }),
@@ -126,6 +126,10 @@ export const LOTS = Object.freeze([
   lot('cosy', 'Cosy Corner Furniture', 'fields', 82, 84, 5, 5, [84, 83]),
   lot('royal', 'Maison Royale', 'fields', 58, 86, 7, 3, [61, 85]),
   lot('rail', 'Cart / Rail Line', 'reserve', 90, 18, 4, 6, [90, 24], { reserved: true }),
+  lot('goods', 'Market', 'homes', 30, 46, 6, 4, [35, 50]),
+  lot('town-hall', 'Town Hall', 'civic', 40, 59, 6, 5, [42, 64], { reserved: true, soft: true }),
+  lot('station', 'Station', 'market', 56, 75, 6, 4, [58, 79], { reserved: true, soft: true }),
+  lot('bandstand', 'Bandstand', 'homes', 18, 66, 3, 2, [19, 68], { reserved: true, soft: true }),
 ]);
 
 export const STONES = Object.freeze([
@@ -213,7 +217,12 @@ export function buildProposalGrid() {
   stroke(grid, [[70, 84], [74, 84], [78, 85], [82, 84]], 0.6, T.FENCE);
   for (const b of LOTS) {
     if (b.water) continue;
-    else if (b.reserved) paint(grid, b.x, b.y, b.w, b.h, T.RESERVED);
+    else if (b.reserved && b.soft) {
+      for (let yy = b.y; yy < b.y + b.h; yy++) for (let xx = b.x; xx < b.x + b.w; xx++) {
+        const cur = grid[yy] && grid[yy][xx];
+        if (cur === T.GRASS || cur === T.TREE || cur === T.HILL) grid[yy][xx] = T.RESERVED;
+      }
+    } else if (b.reserved) paint(grid, b.x, b.y, b.w, b.h, T.RESERVED);
     else paint(grid, b.x, b.y, b.w, b.h, T.BUILDING);
   }
   for (let y = 1; y < PROPOSAL_H - 1; y++) {
@@ -403,7 +412,7 @@ export const STOPS = Object.freeze([
   { district: 'food', name: 'Bakery cart', tx: 10, ty: 46 },
   { district: 'timber', name: 'Sawmill cart', tx: 36, ty: 22 },
   { district: 'metal', name: 'Forge cart', tx: 64, ty: 40 },
-  { district: 'homes', name: 'Market bench', tx: 40, ty: 62 },
+  { district: 'homes', name: 'Market bench', tx: 36, ty: 62 },
   { district: 'market', name: 'Mall cart', tx: 40, ty: 74 },
   { district: 'portals', name: 'North bench', tx: 20, ty: 16 },
   { district: 'fields', name: 'Pond bench', tx: 26, ty: 80 },
@@ -417,6 +426,7 @@ export const NOOKS = Object.freeze([
   { id: 'hedge-pocket', district: 'homes', tx: 32, ty: 62, kind: 'note', text: 'A pocket of shade behind the hedge. No one is waiting.', bones: 0, cosmetic: false, hook: null },
   { id: 'shore-mark', district: 'fields', tx: 22, ty: 84, kind: 'marker', text: 'A scratch in the stone by the shore. It does not pay.', bones: 0, cosmetic: false, hook: 'lore:mine-ruins' },
   { id: 'well-lip', district: 'plaza', tx: 34, ty: 26, kind: 'note', text: 'Someone scratched a paw on the well lip.', bones: 0, cosmetic: false, hook: null },
+  { id: 'stargaze', district: 'fields', tx: 57, ty: 86, kind: 'note', text: 'A flat stone for watching the sky. It does not pay.', bones: 0, cosmetic: false, hook: null },
 ]);
 
 // Gate tile, facing off the map. connectsTo stays null until a pack extends the bounds.

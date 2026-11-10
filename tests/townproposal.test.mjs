@@ -359,6 +359,50 @@ test('the cotton field and cloth mill are solid and clear of the gates', () => {
   assert.equal(lotById('cloth').door[0], lotById('cloth').x + 4);
 });
 
+test('the new workplaces are solid and clear of the gates, stops, nooks and future sites', () => {
+  const ids = ['goods', 'depot', 'tower', 'shed', 'sip', 'vet', 'cot0', 'cot1', 'cot2'];
+  const doors = { goods: [5, 4], depot: [2, 4], tower: [1, 3], shed: [3, 3], sip: [3, 4], vet: [3, 4], cot0: [1, 3], cot1: [1, 3], cot2: [1, 3] };
+  const keeps = [
+    ['hall', 40, 59, 6, 5],
+    ['hall-step', 40, 64, 6, 1],
+    ['station', 56, 75, 6, 4],
+    ['station-step', 56, 79, 6, 1],
+    ['band', 18, 66, 3, 2],
+    ['skate', 46, 67, 1, 1],
+  ];
+  for (const id of ids) {
+    const lot = lotById(id);
+    assert.equal(lot.reserved, undefined, id);
+    assert.deepEqual([lot.door[0] - lot.x, lot.door[1] - lot.y], doors[id], id);
+    for (let y = lot.y; y < lot.y + lot.h; y++) for (let x = lot.x; x < lot.x + lot.w; x++) assert.equal(isBlocked(x, y), true, `${id} ${x},${y}`);
+    assert.equal(isBlocked(...lot.door), false, id);
+    assert.ok(proposalPath(SPAWN.tx, SPAWN.ty, lot.door[0], lot.door[1]), id);
+    for (const s of STOPS) {
+      const hit = lot.x < s.tx + 2 && lot.x + lot.w > s.tx && lot.y < s.ty + 2 && lot.y + lot.h > s.ty;
+      assert.equal(hit, false, id + s.district);
+    }
+    for (const n of NOOKS) {
+      const inside = n.tx >= lot.x && n.tx < lot.x + lot.w && n.ty >= lot.y && n.ty < lot.y + lot.h;
+      assert.equal(inside, false, id + n.id);
+    }
+    for (const stub of EXPANSIONS) {
+      for (const [x, y] of [stub.tile, stubApproach(stub)]) {
+        const inside = x >= lot.x && x < lot.x + lot.w && y >= lot.y && y < lot.y + lot.h;
+        assert.equal(inside, false, id + stub.id);
+      }
+    }
+    for (const [name, x, y, w, h] of keeps) {
+      const hit = lot.x < x + w && lot.x + lot.w > x && lot.y < y + h && lot.y + lot.h > y;
+      assert.equal(hit, false, id + name);
+    }
+  }
+  assert.equal(lotById('town-hall').reserved, true);
+  assert.equal(lotById('station').reserved, true);
+  assert.equal(lotById('bandstand').reserved, true);
+  assert.equal(NOOKS.some((n) => n.id === 'stargaze' && n.bones === 0 && n.tx === 57 && n.ty === 86), true);
+  assert.equal(LOTS.some((b) => b.x <= 46 && b.x + b.w > 46 && b.y <= 67 && b.y + b.h > 67), false);
+});
+
 test('the car factory is a solid metal lot clear of the gates, stops and nooks', () => {
   const factory = lotById('factory');
   assert.equal(factory.reserved, undefined);
