@@ -127,9 +127,9 @@ export const LOTS = Object.freeze([
   lot('pond', 'Fishing Pond', 'fields', 6, 86, 8, 3, [15, 84], { water: true }),
   lot('dock', 'Fishing Dock', 'fields', 14, 84, 2, 2, [15, 83], { reserved: true }),
   lot('eastdock', 'East Dock', 'fields', 74, 72, 3, 3, [74, 75], { deck: true }),
-  lot('eastpond', 'East Pond', 'fields', 77, 72, 4, 3, [74, 75], { water: true }),
+  lot('eastpond', 'East Pond', 'fields', 77, 71, 6, 4, [74, 75], { water: true }),
   lot('craft', 'Crafting Station', 'fields', 52, 74, 4, 3, [54, 73]),
-  lot('pen', 'Animal Pen', 'fields', 70, 86, 10, 3, [69, 87]),
+  lot('pen', 'Animal Pen', 'fields', 70, 88, 10, 1, [69, 87]),
   lot('cosy', 'Cosy Corner Furniture', 'fields', 82, 84, 5, 5, [84, 83]),
   lot('royal', 'Maison Royale', 'fields', 58, 86, 7, 3, [61, 85]),
   lot('rail', 'Cart / Rail Line', 'reserve', 90, 18, 4, 6, [90, 24], { reserved: true }),
@@ -301,7 +301,48 @@ export function buildProposalGrid() {
   for (const s of STOPS) paint(grid, s.tx, s.ty, 2, 2, T.STOP);
   for (const n of NOOKS) if (grid[n.ty] && openUp.has(grid[n.ty][n.tx])) grid[n.ty][n.tx] = T.NOOK;
   paintExpansions(grid);
+  clearDenFrontage(grid);
   return grid;
+}
+
+const PATH_TILES = new Set([T.WALK, T.ROAD, T.PLAZA, T.STOP]);
+const SOFT = new Set([T.GRASS, T.TREE, T.FENCE, T.WALK]);
+
+// The south face is the footprint's last row. Trees and props within two tiles of it
+// were covering the windows, so that band goes back to open ground before the approach is paved.
+function clearDenFrontage(grid) {
+  const den = LOTS.find((b) => b.id === 'goldden');
+  if (!den) return;
+  const faceY = den.y + den.h - 1;
+  for (let y = faceY + 1; y <= faceY + 2; y++) {
+    for (let x = den.x - 2; x <= den.x + den.w + 1; x++) {
+      if (!grid[y] || x < 1 || x >= PROPOSAL_W - 1) continue;
+      const owned = LOTS.some((b) => b.id !== 'goldden' && x >= b.x && x < b.x + b.w && y >= b.y && y < b.y + b.h);
+      if (owned) continue;
+      if (grid[y][x] === T.TREE || grid[y][x] === T.FENCE || grid[y][x] === T.BUILDING) grid[y][x] = T.GRASS;
+    }
+  }
+  const [dx, dy] = den.door;
+  let sx = dx + 1;
+  let sy = dy;
+  if (grid[sy] && SOFT.has(grid[sy][sx])) grid[sy][sx] = T.WALK;
+  let best = null;
+  let bestD = Infinity;
+  for (let y = 1; y < PROPOSAL_H - 1; y++) {
+    for (let x = 1; x < PROPOSAL_W - 1; x++) {
+      if (!PATH_TILES.has(grid[y][x]) || (x === sx && y === sy)) continue;
+      const d = Math.abs(x - sx) + Math.abs(y - sy);
+      if (d < bestD) { bestD = d; best = [x, y]; }
+    }
+  }
+  if (!best) return;
+  let x = sx;
+  let y = sy;
+  while (x !== best[0] || y !== best[1]) {
+    if (x !== best[0]) x += Math.sign(best[0] - x);
+    else y += Math.sign(best[1] - y);
+    if (grid[y] && SOFT.has(grid[y][x])) grid[y][x] = T.WALK;
+  }
 }
 
 const STUB_DIR = { north: [0, -1], south: [0, 1], east: [1, 0], west: [-1, 0] };

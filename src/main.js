@@ -108,7 +108,7 @@ import * as PT from './portals.js'; import * as MM from './minimap.js'; // featu
 import { mountWheel } from './actionwheel.js';
 import { WORKER_JOB, JOBS as JOB_DEFS, ensureJobs, rankOf } from './jobs.js';
 import { renderFriend, renderChapel, renderFurnStore } from './relui.js';
-import { prerenderMap, proposalProps, dynamicProps, buildingsReady, artOverhang } from './render.js';
+import { prerenderMap, proposalProps, dynamicProps, buildingsReady, artOverhang, punchDenDoor } from './render.js';
 import { N, SCALE, drawWater } from './tiles.js';
 import { feel } from './feel.js';
 import { faceTalk, faceReact } from './face.js';
@@ -1021,7 +1021,7 @@ function renderWorld() {
   guide.drawWorld(ctx, time, state.player);
   ctx.restore();
   drawAtmosphere(ctx, amb, phase, { x: vw / 2 - ox, y: vh / 2 - oy }, vw, vh, () => { const L = lightsFor(state, phase, homeId()); for (const l of EVX.lights()) L.push(l); return L; });
-  if (NPCW) punchNightLights(ctx, ox, oy);
+  if (NPCW) { punchNightLights(ctx, ox, oy); punchDenDoor(ctx, ox, oy); }
   evChipUpdate(evChip(document, () => { if (!panel) openPanel('event'); }), EVX.ev);
   { const D = dqDay(); DQUI.updateChip(DQUI.ensureChip(document, () => { if (!panel) openPanel('dquests'); }), D.list, DQ.ensure(state, D.day)); }
   SKY.updateSkyHud($('#clock'), { hour: phase.hour, tod: SKY.todOf(phase.hour), wx: amb.rain > 0.3 ? 'rain' : (amb.cloud || 0) > 0.5 ? 'cloudy' : 'clear', season: seasonOf(gameDay()) });

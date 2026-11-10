@@ -11,6 +11,7 @@ import { drawBuilding, HOME_F } from './bldgfx.js';
 import { luxuryGround, luxuryProps, luxuryDynamic, drawMallFacade } from './luxury.js';
 import { drawEmblem, ART } from './art.js';
 import { drawTypedFacade, FUNC } from './facadeart.js';
+import { lotById } from './townproposal.js';
 import { NPC_INTERIORS } from './homes.js';
 import { WALLS } from './furniture.js';
 
@@ -25,8 +26,8 @@ export function paw(c, x, y, s, col) {
   R(c, x + s, y + 3 * s, 3 * s, 2 * s, col); R(c, x + 0.5 * s, y + 4 * s, 4 * s, s, col);
 }
 
-function pixelText(c, text, cx, cy, maxW, size, col, shadowCol = INK) {
-  let s = size; c.font = `${s}px ${FONT}`; while (c.measureText(text).width > maxW && s > 6) { s -= 1; c.font = `${s}px ${FONT}`; }
+function pixelText(c, text, cx, cy, maxW, size, col, shadowCol = INK, minSize = 6) {
+  let s = size; c.font = `${s}px ${FONT}`; while (c.measureText(text).width > maxW && s > minSize) { s -= 1; c.font = `${s}px ${FONT}`; }
   c.textAlign = 'center'; c.textBaseline = 'middle';
   if (shadowCol) { c.fillStyle = shadowCol; c.fillText(text, Math.round(cx) + 1, Math.round(cy) + 1); }
   c.fillStyle = col; c.fillText(text, Math.round(cx), Math.round(cy)); return s;
@@ -261,6 +262,35 @@ const PREVIEW_SHOPS = {
   cafe: { night: 'cafe-night', sign: [74, 78, 108, 8] },
   goldden: { night: 'goldden-night', sign: [82, 70, 92, 10] },
 };
+
+// Preview-only door record. The live DOORS table stays on the right-side porch.
+export const PREVIEW_DOOR = Object.freeze({
+  goldden: Object.freeze({ dx: 7, side: 'front' }),
+});
+
+export function previewDoor(id) {
+  return PREVIEW_DOOR[id] || DOORS[id] || null;
+}
+
+export function previewShowsPorch(id) {
+  const door = previewDoor(id);
+  return !!(door && door.side !== 'front' && !PREVIEW_SHOPS[id]);
+}
+
+// The night grade multiplies the facade, which puts the door glass and lantern out.
+// Stamp that bay back on after the grade so the lit leaf stays visible.
+export function punchDenDoor(ctx, ox, oy) {
+  if (!globalThis.__inuNight || !ctx) return;
+  const im = BIMG['goldden-night'];
+  const lot = lotById('goldden');
+  if (!im || !lot) return;
+  const x0 = lot.x * TILE + Math.round((lot.w * TILE - im.width) / 2);
+  const y0 = (lot.y + lot.h) * TILE - im.height;
+  ctx.save();
+  ctx.imageSmoothingEnabled = false;
+  ctx.drawImage(im, 224, 132, 32, 124, x0 + ox + 224, y0 + oy + 132, 32, 124);
+  ctx.restore();
+}
 const CAFE_FURNITURE = [
   { id: 'cafe-easel', ix: 4, iy: 206, w: 28, h: 48 },
   { id: 'cafe-table', ix: 90, iy: 208, w: 50, h: 46 },
@@ -279,7 +309,7 @@ function drawPreviewShop(c, lot) {
   const x0 = lot.x * TILE + Math.round((lot.w * TILE - w) / 2);
   const y0 = (lot.y + lot.h) * TILE - h;
   const [rx, ry, rw, rh] = spec.sign;
-  pixelText(c, String(lot.name || '').toUpperCase(), x0 + (rx + rw / 2) * k, y0 + (ry + rh / 2) * k, rw * k - 2, rh * k, '#ffe7a3', '#2a160c');
+  pixelText(c, String(lot.name || '').toUpperCase(), x0 + (rx + rw / 2) * k, y0 + (ry + rh / 2) * k, rw * k - 2, rh * k, '#ffe7a3', '#2a160c', 4);
   return true;
 }
 

@@ -5,6 +5,7 @@ import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { TILE, findPath, doorTile, BUILDINGS, MALL_BUILDINGS, GAME_DOORS, ARCADE, isSolid, setPreviewCollision, previewCollisionOn, DOORS } from '../src/world.js';
 import { pathKerbPlan, pathVariant } from '../src/tiles.js';
+import { previewDoor, previewShowsPorch } from '../src/render.js';
 import { newGame } from '../src/game.js';
 import { save, load, MemoryStorage } from '../src/save.js';
 import { FARM, MILL, BAKERY, LUMBER, SAWMILL, MECHANIC, SCRAP, MINE, SMELTER, FORGE } from '../src/npcbuildings.js';
@@ -548,6 +549,27 @@ test('png shop interact tiles sit on the manifest door, and an old doorway still
   }
   const preview = lotById('goldden');
   assert.deepEqual([...preview.door], [79, 85]);
+  assert.deepEqual(previewDoor('goldden'), { dx: 7, side: 'front' });
+  assert.equal(previewShowsPorch('goldden'), false);
+  assert.equal(DOORS.goldden.dx, 0);
+  const faceY = preview.y + preview.h - 1;
+  for (let y = faceY + 1; y <= faceY + 2; y++) {
+    for (let x = preview.x; x < preview.x + preview.w; x++) {
+      assert.notEqual(tileAt(x, y), T.TREE, `${x},${y} tree`);
+      assert.notEqual(tileAt(x, y), T.FENCE, `${x},${y} fence`);
+      assert.notEqual(tileAt(x, y), T.BUILDING, `${x},${y} prop`);
+    }
+  }
+  assert.equal(tileAt(80, 85), T.WALK);
+  assert.ok(proposalPath(SPAWN.tx, SPAWN.ty, 80, 85));
+  const pond = lotById('eastpond');
+  const dock = lotById('eastdock');
+  assert.ok(pond.w >= 6 && pond.h >= 4);
+  assert.equal(pond.x, dock.x + dock.w);
+  for (let y = pond.y; y < pond.y + pond.h; y++) {
+    for (let x = pond.x; x < pond.x + pond.w; x++) assert.equal(tileAt(x, y), T.WATER, `${x},${y}`);
+  }
+  assert.equal(tileAt(dock.x + dock.w - 1, dock.y + 1), T.WATER);
   const live = [...BUILDINGS, ...MALL_BUILDINGS].find((b) => b.id === 'goldden');
   assert.deepEqual([doorTile(live).tx, doorTile(live).ty], [18, 65]);
   const oldDoor = relocate(76.5 * TILE_PX, 79.5 * TILE_PX);
