@@ -11,7 +11,7 @@ async function boot(page) {
 }
 
 async function startTown(page, url) {
-  await page.goto(url + '?mp=off');
+  await page.goto(url + '?mp=off&npcwork=0');
   await page.evaluate(() => { localStorage.clear(); localStorage.setItem('inuverse.tour.v1', 'skipped:test'); });
   await page.reload();
   await page.waitForTimeout(300);
@@ -588,7 +588,7 @@ test('chromium: all three salvage items finish, with consent, use, one chosen sc
     assert.equal(kept.salvage.items.filter((item) => item.id === 'koko-cushion-1').length, 1);
     assert.equal(kept.budget + kept.you + kept.hold + kept.sprigWallet + kept.npcHold + kept.stoolHold + kept.salvageHold, 8);
     const b = await ctx.newPage();
-    await b.goto(srv.url + '?mp=off');
+    await b.goto(srv.url + '?mp=off&npcwork=0');
     await b.evaluate(() => localStorage.setItem('inuverse.tour.v1', 'skipped:test'));
     await b.reload();
     await b.click('#start');

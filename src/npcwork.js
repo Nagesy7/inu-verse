@@ -1,4 +1,4 @@
-// Opt-in only (?npcwork=1). Draws the workplaces and walks the crew.
+// The reviewed town is the default. ?npcwork=1 is a no-op. ?npcwork=0 opts out to the old map.
 // Save key is inuverse.preview.npcwork.v1. This file does not touch inuverse.save.v1.
 import { TILE } from './world.js';
 import { EXPANSIONS, hop, lotById, NOOKS, setDistrictArt, STOPS, stubApproach, visitDistrict } from './townproposal.js';
@@ -14,7 +14,8 @@ import {
 export const NPCWORK_QUERY = 'npcwork';
 
 export function npcWorkOn(search = '') {
-  return new URLSearchParams(search).get(NPCWORK_QUERY) === '1';
+  const v = new URLSearchParams(search).get(NPCWORK_QUERY);
+  return v !== '0' && v !== 'off';
 }
 
 const ART_SRC = {

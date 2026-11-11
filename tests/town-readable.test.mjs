@@ -327,7 +327,13 @@ test('real chat bar builds against a local test socket and does not send', { tim
     await page.reload();
     await page.waitForTimeout(500);
     await page.click('#start');
-    await page.waitForFunction(() => { const i = document.getElementById('mp-say'); return i && !i.disabled && !document.getElementById('mp-chat').hidden; }, null, { timeout: 15000 });
+    await page.waitForFunction(() => {
+      const i = document.getElementById('mp-say');
+      const bar = document.getElementById('mp-chat');
+      if (!i || i.disabled || !bar || bar.hidden || document.body.classList.contains('modal-open')) return false;
+      const r = bar.getBoundingClientRect();
+      return r.width > 0 && r.height > 0;
+    }, null, { timeout: 15000 });
     const lay = await page.evaluate(() => {
       const bar = document.getElementById('mp-chat');
       const say = document.getElementById('mp-say');

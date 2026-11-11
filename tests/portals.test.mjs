@@ -60,7 +60,7 @@ test('browser: minimap on + fits the phone HUD, discovers stones by walking, A w
   try { for (const vp of [{ width: 844, height: 390 }, { width: 667, height: 375 }]) {
     const ctx = await b.newContext({ viewport: vp, isMobile: true, hasTouch: true }), p = await ctx.newPage(); p.on('pageerror', (e) => errs.push(e.message));
     await p.route(/kibble-pay|_vercel/, (r) => r.fulfill({ status: 200, contentType: 'text/javascript', body: '' }));
-    await p.goto(srv.url + '?mp=off'); await p.evaluate(() => { localStorage.clear(); localStorage.setItem('inuverse.tour.v1', 'skipped:test'); }); await p.reload(); await p.waitForTimeout(700); await p.click('#start'); await p.waitForTimeout(1500);
+    await p.goto(srv.url + '?mp=off&npcwork=0'); await p.evaluate(() => { localStorage.clear(); localStorage.setItem('inuverse.tour.v1', 'skipped:test'); }); await p.reload(); await p.waitForTimeout(700); await p.click('#start'); await p.waitForTimeout(1500);
     const r = await p.evaluate(() => { const q = (id) => { const e = document.getElementById(id); if (!e) return null; const r = e.getBoundingClientRect(); return r.width && getComputedStyle(e).display !== 'none' ? [r.x, r.y, r.width, r.height] : null; };
       const bar = document.getElementById('mp-chat'); if (bar) bar.hidden = false; // the chat bar is hidden with ?mp=off: show it to check the layout
       const o = ['menu-btn', 'btn-sound', 'clock', 'btn-a', 'btn-emo', 'stick', 'inu-wallet-btn', 'crier-banner', 'ev-banner', 'mp-chat', 'mp-chip', 'prompt'].map((k) => [k, q(k)]); if (bar) bar.hidden = true;
@@ -110,7 +110,7 @@ test('browser: full-map stones are big, visible and tappable at 844x390 + 667x37
   try { for (const vp of [{ width: 844, height: 390 }, { width: 667, height: 375 }]) {
     const ctx = await b.newContext({ viewport: vp, isMobile: true, hasTouch: true, deviceScaleFactor: 2 }), p = await ctx.newPage(); p.on('pageerror', (e) => errs.push(e.message));
     await p.route(/kibble-pay|_vercel/, (r) => r.fulfill({ status: 200, contentType: 'text/javascript', body: '' }));
-    await p.goto(srv.url + '?mp=off&fx=low'); await p.evaluate(() => { localStorage.clear(); localStorage.setItem('inuverse.tour.v1', 'skipped:test'); localStorage.setItem('inuverse.portals.v1', JSON.stringify(['farm', 'plaza'])); }); await p.reload(); await p.waitForTimeout(700); await p.click('#start'); await p.waitForTimeout(1200);
+    await p.goto(srv.url + '?mp=off&fx=low&npcwork=0'); await p.evaluate(() => { localStorage.clear(); localStorage.setItem('inuverse.tour.v1', 'skipped:test'); localStorage.setItem('inuverse.portals.v1', JSON.stringify(['farm', 'plaza'])); }); await p.reload(); await p.waitForTimeout(700); await p.click('#start'); await p.waitForTimeout(1200);
     if (await p.evaluate(() => getComputedStyle(document.getElementById('minimap')).display === 'none')) await p.tap('#map-peek');
     await p.tap('#minimap'); await p.waitForFunction(() => !document.getElementById('mapfull').hidden); await p.waitForTimeout(300);
     const R = await p.evaluate(() => { const cv = document.getElementById('mapcv'), c = cv.getBoundingClientRect(), g = cv.getContext('2d'), u = cv.width / c.width, out = {};

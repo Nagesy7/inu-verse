@@ -978,7 +978,7 @@ body.npcwork.inworld #inu-legal,body.npcwork.mm-on.inworld #inu-legal{bottom:max
 @media (pointer:coarse) and (max-height:420px){
  body.npcwork.inworld #inu-legal,body.npcwork.mm-on.inworld #inu-legal{left:156px!important;max-width:calc(100vw - 240px)!important}
 }
-body.npcwork.inworld #minimap-wrap,body.npcwork.mm-on.inworld #minimap-wrap,body.npcwork.mm-on.mm-open.inworld #minimap-wrap,body.npcwork.mm-on.hud-two.inworld #minimap-wrap{top:auto!important;bottom:max(8px,env(safe-area-inset-bottom))!important;left:auto!important;right:max(8px,env(safe-area-inset-right))!important}
+body.npcwork.inworld:not(.mm-open) #minimap-wrap,body.npcwork.mm-on.inworld:not(.mm-open) #minimap-wrap,body.npcwork.mm-on.hud-two.inworld:not(.mm-open) #minimap-wrap{top:auto!important;bottom:max(8px,env(safe-area-inset-bottom))!important;left:auto!important;right:max(8px,env(safe-area-inset-right))!important}
 #town-hops{position:fixed;left:50%;bottom:max(12px,env(safe-area-inset-bottom));transform:translateX(-50%);display:flex;gap:8px;z-index:40}
 #town-hops[hidden]{display:none}
 #town-hops button{min-width:44px;min-height:44px;padding:8px 12px;font:11px Silkscreen,monospace;background:#d4a640;color:#141a2e;border:3px solid #141a2e}

@@ -1,4 +1,4 @@
-// The building preview is off unless ?npcwork=1, and it does not write the live save.
+// The reviewed town is on unless ?npcwork=0, and it does not write the live save.
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
@@ -25,11 +25,14 @@ function doc(search) {
   };
 }
 
-test('the work preview is off unless the query flag is set', () => {
-  assert.equal(npcWorkOn(''), false);
-  assert.equal(npcWorkOn('?yard=1'), false);
-  assert.equal(createNpcWork(doc(''), mem()), null);
+test('the reviewed town is on unless the query opts out', () => {
+  assert.equal(npcWorkOn(''), true);
+  assert.equal(npcWorkOn('?yard=1'), true);
   assert.equal(npcWorkOn('?npcwork=1'), true);
+  assert.equal(npcWorkOn('?npcwork=0'), false);
+  assert.equal(npcWorkOn('?npcwork=off'), false);
+  assert.ok(createNpcWork(doc(''), mem()));
+  assert.equal(createNpcWork(doc('?npcwork=0'), mem()), null);
 });
 
 test('a flagged preview stores its own key and does not change the live save', () => {
