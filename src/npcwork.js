@@ -8,8 +8,9 @@ import { clothFrame } from './clothline.js';
 import { cafeFrame, depotFrame, marketShown, powerFrame, serveFrame, vetFrame } from './townline.js';
 import {
   BAKERY, CHIT_CAP, CLOTH_STOCK, DAILY_ISSUE, FARM, FLOUR_STOCK, FORGE, LUMBER, MECHANIC, MILL, MINE, ROUTES, SAWMILL, SCRAP, SIGN, SMELTER, TAILOR,
-  SAVE_KEY, TAG, advance, crewView, seek, seedState,
+  SAVE_KEY, TAG, advance, crewView, routeProgress, seek, seedState,
 } from './npcbuildings.js';
+import { layoutPose } from './npcroutes.js';
 
 export const NPCWORK_QUERY = 'npcwork';
 
@@ -811,13 +812,20 @@ export function createNpcWork(doc = document, storage = globalThis.localStorage)
         const seat = { sprout: 'farm', dusty: 'mill', pike: 'mine', ember: 'smelter', smith: 'forge', timber: 'lumber', saw: 'sawmill', crumb: 'bakery', stitch: 'tailor', bolt: 'scrap', wrench: 'mechanic' };
         let x = a.x;
         let y = a.y;
-        if (laidOut && seat[a.id]) {
+        let face = a.face;
+        if (laidOut && a.id === 'porter') {
+          const step = routeProgress(state, 'porter');
+          const pose = layoutPose(step.key, step.i, step.length);
+          x = pose.tx * TILE + 16;
+          y = pose.ty * TILE + 16;
+          face = a.place === 'sign' ? 'down' : pose.face;
+        } else if (laidOut && seat[a.id]) {
           const p = lotById(seat[a.id]);
           if (p) { x = p.door[0] * TILE + 16; y = p.door[1] * TILE + 16; }
         }
         const named = !laidOut || nearFocus(x, y);
         return {
-          x, y, coat: a.coat, outfit: {}, face: a.face, phase: state.phase, moving: a.moving,
+          x, y, coat: a.coat, outfit: {}, face, phase: state.phase, moving: a.moving,
           name: named ? a.name : '', art: null, npcwork: true, npcOverlay,
           worker: { tool: '', face: a.face, phase: state.phase, work: 0 },
         };
@@ -881,9 +889,11 @@ export function createNpcWork(doc = document, storage = globalThis.localStorage)
         { y: place(TAILOR).y + 128, d: (c) => drawTailorShop(c, state) },
         ...dayProps(),
         ...(state.car === 'leaving' || state.car === 'out' ? [{
-          y: ROUTES.carExit[Math.min(state.carI, ROUTES.carExit.length - 1)][1] * TILE + 16,
+          y: (laidOut ? layoutPose('carExit', Math.min(state.carI, ROUTES.carExit.length - 1), ROUTES.carExit.length).ty : ROUTES.carExit[Math.min(state.carI, ROUTES.carExit.length - 1)][1]) * TILE + 16,
           d: (c) => {
-            const tile = ROUTES.carExit[Math.min(state.carI, ROUTES.carExit.length - 1)];
+            const tile = laidOut
+              ? [layoutPose('carExit', Math.min(state.carI, ROUTES.carExit.length - 1), ROUTES.carExit.length).tx, layoutPose('carExit', Math.min(state.carI, ROUTES.carExit.length - 1), ROUTES.carExit.length).ty]
+              : ROUTES.carExit[Math.min(state.carI, ROUTES.carExit.length - 1)];
             const x = tile[0] * TILE + 16;
             const y = tile[1] * TILE + 16;
             R(c, x - 18, y - 16, 36, 14, '#2f6fbd');

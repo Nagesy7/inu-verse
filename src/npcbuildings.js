@@ -820,17 +820,39 @@ export function seek(label) {
 }
 
 function porterView(s) {
-  if (s.beat === 'home' || s.beat === 'nextdawn' || s.beat === 'walk') return { route: ROUTES.toLumber, i: s.beat === 'walk' ? s.i.porter : 0 };
-  if (s.beat === 'homebound') return { route: ROUTES.porterHome, i: s.i.porter };
-  if (s.leg === 'pickupLog' || s.beat === 'chop') return { route: ROUTES.toLumber, i: ROUTES.toLumber.length - 1 };
-  if (s.leg === 'pickupPlank' || s.beat === 'sawing') return { route: ROUTES.lumberToSaw, i: ROUTES.lumberToSaw.length - 1 };
-  if (s.leg === 'pickupParts' || s.beat === 'bay') return { route: ROUTES.sawToSign, i: ROUTES.sawToSign.length - 1 };
-  if (s.leg === 'sew' || s.leg === 'cut') return { route: ROUTES.clothToTailor, i: ROUTES.clothToTailor.length - 1 };
-  if (s.leg === 'pickupScrap' || s.beat === 'pressing') return { route: ROUTES.signToScrap, i: ROUTES.signToScrap.length - 1 };
-  if (s.leg === 'oven') return { route: ROUTES.rackToBakery, i: ROUTES.rackToBakery.length - 1 };
-  if (s.leg === 'pickupBread') return { route: ROUTES.rackToBakery, i: ROUTES.rackToBakery.length - 1 };
-  if (ROUTES[s.leg]) return { route: ROUTES[s.leg], i: s.i.porter };
-  return { route: ROUTES.toLumber, i: 0 };
+  if (s.beat === 'home' || s.beat === 'nextdawn' || s.beat === 'walk') return { key: 'toLumber', route: ROUTES.toLumber, i: s.beat === 'walk' ? s.i.porter : 0 };
+  if (s.beat === 'homebound') return { key: 'porterHome', route: ROUTES.porterHome, i: s.i.porter };
+  if (s.leg === 'pickupLog' || s.beat === 'chop') return { key: 'toLumber', route: ROUTES.toLumber, i: ROUTES.toLumber.length - 1 };
+  if (s.leg === 'pickupPlank' || s.beat === 'sawing') return { key: 'lumberToSaw', route: ROUTES.lumberToSaw, i: ROUTES.lumberToSaw.length - 1 };
+  if (s.leg === 'pickupParts' || s.beat === 'bay') return { key: 'sawToSign', route: ROUTES.sawToSign, i: ROUTES.sawToSign.length - 1 };
+  if (s.leg === 'sew' || s.leg === 'cut') return { key: 'clothToTailor', route: ROUTES.clothToTailor, i: ROUTES.clothToTailor.length - 1 };
+  if (s.leg === 'pickupScrap' || s.beat === 'pressing') return { key: 'signToScrap', route: ROUTES.signToScrap, i: ROUTES.signToScrap.length - 1 };
+  if (s.leg === 'oven') return { key: 'rackToBakery', route: ROUTES.rackToBakery, i: ROUTES.rackToBakery.length - 1 };
+  if (s.leg === 'pickupBread') return { key: 'rackToBakery', route: ROUTES.rackToBakery, i: ROUTES.rackToBakery.length - 1 };
+  if (ROUTES[s.leg]) return { key: s.leg, route: ROUTES[s.leg], i: s.i.porter };
+  return { key: 'toLumber', route: ROUTES.toLumber, i: 0 };
+}
+
+// Which old-map route an actor is on, so the new layout can walk the same errand on its own streets.
+export function routeProgress(s, id) {
+  if (id === 'porter') {
+    const p = porterView(s);
+    const i = Math.max(0, Math.min(p.route.length - 1, p.i));
+    return { key: p.key, i, length: p.route.length };
+  }
+  let key = id;
+  let i = 0;
+  if (s.beat === 'home' || s.beat === 'nextdawn') { key = id; i = 0; }
+  else if (s.beat === 'walk') { key = id; i = s.i[id]; }
+  else if (s.beat === 'homebound') { key = `${id}Home`; i = s.i[id]; }
+  else if (id === 'sprout' && s.beat === 'haulSheaf') { key = 'farmToMill'; i = s.i.sprout; }
+  else if (id === 'dusty' && s.beat === 'haulFlour') { key = 'millToBakery'; i = s.i.dusty; }
+  else if (id === 'pike' && s.beat === 'haulOre') { key = 'mineToSmelter'; i = s.i.pike; }
+  else if (id === 'ember' && s.beat === 'haulBar') { key = 'smelterToForge'; i = s.i.ember; }
+  else { key = id; i = ROUTES[id].length - 1; }
+  const route = ROUTES[key];
+  i = Math.max(0, Math.min(route.length - 1, i));
+  return { key, i, length: route.length };
 }
 
 const NAMES = { timber: 'Timber', wrench: 'Wrench', porter: 'Porter', saw: 'Saw', stitch: 'Stitch', crumb: 'Crumb', bolt: 'Bolt', sprout: 'Sprout', dusty: 'Dusty', pike: 'Pike', ember: 'Ember', smith: 'Anvil' };
