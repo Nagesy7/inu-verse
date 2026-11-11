@@ -1,4 +1,5 @@
 import { treeProp, extraTreeProps, ALIVE, flagWave } from './alive.js';
+import { plazaPlanters } from './townproposal.js';
 // Pixel-art world rendering: chunky gold-trimmed buildings, navy/gold palette.
 import { DOORS, FEATURED_SIGN } from './world.js';
 import { TILE, MAP_W, MAP_H, MAP, T, BUILDINGS, PLOTS, NPC_HOMES, STALL_SLOTS, CLUBHOUSE, MALL_BUILDINGS, LEADERS, BRIDGES, DECOR } from './world.js';
@@ -10,6 +11,7 @@ import { drawBuilding, HOME_F } from './bldgfx.js';
 import { luxuryGround, luxuryProps, luxuryDynamic, drawMallFacade } from './luxury.js';
 import { drawEmblem, ART } from './art.js';
 import { drawTypedFacade, FUNC } from './facadeart.js';
+import { lotById, SHOP_PROPS } from './townproposal.js';
 import { NPC_INTERIORS } from './homes.js';
 import { WALLS } from './furniture.js';
 
@@ -24,8 +26,8 @@ export function paw(c, x, y, s, col) {
   R(c, x + s, y + 3 * s, 3 * s, 2 * s, col); R(c, x + 0.5 * s, y + 4 * s, 4 * s, s, col);
 }
 
-function pixelText(c, text, cx, cy, maxW, size, col, shadowCol = INK) {
-  let s = size; c.font = `${s}px ${FONT}`; while (c.measureText(text).width > maxW && s > 6) { s -= 1; c.font = `${s}px ${FONT}`; }
+function pixelText(c, text, cx, cy, maxW, size, col, shadowCol = INK, minSize = 6) {
+  let s = size; c.font = `${s}px ${FONT}`; while (c.measureText(text).width > maxW && s > minSize) { s -= 1; c.font = `${s}px ${FONT}`; }
   c.textAlign = 'center'; c.textBaseline = 'middle';
   if (shadowCol) { c.fillStyle = shadowCol; c.fillText(text, Math.round(cx) + 1, Math.round(cy) + 1); }
   c.fillStyle = col; c.fillText(text, Math.round(cx), Math.round(cy)); return s;
@@ -164,8 +166,19 @@ function legacyNpcHouse(c, h) { const I = NPC_INTERIORS[h.id]; house(c, h.x * TI
 
 // ---------- square front-facing building art (drop-in: assets/buildings/<id>.png + manifest.json) ----------
 export const BIMG = {};
-export const buildingsReady = typeof Image === 'undefined' ? Promise.resolve() : fetch('assets/buildings/manifest.json').then((r) => r.json()).then((m) => Promise.all(m.buildings.map((b) => new Promise((res) => {
-  const im = new Image(); im.onload = () => { BIMG[b.id] = im; res(); }; im.onerror = () => res(); im.src = 'assets/buildings/' + b.file; })))).catch(() => {});
+function loadBuilding(id, file, root = 'assets/buildings/') {
+  return new Promise((res) => {
+    const im = new Image(); im.onload = () => { BIMG[id] = im; res(); }; im.onerror = () => res(); im.src = root + file;
+  });
+}
+const NIGHT_FACADES = ['cafe', 'goldden', 'jewel', 'designer', 'shop', 'cars', 'fashion', 'luxauto', 'office', 'clubhouse', 'launch'];
+export const buildingsReady = typeof Image === 'undefined' ? Promise.resolve() : fetch('assets/buildings/manifest.json').then((r) => r.json()).then((m) => Promise.all([
+  ...m.buildings.map((b) => loadBuilding(b.id, b.file)),
+  ...NIGHT_FACADES.map((id) => loadBuilding(id + '-night', id + '-night-lit.png')),
+  loadBuilding('cafe-easel', 'cafe-easel.png'),
+  loadBuilding('cafe-table', 'cafe-table.png'),
+  ...SHOP_PROPS.map((p) => loadBuilding(p.id, p.id + '.png', 'assets/props/')),
+])).catch(() => {});
 // tiles above each footprint that its (bottom-aligned, taller) art covers: roofs and signs a ghost / ghost name must not sit on
 export function artOverhang() { const out = [];
   for (const b of [...BUILDINGS, ...MALL_BUILDINGS, CLUBHOUSE, { ...LEADERS, id: 'leaders' }]) { const im = b && BIMG[b.id]; if (!im) continue;
@@ -241,6 +254,236 @@ function groundExtras(c) {
     const lx = (x0 + i + 1) * N + 2, ly = (y0 + 1 + (i % 2) * (h - 3)) * N + 6;
     P(c, lx, ly, '#2c7a3c', 7, 4); P(c, lx + 1, ly - 1, '#2c7a3c', 5, 1); P(c, lx + 2, ly, '#4fa858', 3, 1); P(c, lx + 3, ly + 2, PAL.w1, 1, 2); if (i % 2 === 0) { P(c, lx + 5, ly - 2, PAL.pink2, 2, 2); P(c, lx + 5, ly - 2, PAL.pink3); }
   }
+}
+
+const WORK_LOTS = new Set(['bakery', 'tailor', 'farm', 'mill', 'mine', 'smelter', 'forge', 'scrap', 'sawmill', 'lumber', 'mechanic', 'factory', 'cloth', 'cotton', 'goods', 'depot', 'tower', 'shed', 'sip', 'vet', 'cot0', 'cot1', 'cot2', 'quarry', 'builders', 'stage', 'pay', 'drawwell', 'eastdock', 'jobs']);
+
+// Preview-only facades. The live loop still paints these from bldgfx.js.
+// punch: 'door' keeps the Golden Den door column; 'glass' keeps every lit pane and lantern.
+const PREVIEW_SHOPS = {
+  cafe: { night: 'cafe-night', sign: [74, 78, 108, 8] },
+  goldden: { night: 'goldden-night', sign: [82, 70, 92, 10], punch: 'door' },
+  jewel: { night: 'jewel-night', sign: [42, 100, 174, 8], punch: 'glass' },
+  designer: { night: 'designer-night', sign: [58, 96, 142, 8], punch: 'glass' },
+  shop: { night: 'shop-night', sign: [74, 54, 140, 18], punch: 'glass' },
+  cars: { night: 'cars-night', sign: [110, 130, 142, 12], punch: 'glass' },
+  fashion: { night: 'fashion-night', sign: [42, 98, 142, 8], punch: 'glass' },
+  luxauto: { night: 'luxauto-night', sign: [86, 48, 84, 12], punch: 'glass' },
+  office: { night: 'office-night', sign: [106, 146, 110, 6], punch: 'glass' },
+  clubhouse: { night: 'clubhouse-night', sign: [98, 128, 94, 8], punch: 'glass' },
+  launch: { night: 'launch-night', sign: [118, 114, 150, 10], punch: 'glass' },
+};
+
+// Preview-only door record. The live DOORS table stays where it was.
+export const PREVIEW_DOOR = Object.freeze({
+  goldden: Object.freeze({ dx: 7, side: 'front' }),
+  jewel: Object.freeze({ dx: 0, side: 'front' }),
+  designer: Object.freeze({ dx: 6, side: 'front' }),
+  shop: Object.freeze({ dx: 7, side: 'front' }),
+  cars: Object.freeze({ dx: 2, side: 'front' }),
+  fashion: Object.freeze({ dx: 6, side: 'front' }),
+  luxauto: Object.freeze({ dx: 1, side: 'front' }),
+  office: Object.freeze({ dx: 5, side: 'front' }),
+  clubhouse: Object.freeze({ dx: 4, side: 'front' }),
+  launch: Object.freeze({ dx: 6, side: 'front' }),
+});
+
+export function previewDoor(id) {
+  return PREVIEW_DOOR[id] || DOORS[id] || null;
+}
+
+export function previewShowsPorch(id) {
+  const door = previewDoor(id);
+  return !!(door && door.side !== 'front' && !PREVIEW_SHOPS[id]);
+}
+
+// The night grade multiplies the facade and knocks the glass and lanterns out.
+// Stamp those pixels back from the night-lit PNG. Alpha comes from the lit pixels
+// themselves, so the wall around them stays in the night tint.
+const litCache = new Map();
+function litFacade(dayId, nightId, doorColumn) {
+  const key = `${dayId}|${nightId}|${doorColumn ? 1 : 0}`;
+  if (litCache.has(key)) return litCache.get(key);
+  const night = BIMG[nightId];
+  const day = BIMG[dayId];
+  if (!night?.width || !day?.width || night.width !== day.width || night.height !== day.height) return null;
+  const w = night.width, h = night.height, n = w * h;
+  const [cv, x] = mk(w, h);
+  x.drawImage(night, 0, 0);
+  const img = x.getImageData(0, 0, w, h);
+  const [, dx] = mk(w, h);
+  dx.drawImage(day, 0, 0);
+  const dayPx = dx.getImageData(0, 0, w, h).data;
+  const d = img.data;
+  const on = new Uint8Array(n);
+  for (let i = 0; i < n; i++) {
+    const o = i * 4;
+    const nr = d[o], ng = d[o + 1], nb = d[o + 2], na = d[o + 3];
+    const dr = dayPx[o], db = dayPx[o + 2];
+    if (na < 200) continue;
+    if (nr > 180 && ng > 140 && nr > nb + 40 && nr > dr + 40 && dr <= db + 40) on[i] = 1;
+  }
+  // A full-width warm band with night on neither side is an awning slab, not a pane.
+  if (!doorColumn) {
+    const slab = new Uint8Array(h);
+    const limit = Math.floor(w * 0.65);
+    for (let y = 0; y < h; y++) {
+      let run = 0, best = 0;
+      for (let x = 0; x <= w; x++) {
+        if (x < w && on[y * w + x]) { run++; if (run > best) best = run; }
+        else run = 0;
+      }
+      if (best >= limit) slab[y] = 1;
+    }
+    const warmRow = (y) => { for (let x = 0; x < w; x++) if (on[y * w + x]) return true; return false; };
+    for (let y = 0; y < h; y++) {
+      if (!slab[y]) continue;
+      const y0 = y;
+      while (y + 1 < h && slab[y + 1]) y++;
+      const above = y0 > 0 && warmRow(y0 - 1) && !slab[y0 - 1];
+      const below = y + 1 < h && warmRow(y + 1) && !slab[y + 1];
+      if (!above && !below) for (let yy = y0; yy <= y; yy++) for (let x = 0; x < w; x++) on[yy * w + x] = 0;
+    }
+  }
+  if (doorColumn) {
+    const seen = new Uint8Array(n);
+    for (let i = 0; i < n; i++) {
+      if (!on[i] || seen[i]) continue;
+      const stack = [i];
+      seen[i] = 1;
+      const comp = [];
+      let minX = w, maxX = 0, minY = h, maxY = 0;
+      while (stack.length) {
+        const p = stack.pop();
+        comp.push(p);
+        const px = p % w, py = (p / w) | 0;
+        if (px < minX) minX = px;
+        if (px > maxX) maxX = px;
+        if (py < minY) minY = py;
+        if (py > maxY) maxY = py;
+        const near = [px > 0 ? p - 1 : -1, px < w - 1 ? p + 1 : -1, p - w, p + w];
+        for (const q of near) {
+          if (q < 0 || q >= n || seen[q] || !on[q]) continue;
+          seen[q] = 1;
+          stack.push(q);
+        }
+      }
+      const bw = maxX - minX + 1, bh = maxY - minY + 1;
+      if (!(minX >= w - 28 && bw <= 16 && bh >= 6 && bh <= 40)) for (const p of comp) on[p] = 0;
+    }
+  }
+  for (let i = 0; i < n; i++) if (!on[i]) d[i * 4 + 3] = 0;
+  x.putImageData(img, 0, 0);
+  litCache.set(key, cv);
+  return cv;
+}
+
+const glowCache = new Map();
+function warmSprite(id) {
+  if (glowCache.has(id)) return glowCache.get(id);
+  const im = BIMG[id];
+  if (!im?.width) return null;
+  const [cv, x] = mk(im.width, im.height);
+  x.drawImage(im, 0, 0);
+  const img = x.getImageData(0, 0, im.width, im.height);
+  const d = img.data;
+  for (let i = 0; i < d.length; i += 4) {
+    const nr = d[i], ng = d[i + 1], nb = d[i + 2], na = d[i + 3];
+    if (!(na > 200 && nr > 180 && ng > 140 && nr > nb + 40)) d[i + 3] = 0;
+  }
+  x.putImageData(img, 0, 0);
+  glowCache.set(id, cv);
+  return cv;
+}
+
+export function punchDenDoor(ctx, ox, oy) {
+  if (!globalThis.__inuNight || !ctx) return;
+  ctx.save();
+  ctx.imageSmoothingEnabled = false;
+  for (const [id, spec] of Object.entries(PREVIEW_SHOPS)) {
+    if (!spec.punch) continue;
+    const im = litFacade(id, spec.night, spec.punch === 'door');
+    const src = BIMG[spec.night];
+    const lot = lotById(id);
+    if (!im || !src || !lot) continue;
+    const x0 = lot.x * TILE + Math.round((lot.w * TILE - src.width) / 2);
+    const y0 = (lot.y + lot.h) * TILE - src.height;
+    ctx.drawImage(im, x0 + ox, y0 + oy);
+  }
+  const lamp = SHOP_PROPS.find((p) => p.glow);
+  const glow = lamp && warmSprite(lamp.id);
+  if (lamp && glow) {
+    const ax = (lamp.tx + lamp.tw / 2) * TILE - lamp.ax;
+    const ay = (lamp.ty + 1) * TILE - 1 - lamp.ay;
+    ctx.drawImage(glow, ax + ox, ay + oy);
+  }
+  ctx.restore();
+}
+const CAFE_FURNITURE = [
+  { id: 'cafe-easel', ix: 4, iy: 206, w: 28, h: 48 },
+  { id: 'cafe-table', ix: 90, iy: 208, w: 50, h: 46 },
+  { id: 'cafe-table', ix: 167, iy: 208, w: 50, h: 46 },
+];
+
+function drawPreviewShop(c, lot) {
+  const spec = PREVIEW_SHOPS[lot.id];
+  const night = !!globalThis.__inuNight && BIMG[spec.night];
+  const id = night ? spec.night : lot.id;
+  if (!drawBuildingArt(c, id, lot.x, lot.y, lot.w, lot.h)) return false;
+  const im = BIMG[id];
+  const k = Math.max(1, Math.floor((lot.w * TILE) / im.width));
+  const w = im.width * k;
+  const h = im.height * k;
+  const x0 = lot.x * TILE + Math.round((lot.w * TILE - w) / 2);
+  const y0 = (lot.y + lot.h) * TILE - h;
+  const [rx, ry, rw, rh] = spec.sign;
+  pixelText(c, String(lot.name || '').toUpperCase(), x0 + (rx + rw / 2) * k, y0 + (ry + rh / 2) * k, rw * k - 4, rh * k, '#ffe7a3', '#2a160c', 3);
+  return true;
+}
+
+export function drawLotBuilding(c, lot) {
+  if (PREVIEW_SHOPS[lot.id] && drawPreviewShop(c, lot)) return true;
+  if (drawTypedFacade(c, lot)) return true;
+  const artId = HOUSE_ART[lot.id] || lot.id;
+  if (drawBuildingArt(c, artId, lot.x, lot.y, lot.w, lot.h)) return true;
+  return drawBuilding(c, { ...lot, name: lot.name || lot.id }, FUNC.shop);
+}
+
+export function proposalProps(grid, w, h, lots) {
+  const S = sprites();
+  const props = [];
+  for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) if (grid[y][x] === 5) props.push(treeProp(x, y));
+  for (let y = 1; y < h - 1; y++) for (let x = 1; x < w - 1; x++) {
+    const t = grid[y][x];
+    const road = grid[y - 1][x] === 1 || grid[y + 1][x] === 1 || grid[y][x - 1] === 1 || grid[y][x + 1] === 1;
+    if (t === 2 && road && hash(x, y, 9) < 0.045) props.push(sp(S.lamp, x * TILE + 4, y * TILE + 24 - 68, y * TILE + 24));
+    if ((t === 8 || t === 2) && hash(x, y, 4) < 0.018) props.push(sp(S.bench, x * TILE, y * TILE + 4, y * TILE + 28));
+  }
+  for (let y = 1; y < h - 1; y++) for (let x = 1; x < w - 1; x++) if (grid[y][x] === 12 && hash(x, y, 3) < 0.5) props.push(sp(S.fence, x * TILE, y * TILE, y * TILE + 24));
+  for (const [x, y] of plazaPlanters()) props.push({ y: y * TILE + 28, d: (c) => c.drawImage(S.streetTree, x * TILE - 14, y * TILE + 28 - S.streetTree.height * 3, 60, S.streetTree.height * 3) });
+  for (const lot of lots) {
+    if (lot.water || lot.reserved || WORK_LOTS.has(lot.id)) continue;
+    const front = PREVIEW_SHOPS[lot.id] ? (lot.y + lot.h - 1) * TILE : (lot.y + lot.h) * TILE - 1;
+    props.push({ y: front, d: (c) => { drawLotBuilding(c, lot); } });
+    for (const piece of SHOP_PROPS) {
+      const home = lotById(piece.id.split('-')[0]);
+      if (!home || home.id !== lot.id) continue;
+      const ax = (piece.tx + piece.tw / 2) * TILE - piece.ax;
+      const ay = (piece.ty + 1) * TILE - 1 - piece.ay;
+      props.push({
+        y: (piece.ty + 1) * TILE - 1,
+        d: (c) => { const im = BIMG[piece.id]; if (im) c.drawImage(im, ax, ay); },
+      });
+    }
+    if (lot.id !== 'cafe') continue;
+    const x0 = lot.x * TILE;
+    const y0 = (lot.y + lot.h) * TILE - 256;
+    for (const piece of CAFE_FURNITURE) props.push({
+      y: y0 + piece.iy + piece.h,
+      d: (c) => { const im = BIMG[piece.id]; if (im) c.drawImage(im, x0 + piece.ix, y0 + piece.iy, piece.w, piece.h); },
+    });
+  }
+  return props;
 }
 
 export function prerenderMap() {

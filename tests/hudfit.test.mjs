@@ -37,7 +37,7 @@ test('browser: the online chip clears the HUD chip row at 844x390 + 667x375 (and
       if (!R.hud.some((h) => overlaps(h, R.chip))) break; }
     for (const h of R.hud) assert.ok(!overlaps(h, R.chip), `online chip ${R.chip} on HUD chip ${h} ${at}`);
     assert.ok(!overlaps(R.menu, R.chip), 'chip vs menu button ' + at); assert.ok(R.chip[0] >= 0 && R.chip[0] + R.chip[2] <= vp.width, 'on screen ' + at);
-    if (vp.width === 667) { assert.match(R.cls, /mp-tight/, 'compact at 667 ' + at); assert.equal(R.after, '"12"', 'count still shown'); }
+    if (vp.width === 667) { await p.click('#play-details'); const day = await p.evaluate(() => document.getElementById('streak-chip').innerText); assert.match(day, /day/i, 'day label stays readable at 667 ' + at); await p.keyboard.press('Escape'); }
     if (vp.width === 1280) assert.doesNotMatch(R.cls, /mp-tight|hud-tight/, 'full chip on a wide screen');
     // hysteresis: the 667 fit holds steady (no flip-flop between levels) over a second
     if (vp.width === 667) { const seen = new Set(); for (let i = 0; i < 8; i++) { seen.add(await p.evaluate(() => /hud-tight/.test(document.body.className) + '/' + /mp-tight/.test(document.body.className))); await p.waitForTimeout(150); } assert.equal(seen.size, 1, 'stable fit ' + [...seen]); }

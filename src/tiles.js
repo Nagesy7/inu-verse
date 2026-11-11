@@ -19,8 +19,16 @@ export const PAL = {
 const hash = (x, y, s = 0) => { let h = (x * 374761393 + y * 668265263 + s * 2246822519) ^ 0x5bd1e995; h = Math.imul(h ^ (h >>> 13), 1274126177); return ((h ^ (h >>> 16)) >>> 0) / 4294967296; };
 const P = (c, x, y, col, w = 1, h = 1) => { c.fillStyle = col; c.fillRect(x, y, w, h); };
 const mk = (w, h) => { const cv = document.createElement('canvas'); cv.width = w; cv.height = h; const c = cv.getContext('2d'); c.imageSmoothingEnabled = false; return [cv, c]; };
-const isBridge = (x, y) => BRIDGES.some((b) => x >= b.x && x < b.x + b.w && y >= b.y && y < b.y + b.h);
-const at = (x, y) => (x < 0 || y < 0 || x >= MAP_W || y >= MAP_H ? T.TREE : isBridge(x, y) ? T.WATER : MAP[y][x]);
+const isBridge = (x, y) => !gridAt && BRIDGES.some((b) => x >= b.x && x < b.x + b.w && y >= b.y && y < b.y + b.h);
+let gridAt = null;
+const at = (x, y) => {
+  if (gridAt) {
+    const { grid, w, h } = gridAt;
+    if (x < 0 || y < 0 || x >= w || y >= h) return T.TREE;
+    return grid[y][x];
+  }
+  return x < 0 || y < 0 || x >= MAP_W || y >= MAP_H ? T.TREE : isBridge(x, y) ? T.WATER : MAP[y][x];
+};
 const PAVED = new Set([T.ROAD, T.WALK, T.PLAZA]);
 const GREEN = (t) => t === T.GRASS || t === T.FLOWER || t === T.TREE || t === T.HOME || t === T.PLOT || t === T.DIRT;
 
@@ -46,11 +54,43 @@ function road(c, px, py, x, y) { // asphalt: base + speckle + soft wear patches 
   if (h < 0.06) { const ox = px + 3 + (hash(x, y, 78) * 6 | 0), oy = py + 4 + (hash(x, y, 79) * 6 | 0); P(c, ox, oy, PAL.roadD, 3, 1); P(c, ox + 3, oy + 1, PAL.roadD, 2, 1); P(c, ox + 5, oy + 2, PAL.roadD, 1, 2); P(c, ox + 1, oy - 1, PAL.roadD); }
   else if (h < 0.1) { const ox = px + 4 + (hash(x, y, 80) * 5 | 0), oy = py + 5 + (hash(x, y, 81) * 5 | 0); P(c, ox, oy + 1, PAL.oil, 6, 2); P(c, ox + 1, oy, PAL.oil, 4, 4); P(c, ox + 2, oy + 1, '#3a3550', 1, 1); }
 }
+let pathSheets = null;
+const PATH_TILE = new Set([T.WALK, T.PLAZA, 14]);
+export function setPathSheets(sheets) { pathSheets = sheets?.tiles && sheets?.edges ? sheets : null; }
+function usePathC() { return !!(gridAt && pathSheets); }
+export function pathVariant(x, y) { return Math.floor(hash(x, y, 11) * 3) % 3; }
+export function pathKerbPlan(n, s, w, e) {
+  const paved = (q) => PATH_TILE.has(q);
+  const frames = [];
+  if (n === T.BUILDING) frames.push(8);
+  else if (!paved(n)) frames.push(0);
+  if (!paved(s)) frames.push(1);
+  if (!paved(w)) frames.push(2);
+  if (!paved(e)) frames.push(3);
+  return frames;
+}
+function blitSheet(c, im, frame, px, py) { c.drawImage(im, frame * N, 0, N, N, px, py, N, N); }
+function paintPathSlab(c, px, py, x, y) { blitSheet(c, pathSheets.tiles, pathVariant(x, y), px, py); }
+function paintPathKerbs(c, px, py, x, y) {
+  for (const frame of pathKerbPlan(at(x, y - 1), at(x, y + 1), at(x - 1, y), at(x + 1, y))) blitSheet(c, pathSheets.edges, frame, px, py);
+}
+function paintRoadBuildingKerb(c, px, py, x, y) {
+  const n = at(x, y - 1), s = at(x, y + 1), w = at(x - 1, y), e = at(x + 1, y);
+  if (n === T.BUILDING) blitSheet(c, pathSheets.edges, 8, px, py);
+  if (s === T.BUILDING) blitSheet(c, pathSheets.edges, 1, px, py);
+  if (w === T.BUILDING) blitSheet(c, pathSheets.edges, 2, px, py);
+  if (e === T.BUILDING) blitSheet(c, pathSheets.edges, 3, px, py);
+}
+export function paintPlazaAccent(c, px, py) {
+  P(c, px + 6, py + 6, PAL.gold, 4, 4); P(c, px + 7, py + 7, PAL.goldL, 2, 1); P(c, px + 6, py + 9, '#9c7424', 4, 1);
+}
 function walk(c, px, py, x, y) {
+  if (usePathC() && at(x, y) !== 11) { paintPathSlab(c, px, py, x, y); return; }
   P(c, px, py, PAL.walk, N, N);
   for (const [sx, sy] of [[0, 0], [8, 0], [0, 8], [8, 8]]) { const ox = px + sx, oy = py + sy; P(c, ox, oy, PAL.walkL, 7, 1); P(c, ox, oy, PAL.walkL, 1, 7); P(c, ox + 7, oy, PAL.walkD, 1, 8); P(c, ox, oy + 7, PAL.walkD, 8, 1); if (hash(x * 2 + sx, y * 2 + sy) < 0.2) P(c, ox + 3, oy + 3, PAL.walkD, 2, 1); }
 }
 function plaza(c, px, py, x, y) {
+  if (usePathC()) { paintPathSlab(c, px, py, x, y); return; }
   P(c, px, py, PAL.mortar, N, N);
   for (let r = 0; r < 4; r++) for (let k = -1; k < 3; k++) { const bx = px + k * 6 + (r % 2 ? 3 : 0), by = py + r * 4; const x0 = Math.max(px, bx), x1 = Math.min(px + N, bx + 5); if (x1 <= x0) continue;
     const t = hash(x * 4 + k, y * 4 + r); P(c, x0, by, t < 0.3 ? PAL.brickD : t > 0.8 ? PAL.brickL : PAL.brick, x1 - x0, 3); P(c, x0, by, PAL.brickL, x1 - x0, 1); }
@@ -62,6 +102,8 @@ function water(c, px, py, x, y) { P(c, px, py, PAL.w1, N, N); for (let i = 0; i 
 // edges/autotile overlays per tile, using 4 + diagonal neighbours
 function edges(c, px, py, x, y) {
   const t = at(x, y), n = at(x, y - 1), s = at(x, y + 1), w = at(x - 1, y), e = at(x + 1, y);
+  if (usePathC() && PATH_TILE.has(t)) { paintPathKerbs(c, px, py, x, y); return; }
+  if (usePathC() && t === T.ROAD) { paintRoadBuildingKerb(c, px, py, x, y); return; }
   if (t === T.WATER) { // shoreline: sand lip + foam line; inner corners
     const dry = (q) => q !== T.WATER, sd = [[dry(n), 0, 0, N, 3, 0, 3, N, 1], [dry(s), 0, N - 3, N, 3, 0, N - 4, N, 1], [dry(w), 0, 0, 3, N, 3, 0, 1, N], [dry(e), N - 3, 0, 3, N, N - 4, 0, 1, N]];
     for (const [on, ax, ay, aw, ah, fx, fy, fw, fh] of sd) if (on) { P(c, px + ax, py + ay, PAL.sand, aw, ah); P(c, px + fx, py + fy, PAL.foam, fw, fh); }
@@ -176,6 +218,31 @@ export function buildGround(extra) {
   return cv;
 }
 
+// Same road, pavement, grass and curb painters as the live town, on another grid.
+export function buildGridGround(grid, w, h) {
+  gridAt = { grid, w, h };
+  try {
+    const [cv, c] = mk(w * N, h * N);
+    const paved = new Set([T.ROAD, T.WALK, T.PLAZA]);
+    for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) {
+      const t = grid[y][x], px = x * N, py = y * N;
+      if (t === T.ROAD) road(c, px, py, x, y);
+      else if (t === T.WALK || t === 14 || t === 11) walk(c, px, py, x, y);
+      else if (t === T.PLAZA) plaza(c, px, py, x, y);
+      else if (t === T.WATER) water(c, px, py, x, y);
+      else if (t === T.PLOT || t === T.DIRT) plot(c, px, py, x, y);
+      else if (t === T.BUILDING) {
+        let yy = y;
+        while (yy < h && grid[yy][x] === T.BUILDING) yy++;
+        const below = yy < h ? grid[yy][x] : T.GRASS;
+        (paved.has(below) ? plaza : grass)(c, px, py, x, y);
+      } else grass(c, px, py, x, y);
+    }
+    for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) edges(c, x * N, y * N, x, y);
+    return cv;
+  } finally { gridAt = null; }
+}
+
 // animated water overlay: ripples + sparkles on visible water tiles (native coords, caller scales)
 export function drawWater(c, t, x0, y0, x1, y1) {
   for (let y = Math.max(0, y0); y < Math.min(MAP_H, y1); y++) for (let x = Math.max(0, x0); x < Math.min(MAP_W, x1); x++) {
@@ -248,4 +315,6 @@ export function sprites() {
   if (!SPR.tree) Object.assign(SPR, { tree: tree('green'), sakura: tree('sakura'), lamp: lamp(), bench: bench(), sign: sign(), crate: crate(), bush: bush(null), bushP: bush('#ff8fb6'), bushY: bush('#ffd84a'), hedge: hedge(), fence: fence(), mailbox: mailbox(), rail: rail(), streetTree: streetTree(), light0: trafficLight(0), light1: trafficLight(1), light2: trafficLight(2) });
   return SPR;
 }
+export function paintGrassTile(c, px, py, x, y) { grass(c, px, py, x, y); }
+export function paintDirtTile(c, px, py, x, y) { plot(c, px, py, x, y); }
 export { hash, mk, P };

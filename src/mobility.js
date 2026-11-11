@@ -83,3 +83,26 @@ export function followStep(pw, pos, speed, dt, tile) {
 // face from a velocity, with hysteresis so near-diagonal motion does not flicker left/up/left
 export function faceOf(vx, vy, prev = 'down') { const ax = Math.abs(vx), ay = Math.abs(vy); if (ax < 1 && ay < 1) return prev;
   const horiz = prev === 'left' || prev === 'right'; if (horiz ? ax * 1.25 >= ay : ax > ay * 1.25) return vx > 0 ? 'right' : 'left'; return vy > 0 ? 'down' : 'up'; }
+
+// On-foot step shared by the live world and the unpublished yard scene.
+// `move(pos, dx, dy)` is the caller's collision. A blocked axis drops that velocity
+// unless the step came from a path (the path follower re-plans instead).
+export function applyFoot(pos, motion, want, dt, move, { source = 'none', run = false, walkSpeed = WALK_SPEED } = {}) {
+  motion.v = stepVelocity(motion.v || { x: 0, y: 0 }, want, dt);
+  if (motion.v.x || motion.v.y) {
+    const bx = pos.x, by = pos.y;
+    move(pos, motion.v.x * dt, motion.v.y * dt);
+    if (source !== 'path') {
+      if (Math.abs(pos.x - bx) < 1e-4) motion.v.x = 0;
+      if (Math.abs(pos.y - by) < 1e-4) motion.v.y = 0;
+    }
+  }
+  const sp = Math.hypot(motion.v.x, motion.v.y);
+  motion.moving = sp > 12;
+  motion.running = !!(run && sp > walkSpeed * 1.1);
+  if (sp > 12) {
+    if (Math.abs(motion.v.x) > 1) motion.dir = motion.v.x > 0 ? 1 : -1;
+    motion.face = faceOf(motion.v.x, motion.v.y, motion.face || 'down');
+  }
+  return sp;
+}

@@ -5,7 +5,12 @@ import { ensureMall } from './mall.js';
 import { migrateSave, SAVE_V } from './club/state.js';
 export const SAVE_KEY = 'inuverse.save.v1';
 export function save(state, storage) {
-  storage.setItem(SAVE_KEY, JSON.stringify(state));
+  let out = state;
+  if (state?.player?.previewHome) {
+    out = { ...state, player: { ...state.player, x: state.player.previewHome.x, y: state.player.previewHome.y } };
+    delete out.player.previewHome;
+  }
+  storage.setItem(SAVE_KEY, JSON.stringify(out));
   return true;
 }
 export function load(storage) {

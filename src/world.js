@@ -1,4 +1,6 @@
-export const TILE = 32, MAP_W = 64, MAP_H = 106;
+// The live town is 64×106. The preview grows south only, so every old (x, y) stays put.
+export const TILE = 32, TOWN_W = 64, TOWN_H = 106;
+export const MAP_W = TOWN_W, MAP_H = TOWN_H + 16;
 export const T = { GRASS: 0, ROAD: 1, WALK: 2, BUILDING: 3, WATER: 4, TREE: 5, PLOT: 6, FLOWER: 7, PLAZA: 8, HOME: 9, DIRT: 10 };
 const SOLID = new Set([T.BUILDING, T.WATER, T.TREE, T.PLOT, T.HOME]);
 
@@ -82,8 +84,8 @@ import { SIM_SOLIDS, SIM_SPOTS } from './sim/place.js'; import { shardSpot } fro
 export function buildMap() {
   const g = Array.from({ length: MAP_H }, () => new Array(MAP_W).fill(T.GRASS));
   const fill = (x0, y0, w, h, t) => { for (let y = y0; y < y0 + h; y++) for (let x = x0; x < x0 + w; x++) if (g[y] && g[y][x] !== undefined) g[y][x] = t; };
-  // decorative flowers (deterministic)
-  for (let y = 0; y < MAP_H; y++) for (let x = 0; x < MAP_W; x++) if (((x * 73856093) ^ (y * 19349663)) % 23 === 0) g[y][x] = T.FLOWER;
+  // decorative flowers (deterministic). Only the original town; the south extension is sealed until the work quarter is painted.
+  for (let y = 0; y < TOWN_H; y++) for (let x = 0; x < TOWN_W; x++) if (((x * 73856093) ^ (y * 19349663)) % 23 === 0) g[y][x] = T.FLOWER;
   // streets: 3-tile (96px) roads = two 1.5-tile lanes, sidewalks either side
   for (const r of ROADS) { fill(1, r - 1, MAP_W - 2, 1, T.WALK); fill(1, r, MAP_W - 2, 3, T.ROAD); fill(1, r + 3, MAP_W - 2, 1, T.WALK); }
   fill(AVENUE - 1, 6, 1, 40, T.WALK); fill(AVENUE, 6, 3, 39, T.ROAD); fill(AVENUE + 3, 6, 1, 40, T.WALK);
@@ -112,8 +114,9 @@ export function buildMap() {
   for (const r of SIM_SOLIDS) fill(r.x, r.y, r.w, r.h, T.BUILDING); // sim layer: Bureau desk + banner pole, precinct kiosk, ranger station (solid)
   for (const b of [BARN, MARKET, CRAFT]) fill(b.x, b.y, b.w, b.h, T.BUILDING);
   for (const l of BIZ_LOTS) { fill(l.x, l.y, l.w, l.h, T.BUILDING); if (!l.prime) fill(l.x - 1, l.y + l.h, l.w + 2, 1, T.WALK); }
-  // trees: border + some park trees
-  for (let y = 0; y < MAP_H; y++) for (let x = 0; x < MAP_W; x++) if (x === 0 || y === 0 || x === MAP_W - 1 || y === MAP_H - 1) g[y][x] = T.TREE;
+  // trees: the original border stays on y = TOWN_H - 1 so no existing coordinate moves. Rows below it stay water until the quarter is opened.
+  for (let y = 0; y < TOWN_H; y++) for (let x = 0; x < MAP_W; x++) if (x === 0 || y === 0 || x === MAP_W - 1 || y === TOWN_H - 1) g[y][x] = T.TREE;
+  for (let y = TOWN_H; y < MAP_H; y++) for (let x = 0; x < MAP_W; x++) g[y][x] = T.WATER;
   for (const [x, y] of [[2, 2], [16, 3], [19, 5], [22, 2], [25, 7], [3, 9], [27, 3], [15, 9], [61, 14], [60, 24], [34, 38], [57, 36], [58, 39], [35, 35]])
     if (g[y][x] === T.GRASS || g[y][x] === T.FLOWER) g[y][x] = T.TREE;
   return g;
@@ -137,7 +140,10 @@ export const DECOR = [];
   for (let x = PEN.x; x < PEN.x + PEN.w; x++) for (const y of [PEN.y, PEN.y + PEN.h - 1]) if (!(y === PEN.y && (x === 42 || x === 43))) DECOR.push({ x, y, kind: 'fence' });
   for (let y = PEN.y + 1; y < PEN.y + PEN.h - 1; y++) for (const x of [PEN.x, PEN.x + PEN.w - 1]) DECOR.push({ x, y, kind: 'fence' }); } // showroom display cars + valet limo
 const DECOR_SET = new Set(DECOR.map((d) => d.y * MAP_W + d.x));
-export const isSolid = (tx, ty) => tx < 0 || ty < 0 || tx >= MAP_W || ty >= MAP_H || SOLID.has(MAP[ty][tx]) || DECOR_SET.has(ty * MAP_W + tx);
+export function isSolid(tx, ty) {
+  if (previewHooks) return previewHooks.solid(tx, ty);
+  return tx < 0 || ty < 0 || tx >= MAP_W || ty >= MAP_H || SOLID.has(MAP[ty][tx]) || DECOR_SET.has(ty * MAP_W + tx);
+}
 
 // Interaction points: tile player should stand on
 export function interactables(state) {
@@ -194,7 +200,13 @@ export function nearestInteractable(state, px, py, maxDist = 1.6) {
   return best;
 }
 
+let previewHooks = null;
+export function setPreviewCollision(hooks) { previewHooks = hooks || null; }
+export function previewCollisionOn() { return !!previewHooks; }
+export function activeMapSize() { return previewHooks?.size || { w: MAP_W, h: MAP_H }; }
+
 export function findPath(sx, sy, tx, ty) {
+  if (previewHooks) return previewHooks.find(sx, sy, tx, ty);
   if (isSolid(tx, ty)) return null;
   const key = (x, y) => y * MAP_W + x;
   const prev = new Map([[key(sx, sy), -1]]);
@@ -228,7 +240,7 @@ export function moveBody(b, dx, dy, r = 6) {
 export const NETWORK = new Set([T.ROAD, T.WALK, T.PLAZA, T.DIRT]);
 export const DIRT_LINKS = [];
 { const hz = (x, y) => { let h = (x * 374761393 + y * 668265263) ^ 0x2f1e; h = Math.imul(h ^ (h >>> 13), 1274126177); return ((h ^ (h >>> 16)) >>> 0) / 4294967296; };
-  const open = (x, y) => x > 0 && y > 0 && x < MAP_W - 1 && y < MAP_H - 1 && !DECOR_SET.has(y * MAP_W + x) && (MAP[y][x] === T.GRASS || MAP[y][x] === T.FLOWER || MAP[y][x] === T.TREE || NETWORK.has(MAP[y][x]));
+  const open = (x, y) => x > 0 && y > 0 && x < TOWN_W - 1 && y < TOWN_H - 1 && !DECOR_SET.has(y * MAP_W + x) && (MAP[y][x] === T.GRASS || MAP[y][x] === T.FLOWER || MAP[y][x] === T.TREE || NETWORK.has(MAP[y][x]));
   for (const it of interactables(null)) { const { tx, ty } = it; if (!open(tx, ty) || NETWORK.has(MAP[ty][tx])) continue;
     const dist = new Map([[ty * MAP_W + tx, 0]]), prev = new Map(), q = [[0, tx, ty]]; let end = null;
     while (q.length) { let bi = 0; for (let i = 1; i < q.length; i++) if (q[i][0] < q[bi][0]) bi = i; const [d, x, y] = q.splice(bi, 1)[0], k = y * MAP_W + x;

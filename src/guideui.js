@@ -15,14 +15,16 @@ export function createGuide(h) {
   // ---------- DOM ----------
   const way = el(`<div id="wayctl"><button class="btn alt" id="w-guide" title="Replay the tour">Guide</button><button class="btn alt" id="w-quests" title="Verse place quests">Quests</button><button class="btn alt" id="w-places" title="Find a place (L)">Places</button><button class="btn alt" id="w-map" title="Full map (N)">Map</button></div>`);
   const tour = el(`<div id="tour" hidden><canvas id="tour-npc" width="64" height="64"></canvas><div class="tbody"><div class="tname"></div><b class="ttitle"></b><div class="ttext"></div>
-    <div class="trow"><span class="tstep"></span><span class="tsp"></span><button class="btn ghost" id="t-skip">Skip tour</button><button class="btn alt" id="t-back">Back</button><button class="btn" id="t-next">Next</button></div></div></div>`);
+    <div class="trow"><span class="tstep"></span><span class="tsp"></span><button class="btn ghost" id="t-fold" type="button">Hide</button><button class="btn ghost" id="t-skip">Skip tour</button><button class="btn alt" id="t-back">Back</button><button class="btn" id="t-next">Next</button></div></div></div>`);
+  const resume = el(`<button id="tour-resume" type="button" hidden>Tour <span class="tr-step"></span> · Resume</button>`);
   const chip = el(`<div id="guidechip" hidden><b class="gname"></b><span class="gdist"></span><button class="btn green" id="g-walk">Walk me there</button><button class="btn ghost" id="g-clear" title="Stop guiding">✕</button></div>`);
   const pl = el(`<div id="places" class="overlay" hidden><div class="panel-card places-card"><button class="close" id="pl-close">×</button><h2>Places</h2><input id="pl-q" placeholder="Search: café, arcade, quest, VIP…" autocomplete="off"><div id="pl-list"></div></div></div>`);
   const mp = el(`<div id="mapfull" class="overlay" hidden><div class="map-card"><div class="map-bar"><b>Inu Verse map</b><small>Tap a place (or any path) to get directions</small><button class="close" id="mp-close">×</button></div><canvas id="mapcv"></canvas><div class="map-legend"><i class="you"></i>You are here <i class="pin"></i>Places <i class="dest"></i>Destination <i class="stone"></i>Portal stone</div><div id="map-warp" hidden></div></div></div>`);
-  for (const n of [way, tour, chip, pl, mp]) document.body.appendChild(n);
+  for (const n of [way, tour, resume, chip, pl, mp]) document.body.appendChild(n);
   const $ = (s) => document.querySelector(s);
   $('#w-guide').onclick = () => startTour(true); $('#w-quests').onclick = () => h.openQuests?.(); $('#w-places').onclick = openPlaces; $('#w-map').onclick = openMap;
   $('#t-next').onclick = () => go(1); $('#t-back').onclick = () => go(-1); $('#t-skip').onclick = () => endTour('skipped');
+  $('#t-fold').onclick = () => foldTour(true); resume.onclick = () => foldTour(false);
   $('#g-walk').onclick = walk; $('#g-clear').onclick = () => clearGuide();
   $('#pl-close').onclick = closePlaces; pl.addEventListener('click', (e) => { if (e.target === pl) closePlaces(); });
   $('#pl-q').addEventListener('input', renderPlaces);
@@ -31,15 +33,24 @@ export function createGuide(h) {
   $('#mapcv').addEventListener('click', (e) => { const r = e.target.getBoundingClientRect(), s = r.width / MAP_W, tx = (e.clientX - r.left) / s, ty = (e.clientY - r.top) / s; mapPick(tx, ty); });
 
   // ---------- tour ----------
-  function startTour(replay = false) { if (!h.state()) return; closePlaces(); closeMap(); G.tour = { i: 0, replay }; document.body.classList.add('touring'); tour.hidden = false; showStep(); }
+  function portraitPhone() { return matchMedia('(orientation: portrait) and (max-width: 520px)').matches; }
+  function foldTour(folded) {
+    if (!G.tour) { resume.hidden = true; document.body.classList.remove('tour-folded'); return; }
+    tour.classList.toggle('folded', folded);
+    document.body.classList.toggle('tour-folded', folded);
+    resume.hidden = !folded;
+    const step = resume.querySelector('.tr-step');
+    if (step) step.textContent = `${G.tour.i + 1} / ${GD.TOUR.length}`;
+  }
+  function startTour(replay = false) { if (!h.state()) return; closePlaces(); closeMap(); const log = document.getElementById('notice-log'); if (log && !log.hidden) document.getElementById('notice-toggle')?.click(); G.tour = { i: 0, replay }; document.body.classList.add('touring'); tour.hidden = false; showStep(); foldTour(portraitPhone()); }
   function go(d) { if (!G.tour) return; const n = G.tour.i + d; if (n < 0) return; if (n >= GD.TOUR.length) return endTour('done'); G.tour.i = n; showStep(); }
-  function endTour(how) { if (!G.tour) return; const replay = G.tour.replay; G.tour = null; tour.hidden = true; document.body.classList.remove('touring'); document.querySelectorAll('.tour-target').forEach((e) => e.classList.remove('tour-target'));
+  function endTour(how) { if (!G.tour) return; const replay = G.tour.replay; G.tour = null; tour.hidden = true; tour.classList.remove('folded'); document.body.classList.remove('touring', 'tour-folded'); resume.hidden = true; document.querySelectorAll('.tour-target').forEach((e) => e.classList.remove('tour-target'));
     GD.markTourSeen({ ls: localStorage, wallet: h.wallet(), how, state: h.state() }); h.persist(); h.saveProfile();
     const first = GD.placeById(h.state(), GD.AFTER_TOUR); if (first) setTimeout(() => setGuide(first), 600);
     if (!replay) h.toast(how === 'done' ? 'Tour done! Tap Quests to earn Bones by learning each place.' : 'Tour skipped: tap Quests to learn places for Bones.', 'good'); }
   function showStep() { const st = GD.TOUR[G.tour.i], p = GD.stepPlace(h.state(), st); G.tour.place = p;
     tour.querySelector('.tname').textContent = 'Biscuit · President\'s aide'; tour.querySelector('.ttitle').textContent = st.title; tour.querySelector('.ttext').textContent = st.text;
-    tour.querySelector('.tstep').textContent = `${G.tour.i + 1} / ${GD.TOUR.length}`; $('#t-back').disabled = G.tour.i === 0; $('#t-next').textContent = G.tour.i === GD.TOUR.length - 1 ? 'Done' : 'Next';
+    tour.querySelector('.tstep').textContent = `${G.tour.i + 1} / ${GD.TOUR.length}`; const step = resume.querySelector('.tr-step'); if (step) step.textContent = `${G.tour.i + 1} / ${GD.TOUR.length}`; $('#t-back').disabled = G.tour.i === 0; $('#t-next').textContent = G.tour.i === GD.TOUR.length - 1 ? 'Done' : 'Next';
     document.querySelectorAll('.tour-target').forEach((e) => e.classList.remove('tour-target')); if (st.target) document.querySelector(st.target)?.classList.add('tour-target'); tour.classList.toggle('hl', !!st.highlight); tour.classList.toggle('feat', !!st.featured); G.tour.hl = !!st.highlight || !!st.featured;
     document.body.dataset.tourStep = String(G.tour.i); document.body.dataset.tourPlace = p?.id || ''; }
   const npc = $('#tour-npc').getContext('2d'); let npcT = 0;

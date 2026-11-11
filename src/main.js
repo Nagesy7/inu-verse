@@ -1,5 +1,5 @@
 import { CHAPEL as CHAPEL_POS, LOTS as BIZ_LOTS } from './world.js';
-import { TILE, MAP_W, MAP_H, MAP, T, BUILDINGS, PLOTS, NPC_HOMES, CLUBHOUSE, MALL_BUILDINGS, STATUE, LEADERS, PLOT_COST, findPath, moveBody, nearestInteractable, interactables, isSolid } from './world.js';
+import { TILE, MAP_W, MAP_H, MAP, T, BUILDINGS, PLOTS, NPC_HOMES, CLUBHOUSE, MALL_BUILDINGS, STATUE, LEADERS, PLOT_COST, findPath, moveBody, nearestInteractable, interactables, isSolid, setPreviewCollision, activeMapSize } from './world.js';
 import { COATS, newGame, claimPlot, reconcilePlots, buyFurniture, placeFurniture, moveFurniture, storeFurniture, sellPlaced, sellFromInventory, upgrade, swapBonesToKibble, BONES_PER_KIBBLE } from './game.js';
 import { FURNITURE, WALLS, FLOORS, ROOM_W, ROOM_H, canPlace, itemAt, footprint } from './furniture.js';
 import { MENU, STATIONS, newShift, tickShift, addToTray, clearTray, serve, finishShift, SHIFT_LEN, startCook, clearTable, seatCustomer, takeOrder, NUM_TABLES, TABLES_START, cookAtStation, selectQueue, seatSelected } from './cafe.js';
@@ -12,7 +12,7 @@ import { track as vaTrack, withRef, autoTrackLinks, KIBBLE_PAGE, MAKER } from '.
 autoTrackLinks();
 import { spawnNpcs, updateNpc, NPC_OUTFITS } from './npc.js';
 import { npcHome, installHomeScene, HOME_OX, HOME_OY } from './homes.js';
-import { drawShiba, drawFurniture, drawRoom, drawMenuIcon, drawBoneIcon, drawEmblem, GOLD } from './art.js';
+import { drawShiba, drawFurniture, drawRoom, drawMenuIcon, drawBoneIcon, drawEmblem, GOLD, resetNameTags } from './art.js';
 import { ART, artReady, artKey } from './art.js';
 import { carProps, catProps, dogWalkActors, leashProps, drawBreadBasket } from './ambient.js';
 import { drawCar } from './cars.js';
@@ -108,7 +108,7 @@ import * as PT from './portals.js'; import * as MM from './minimap.js'; // featu
 import { mountWheel } from './actionwheel.js';
 import { WORKER_JOB, JOBS as JOB_DEFS, ensureJobs, rankOf } from './jobs.js';
 import { renderFriend, renderChapel, renderFurnStore } from './relui.js';
-import { prerenderMap, dynamicProps, buildingsReady, artOverhang } from './render.js';
+import { prerenderMap, proposalProps, dynamicProps, buildingsReady, artOverhang, punchDenDoor } from './render.js';
 import { N, SCALE, drawWater } from './tiles.js';
 import { feel } from './feel.js';
 import { faceTalk, faceReact } from './face.js';
@@ -120,6 +120,11 @@ import { makeRoomPlay } from './roomplay.js';
 import { sceneForDoor, HUB_GATES, resolveExit, makePortalState, portalStep, SCENES, scene as sceneOf, walkInExits, solidAt as sceneSolid, ST as ROOM_ST } from './scenes.js';
 import { hubGateProp } from './sceneart.js';
 import { buildDrawer, drawerOpen } from './hudmenu.js';
+import { layoutSafe } from './safezones.js';
+import { createGroveTown } from './groveview.js';
+import { createNpcWork, drawNpcOverlay, useLayout } from './npcwork.js';
+import { drawSeated, punchNightLights } from './daytown.js';
+import { hop, isBlocked as previewBlocked, LOTS as proposalLots, NOOKS, PLAZA_FOLK, preparePreviewPlayer, previewGround, proposalPath, PROPOSAL_H, PROPOSAL_W, STOPS, visitDistrict, GRID as previewGrid, T as previewTile } from './townproposal.js';
 import { makeDoorState, doorStep, doorExit, outsideOf } from './doors.js';
 import { isDoor, doorList, doorDir, COMMUNITY } from './world.js';
 import { createMultiplayer } from './multiplayer.js';
@@ -127,11 +132,12 @@ import { createFeed } from './feed.js';
 import { createGhosts, spotAt, spotTiles, addBlockers as ghostBlockers } from './ghosts.js';
 import * as DQ from './quests.js'; import * as DQUI from './questsui.js'; // daily townsfolk quests (Bones only, capped)
 import { LAMP_TILES } from './ambient.js';
-import { syncChat } from './chatdodge.js'; import { fitBanners } from './bannerfit.js'; import { fitHud } from './hudfit.js'; import { fitToasts } from './toastfit.js'; // chat bar hides under panels / modals, event banner sits above it; crier / president banner: toasts stack under it at phone landscape
+import { syncChat } from './chatdodge.js'; import { fitBanners } from './bannerfit.js'; import { fitHud } from './hudfit.js'; import { fitToasts } from './toastfit.js'; import { mountNotices } from './notices.js'; import { mountPlaySheet, parkDetails } from './playsheet.js'; // chat bar hides under panels / modals, event banner sits above it; crier / president banner: toasts stack under it at phone landscape; phone notice tray keeps those lines without covering the controls
 import * as EVR from './events.js'; import { createEvents, ensureChip as evChip, updateChip as evChipUpdate, maybeBanner as evBanner, panelHtml as evPanelHtml, drawGear } from './eventsui.js'; // Alive phase 5: daily world events
 import * as TF from './townsfolk.js'; // Alive phase 3: wandering background townsfolk (NPC only)
 import { createTrading, renderTrade, TRADE_CSS } from './tradeui.js';
 import { createJoystick, joyPref, JOY_KEY } from './joystick.js';
+import { bindStick } from './stick.js';
 import { createGamepad } from './gamepad.js';
 import * as PAB from './sim/bureau.js'; // Paw Audit Bureau (Phase 1 sim layer): desk + Watchdogs + report panel
 import { ensureShare, myHomePlot, layoutOf, layoutKey, homeApi, cleanLayout, cleanEntry, validHomeId, validPlotId, GB } from './homeshare.js';
@@ -176,6 +182,14 @@ function snapWeather() { const w = skyWx(); amb.rain = amb.rainTarget = w.rain; 
 const TFS = TF.makeTownsfolk(seasonTheme().theme), FOLKQ = { shift: 0, lastT: 0 };
 // ---- Alive phase 5: one featured world event per Sydney day (src/events.js + src/eventsui.js). Cosmetic keepsakes only. ----
 const EVX = createEvents({ search: location.search }); let EVVIEW = null, chatSyncT = 0; globalThis.__events = EVX;
+const parkNotices = mountNotices(document);
+const GROVE = createGroveTown(document, localStorage);
+const NPCW = createNpcWork(document, localStorage);
+if (NPCW) {
+  setPreviewCollision({ solid: previewBlocked, find: proposalPath, size: { w: PROPOSAL_W, h: PROPOSAL_H } });
+  useLayout(true);
+}
+mountPlaySheet(document);
 const folkBase = () => (SKYS.pinH != null ? TF.folkSec(SKYS.pinH) + time : TF.folkSec(dayPhase(time + dayOffset).hour)); // a pinned ?tod= still lets them walk
 const folkSecNow = () => folkBase() + FOLKQ.shift;
 const folkWx = () => (amb.rain > 0.3 ? 'rain' : (amb.cloud || 0) > 0.5 ? 'cloudy' : 'clear');
@@ -208,7 +222,39 @@ function toast(msg, cls = '') { if (cls === 'good') faceReact('me', 'joy'); else
   if ($('#toast').children.length >= 4) $('#toast').firstElementChild.remove();
   const d = document.createElement('div'); d.dataset.msg = msg; d.className = 'toast ' + cls; d.textContent = msg; $('#toast').appendChild(d); d._t = setTimeout(() => d.remove(), 2200); }
 let profSaveT = 0;
+const nookSeen = new Set();
+let hopBox = null;
+function paintHops(here) {
+  if (!hopBox) {
+    hopBox = document.createElement('div');
+    hopBox.id = 'town-hops';
+    document.body.appendChild(hopBox);
+  }
+  if (!here) { hopBox.hidden = true; return; }
+  const open = visitDistrict(localStorage, here.district);
+  const others = STOPS.filter((s) => s.district !== here.district && open.unlocked.includes(s.district));
+  hopBox.hidden = false;
+  const html = others.map((s) => `<button type="button" data-stop="${s.district}" style="min-width:44px;min-height:44px">${s.name}</button>`).join('');
+  if (hopBox.dataset.html !== html) {
+    hopBox.dataset.html = html;
+    hopBox.innerHTML = html || '<span>Stop unlocked</span>';
+    hopBox.querySelectorAll('button').forEach((btn) => btn.onclick = () => {
+      const ride = hop(localStorage, here.district, btn.dataset.stop);
+      if (!ride.ok) return;
+      cv.style.transition = 'opacity .45s linear';
+      cv.style.opacity = '0';
+      setTimeout(() => {
+        state.player.x = (ride.tx + 0.5) * TILE;
+        state.player.y = (ride.ty + 0.5) * TILE;
+        cam.x = state.player.x;
+        cam.y = state.player.y;
+        cv.style.opacity = '1';
+      }, ride.fadeMs);
+    });
+  }
+}
 function persist() { if (state) { for (const u of ENG.checkCollections(state)) toast(`Collection complete: ${u.badge} ${u.name}! Trophy added to your inventory.`, 'good'); save(state, localStorage); if (mode === 'build' && build && !build.readOnly && !build.pack && !build.shop) schedulePublish(); if (mode === 'build' && build?.shop?.own) scheduleShopPublish(); if (hasCustomLook(state) && Date.now() - profSaveT > 15000) { profSaveT = Date.now(); saveProfile(state); } } }
+function townMap() { return NPCW ? { ground: previewGround(), props: proposalProps(previewGrid, PROPOSAL_W, PROPOSAL_H, proposalLots) } : prerenderMap(); }
 // burn-for-status flair: pulsing pixel halo + sparkles at the feet (world, home and photos)
 function drawFlair(c, col, t) { const r = 40 + Math.sin(t * 3) * 3; c.save(); c.globalAlpha = 0.5; c.fillStyle = col; c.fillRect(-r, 6, r * 2, 12); c.fillRect(-r + 10, 0, r * 2 - 20, 24); c.globalAlpha = 0.22 + Math.sin(t * 4) * 0.08; c.fillRect(-r + 8, -100, r * 2 - 16, 106); c.globalAlpha = 1; for (let i = 0; i < 6; i++) { const a = t * 1.6 + i * 1.047; c.fillStyle = i % 2 ? '#ffffff' : col; c.fillRect(Math.round(Math.cos(a) * 52) - 4, Math.round(-50 + Math.sin(a) * 56) - 4, 8, 8); } c.restore(); }
 function featuredMap() { const nowH = state.clockSec / (DAY_LEN / 24), out = {}; for (const id of Object.keys(FEATURED_SLOTS)) { const r = featuredOf(state, id, nowH); if (r) out[id] = { ...r, label: 'FEATURED' }; const sp = F5.sponsorOf(state, id, nowH); if (sp) out[id] = { ticker: sp.brand, by: sp.by, untilH: sp.untilH, featured: true, sponsored: true, label: 'SPONSORED' }; } return out; }
@@ -301,9 +347,10 @@ function titleScreen() {
 function startGame(s) { loadProfile(s).catch(() => {}); IQC.ensureChoice(s); loadCompanionProfile(); ENG.ensureEngage(s); ENG.addSeasonXp(s, 'login', Math.floor((s.clockSec || 0) / DAY_LEN)); F5.ensureFly5(s); F5.holderCheck(s); OB.ensureOnboard(s); s.town ||= makeTown(rng); townH = -1; seedTokens(s, rng); REL.ensureRel(s); ensureFarm(s); ensureBiz(s); s.clockSec ??= 0; catchUp(s, Date.now(), { season: seasonOf(Math.floor(s.clockSec / DAY_LEN)), rain: false }); hourIdx = Math.floor(s.clockSec / (DAY_LEN / 24));
   state = s; state.kibble ??= DEMO ? 20 : 0; if (!DEMO) state.kibble = 0; ensureWardrobe(state); ensurePacks(state); ensureMall(state); state.clockSec ??= 0; lastEarned = state.stats.bonesEarned; mode = 'world'; LS.ensureStreak(state); setTimeout(() => syncStreak(), 0);
   setTimeout(() => refreshPlotOwners(), 0);
+  if (NPCW) preparePreviewPlayer(s.player);
   buildDrawer(document, { joystick: joyApi, bork: () => { initAudio(); bork(); player.emote = { kind: 'bork', t: 1.2 }; emoteBubble('me', 'bork', time); } }); $('#title').hidden = true; $('#hud').hidden = false; $('#minimap-wrap').hidden = false; document.body.classList.add('inworld');
-  makeAlive(); mapImg = prerenderMap(); npcs = spawnNpcs(rng, 6); npcs.forEach((n) => { n.art = artKey(n.coat); }); amb = makeAmbient(42); snapWeather();
-  Promise.all([artReady, buildingsReady, document.fonts?.load('8px Silkscreen').catch(() => {})]).then(() => { mapImg = prerenderMap(); });
+  makeAlive(); mapImg = townMap(); npcs = spawnNpcs(rng, 6); npcs.forEach((n) => { n.art = artKey(n.coat); }); amb = makeAmbient(42); snapWeather();
+  Promise.all([artReady, buildingsReady, document.fonts?.load('8px Silkscreen').catch(() => {})]).then(() => { mapImg = townMap(); });
   feel.fade(); $('#hud').classList.add('in');
   // ?spawn=<building> (from a game's 🏠 Back to Inu Verse): stand just outside that building's door.
   { const sp = new URLSearchParams(location.search).get('spawn'), d = sp && [ARCADE, ...GAME_DOORS].find((x) => x.id === sp);
@@ -350,7 +397,7 @@ addEventListener('keydown', (e) => {
   if (k === 'escape') { if (panel) closePanel(); else if (build) exitBuild(); }
   if (mode === 'room' && !panel && (k === 'e' || k === 'enter')) { RP.act(); return; }
   if (mode === 'world' && !panel && (k === 'e' || k === 'enter') && carAction()) return;
-  if (mode === 'world' && !panel && (k === 'e' || k === 'enter')) { const it = nearIt(state.player.x, state.player.y); const pup = nearPup(); if (pup && !it) petPup(pup); else if (it) interact(it); }
+  if (mode === 'world' && !panel && (k === 'e' || k === 'enter')) { if (GROVE.tryAct(state.player.x, state.player.y)) return; const it = nearIt(state.player.x, state.player.y); const pup = nearPup(); if (pup && !it) petPup(pup); else if (it) interact(it); }
   if (mode === 'build' && k === 'r') rotateSel();
 });
 addEventListener('keyup', (e) => keys.delete(e.key.toLowerCase()));
@@ -360,7 +407,7 @@ const screenToWorld = (sx, sy) => ({ x: (sx - innerWidth / 2) / ZOOM + cam.x, y:
 
 cv.addEventListener('pointerdown', (e) => { if (mode === 'build' && build?.shop) build.hover = shopCell(e.clientX, e.clientY); });
 cv.addEventListener('mousemove', (e) => { if (mode === 'build') build.hover = build.shop ? shopCell(e.clientX, e.clientY) : roomCell(e.clientX, e.clientY); });
-cv.addEventListener('click', (e) => { if (photo) return; // photo mode: taps/drags pan the camera, never walk
+cv.addEventListener('click', (e) => { if (photo || document.body.classList.contains('ctrl-lock')) return; // photo mode: taps/drags pan the camera, never walk. An open menu, notice sheet, or chat field does not walk.
   if (mode === 'world' && !panel) {
     const w = screenToWorld(e.clientX, e.clientY); const ad = adAt(trend, adRot, adIdx, w.x, w.y); if (ad) { blip(990); openPanel('launch', ad.coin.real ? (ad.coin.mint === RC.KIBBLE.mint ? { tab: 'kibble' } : { tab: 'board', coin: ad.coin.mint, vfOpen: !!ad.coin.verified }) : { sel: ad.coin.id }); return; } clickWorldTile(Math.floor(w.x / TILE), Math.floor(w.y / TILE), w.x, w.y);
   } else if (mode === 'room' && !panel && !feel.talking()) RP.click(e.clientX, e.clientY, groundTap(performance.now()));
@@ -376,7 +423,8 @@ function npcAtWorld(wx, wy) { let best = null, bd = 22; const cands = [...npcs.m
   for (const c of cands) { const dx = Math.abs(wx - c.x), dy = c.y - wy; if (dy < -10 || dy > 44) continue; const d = Math.hypot(dx, Math.max(0, dy - 18)); if (dx < 16 && d < bd) { bd = d; best = c; } } return best; }
 function planTo(goal, { target = null, npcT = null, run = false, mark = true } = {}) {
   const sx = Math.floor(state.player.x / TILE), sy = Math.floor(state.player.y / TILE);
-  const raw = MOB.astar(sx, sy, goal[0], goal[1], solidT, { w: MAP_W, h: MAP_H }); if (!raw) { player.clickMark = null; return false; }
+  const bounds = activeMapSize();
+  const raw = MOB.astar(sx, sy, goal[0], goal[1], solidT, { w: bounds.w, h: bounds.h }); if (!raw) { player.clickMark = null; return false; }
   const pts = MOB.smoothPath(raw, solidT, TILE).slice(1), end = raw[raw.length - 1];
   Object.assign(player.pw, { pts: pts.length ? pts : [end], goal: end, run, stuckT: 0, lastD: Infinity, replans: player.pw.goal && player.pw.goal[0] === end[0] && player.pw.goal[1] === end[1] ? player.pw.replans : 0 });
   player.path = player.pw.pts; player.target = target; player.npcT = npcT;
@@ -585,7 +633,7 @@ function crewActors() { return crew.filter((w) => w.on).map((w) => ({ x: w.x, y:
 function crewProps() { const out = []; for (const w of crew) { if (!w.on) continue; if (w.cones) out.push({ y: w.cones[0][1] * TILE, d: (x) => drawCones(x, w) }); if (w.truck) out.push({ y: w.y - 30, d: (x) => drawCar(x, w.x - 40, w.y - 36, { col: '#2f8a4a', kind: 'pickup', dir: w.face === 'left' ? 'west' : 'east' }) }); }
   return out; }
 // the trader cart wins over a field/sign under it (only within its small talk radius) so you can always trade
-function nearIt(x, y) { return !drive && EVX.nearTrader(x, y) ? null : nearestInteractable(state, x, y); }
+function nearIt(x, y) { if (NPCW) return null; return !drive && EVX.nearTrader(x, y) ? null : nearestInteractable(state, x, y); }
 function nearPup() { for (const w of crew) if (w.on && Math.hypot(w.x - state.player.x, w.y - state.player.y) < 40) return { workerRef: w, name: w.name }; const pet = activePet(state); if (pet && !drive && Math.hypot(petF.x - state.player.x, petF.y - state.player.y) < 34) return { pet, name: pet.name }; if (presidentPresent(pres) && Math.hypot(pres.x - state.player.x, pres.y - state.player.y) < 40) return { president: true, name: 'President Inu' }; let b = null, bd = 36; for (const n of npcs) { const d = Math.hypot(n.x - state.player.x, n.y - state.player.y); if (d < bd) { bd = d; b = n; } }
   if (!b && !drive && EVX.nearTrader(state.player.x, state.player.y)) return { trader: true, name: EVR.TRADER.name };
   if (!b && !drive) { const f = TF.nearestFolk(TFS, state.player.x, state.player.y); if (f) return { folk: f, name: f.folkName }; } return b; } // townsfolk: chat only, no rewards
@@ -756,14 +804,8 @@ function clubRoomUpdate() { if (!state || mode !== 'room' || !RP.R?.p) return; c
 $('#panel-close').onclick = () => closePanel();
 // ---- touch controls (virtual stick on the left, A/B + menu on the right) ----
 { const pad = $('#stick'), knob = $('#knob');
-  const upd = (e) => { const r = pad.getBoundingClientRect(), cx = r.left + r.width / 2, cy = r.top + r.height / 2, R = r.width / 2; let dx = e.clientX - cx, dy = e.clientY - cy; const d = Math.hypot(dx, dy); if (d > R) { dx *= R / d; dy *= R / d; }
-    knob.style.transform = `translate(${dx}px,${dy}px)`; const m = Math.hypot(dx, dy) / R; touch.mag = m; if (m < 0.22) { touch.x = touch.y = 0; return; } touch.x = dx / (m * R); touch.y = dy / (m * R);
-    if (Math.abs(touch.x) < 0.38) touch.x = 0; if (Math.abs(touch.y) < 0.38) touch.y = 0; };
-  pad.addEventListener('pointerdown', (e) => { e.preventDefault(); initAudio(); touch.id = e.pointerId; pad.setPointerCapture(e.pointerId); pad.classList.add('on'); player.holdRun = stickTap(performance.now()); upd(e); });
-  pad.addEventListener('pointermove', (e) => { if (e.pointerId === touch.id) upd(e); });
-  const end = (e) => { if (e.pointerId !== touch.id) return; touch.id = null; touch.x = touch.y = 0; touch.mag = 0; player.holdRun = false; knob.style.transform = ''; pad.classList.remove('on'); };
-  pad.addEventListener('pointerup', end); pad.addEventListener('pointercancel', end);
-  const act = padAct = () => { globalThis.__actCount = (globalThis.__actCount || 0) + 1; if (feel.talking()) return feel.advance(); if (mode === 'room' && !panel) return RP.act(); if (mode !== 'world' || panel || !state) return; if (carAction()) return; const it = nearIt(state.player.x, state.player.y); const stn = !nearPup() && stoneHere(); if (stn) return openPanel('portals', { from: stn.id }); /* portal stones sit 3+ tiles from seats + doors */ const sn = seatNear(itDist(it)); if (sn?.sitting) return sitAt(sn); const pup = nearPup(); if (pup && !it) petPup(pup); else if (sn && !(!drive && EVX.nearTrader(state.player.x, state.player.y))) sitAt(sn); else if (it) interact(it); }; // seated: A stands up; else pup/trader > seat > building (matches the prompt)
+  bindStick(pad, knob, touch, { onStart: () => initAudio(), onDown: () => { player.holdRun = stickTap(performance.now()); }, onEnd: () => { player.holdRun = false; } });
+  const act = padAct = () => { globalThis.__actCount = (globalThis.__actCount || 0) + 1; if (feel.talking()) return feel.advance(); if (mode === 'room' && !panel) return RP.act(); if (mode !== 'world' || panel || !state) return; if (carAction()) return; if (GROVE.tryAct(state.player.x, state.player.y)) return; const it = nearIt(state.player.x, state.player.y); const stn = !nearPup() && stoneHere(); if (stn) return openPanel('portals', { from: stn.id }); /* portal stones sit 3+ tiles from seats + doors */ const sn = seatNear(itDist(it)); if (sn?.sitting) return sitAt(sn); const pup = nearPup(); if (pup && !it) petPup(pup); else if (sn && !(!drive && EVX.nearTrader(state.player.x, state.player.y))) sitAt(sn); else if (it) interact(it); }; // seated: A stands up; else pup/trader > seat > building (matches the prompt)
   $('#btn-a').addEventListener('pointerdown', (e) => { e.preventDefault(); initAudio(); act(); });
   $('#btn-b').addEventListener('pointerdown', (e) => { e.preventDefault(); initAudio(); if (mode === 'world' && !panel && state) { if (drive) return honk(); bork(); player.emote = { kind: 'bork', t: 1.2 }; emoteBubble('me', 'bork', time); } });
   $('#btn-menu')?.addEventListener('pointerdown', (e) => { e.preventDefault(); });
@@ -790,13 +832,15 @@ const hk = (b, kb) => PAD.glyph(b) || (COARSE.matches ? b.toUpperCase() : kb), h
 // ---------------- World update ----------------
 function updateWorld(dt) {
   const p = state.player; let dx = 0, dy = 0;
-  if (!panel && !photo) {
+  const ctrlLock = document.body.classList.contains('ctrl-lock');
+  if (ctrlLock) { touch.x = touch.y = 0; touch.mag = 0; if (player.pw?.pts?.length) { player.pw.pts = []; player.path = player.pw.pts; player.target = null; player.npcT = null; player.clickMark = null; } }
+  if (!panel && !photo && !ctrlLock) {
     if (keys.has('w') || keys.has('arrowup')) dy -= 1; if (keys.has('s') || keys.has('arrowdown')) dy += 1;
     if (keys.has('a') || keys.has('arrowleft')) dx -= 1; if (keys.has('d') || keys.has('arrowright')) dx += 1;
   }
   if (!drive) portalTick(dt); // portal stones: discover by walking near
   if (photo && PHC) PHM.panKeys(PHC, keys, dt); // photo mode: keys pan the camera, the pup holds still
-  const sx0 = !panel && !photo ? touch.x : 0, sy0 = !panel && !photo ? touch.y : 0;
+  const sx0 = !panel && !photo && !ctrlLock ? touch.x : 0, sy0 = !panel && !photo && !ctrlLock ? touch.y : 0;
   const inp = MOB.pickInput({ keys: { x: dx, y: dy }, stick: { x: sx0, y: sy0 }, stickMag: touch.mag || 0, shift: keys.has('shift'), holdRun: player.holdRun, path: player.pw.pts.length > 0, pathRun: player.pw.run });
   if (inp.source === 'stick' || inp.source === 'keys') { dx = inp.dir.x; dy = inp.dir.y; } else { dx = dy = 0; }
   const speed = MOB.WALK_SPEED * PAB.walkFactor(); // world px/s (world is zoomed 2x, so ~184 screen px/s); run = x1.75. walkFactor: 1, or >= 0.85 for <= 60 s while an opted-in sim cartoon bump is on (src/sim/clinic.js)
@@ -812,11 +856,7 @@ function updateWorld(dt) {
       else if (f?.stuck) { player.pw.pts = []; player.clickMark = null; }
       if (f) { want = f.want; snap = f.snap; if (f.arrive) { player.v = { x: 0, y: 0 }; if (snap) { const bx = snap.x - p.x, by = snap.y - p.y; moveBody(p, bx, by); } arrive(); } } player.path = player.pw.pts; }
     player.push = { x: want.x, y: want.y }; // intent (keys / stick / sprint / tap-walk path) even when a wall stops the body: doors use it
-    player.v = MOB.stepVelocity(player.v, want, dt);
-    if (player.v.x || player.v.y) { const bx = p.x, by = p.y; moveBody(p, player.v.x * dt, player.v.y * dt); // wall: kill the blocked axis so speed never builds up against it (path mode re-plans instead)
-      if (inp.source !== 'path') { if (Math.abs(p.x - bx) < 1e-4) player.v.x = 0; if (Math.abs(p.y - by) < 1e-4) player.v.y = 0; } }
-    const sp = Math.hypot(player.v.x, player.v.y); player.moving = sp > 12; player.running = inp.run && sp > speed * 1.1;
-    if (sp > 12) { if (Math.abs(player.v.x) > 1) player.dir = player.v.x > 0 ? 1 : -1; player.face = MOB.faceOf(player.v.x, player.v.y, player.face); }
+    MOB.applyFoot(p, player, want, dt, (body, dx, dy) => moveBody(body, dx, dy), { source: inp.source, run: inp.run, walkSpeed: speed });
     if (player.running) { dustAcc += dt; if (dustAcc > 0.11) { dustAcc = 0; feel.dust(p.x - player.dir * 6, p.y + 11); } }
   }
   if (player.moving) player.phase += dt * (player.running ? 21 : 12) * Math.min(1, Math.hypot(player.v.x, player.v.y) / speed + 0.25); else player.phase += dt * 2;
@@ -851,13 +891,24 @@ function updateWorld(dt) {
     else if (!player.pw.pts.length) { const g = portalStep(gateSt, null, { x: p.x, y: p.y, face: player.face, moving: player.moving, push: player.push }, time, GATE_EXITS); if (g) enterGate(g.gate); } }
   { const vw = innerWidth / ZOOM, vh = innerHeight / ZOOM; stepChat({ now: time, player: p, npcs, hour: dayPhase(time + dayOffset).hour, rain: amb.rain > 0.3, rng, moodLine: (n) => rng() < 0.5 ? MWd.moodLine(n.name, rng) : null, inView: (x, y) => Math.abs(x - cam.x) < vw / 2 - 20 && Math.abs(y - cam.y) < vh / 2 - 30, placeOf: chatPlace }); }
   PAB.simTick(dt, time, { x: p.x, y: p.y, driving: !!drive, busy: !!panel }, (tx, ty) => (isSolid(tx, ty) ? -1 : MAP[ty][tx]), T); // sim police/rangers: reads a copy of the position only, never blocks play
+  if (!drive) GROVE.step({ x: p.x, y: p.y, now: performance.now(), input: !!player.moving, foreground: document.visibilityState !== 'hidden' });
+  if (!drive && NPCW) {
+    NPCW.step(dt);
+    NPCW.focus(p.x, p.y);
+    const nearStop = STOPS.find((s) => Math.hypot(p.x - (s.tx + 1) * TILE, p.y - (s.ty + 1) * TILE) < 70);
+    if (nearStop) visitDistrict(localStorage, nearStop.district);
+    const nook = NPCW.nearestNook(p.x, p.y);
+    if (nook && !nookSeen.has(nook.id)) { nookSeen.add(nook.id); toast(nook.text, ''); }
+    paintHops(nearStop);
+  }
   mailAcc += dt; if (mailAcc > 45) { mailAcc = 0; if (rng() < 0.6 && addMail(state, rng)) { toast('New note in your mailbox!', 'good'); persist(); } }
   // smooth camera
   const k = 1 - Math.pow(0.004, dt), lead = player.moving ? 10 : 0, fx = { left: -1, right: 1 }[player.face] || 0, fy = { up: -1, down: 1 }[player.face] || 0;
   guide.update(dt); onboardUi.drawNpc(dt); const tc = guide.camTarget(), kk = tc ? 1 - Math.pow(0.02, dt) : k;
   if (photo && PHC) ZOOM = PHM.photoZoom(PHC); const pnx = photo && PHC ? PHC.pan.x : 0, pny = photo && PHC ? PHC.pan.y : 0;
   cam.x += ((tc ? tc.x : p.x + fx * lead + pnx) - cam.x) * kk; cam.y += ((tc ? tc.y : (drive || photo) ? p.y + fy * lead * 0.6 + pny : liftTarget(p.y + fy * lead * 0.6, p.x, p.y, FDOORS, ZOOM, innerHeight)) - cam.y) * kk; // facadecam: lift at front doors so tall signs clear the HUD (not while driving / in photo mode)
-  Object.assign(cam, clampCam(cam.x, cam.y, innerWidth / ZOOM, innerHeight / ZOOM, MAP_W * TILE, MAP_H * TILE));
+  const mapSize = activeMapSize();
+  Object.assign(cam, clampCam(cam.x, cam.y, innerWidth / ZOOM, innerHeight / ZOOM, mapSize.w * TILE, mapSize.h * TILE));
   if (globalThis.__camLock) { cam.x = __camLock.x; cam.y = __camLock.y; } // debug/screenshot camera lock
   const it = !panel && nearIt(p.x, p.y);
   const pr = $('#prompt');
@@ -872,6 +923,7 @@ function updateWorld(dt) {
   else if (pup?.workerRef) { pr.hidden = false; const v = pup.workerRef.chatted ? `Play ${JOB_DEFS[WORKER_JOB[pup.workerRef.job]].name} with` : 'Chat with'; pr.innerHTML = `<kbd${hc()}>${hk('a', 'E')}</kbd>${v} ${esc(pup.name)}`; setA('TALK'); }
   else if (pup) { pr.hidden = false; const v = pup.folk ? `Chat with ${esc(pup.name)}` : REL.PEOPLE[pup.name] && !pup.pet ? `Talk to ${esc(pup.name)} ${'♥'.repeat(REL.hearts(REL.ensureRel(state)[pup.name]))}` : `Pet ${esc(pup.name)}`; pr.innerHTML = PAD.padMode ? `<kbd${hc()}>${hk('a', 'E')}</kbd>${v}` : tch ? `<kbd class="ta">A</kbd>${v}` : `<kbd>E</kbd>${v} · <kbd>T</kbd> throw ball`; setA(pup.folk || (REL.PEOPLE[pup.name] && !pup.pet) ? 'TALK' : 'PET'); }
   else if (seat) { pr.hidden = false; const k = `<kbd${hc()}>${hk('a', 'E')}</kbd>`; pr.innerHTML = seat.sitting ? `${k}Stand up` : `${k}Sit on the ${SPOT_NAME[seat.spot.kind]}`; pr.dataset.target = 'seat:' + seat.spot.id; setA(seat.sitting ? 'UP' : 'SIT'); }
+  else if (GROVE.near(p.x, p.y)) { const g = GROVE.near(p.x, p.y); pr.hidden = false; pr.innerHTML = `<kbd${hc()}>${hk('a', 'E')}</kbd>${esc(g.name)} · ${esc(GROVE.hint(g.id))}`; setA('PATCH'); }
   else if (it) { pr.hidden = false; const verb = { community: 'Open', gamedoor: 'Play', bank: 'Enter', arcade: 'Play at', matchmaker: 'Browse', square: 'Open', building: 'Enter', plot: state.plots[it.id] ? 'Enter' : 'Inspect', visit: 'Visit', club: 'Visit', stall: 'View', clubhouse: myPack(state) ? 'Decorate' : 'Open', mall: 'Enter', field: 'Tend', farm: 'Use', lot: 'Visit', biz: 'Read', chapel: 'Enter', kibble: it.id === 'crier' ? 'Talk to' : it.id === 'kstatue' ? 'Look at' : 'Read' }[it.kind] || 'Use'; pr.innerHTML = isWalkDoor(it) ? `<kbd>${it.side === 'left' ? '▶' : it.side === 'right' ? '◀' : '▲'}</kbd>Walk in to ${verb === 'Enter' ? 'enter' : verb.toLowerCase()} ${esc(it.name)}` : `<kbd${hc()}>${hk('a', 'E')}</kbd>${verb} ${esc(it.name)}`; pr.dataset.target = it.id; setA(isWalkDoor(it) ? '' : verb.toUpperCase()); }
   else { pr.hidden = true; setA(''); }
 }
@@ -891,37 +943,54 @@ function renderWorld() {
   const G = mapImg.ground, sx = Math.max(0, Math.floor(-ox / SCALE)), sy = Math.max(0, Math.floor(-oy / SCALE)), sw = Math.min(G.width - sx, Math.ceil(vw / SCALE) + 1), sh = Math.min(G.height - sy, Math.ceil(vh / SCALE) + 1);
   ctx.drawImage(G, sx, sy, sw, sh, ox + sx * SCALE, oy + sy * SCALE, sw * SCALE, sh * SCALE);
   ctx.save(); ctx.translate(ox, oy);
-  { // animated water (native pixels, scaled)
+  if (!NPCW) { // animated water (native pixels, scaled). The preview paints its own pond on the proposal ground.
     const tx0 = Math.floor(-ox / TILE) - 1, ty0 = Math.floor(-oy / TILE) - 1; ctx.save(); ctx.scale(SCALE, SCALE); drawWater(ctx, time, tx0, ty0, tx0 + Math.ceil(vw / TILE) + 2, ty0 + Math.ceil(vh / TILE) + 2); ctx.restore(); }
   const phase = dayPhase(time + dayOffset);
   globalThis.__inuNight = phase.dark;
-  const dyn = [...HUB_GATES.map((g) => hubGateProp(g, time)), hubSignProp(62, 58, time), ...dynamicProps(state, time, myPack(state)), ...presidentProps(pres, time), ...doorProps(time), ...carWorldProps(), ...crewProps(), ...adProps(trend, adRot, adIdx, !!globalThis.__inuNight, time, featuredMap()), ...confettiProps(), ...partyWorldProps(ox, oy, vw, vh), ...squareProps(state, time, Math.floor(gameDay() / 7)), ...arcadeProps(time, arcadeTop), ...MWd.statueProps(time, { drawShiba, artLoaded: () => !!ART['shiba-golden'] }), ...MWd.newsProps(time), ...KN.wallProps(KIBBLE_PLAZA.wall, KEN.wall, time, TILE), ...RD.gateProps(KIBBLE_PLAZA.raid, time, TILE), ...MWd.firepitProps(time), ...plazaCentreProps(time, seasonTheme().theme, { low: bldgFxLow(), night: bldgNightK(), glow: pushGlow }), ...MWd.plazaSkyProps(time), ...PAB.bureauProps(time, { drawShiba }, state.player), ...HS.shardProps(time, TILE, !!state.hunt?.shard)];
+  const dyn = NPCW ? [] : [...HUB_GATES.map((g) => hubGateProp(g, time)), hubSignProp(62, 58, time), ...dynamicProps(state, time, myPack(state)), ...presidentProps(pres, time), ...doorProps(time), ...carWorldProps(), ...crewProps(), ...adProps(trend, adRot, adIdx, !!globalThis.__inuNight, time, featuredMap()), ...confettiProps(), ...partyWorldProps(ox, oy, vw, vh), ...squareProps(state, time, Math.floor(gameDay() / 7)), ...arcadeProps(time, arcadeTop), ...MWd.statueProps(time, { drawShiba, artLoaded: () => !!ART['shiba-golden'] }), ...MWd.newsProps(time), ...KN.wallProps(KIBBLE_PLAZA.wall, KEN.wall, time, TILE), ...RD.gateProps(KIBBLE_PLAZA.raid, time, TILE), ...MWd.firepitProps(time), ...plazaCentreProps(time, seasonTheme().theme, { low: bldgFxLow(), night: bldgNightK(), glow: pushGlow }), ...MWd.plazaSkyProps(time), ...PAB.bureauProps(time, { drawShiba }, state.player), ...HS.shardProps(time, TILE, !!state.hunt?.shard)];
   for (const d of dyn) if (d.flat) d.d(ctx);
   const view = { x0: -ox, y0: -oy, x1: -ox + vw, y1: -oy + vh };
-  drawGroundLife(ctx, amb, phase, view); drawAliveGround(ctx, ALIVE, view, phase); feel.drawGround(ctx);
+  if (!NPCW) { drawGroundLife(ctx, amb, phase, view); drawAliveGround(ctx, ALIVE, view, phase); }
+  feel.drawGround(ctx);
   if (player.clickMark && player.pw.pts.length) drawMark(ctx, player.clickMark, time);
-  const actors = [MWd.crierActor(time, artKey), ...npcs.map((n, i) => ({ ...n, npc: true, idx: i, badge: badgeOf(packOfName(state, n.name)) })), ...(drive ? [] : [{ x: state.player.x, y: state.player.y, coat: state.player.coat, outfit: state.wardrobe.equipped, face: player.face, phase: player.phase, moving: player.moving, name: FB.titleOf(state) ? `${state.player.name} «${FB.titleOf(state)}»` : state.player.name, me: true, badge: badgeOf(myPack(state)), emote: player.emote, act: ACT.act, art: artKey(state.player.coat, state.wardrobe.equipped), profile: hasCustomLook(state) ? myProfile() : null }]), ...streetPups(), ...presActors(), ...petActors(), ...crewActors(), ...pupActors(), ...(mpActs = MPL.actors(view, state.player)), ...remotePetActors(mpActs), ...dogWalkActors(view, walkNow(), artKey), ...stepFolk(view), ...mascotActors(state, time)];
+  const meActor = drive ? [] : [{ x: state.player.x, y: state.player.y, coat: state.player.coat, outfit: state.wardrobe.equipped, face: player.face, phase: player.phase, moving: player.moving, name: FB.titleOf(state) ? `${state.player.name} «${FB.titleOf(state)}»` : state.player.name, me: true, badge: badgeOf(myPack(state)), emote: player.emote, act: ACT.act, art: artKey(state.player.coat, state.wardrobe.equipped), profile: hasCustomLook(state) ? myProfile() : null }];
+  const actors = NPCW
+    ? [...meActor, ...petActors(), ...NPCW.actors(), ...PLAZA_FOLK.map((f) => ({ ...f, art: artKey(f.coat), moving: false, phase: 0, outfit: {} }))]
+    : [MWd.crierActor(time, artKey), ...npcs.map((n, i) => ({ ...n, npc: true, idx: i, badge: badgeOf(packOfName(state, n.name)) })), ...meActor, ...streetPups(), ...presActors(), ...petActors(), ...crewActors(), ...pupActors(), ...(mpActs = MPL.actors(view, state.player)), ...remotePetActors(mpActs), ...dogWalkActors(view, walkNow(), artKey), ...stepFolk(view), ...mascotActors(state, time)];
   // one depth-sorted list: static props (culled), dynamic props and actors, by ground y
   const L = -ox - 200, Rt = -ox + vw + 200, Tp = -oy - 60, Bt = -oy + vh + 400, list = [];
   for (const p of mapImg.props) if (p.y > Tp && p.y < Bt) list.push(p);
   for (const p of dyn) if (!p.flat) list.push(p);
-  for (const p of carProps(amb)) list.push(p);
-  for (const p of GH.props(view, time)) list.push(p); // ghost recent visitors (src/ghosts.js)
-  EVVIEW = view; for (const p of EVX.props(view, time, { dark: phase.dark, s: state })) list.push(p); // daily event scenery (culled)
+  if (!NPCW) for (const p of carProps(amb)) list.push(p);
+  if (!NPCW) for (const p of GH.props(view, time)) list.push(p); // ghost recent visitors (src/ghosts.js)
+  EVVIEW = view; if (!NPCW) for (const p of EVX.props(view, time, { dark: phase.dark, s: state })) list.push(p); // daily event scenery (culled)
   { const D = dqDay(), Qs = DQ.ensure(state, D.day), fq = D.list.find((q) => q.kind === 'find' && !DQ.isDone(Qs, q)); for (const p of DQUI.props(view, time, { list: D.list, Qs, lost: fq && D.at[fq.id], rm: reducedMotion() })) list.push(p); }
   { const gid = !drive && state.evgear?.carry; if (gid) list.push({ y: state.player.y + 7, d: (c) => drawGear(c, gid, state.player.x, state.player.y, time, reducedMotion()) }); } // carried keepsake
   { const now = performance.now() / 1000, fdt = Math.min(0.1, Math.max(0, now - (CMP.lastT || now))); CMP.lastT = now; const rm = reducedMotion();
     IQC.stepRemotes(CMP.remotes, actors, fdt, { rm }); for (const F of CMP.remotes.values()) IQC.react(F, IQC.envFor(F, { rain: amb.rain, dark: phase.dark, others: [CMP.F, ...CMP.remotes.values()] }));
     for (const F of [CMP.F, ...CMP.remotes.values()]) if (F.c && F.x > L && F.x < Rt && F.y > Tp && F.y < Bt) list.push({ y: F.y + 2, d: (c) => IQC.drawFollower(c, F, time, { rm, fallback: IQC.drawFallbackPup }) }); }
-  for (const p of PT.stoneProps(PFOUND, time, view, { rm: reducedMotion(), near: stoneHere() })) list.push(p); // portal stones
-  for (const p of sitProps(time, actors.filter((a) => a.act?.kind === 'sit'), reducedMotion())) if (p.y > Tp && p.y < Bt) list.push(p); // swings + café terrace
-  for (const p of catProps(amb, view)) list.push(p); for (const p of leashProps(view, walkNow())) list.push(p);
+  if (!NPCW) for (const p of PT.stoneProps(PFOUND, time, view, { rm: reducedMotion(), near: stoneHere() })) list.push(p); // portal stones
+  if (!NPCW) for (const p of GROVE.props()) list.push(p); // staged grove chain: logs, saw, shed, porch. Test Splints, not Bones.
+  if (NPCW) for (const p of NPCW.props()) list.push(p);
+  if (!NPCW) for (const p of sitProps(time, actors.filter((a) => a.act?.kind === 'sit'), reducedMotion())) if (p.y > Tp && p.y < Bt) list.push(p); // swings + café terrace
+  if (!NPCW) { for (const p of catProps(amb, view)) list.push(p); for (const p of leashProps(view, walkNow())) list.push(p); }
   { const ta = EVX.traderAt(); if (ta) { const dx = state.player.x - ta.x, dy = state.player.y - ta.y, near = Math.hypot(dx, dy) < 110; actors.push({ x: ta.x, y: ta.y, coat: EVR.TRADER.coat, outfit: EVR.TRADER.outfit, face: near ? (Math.abs(dx) > Math.abs(dy) ? (dx > 0 ? 'right' : 'left') : dy < 0 ? 'up' : 'down') : 'down', phase: 0, moving: false, name: EVR.TRADER.name, id: 'ev:trader', art: artKey(EVR.TRADER.coat, EVR.TRADER.outfit) }); } }
   for (const a of actors) if (a.x > L && a.x < Rt && a.y > Tp && a.y < Bt) list.push({ y: a.y + 6, a });
   list.sort((p, q) => p.y - q.y);
+  resetNameTags();
   for (const it of list) {
     if (!it.a) { it.d(ctx); continue; }
     const a = it.a;
+    if (a.lunch) {
+      drawSeated(ctx, a, (ax, ay) => {
+        ctx.save();
+        ctx.translate(snapPx(ax), snapPx(ay));
+        ctx.scale(0.5, 0.5);
+        drawShiba(ctx, 0, 0, { coat: a.coat, outfit: a.outfit || {}, face: a.face, phase: a.phase || 0, moving: false, name: a.name, scale: 1.5, art: a.art, shadow: false });
+        ctx.restore();
+      });
+      continue;
+    }
     if (a.statue) { ctx.fillStyle = '#6a6080'; ctx.fillRect(Math.round(a.x - 34), Math.round(a.y - 4), 68, 18); ctx.fillStyle = '#d4a640'; ctx.fillRect(Math.round(a.x - 38), Math.round(a.y - 8), 76, 5); ctx.fillStyle = '#121a36'; ctx.font = '8px Silkscreen, monospace'; ctx.textAlign = 'center'; ctx.fillText('PRESIDENT INU', Math.round(a.x), Math.round(a.y + 8)); ctx.save(); ctx.filter = 'sepia(1) saturate(2.6) brightness(1.05)'; drawShiba(ctx, a.x, a.y - 10, { art: a.art, scale: 1.5, shadow: false }); ctx.restore(); continue; }
     const mm = a.npc && !a.crier ? MWd.npcMood(MWd.MW.mood, a, time, a.idx || 0) : null;
     ctx.save(); ctx.translate(snapPx(a.x), snapPx(a.y - (mm?.hop || 0))); ctx.scale(0.5, 0.5);
@@ -932,12 +1001,14 @@ function renderWorld() {
     if (a.me) { const gl = statusGlow(state); if (gl) drawFlair(ctx, gl, time); }
     const kt = a.me ? kennelMine() : a.mp ? KN.remoteLook(a) : null; if (kt) { KN.drawAura(ctx, kt.tier, time); KENNEL_TAG.cur = KN.tagFor(kt.tier, kt.preview, kt.flair); }
     const pz = poseFor(a);
+    if (a.npcOverlay?.behind) drawNpcOverlay(ctx, a.npcOverlay);
     if (a.profile) { drawProfileShiba(ctx, 0, 0, a.profile, { face: a.face, phase: a.phase, moving: a.moving, name: a.name, scale: 1.5, badge: a.badge, fid: a.me ? 'me' : a.name, emote: a.emote?.kind, pose: pz }); if (a.emote) drawEmote(ctx, 0, -110, a.emote.kind, time); }
     else drawShiba(ctx, 0, 0, { coat: a.coat, outfit: a.outfit, face: a.face, phase: a.phase, moving: a.moving, name: a.name, scale: 1.5, badge: a.badge, art: a.art, emote: a.emote?.kind, fid: a.me ? 'me' : a.name || a.id, wag: a.wag || (mm?.wag ? 1 : 0), pose: pz });
     if (a.onboardMascot) drawMascotTag(ctx, a);
     if (pz) drawPoseFx(ctx, pz, 0, 0, 1.5, time, pz.face);
     KENNEL_TAG.cur = null; if (a.me && LS.wornPin(state) != null) drawWornPin(ctx, LS.wornPin(state), time);
-    if (a.worker) { drawVest(ctx, a.face); drawTool(ctx, a.worker); }
+    if (a.worker) { drawVest(ctx, a.face); if (!a.npcOverlay) drawTool(ctx, a.worker); }
+    if (a.npcOverlay && !a.npcOverlay.behind) drawNpcOverlay(ctx, a.npcOverlay);
     if (a.bread) drawBreadBasket(ctx, a.face);
     if (mm?.umbrella || a.umbrella) MWd.drawUmbrella(ctx, time, a.idx || 0); else if (mm?.zz && !a.emote) MWd.drawZz(ctx, time + (a.idx || 0)); if (a.crier) MWd.drawBell(ctx, time, crierRing > 0);
     if (a.emote) drawEmote(ctx, 0, a.name ? -14 : 0, a.emote.kind, time); else if (a.act && ICON_ACTIONS[a.act.kind] && time - a.act.t0 < ICON_ACTIONS[a.act.kind]) drawEmote(ctx, 0, a.name ? -14 : 0, a.act.kind, time); ctx.restore();
@@ -950,6 +1021,7 @@ function renderWorld() {
   guide.drawWorld(ctx, time, state.player);
   ctx.restore();
   drawAtmosphere(ctx, amb, phase, { x: vw / 2 - ox, y: vh / 2 - oy }, vw, vh, () => { const L = lightsFor(state, phase, homeId()); for (const l of EVX.lights()) L.push(l); return L; });
+  if (NPCW) { punchNightLights(ctx, ox, oy); punchDenDoor(ctx, ox, oy); }
   evChipUpdate(evChip(document, () => { if (!panel) openPanel('event'); }), EVX.ev);
   { const D = dqDay(); DQUI.updateChip(DQUI.ensureChip(document, () => { if (!panel) openPanel('dquests'); }), D.list, DQ.ensure(state, D.day)); }
   SKY.updateSkyHud($('#clock'), { hour: phase.hour, tod: SKY.todOf(phase.hour), wx: amb.rain > 0.3 ? 'rain' : (amb.cloud || 0) > 0.5 ? 'cloudy' : 'clear', season: seasonOf(gameDay()) });
@@ -1013,10 +1085,12 @@ function minimap(vx, vy, vw, vh) { // low CPU: base image pre-rendered once; thr
   const cvm = $('#minimap'), vis = document.body.classList.contains('mm-on') && !photo && !$('#minimap-wrap').hidden, ptx = state.player.x / TILE, pty = state.player.y / TILE;
   if (!MMC.due(performance.now(), vis, `${Math.round(ptx * MM.S)},${Math.round(pty * MM.S)},${PFOUND.size}`)) return;
   const m = cvm.getContext('2d'), s = MM.S; globalThis.__mmDraws = (globalThis.__mmDraws || 0) + 1;
-  if (!miniBase) { miniBase = document.createElement('canvas'); miniBase.width = MAP_W * s; miniBase.height = MAP_H * s; const b = miniBase.getContext('2d');
-    const col = { [T.GRASS]: '#52a349', [T.FLOWER]: '#62b05a', [T.ROAD]: '#4a4f63', [T.WALK]: '#dcd3bc', [T.PLAZA]: '#d6b383', [T.BUILDING]: '#e3b341', [T.WATER]: '#2f6cbd', [T.TREE]: '#2c7040', [T.PLOT]: '#a8764a', [T.HOME]: '#c8323c', [T.DIRT]: '#a8764a' };
-    for (let y = 0; y < MAP_H; y++) for (let x = 0; x < MAP_W; x++) { b.fillStyle = col[MAP[y][x]]; b.fillRect(x * s, y * s, s, s); } drawDistrictsMark(b, s); }
-  const V = mmView = MM.miniView(ptx, pty, MAP_W, MAP_H, s, cvm.width, cvm.height), X = (tx) => Math.round(tx * s - V.sx), Y = (ty) => Math.round(ty * s - V.sy);
+  const mw = NPCW ? PROPOSAL_W : MAP_W, mh = NPCW ? PROPOSAL_H : MAP_H;
+  if (!miniBase) { miniBase = document.createElement('canvas'); miniBase.width = mw * s; miniBase.height = mh * s; const b = miniBase.getContext('2d');
+    const col = { [T.GRASS]: '#52a349', [T.FLOWER]: '#62b05a', [T.ROAD]: '#4a4f63', [T.WALK]: '#dcd3bc', [T.PLAZA]: '#d6b383', [T.BUILDING]: '#e3b341', [T.WATER]: '#2f6cbd', [T.TREE]: '#2c7040', [T.PLOT]: '#a8764a', [T.HOME]: '#c8323c', [T.DIRT]: '#a8764a', [previewTile.STOP]: '#c44848', [previewTile.NOOK]: '#6e4e96', [previewTile.HILL]: '#567048', [previewTile.RESERVED]: '#d2be78' };
+    const src = NPCW ? previewGrid : MAP;
+    for (let y = 0; y < mh; y++) for (let x = 0; x < mw; x++) { b.fillStyle = col[src[y][x]] || '#52a349'; b.fillRect(x * s, y * s, s, s); } if (!NPCW) drawDistrictsMark(b, s); }
+  const V = mmView = MM.miniView(ptx, pty, mw, mh, s, cvm.width, cvm.height), X = (tx) => Math.round(tx * s - V.sx), Y = (ty) => Math.round(ty * s - V.sy);
   m.imageSmoothingEnabled = false; m.drawImage(miniBase, V.sx, V.sy, cvm.width, cvm.height, 0, 0, cvm.width, cvm.height);
   for (const p of PLOTS) if (state.plots[p.id]) { m.fillStyle = '#f2cc68'; m.fillRect(X(p.x), Y(p.y), p.w * s, p.h * s); }
   { const pk = myPack(state); m.fillStyle = pk ? pk.color : '#6a8a4a'; m.fillRect(X(CLUBHOUSE.x), Y(CLUBHOUSE.y), CLUBHOUSE.w * s, CLUBHOUSE.h * s); }
@@ -1109,8 +1183,8 @@ const homeRoomExtra = {
   },
 };
 const RP = makeRoomPlay({ player, extra: homeRoomExtra, diner: (s) => openDiner(s), zoom: () => ZOOM, time: () => time, blocked: () => !!panel || feel.talking() || mode !== 'room',
-  input: () => { let dx = 0, dy = 0; if (!panel) { if (keys.has('w') || keys.has('arrowup')) dy -= 1; if (keys.has('s') || keys.has('arrowdown')) dy += 1; if (keys.has('a') || keys.has('arrowleft')) dx -= 1; if (keys.has('d') || keys.has('arrowright')) dx += 1; }
-    return { dx, dy, stick: { x: panel ? 0 : touch.x, y: panel ? 0 : touch.y }, mag: touch.mag || 0, shift: keys.has('shift'), holdRun: player.holdRun }; },
+  input: () => { let dx = 0, dy = 0; const locked = document.body.classList.contains('ctrl-lock'); if (locked) { touch.x = touch.y = 0; touch.mag = 0; } if (!panel && !locked) { if (keys.has('w') || keys.has('arrowup')) dy -= 1; if (keys.has('s') || keys.has('arrowdown')) dy += 1; if (keys.has('a') || keys.has('arrowleft')) dx -= 1; if (keys.has('d') || keys.has('arrowright')) dx += 1; }
+    return { dx, dy, stick: { x: panel || locked ? 0 : touch.x, y: panel || locked ? 0 : touch.y }, mag: touch.mag || 0, shift: keys.has('shift'), holdRun: player.holdRun }; },
   openPanel: (k, o) => openPanel(k, o), build: (id) => {
     roomBuild = { id: RP.id, at: { x: RP.R.p.x, y: RP.R.p.y, face: player.face } };
     if (id === 'clubhouse') { if (myPack(state)) enterBuild(id); else { roomBuild = null; openPanel('packs'); } return; }
@@ -2429,7 +2503,7 @@ function frame(now) {
   MPL.step(dt); // live multiplayer (no-op when not configured)
   feedSound(dt);
   if (mode === 'world') { GH.step(dt); stepEvents(dt); }
-  if ((chatSyncT -= dt) <= 0) { chatSyncT = 0.2; syncChat(document, window); fitBanners(document, window); fitToasts(document, window); fitHud(document); }
+  if ((chatSyncT -= dt) <= 0) { chatSyncT = 0.2; syncChat(document, window); fitBanners(document, window); fitToasts(document, window); fitHud(document); layoutSafe(document, window); parkNotices(); parkDetails(document); }
   if (JOYS && state && (joyT -= dt) <= 0) { joyT = 0.5; const want = joyPref(state); if (want !== JOYS.on) { JOYS.set(want); joyApi.onChange?.(); } } // saved / cloud-loaded Joystick setting
   if (PAD.connected) PAD.poll(dt); // controllers: zero work unless one is plugged in
   if (mode === 'world') { updateWorld(dt); renderWorld(); drawSceneBars(); }
@@ -2539,7 +2613,8 @@ cv.addEventListener('wheel', (e) => { if (mode !== 'world') return; e.preventDef
   cv.addEventListener('touchmove', (e) => { if (!pinch || e.touches.length !== 2) return; const d = dist(e.touches); if (photo) { photoZoom(d / pinch); pinch = d; return; } if (d / pinch > 1.35) { setZoom(stepZoom(ZOOM, 1)); pinch = d; } else if (pinch / d > 1.35) { setZoom(stepZoom(ZOOM, -1)); pinch = d; } }, { passive: true });
   cv.addEventListener('touchend', (e) => { if (e.touches.length < 2) pinch = null; }, { passive: true }); }
 document.getElementById('zin')?.addEventListener('click', () => setZoom(stepZoom(ZOOM, 1))); document.getElementById('zout')?.addEventListener('click', () => setZoom(stepZoom(ZOOM, -1)));
-window.__inu = { guide, pet: { get f() { return petF; }, PL, remote: RPETS }, portals: { PT, found: PFOUND, warp: (to, from) => warpTo(to, from), here: () => stoneHere(), get view() { return mmView; } }, photo: { get on() { return photo; }, get cam() { return PHC; }, toggle: () => togglePhoto(), ui: PHUI, PHM }, emo: { get act() { return ACT.act; }, action: (k) => doAction(k), seat: () => seatNear(), sit: (id) => { const sp = SPOTS.find((q) => q.id === id); if (sp) { state.player.x = sp.x; state.player.y = sp.y + 10; const sn = seatNear(); if (sn) sitAt(sn); } return ACT.act; }, spots: SPOTS, wheel }, audio: { debug: audioDebug, settings: audioSettings, area: () => sndArea }, open: (k, o) => openPanel(k, o), get time() { return time; }, get player() { return player; }, get zoom() { return ZOOM; }, setZoom, president: pres, presVisit: (k) => startVisit(pres, k, { dayLen: DAY_LEN }), setHour: (h) => { const w = SKY.skyWorldT(skyNow(), DAY_LEN); SKYS.pinH = null; SKYS.shift = timeForHour(h) - (((w % DAY_LEN) + DAY_LEN) % DAY_LEN); syncSky(); }, folk: { T: TFS, Q: FOLKQ, sec: () => folkSecNow(), at: (i, s) => TF.folkAt(i, s), setSec: (s) => { FOLKQ.shift = s - folkBase(); }, find: (name, doing) => { const i = TF.FOLK_NAMES.indexOf(name), o = {}; for (let s = 0; s < TF.FOLK_DAY; s += 2) { TF.folkAt(i, s, o); if (o.doing === doing) return { s, x: o.x, y: o.y }; } return null; } }, setRain: (r) => { SKYS.wx = r ? 'rain' : 'clear'; amb.rain = amb.rainTarget = amb.cloud = amb.cloudTarget = r ? 1 : 0; amb.weatherT = 999; }, sky: SKYS, get amb() { return amb; }, get npcs() { return npcs; }, get mood() { return { ...MOOD.current, shown: MWd.MW.mood }; }, emote: (k) => doEmote(k), cam, get state() { return state; }, get mode() { return mode; }, get panel() { return panel?.kind; }, get panelObj() { return panel; }, mp: MPL, club: { hunt: () => huntNow(), party: () => partyNow(), kennel: () => enterKennel(), room: (id, at) => enterRoom(id, at || null), get rp() { return RP; } } };
+GROVE.place = (x, y) => { state.player.x = x; state.player.y = y; cam.x = x; cam.y = y; };
+window.__inu = { grove: GROVE, npcwork: NPCW, guide, pet: { get f() { return petF; }, PL, remote: RPETS }, portals: { PT, found: PFOUND, warp: (to, from) => warpTo(to, from), here: () => stoneHere(), get view() { return mmView; } }, photo: { get on() { return photo; }, get cam() { return PHC; }, toggle: () => togglePhoto(), ui: PHUI, PHM }, emo: { get act() { return ACT.act; }, action: (k) => doAction(k), seat: () => seatNear(), sit: (id) => { const sp = SPOTS.find((q) => q.id === id); if (sp) { state.player.x = sp.x; state.player.y = sp.y + 10; const sn = seatNear(); if (sn) sitAt(sn); } return ACT.act; }, spots: SPOTS, wheel }, audio: { debug: audioDebug, settings: audioSettings, area: () => sndArea }, open: (k, o) => openPanel(k, o), get time() { return time; }, get player() { return player; }, get zoom() { return ZOOM; }, setZoom, president: pres, presVisit: (k) => startVisit(pres, k, { dayLen: DAY_LEN }), setHour: (h) => { const w = SKY.skyWorldT(skyNow(), DAY_LEN); SKYS.pinH = null; SKYS.shift = timeForHour(h) - (((w % DAY_LEN) + DAY_LEN) % DAY_LEN); syncSky(); }, folk: { T: TFS, Q: FOLKQ, sec: () => folkSecNow(), at: (i, s) => TF.folkAt(i, s), setSec: (s) => { FOLKQ.shift = s - folkBase(); }, find: (name, doing) => { const i = TF.FOLK_NAMES.indexOf(name), o = {}; for (let s = 0; s < TF.FOLK_DAY; s += 2) { TF.folkAt(i, s, o); if (o.doing === doing) return { s, x: o.x, y: o.y }; } return null; } }, setRain: (r) => { SKYS.wx = r ? 'rain' : 'clear'; amb.rain = amb.rainTarget = amb.cloud = amb.cloudTarget = r ? 1 : 0; amb.weatherT = 999; }, sky: SKYS, get amb() { return amb; }, get npcs() { return npcs; }, get mood() { return { ...MOOD.current, shown: MWd.MW.mood }; }, emote: (k) => doEmote(k), cam, get state() { return state; }, get mode() { return mode; }, get panel() { return panel?.kind; }, get panelObj() { return panel; }, mp: MPL, club: { hunt: () => huntNow(), party: () => partyNow(), kennel: () => enterKennel(), room: (id, at) => enterRoom(id, at || null), get rp() { return RP; } } };
 // Inu Arcade inside the desktop overlay: its 🏠 button asks us to close the overlay instead of reloading.
 // framed Arcade (hall peek) -> Verse: ready / exit (close + inu:back-to-verse alias) / score. Origin pinned (districts.js). Score = toast only.
 addEventListener('message', (e) => { const m = DIS.arcadeMessage(e, new URL(ARCADE.url).origin); if (!m) return; globalThis.__arcadeMsgs = [...(globalThis.__arcadeMsgs || []).slice(-9), m];
