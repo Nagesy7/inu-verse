@@ -4,7 +4,7 @@
 // and creator, and the new mint's keypair is generated and used only in the player's browser.
 //
 //   POST /api/launch {action:"metadata", name, symbol, description, twitter, telegram, website, image:dataURL} -> {uri, image, storage}
-//   POST /api/launch {action:"build", player, mint(PUBLIC key), name, symbol, uri, pair:"KIBBLE"(default)|"SOL", devBuySol, slippageBps} -> {tx(base64, unsigned), route{steps,fees,notes}, simulation, ...}
+//   POST /api/launch {action:"build", player, mint(PUBLIC key), name, symbol, uri, pair:"KIBBLE"(default)|"FLC"|"SOL", devBuySol, slippageBps} -> {tx(base64, unsigned), route{steps,fees,notes}, simulation, ...}
 //   POST /api/launch {action:"send", tx}   relays an already fully-signed launch tx to Solana (extension path); adds no signature
 //   POST /api/launch {action:"rpc", method, params}  allowlisted RPC proxy: getBalance, getLatestBlockhash, getSignatureStatuses, getAccountInfo
 //   GET  /api/launch?balance=<address>     live SOL balance      GET /api/launch?sig=<signature>  confirmation status
