@@ -14,10 +14,13 @@ export const COST = {
 };
 export const MAX_DEV_BUY_SOL = 5;
 export const DEFAULT_PAIR = 'KIBBLE';
+export const QUOTE_TICKER = { KIBBLE: '$KIBBLE', FLC: '$FLC' };
+const isQuoted = (pair) => pair === 'KIBBLE' || pair === 'FLC';
 export function minLamports({ devBuySol = 0, pair = DEFAULT_PAIR } = {}) {
   const buy = Math.max(0, Math.min(MAX_DEV_BUY_SOL, Number(devBuySol) || 0));
   const buyL = Math.round(buy * LAMPORTS);
-  const parts = { create: pair === 'KIBBLE' ? COST.createKibble : COST.createSol, priority: pair === 'KIBBLE' && buyL ? COST.priorityHop : COST.priority,
+  const quoted = isQuoted(pair);
+  const parts = { create: quoted ? COST.createKibble : COST.createSol, priority: quoted && buyL ? COST.priorityHop : COST.priority,
     devBuy: buyL, devBuyFees: buyL ? Math.ceil(buyL * COST.devBuyFeeBps / 10_000) + COST.devBuyRent : 0, reserve: COST.reserve };
   return { total: Object.values(parts).reduce((a, b) => a + b, 0), parts };
 }
@@ -32,20 +35,21 @@ const fine = (l) => (l / LAMPORTS).toFixed(6).replace(/0+$/, '').replace(/\.$/, 
 const pctTxt = (bps) => (bps / 100).toFixed(2).replace(/\.?0+$/, '') + '%';
 // Plain-words preview of the route and every fee for the current form (shown before anything is built or signed).
 export function planRoute({ pair = DEFAULT_PAIR, devBuySol = 0, slippageBps = 300, symbol = 'YOURCOIN' } = {}) {
-  const n = minLamports({ devBuySol, pair }), buy = n.parts.devBuy, tick = '$' + (symbol || 'YOURCOIN'), kib = pair === 'KIBBLE';
-  const cu = kib && buy ? 450_000 : 300_000, steps = [], fees = [];
-  if (buy && kib) {
-    steps.push(`Swap ${sol(buy)} SOL → $KIBBLE on the $KIBBLE pump.fun bonding curve`, `Swap all of that $KIBBLE → ${tick} on your new bonding curve (same transaction)`);
-    fees.push(`pump.fun fee: ${pctTxt(PUMP_FEES.protocolBps)} of the SOL → $KIBBLE swap (about ${fine(Math.ceil(buy * PUMP_FEES.protocolBps / 10_000))} SOL), charged once on the first leg`,
-      `Creator fee: ${pctTxt(PUMP_FEES.creatorBps)} of the $KIBBLE → ${tick} swap, paid in $KIBBLE to your own coin's creator rewards; $KIBBLE's creator fee is not charged on this route`,
+  const n = minLamports({ devBuySol, pair }), buy = n.parts.devBuy, tick = '$' + (symbol || 'YOURCOIN'), quoted = isQuoted(pair), qTick = QUOTE_TICKER[pair] || '$KIBBLE';
+  const firstVenue = pair === 'FLC' ? `the ${qTick} PumpSwap pool` : `the ${qTick} pump.fun bonding curve`;
+  const cu = quoted && buy ? 450_000 : 300_000, steps = [], fees = [];
+  if (buy && quoted) {
+    steps.push(`Swap ${sol(buy)} SOL → ${qTick} on ${firstVenue}`, `Swap all of that ${qTick} → ${tick} on your new bonding curve (same transaction)`);
+    fees.push(`pump.fun fee: ${pctTxt(PUMP_FEES.protocolBps)} of the SOL → ${qTick} swap (about ${fine(Math.ceil(buy * PUMP_FEES.protocolBps / 10_000))} SOL), charged once on the first leg`,
+      `Creator fee: ${pctTxt(PUMP_FEES.creatorBps)} of the ${qTick} → ${tick} swap, paid in ${qTick} to your own coin's creator rewards; ${qTick}'s creator fee is not charged on this route`,
       `Liquidity fee: ${pctTxt(PUMP_FEES.lpBps)} on bonding curves`,
-      `Slippage limit: ${pctTxt(slippageBps)} on the SOL → $KIBBLE price. Less than the minimum and the whole launch fails (only network + priority fees are kept)`);
+      `Slippage limit: ${pctTxt(slippageBps)} on the SOL → ${qTick} price. Less than the minimum and the whole launch fails (only network + priority fees are kept)`);
   } else if (buy) {
     steps.push(`Swap ${sol(buy)} SOL → ${tick} on your new bonding curve (same transaction)`);
     fees.push(`pump.fun fee: ${pctTxt(PUMP_FEES.protocolBps)} of your opening swap (about ${fine(Math.ceil(buy * PUMP_FEES.protocolBps / 10_000))} SOL)`, `Creator fee: ${pctTxt(PUMP_FEES.creatorBps)}, paid to your own coin's creator rewards`, 'Slippage: none. Create and opening swap land together, so nobody can trade in between');
-  } else steps.push(kib ? `Create ${tick} paired with $KIBBLE (no swap)` : `Create ${tick} paired with SOL (no swap)`);
+  } else steps.push(quoted ? `Create ${tick} paired with ${qTick} (no swap)` : `Create ${tick} paired with SOL (no swap)`);
   fees.push('Network fee: 0.00001 SOL (2 signatures × 0.000005 SOL)', `Priority fee: ${fine(cu * 0.1)} SOL (${cu.toLocaleString('en-US')} compute units × 0.1 lamports)`,
     `Account deposits (rent): about ${fine(n.parts.create - 10_000)} SOL${buy ? ' + token accounts' : ''}. pump.fun charges no separate create fee`);
-  const notes = kib ? ["Charity routing isn't available for $KIBBLE-paired coins."] : [];
+  const notes = quoted ? [`Charity routing isn't available for ${qTick}-paired coins.`] : [];
   return { steps, fees, notes, cu };
 }

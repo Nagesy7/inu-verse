@@ -8,8 +8,14 @@ import { minLamports, MAX_DEV_BUY_SOL } from "../../src/launchcost.js";
 const { PUMP_SDK, OnlinePumpSdk, getBuyTokenAmountFromSolAmount, BN, Connection, PublicKey, TransactionMessage, VersionedTransaction, ComputeBudgetProgram, GLOBAL_PDA, PUMP_FEE_CONFIG_PDA } = kit;
 export { kit };
 export const KIBBLE_MINT = "4VE9sy4fEMJdZ6i7MkYPbnqDJd2oqzJQmg44WJ3opump";
+export const FLC_MINT = "7yLCJpWQvE2bnX3JZGbmmKrCkCSrSGbqTmgA8tMdpump";
 export const WSOL = "So11111111111111111111111111111111111111112";
-export const PAIRS = { KIBBLE: { quote: KIBBLE_MINT, devBuy: true }, SOL: { quote: null, devBuy: true } }; // $KIBBLE is the default; SOL stays available. No other pair asset is offered here.
+// $KIBBLE is the default; SOL stays available. $FLC is an accepted quote mint (same create_v2 path) for Cabal Meme Maker launches.
+export const PAIRS = {
+  KIBBLE: { quote: KIBBLE_MINT, devBuy: true, ticker: "$KIBBLE" },
+  FLC: { quote: FLC_MINT, devBuy: true, ticker: "$FLC" },
+  SOL: { quote: null, devBuy: true, ticker: "SOL" },
+};
 export const DEFAULT_PAIR = "KIBBLE";
 export const CU = { limit: 300_000, hopLimit: 450_000, microLamports: 100_000 };
 export const SIG_FEE = 5000; // Solana base fee per signature (lamports)
@@ -46,7 +52,7 @@ export function validateBuild(body = {}) {
   const uri = String(body.uri || "");
   if (!/^https:\/\/[^\s"'<>]{8,200}$/.test(uri)) errors.push("metadata uri must be https");
   const pair = body.pair == null || body.pair === "" ? DEFAULT_PAIR : PAIRS[body.pair] ? body.pair : null;
-  if (!pair) errors.push("pair must be KIBBLE or SOL");
+  if (!pair) errors.push("pair must be KIBBLE, FLC, or SOL");
   const devBuySol = Number(body.devBuySol || 0);
   if (!Number.isFinite(devBuySol) || devBuySol < 0 || devBuySol > MAX_DEV_BUY_SOL) errors.push(`opening swap must be 0-${MAX_DEV_BUY_SOL} SOL`);
   const slippageBps = body.slippageBps == null || body.slippageBps === "" ? SLIPPAGE_BPS.def : Number(body.slippageBps);
@@ -62,6 +68,12 @@ export function rpcDeps(rpcUrl) {
     global: () => online.fetchGlobal(),
     feeConfig: () => online.fetchFeeConfig().catch(() => null),
     resolveQuote: (mint) => online.resolveQuoteMint(new PublicKey(mint)),
+    // First hop of an opening buy: curve while the quote mint is still on its pump.fun curve, or the canonical PumpSwap pool once it has graduated.
+    resolveFirstHop: async (quoteMint) => {
+      const hops = await online.resolveMultiHopRoute([new PublicKey(WSOL), new PublicKey(quoteMint)], "buy");
+      if (!hops?.[0]) throw new Error("no first hop for " + quoteMint);
+      return hops[0];
+    },
     blockhash: async () => (await conn.getLatestBlockhash("confirmed")).blockhash,
     lookupTable: async (addr) => { const t = (await conn.getAddressLookupTable(new PublicKey(addr))).value; return t && t.isActive() ? t : null; },
     // Dry run only (sigVerify off, nothing is signed or sent). Returns the wallet's SOL change and pump.fun's own trade events.
@@ -98,19 +110,21 @@ const pct = (bps) => (bps / 100).toFixed(2).replace(/\.?0+$/, "") + "%";
 // Plain-words route + every fee, shown to the player before they sign. Amounts come from the mainnet dry run when we have one.
 export function describeRoute({ pair, symbol, lamports = 0, slippageBps = SLIPPAGE_BPS.def, minOut = null, cuLimit = CU.limit, signers = 2, sim = null, mint = null, alt = null }) {
   const trades = sim?.trades || [], tick = "$" + symbol, network = SIG_FEE * signers, priority = Math.ceil(cuLimit * CU.microLamports / 1e6);
-  const legKib = trades.find((t) => t.mint === KIBBLE_MINT), legNew = trades.find((t) => t.mint === mint) || trades[trades.length - 1];
+  const spec = PAIRS[pair] || PAIRS.KIBBLE, qTick = spec.ticker || "$KIBBLE", qMint = spec.quote || KIBBLE_MINT;
+  const legQuote = trades.find((t) => t.mint === qMint), legNew = trades.find((t) => t.mint === mint) || trades[trades.length - 1];
   const steps = [], fees = [], notes = [];
-  if (lamports > 0 && pair === "KIBBLE") {
-    steps.push({ from: "SOL", to: "$KIBBLE", venue: "the $KIBBLE pump.fun bonding curve", in: solTxt(lamports), out: legKib ? units(legKib.tokenAmount) + " $KIBBLE" : "quoted in the dry run" });
-    steps.push({ from: "$KIBBLE", to: tick, venue: `your new ${tick} bonding curve (created in this same transaction)`, in: legNew ? units(legNew.quoteAmount) + " $KIBBLE" : "all $KIBBLE from step 1", out: legNew ? units(legNew.tokenAmount) + " " + tick : "quoted in the dry run" });
-    fees.push({ key: "pumpfun", label: "pump.fun trading fee", bps: legKib?.feeBps ?? 95, amount: legKib ? solTxt(legKib.fee) : null,
-      plain: `${pct(legKib?.feeBps ?? 95)} of the SOL → $KIBBLE swap, charged once on the first leg (pump.fun charges protocol fees on the first leg of a multi-hop route). About half funds pump.fun's buyback.` });
-    fees.push({ key: "creator", label: "Creator fee", bps: legNew?.creatorFeeBps ?? 30, amount: legNew ? units(legNew.creatorFee) + " $KIBBLE" : null,
-      plain: `${pct(legNew?.creatorFeeBps ?? 30)} of the $KIBBLE → ${tick} swap, charged on the last leg and paid into your own coin's creator rewards (you are the creator). $KIBBLE's creator fee is not charged on this route.` });
+  if (lamports > 0 && spec.quote) {
+    const firstVenue = pair === "FLC" ? `the ${qTick} PumpSwap pool` : `the ${qTick} pump.fun bonding curve`;
+    steps.push({ from: "SOL", to: qTick, venue: firstVenue, in: solTxt(lamports), out: legQuote ? units(legQuote.tokenAmount) + " " + qTick : "quoted in the dry run" });
+    steps.push({ from: qTick, to: tick, venue: `your new ${tick} bonding curve (created in this same transaction)`, in: legNew ? units(legNew.quoteAmount) + " " + qTick : "all " + qTick + " from step 1", out: legNew ? units(legNew.tokenAmount) + " " + tick : "quoted in the dry run" });
+    fees.push({ key: "pumpfun", label: "pump.fun trading fee", bps: legQuote?.feeBps ?? 95, amount: legQuote ? solTxt(legQuote.fee) : null,
+      plain: `${pct(legQuote?.feeBps ?? 95)} of the SOL → ${qTick} swap, charged once on the first leg (pump.fun charges protocol fees on the first leg of a multi-hop route). About half funds pump.fun's buyback.` });
+    fees.push({ key: "creator", label: "Creator fee", bps: legNew?.creatorFeeBps ?? 30, amount: legNew ? units(legNew.creatorFee) + " " + qTick : null,
+      plain: `${pct(legNew?.creatorFeeBps ?? 30)} of the ${qTick} → ${tick} swap, charged on the last leg and paid into your own coin's creator rewards (you are the creator). ${qTick}'s creator fee is not charged on this route.` });
     fees.push({ key: "lp", label: "Liquidity fee", bps: 0, amount: "0", plain: "0% while your coin trades on its bonding curve." });
-    if (legNew && legNew.holderRewards !== "0") fees.push({ key: "holders", label: "Holder rewards", bps: legNew.holderRewardsBps, amount: units(legNew.holderRewards) + " $KIBBLE", plain: "Shared with holders, charged on the last leg." });
+    if (legNew && legNew.holderRewards !== "0") fees.push({ key: "holders", label: "Holder rewards", bps: legNew.holderRewardsBps, amount: units(legNew.holderRewards) + " " + qTick, plain: "Shared with holders, charged on the last leg." });
     fees.push({ key: "slippage", label: "Slippage limit", bps: slippageBps, amount: minOut != null ? "at least " + units(minOut) + " " + tick : null,
-      plain: `The SOL → $KIBBLE price can move before your transaction lands. Your limit is ${pct(slippageBps)}: if you would get less than the minimum, the whole launch fails and nothing is swapped (Solana still keeps the network + priority fee).` });
+      plain: `The SOL → ${qTick} price can move before your transaction lands. Your limit is ${pct(slippageBps)}: if you would get less than the minimum, the whole launch fails and nothing is swapped (Solana still keeps the network + priority fee).` });
   } else if (lamports > 0) {
     steps.push({ from: "SOL", to: tick, venue: `your new ${tick} bonding curve (created in this same transaction)`, in: solTxt(lamports), out: legNew ? units(legNew.tokenAmount) + " " + tick : "quoted in the dry run" });
     fees.push({ key: "pumpfun", label: "pump.fun trading fee", bps: legNew?.feeBps ?? 95, amount: legNew ? solTxt(legNew.fee) : null, plain: `${pct(legNew?.feeBps ?? 95)} of your opening swap.` });
@@ -122,7 +136,7 @@ export function describeRoute({ pair, symbol, lamports = 0, slippageBps = SLIPPA
   fees.push({ key: "network", label: "Network fee", amount: solTxt(network), lamports: network, plain: `Solana's base fee: ${signers} signatures × 0.000005 SOL (your wallet + the new coin's address).` });
   fees.push({ key: "priority", label: "Priority fee", amount: solTxt(priority), lamports: priority, plain: `${cuLimit.toLocaleString("en-US")} compute units × ${CU.microLamports / 1e6} lamports, so validators pick it up quickly.` });
   fees.push({ key: "rent", label: "Account deposits (rent)", amount: rent != null ? solTxt(rent) : null, lamports: rent, plain: "One-time Solana storage deposits for your coin's mint, metadata, bonding curve and your token accounts. pump.fun charges no separate create fee." });
-  if (pair === "KIBBLE") notes.push("Charity routing isn't available for $KIBBLE-paired coins.");
+  if (spec.quote) notes.push(`Charity routing isn't available for ${qTick}-paired coins.`);
   if (alt) notes.push(`Uses ${alt}, a public address lookup table widely used by pump.fun transactions, to fit everything in one transaction. It only shortens addresses; it can't move funds.`);
   notes.push("Inu Verse never signs, holds or moves your SOL or tokens. You sign in your own wallet.");
   return { pair, steps, fees, notes, total: sim?.cost != null ? { lamports: sim.cost, text: solTxt(sim.cost), from: "mainnet dry run" } : null };
@@ -130,18 +144,20 @@ export function describeRoute({ pair, symbol, lamports = 0, slippageBps = SLIPPA
 
 export async function buildCreateTx(v, deps) {
   const { player, mint, name, symbol, uri, pair, devBuySol, slippageBps = SLIPPAGE_BPS.def } = v;
-  const lamports = Math.round(devBuySol * 1e9), hop = pair === "KIBBLE" && lamports > 0, cuLimit = hop ? CU.hopLimit : CU.limit;
+  const spec = PAIRS[pair] || PAIRS[DEFAULT_PAIR], quoteMint = spec.quote || null, qTick = spec.ticker || pair;
+  const lamports = Math.round(devBuySol * 1e9), hop = !!quoteMint && lamports > 0, cuLimit = hop ? CU.hopLimit : CU.limit;
   const head = [ComputeBudgetProgram.setComputeUnitLimit({ units: cuLimit }), ComputeBudgetProgram.setComputeUnitPrice({ microLamports: CU.microLamports })];
   let compose, alt = null;
-  if (pair === "KIBBLE") {
-    const quote = await deps.resolveQuote(KIBBLE_MINT); // throws UnsupportedQuoteMintError etc. when pump.fun does not accept it
-    const create = await PUMP_SDK.createV2Instruction({ mint, name, symbol, uri, creator: player, user: player, mayhemMode: false, quoteMint: new PublicKey(KIBBLE_MINT), quoteTokenProgram: quote.quoteTokenProgram, pumpQuote: quote.pumpQuote?.accounts });
+  if (quoteMint) {
+    const quote = await deps.resolveQuote(quoteMint); // throws UnsupportedQuoteMintError etc. when pump.fun does not accept it
+    const create = await PUMP_SDK.createV2Instruction({ mint, name, symbol, uri, creator: player, user: player, mayhemMode: false, quoteMint: new PublicKey(quoteMint), quoteTokenProgram: quote.quoteTokenProgram, pumpQuote: quote.pumpQuote?.accounts });
     if (hop) {
       alt = deps.lookupTable ? await deps.lookupTable(ROUTE_ALT).catch(() => null) : null;
-      if (!alt) throw Object.assign(new Error("The SOL → $KIBBLE route is unavailable right now. Launch the $KIBBLE pair with no opening swap, or pick SOL."), { status: 503 });
-      // Route: SOL → $KIBBLE on $KIBBLE's bonding curve, then $KIBBLE → new coin on the new coin's curve (pump.fun multi-hop, SDK 4.1.0).
-      const hops = [{ venue: "curve", baseMint: new PublicKey(KIBBLE_MINT), quoteMint: new PublicKey(WSOL), baseTokenProgram: quote.quoteTokenProgram, quoteTokenProgram: new PublicKey(TOKEN_PROGRAM) },
-        { venue: "curve", baseMint: mint, quoteMint: new PublicKey(KIBBLE_MINT), baseTokenProgram: new PublicKey(TOKEN_2022), quoteTokenProgram: quote.quoteTokenProgram }];
+      if (!alt) throw Object.assign(new Error(`The SOL → ${qTick} route is unavailable right now. Launch the ${qTick} pair with no opening swap, or pick SOL.`), { status: 503 });
+      // First hop: quote mint's live venue (KIBBLE is still on its pump.fun curve; graduated $FLC uses the canonical PumpSwap pool). Then quote → new coin on the new curve.
+      let first = { venue: "curve", baseMint: new PublicKey(quoteMint), quoteMint: new PublicKey(WSOL), baseTokenProgram: quote.quoteTokenProgram, quoteTokenProgram: new PublicKey(TOKEN_PROGRAM) };
+      if (deps.resolveFirstHop) first = await deps.resolveFirstHop(quoteMint);
+      const hops = [first, { venue: "curve", baseMint: mint, quoteMint: new PublicKey(quoteMint), baseTokenProgram: new PublicKey(TOKEN_2022), quoteTokenProgram: quote.quoteTokenProgram }];
       compose = async (minOut) => [create, ...await PUMP_SDK.multiHopSwapInstructions({ user: player, hops, side: "buy", amountIn: new BN(lamports), minAmountOut: new BN(String(minOut)) })];
     } else compose = async () => [create];
   } else if (lamports > 0) {
@@ -167,11 +183,11 @@ export async function buildCreateTx(v, deps) {
   let minOut = null, built, simulation = null;
   if (hop) {
     // Quote by mainnet dry run (no floor), then lock the slippage floor into the real transaction and dry-run that too.
-    if (!deps.simulate) throw Object.assign(new Error("can't quote the $KIBBLE route without a dry run"), { status: 503 });
+    if (!deps.simulate) throw Object.assign(new Error(`can't quote the ${qTick} route without a dry run`), { status: 503 });
     const q = await runSim((await compile(1)).t);
     const last = q.ok ? (q.trades || []).find((t) => t.mint === mint.toBase58()) : null;
-    if (!last) { const fail = q.ok === null ? Object.assign(new Error("Couldn't quote the SOL → $KIBBLE route right now. Try again in a moment."), { status: 503 }) : null; if (fail) throw fail;
-      return { tx: null, pair, devBuySol, slippageBps, mint: mint.toBase58(), feePayer: player.toBase58(), creator: player.toBase58(), quoteMint: KIBBLE_MINT, minLamports: minLamports({ devBuySol, pair }), simulation: q.ok === false ? q : { ...q, ok: false, err: "route quote missing" }, serverSigned: false }; }
+    if (!last) { const fail = q.ok === null ? Object.assign(new Error(`Couldn't quote the SOL → ${qTick} route right now. Try again in a moment.`), { status: 503 }) : null; if (fail) throw fail;
+      return { tx: null, pair, devBuySol, slippageBps, mint: mint.toBase58(), feePayer: player.toBase58(), creator: player.toBase58(), quoteMint, minLamports: minLamports({ devBuySol, pair }), simulation: q.ok === false ? q : { ...q, ok: false, err: "route quote missing" }, serverSigned: false }; }
     minOut = (BigInt(last.tokenAmount) * BigInt(10_000 - slippageBps)) / 10_000n;
     built = await compile(minOut);
   } else built = await compile(1);
@@ -179,7 +195,7 @@ export async function buildCreateTx(v, deps) {
   const route = describeRoute({ pair, symbol, lamports, slippageBps, minOut: minOut == null ? null : minOut.toString(), cuLimit, signers: built.info.signers.length, sim: simulation, mint: mint.toBase58(), alt: alt ? ROUTE_ALT : null });
   if (simulation) delete simulation.trades;
   return { tx: Buffer.from(built.bytes).toString("base64"), size: built.bytes.length, feePayer: built.info.feePayer, creator: player.toBase58(), signers: built.info.signers, mint: mint.toBase58(), pair, devBuySol, slippageBps,
-    minOut: minOut == null ? null : minOut.toString(), lookupTable: alt ? ROUTE_ALT : null, quoteMint: pair === "KIBBLE" ? KIBBLE_MINT : null, minLamports: minLamports({ devBuySol, pair }), route, simulation, serverSigned: false };
+    minOut: minOut == null ? null : minOut.toString(), lookupTable: alt ? ROUTE_ALT : null, quoteMint, minLamports: minLamports({ devBuySol, pair }), route, simulation, serverSigned: false };
 }
 
 // Friendly explanation of common simulation failures.
@@ -187,7 +203,8 @@ export function explainSim(sim) {
   if (!sim || sim.ok !== false) return null; const e = sim.err || "";
   if (/InsufficientFundsForRent[^}]*"account_index":1\b/.test(e)) return "pump.fun can't size this exact name + ticker + link combination (a known on-chain quirk). Add or remove one letter in the name and try again.";
   if (/AccountNotFound|insufficient|0x1\b|"Custom":1\b/.test(e) || (sim.balance === 0)) return "Your wallet needs more SOL first (see Top up).";
-  if (/6063|6100|UnsupportedQuote|NotEligible/.test(e)) return "pump.fun is not accepting $KIBBLE as a pair right now. Launch with SOL, or use pump.fun's own page.";
-  if (/6107/.test(e)) return "$KIBBLE is migrating to PumpSwap right now. Try the $KIBBLE pair again in a few minutes.";
+  if (/6063|6100|UnsupportedQuote|NotEligible/.test(e)) return "pump.fun is not accepting this quote mint as a pair right now. Launch with SOL, or use pump.fun's own page.";
+  if (/6107/.test(e)) return "That quote mint is migrating to PumpSwap right now. Try again in a few minutes, or launch with no first buy.";
+  if (/route quote missing/.test(e)) return "The opening swap couldn't be quoted from this dry run. Launch with no first buy, then buy after your coin is created.";
   return "pump.fun rejected this launch in a dry run: " + e.slice(0, 140);
 }
