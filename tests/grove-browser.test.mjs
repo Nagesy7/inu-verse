@@ -18,6 +18,12 @@ async function startTown(page, url) {
   await page.click('#start');
   await page.waitForFunction(() => document.getElementById('hud')?.classList.contains('in'));
   await page.waitForTimeout(400);
+  // Today's find-quest can sit on the south lane. Mark it done so the grove walk does not collect its Bones.
+  await page.evaluate(() => {
+    const D = globalThis.__quests.day();
+    const Q = globalThis.__quests.DQ.ensure(__inu.state, D.day);
+    for (const q of D.list) if (!Q.done.includes(q.id)) Q.done.push(q.id);
+  });
 }
 
 async function holdStick(page, ms, ax = 1, ay = 0) {
@@ -617,30 +623,38 @@ async function creditChain(page) {
 }
 
 async function frameSnap(page, station) {
-  await page.evaluate((station) => {
-    document.body.classList.remove('drawer-open', 'notices-open');
-    __inu.setHour(10);
-    const st = __inu.grove.station(station);
-    __inu.grove.place(st.x, st.y + 16);
-  }, station);
-  await page.waitForTimeout(80);
-  return page.evaluate((station) => {
-    __inu.setHour(10);
-    const s = __inu.grove.status();
-    const near = __inu.grove.near(__inu.state.player.x, __inu.state.player.y);
-    const prompt = document.getElementById('prompt')?.innerText || '';
-    const note = document.getElementById('grove-note')?.textContent || '';
-    const strip = document.getElementById('grove-ledger')?.textContent || '';
-    return {
-      station, near: near?.id || null,
-      prompt, strip, note,
-      budget: s.budget, you: s.you, hold: s.hold, sprigWallet: s.sprigWallet,
-      npcHold: s.npcHold, stoolHold: s.stoolHold, salvageHold: s.salvageHold,
-      logs: s.logs, boards: s.boards, holes: s.holes,
-      done: !!s.salvage?.done,
-      sum: s.budget + s.you + s.hold + s.sprigWallet + s.npcHold + s.stoolHold + s.salvageHold,
-    };
-  }, station);
+  const offsets = [[0, 16], [36, 0], [-36, 0], [0, 36], [0, -36], [25, 25], [-25, 25]];
+  let snap = null;
+  for (const [dx, dy] of offsets) {
+    await page.evaluate(({ station, dx, dy }) => {
+      document.body.classList.remove('drawer-open', 'notices-open');
+      __inu.setHour(10);
+      const st = __inu.grove.station(station);
+      __inu.grove.place(st.x + dx, st.y + dy);
+    }, { station, dx, dy });
+    await page.waitForTimeout(80);
+    snap = await page.evaluate((station) => {
+      __inu.setHour(10);
+      const s = __inu.grove.status();
+      const near = __inu.grove.near(__inu.state.player.x, __inu.state.player.y);
+      const prompt = document.getElementById('prompt')?.innerText || '';
+      const note = document.getElementById('grove-note')?.textContent || '';
+      const strip = document.getElementById('grove-ledger')?.textContent || '';
+      return {
+        station, near: near?.id || null,
+        prompt, strip, note,
+        person: /talk to|chat with|^pet /i.test(prompt),
+        budget: s.budget, you: s.you, hold: s.hold, sprigWallet: s.sprigWallet,
+        npcHold: s.npcHold, stoolHold: s.stoolHold, salvageHold: s.salvageHold,
+        logs: s.logs, boards: s.boards, holes: s.holes,
+        done: !!s.salvage?.done,
+        sum: s.budget + s.you + s.hold + s.sprigWallet + s.npcHold + s.stoolHold + s.salvageHold,
+      };
+    }, station);
+    if (snap.near === station && !snap.person) break;
+  }
+  delete snap.person;
+  return snap;
 }
 
 function assertSnapAgrees(snap) {
