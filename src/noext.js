@@ -17,6 +17,7 @@ export function apiClient(f = globalThis.fetch, base = '') {
     config: () => get('/api/config'),
     metadata: (m) => post('/api/launch', { action: 'metadata', ...m }),
     build: (b) => post('/api/launch', { action: 'build', ...b }),
+    buildBuy: (b) => post('/api/launch', { action: 'build-buy', ...b }),
     send: (tx) => post('/api/launch', { action: 'send', tx }),
     status: (sig) => get('/api/launch?sig=' + encodeURIComponent(sig)),
     balance: (a) => get('/api/launch?balance=' + encodeURIComponent(a)),
@@ -33,6 +34,13 @@ export function checkUnsignedTx(tx, player, mint) {
   const signers = keys.slice(0, n); if (signers.length !== 2 || !signers.includes(mint)) throw new Error('Safety check failed: unexpected signers.');
   if (tx.signatures.some((s) => s.some((b) => b !== 0))) throw new Error('Safety check failed: transaction was already signed.');
   return { signers };
+}
+export function checkUnsignedBuyTx(tx, player) {
+  const n = tx.message.header.numRequiredSignatures, keys = tx.message.staticAccountKeys.map((k) => k.toBase58());
+  if (keys[0] !== player) throw new Error('Safety check failed: the fee payer is not your wallet.');
+  if (n !== 1 || keys[0] !== player) throw new Error('Safety check failed: unexpected signers.');
+  if (tx.signatures.some((s) => s.some((b) => b !== 0))) throw new Error('Safety check failed: transaction was already signed.');
+  return { signers: [player] };
 }
 
 // The only lookup table we accept is the public pump.fun one; a $KIBBLE dev buy must carry a slippage floor.
@@ -52,7 +60,7 @@ export function extensionWallet(provider = globalThis.phantom?.solana) {
     async connect() { const r = await provider.connect(); this.address = r.publicKey.toString(); return this.address; },
     async disconnect() { this.address = null; },
     async signAndSendLaunch(tx, mintKp, { api, kit }) { const signed = await provider.signTransaction(tx);
-      const t = kit.VersionedTransaction.deserialize(signed.serialize()); t.sign([mintKp]); return (await api.send(bytesToB64(t.serialize()))).signature; } };
+      const t = kit.VersionedTransaction.deserialize(signed.serialize()); if (mintKp) t.sign([mintKp]); return (await api.send(bytesToB64(t.serialize()))).signature; } };
 }
 // Phantom embedded wallet (Google/Apple). Embedded wallets only support signAndSendTransaction and reject pre-signed txs,
 // so the mint co-signs inside Phantom's presignTransaction hook, which runs in this browser tab (no server involved).
@@ -60,8 +68,8 @@ export function embeddedWallet(sdk, kit) {
   return { kind: 'embedded', label: 'Phantom (Google/Apple)', get address() { return sdk.solana?.publicKey || null; }, available: () => true,
     async connect(provider) { await sdk.connect({ provider }); return sdk.solana.publicKey; },
     async disconnect() { await sdk.disconnect(); },
-    async signAndSendLaunch(tx, mintKp) { const r = await sdk.solana.signAndSendTransaction(tx, { presignTransaction: async (b64u) => {
-      const t = kit.VersionedTransaction.deserialize(kit.base64urlDecode(b64u)); t.sign([mintKp]); return kit.base64urlEncode(t.serialize()); } }); return r.signature; } };
+    async signAndSendLaunch(tx, mintKp) { const r = await sdk.solana.signAndSendTransaction(tx, mintKp ? { presignTransaction: async (b64u) => {
+      const t = kit.VersionedTransaction.deserialize(kit.base64urlDecode(b64u)); t.sign([mintKp]); return kit.base64urlEncode(t.serialize()); } } : {}); return r.signature; } };
 }
 let sdkSingleton = null;
 export async function embeddedSdk(cfg) {
@@ -88,11 +96,24 @@ export async function launchCoin({ form, wallet, kit, api, review = null, onStep
   onStep('confirm', 'Sent! Waiting for Solana to confirm…', { signature, mint });
   let status = 'pending';
   for (let i = 0; i < confirmTries; i++) { try { const s = await api.status(signature); status = s.status; if (s.status === 'failed') throw Object.assign(new Error('The launch failed on-chain: ' + (s.err || '')), { signature }); if (s.status === 'confirmed' || s.status === 'finalized') break; } catch (e) { if (e.signature) throw e; } await sleep(1500); }
-  onStep('register', 'Confirmed! Adding your coin to the Hall board…', { signature, mint });
+  let buySignature = null;
+  if (built.split && built.buyAfterCreate && devBuySol > 0) {
+    onStep('build', 'Coin created. Building your unsigned first-buy transaction…');
+    const buy = await api.buildBuy({ player, mint, pair, devBuySol, slippageBps: Number(form.slippageBps) || 300 });
+    if (buy.simulation?.ok === false || !buy.tx) throw Object.assign(new Error(buy.hint || 'The first buy could not be quoted after create. Your coin exists; you can buy it on pump.fun.'), { built: buy, signature, mint });
+    const buyTx = kit.VersionedTransaction.deserialize(b64ToBytes(buy.tx)); checkUnsignedBuyTx(buyTx, player);
+    checkRoute(buyTx, buy, { pair, devBuySol });
+    if (review) { onStep('review', 'Check the first-buy route and fees…', { built: buy }); if (!(await review(buy))) throw Object.assign(new Error('You cancelled the first buy. Your coin was created; nothing else was sent.'), { cancelled: true, signature, mint }); }
+    onStep('sign', 'Approve the first buy in Phantom…');
+    buySignature = await wallet.signAndSendLaunch(buyTx, null, { api, kit });
+    onStep('confirm', 'First buy sent! Waiting for Solana to confirm…', { signature: buySignature, mint });
+    for (let i = 0; i < confirmTries; i++) { try { const s = await api.status(buySignature); if (s.status === 'failed') throw Object.assign(new Error('The first buy failed on-chain: ' + (s.err || '')), { signature, buySignature, mint }); if (s.status === 'confirmed' || s.status === 'finalized') break; } catch (e) { if (e.buySignature) throw e; } await sleep(1500); }
+  }
+  onStep('register', 'Confirmed! Adding your coin to the Hall board…', { signature, mint, buySignature });
   let registered = null, regError = null;
   for (let i = 0; i < registerTries; i++) { try { registered = await api.register(mint, signature, form.name, form.symbol, !!form.verified); break; } catch (e) { regError = e.message; if (e.status === 403) break; await sleep(2500); } }
   onStep('done', registered ? 'Launched and listed on the Coin board!' : 'Launched! Board listing pending: ' + (regError || ''), { signature, mint, registered: !!registered });
-  return { mint, signature, status, registered: !!registered, regError, built, meta };
+  return { mint, signature, buySignature, status, registered: !!registered, regError, built, meta };
 }
 
 // Resize the chosen image in the browser (keeps uploads small: ≤512 px, ≤400 KB).

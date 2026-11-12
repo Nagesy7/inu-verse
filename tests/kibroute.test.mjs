@@ -4,7 +4,7 @@
 import test from 'node:test'; import assert from 'node:assert/strict'; import fs from 'node:fs';
 import { makeLaunchHandler } from '../api/launch.js';
 import { memoryStore } from '../api/coins.js';
-import { kit as K, decodeAccount, KIBBLE_MINT, FLC_MINT, PAIRS, DEFAULT_PAIR as API_DEFAULT, ROUTE_ALT, tradesFromLogs, describeRoute, validateBuild, explainSim, SLIPPAGE_BPS } from '../api/_lib/launchtx.js';
+import { kit as K, decodeAccount, KIBBLE_MINT, FLC_MINT, PAIRS, DEFAULT_PAIR as API_DEFAULT, ROUTE_ALT, tradesFromLogs, describeRoute, validateBuild, explainSim, SLIPPAGE_BPS, minOutFromTokenOut, quotedTrades } from '../api/_lib/launchtx.js';
 import * as NX from '../src/noext.js';
 import * as CK from '../src/vendor/phantom-kit.js';
 import { planRoute, minLamports, DEFAULT_PAIR, ROUTE_ALT as CLIENT_ALT } from '../src/launchcost.js';
@@ -117,3 +117,69 @@ test('form preview lists the route and every fee in plain words before anything 
 test('describeRoute without a dry run never invents amounts; explainSim names the name-length quirk', () => {
   const r = describeRoute({ pair: 'KIBBLE', symbol: 'STAR', lamports: 1e7, mint: 'x' }); assert.equal(r.total, null); assert.equal(r.fees.find((f) => f.key === 'rent').amount, null);
   assert.match(explainSim({ ok: false, err: '{"InsufficientFundsForRent":{"account_index":1}}' }), /Add or remove one letter/); });
+
+test('minOutFromTokenOut applies the slippage floor; quotedTrades shape a two-leg $FLC route', () => {
+  assert.equal(minOutFromTokenOut(1_000_000n, 300).toString(), '970000');
+  const t = quotedTrades({ quoteMint: FLC_MINT, mint: 'NewMint11111111111111111111111111111111111', lamports: 10_000_000, quoteTokens: '2573665741', tokenOut: '454866570498' });
+  assert.equal(t[0].mint, FLC_MINT); assert.equal(t[1].quoteMint, FLC_MINT); assert.equal(t[1].tokenAmount, '454866570498');
+});
+
+test('$FLC + opening swap: log-free quote still returns one UNSIGNED tx when sim logs are truncated', async () => {
+  const tokenOut = '454866570498';
+  const quoteFirstBuy = async ({ mint, lamports, slippageBps, quoteMint }) => {
+    const minOut = minOutFromTokenOut(tokenOut, slippageBps);
+    return { quoteTokens: '2573665741', tokenOut, minOut: minOut.toString(), trades: quotedTrades({ quoteMint, mint, lamports, quoteTokens: '2573665741', tokenOut }) };
+  };
+  const d = deps({
+    quoteFirstBuy,
+    simulate: async (tx) => { d.sims.push(tx); return { err: null, units: 311_000, balance: 1e9, cost: 20_000_000, logs: ['Log truncated'], trades: [] }; },
+  });
+  const h = makeLaunchHandler({ env: {}, store: memoryStore(), deps: d }), body = req({ pair: 'FLC', devBuySol: 0.01, slippageBps: 300 });
+  const r = await call(h, body); assert.equal(r.code, 200, JSON.stringify(r.body));
+  assert.equal(r.body.pair, 'FLC'); assert.equal(r.body.quoteMint, FLC_MINT); assert.equal(r.body.serverSigned, false);
+  assert.ok(r.body.tx, 'unsigned tx returned despite truncated logs');
+  assert.equal(r.body.simulation.ok, true);
+  assert.equal(r.body.minOut, minOutFromTokenOut(tokenOut, 300).toString());
+  const tx = K.VersionedTransaction.deserialize(Buffer.from(r.body.tx, 'base64'));
+  assert.ok(tx.signatures.every((s) => s.every((b) => b === 0)), 'server signed nothing');
+  assert.equal(tx.message.header.numRequiredSignatures, 2);
+  assert.ok(r.body.size <= 1232);
+  const rt = r.body.route; assert.deepEqual(rt.steps.map((s) => s.from + '>' + s.to), ['SOL>$FLC', '$FLC>$STAR']);
+  assert.match(rt.steps[0].out, /\$FLC/); assert.match(rt.steps[1].out, /\$STAR/);
+  assert.match(rt.fees.find((f) => f.key === 'slippage').amount, /at least/);
+});
+
+test('$FLC first-buy quote refuses to return a tx when the final dry run fails', async () => {
+  const d = deps({
+    quoteFirstBuy: async ({ mint, lamports, slippageBps, quoteMint }) => ({ quoteTokens: '1', tokenOut: '1000', minOut: minOutFromTokenOut(1000, slippageBps).toString(), trades: quotedTrades({ quoteMint, mint, lamports, quoteTokens: '1', tokenOut: '1000' }) }),
+    simulate: async () => ({ err: { InstructionError: [4, { Custom: 6107 }] }, logs: ['x'], trades: [] }),
+  });
+  const r = await call(makeLaunchHandler({ env: {}, store: memoryStore(), deps: d }), req({ pair: 'FLC', devBuySol: 0.01 }));
+  assert.equal(r.code, 200); assert.equal(r.body.tx, null); assert.equal(r.body.simulation.ok, false); assert.match(r.body.hint, /migrating/);
+});
+
+test('$FLC first buy with long metadata splits: create stays unsigned and under 1232 bytes, no oversized tx is returned', async () => {
+  const tokenOut = '454866570498';
+  const d = deps({
+    maxTxBytes: 800,
+    quoteFirstBuy: async ({ mint, lamports, slippageBps, quoteMint }) => ({
+      quoteTokens: '2573665741', tokenOut, minOut: minOutFromTokenOut(tokenOut, slippageBps).toString(),
+      trades: quotedTrades({ quoteMint, mint, lamports, quoteTokens: '2573665741', tokenOut }),
+    }),
+    simulate: async (tx) => { d.sims.push(tx); return { err: null, units: 200_000, balance: 1e9, cost: 18_000_000, logs: [], trades: [] }; },
+  });
+  const body = req({ pair: 'FLC', devBuySol: 0.01, slippageBps: 300, name: 'A'.repeat(32), symbol: 'ABCDEFGHIJ', uri: 'https://ipfs.io/ipfs/' + 'b'.repeat(64) });
+  const r = await call(makeLaunchHandler({ env: {}, store: memoryStore(), deps: d }), body);
+  assert.equal(r.code, 200, JSON.stringify(r.body));
+  assert.equal(r.body.split, true);
+  assert.equal(r.body.buyAfterCreate, true);
+  assert.ok(r.body.tx);
+  assert.ok(r.body.size <= 1232, 'create tx must fit: ' + r.body.size);
+  assert.equal(r.body.serverSigned, false);
+  assert.equal(r.body.simulation.ok, true);
+  assert.ok(BigInt(r.body.minOut) > 0n);
+  const tx = K.VersionedTransaction.deserialize(Buffer.from(r.body.tx, 'base64'));
+  assert.ok(tx.signatures.every((s) => s.every((b) => b === 0)));
+  assert.equal(tx.message.header.numRequiredSignatures, 2);
+  assert.match((r.body.route.notes || []).join(' '), /second unsigned transaction/);
+});
