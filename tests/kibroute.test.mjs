@@ -4,7 +4,7 @@
 import test from 'node:test'; import assert from 'node:assert/strict'; import fs from 'node:fs';
 import { makeLaunchHandler } from '../api/launch.js';
 import { memoryStore } from '../api/coins.js';
-import { kit as K, decodeAccount, KIBBLE_MINT, FLC_MINT, FOOD_MINT, PAIRS, DEFAULT_PAIR as API_DEFAULT, ROUTE_ALT, tradesFromLogs, describeRoute, validateBuild, explainSim, SLIPPAGE_BPS, minOutFromTokenOut, quotedTrades } from '../api/_lib/launchtx.js';
+import { kit as K, decodeAccount, KIBBLE_MINT, FLC_MINT, FOOD_MINT, AUTISM_MINT, PAIRS, DEFAULT_PAIR as API_DEFAULT, ROUTE_ALT, tradesFromLogs, describeRoute, validateBuild, explainSim, SLIPPAGE_BPS, minOutFromTokenOut, quotedTrades } from '../api/_lib/launchtx.js';
 import * as NX from '../src/noext.js';
 import * as CK from '../src/vendor/phantom-kit.js';
 import { planRoute, minLamports, DEFAULT_PAIR, ROUTE_ALT as CLIENT_ALT } from '../src/launchcost.js';
@@ -27,12 +27,13 @@ const call = (h, body) => new Promise((done) => { const res = { headers: {}, set
   h({ method: 'POST', url: '/api/launch', query: {}, body: { action: 'build', ...body }, headers: { 'x-forwarded-for': '9.9.9.9' } }, res); });
 const req = (extra = {}) => ({ player: player.publicKey.toBase58(), mint: CK.Keypair.generate().publicKey.toBase58(), name: 'Shiba Star', symbol: 'STAR', uri: 'https://ipfs.io/ipfs/bafytest', ...extra });
 
-test('$KIBBLE is the default pair everywhere; SOL stays available; $FLC and $FOOD are accepted API quote mints', () => {
+test('$KIBBLE is the default pair everywhere; SOL stays available; $FLC, $FOOD and $AUTISM are accepted API quote mints', () => {
   assert.equal(DEFAULT_PAIR, 'KIBBLE'); assert.equal(API_DEFAULT, 'KIBBLE');
   assert.equal(validateBuild(req()).v.pair, 'KIBBLE'); assert.equal(validateBuild(req({ pair: 'SOL' })).v.pair, 'SOL');
   assert.equal(validateBuild(req({ pair: 'FLC' })).ok, true); assert.equal(validateBuild(req({ pair: 'FLC' })).v.pair, 'FLC');
   assert.equal(validateBuild(req({ pair: 'FOOD' })).ok, true); assert.equal(validateBuild(req({ pair: 'FOOD' })).v.pair, 'FOOD');
-  assert.equal(PAIRS.FLC.quote, FLC_MINT); assert.equal(PAIRS.FOOD.quote, FOOD_MINT); assert.equal(PAIRS.KIBBLE.quote, KIBBLE_MINT); assert.equal(PAIRS.SOL.quote, null);
+  assert.equal(validateBuild(req({ pair: 'AUTISM' })).ok, true); assert.equal(validateBuild(req({ pair: 'AUTISM' })).v.pair, 'AUTISM');
+  assert.equal(PAIRS.FLC.quote, FLC_MINT); assert.equal(PAIRS.FOOD.quote, FOOD_MINT); assert.equal(PAIRS.AUTISM.quote, AUTISM_MINT); assert.equal(PAIRS.KIBBLE.quote, KIBBLE_MINT); assert.equal(PAIRS.SOL.quote, null);
   assert.equal(validateBuild(req({ pair: 'BONK' })).ok, false); assert.equal(validateBuild(req()).v.slippageBps, SLIPPAGE_BPS.def);
   const ui = fs.readFileSync('src/launchui.js', 'utf8'); assert.match(ui, /form: \{ pair: 'KIBBLE'/); assert.match(ui, /<option value="KIBBLE"[^>]*>★ \$KIBBLE \(default\)<\/option><option value="SOL"/);
   assert.equal(CLIENT_ALT, ROUTE_ALT); });
@@ -65,6 +66,22 @@ test('$FOOD create-only: UNSIGNED pump.fun create_v2 quoted in Foodcoin, default
   const buy = validateBuild(req({ pair: 'FOOD', devBuySol: 0.01 }));
   assert.equal(buy.ok, true); assert.equal(buy.v.pair, 'FOOD');
 });
+
+test('$AUTISM create-only: UNSIGNED pump.fun create_v2 quoted in Autism Coin, default still $KIBBLE, no first buy', async () => {
+  const d = deps(), h = makeLaunchHandler({ env: {}, store: memoryStore(), deps: d }), body = req({ pair: 'AUTISM' });
+  const r = await call(h, body); assert.equal(r.code, 200, JSON.stringify(r.body));
+  assert.equal(r.body.pair, 'AUTISM'); assert.equal(r.body.quoteMint, AUTISM_MINT); assert.equal(r.body.serverSigned, false);
+  const tx = K.VersionedTransaction.deserialize(Buffer.from(r.body.tx, 'base64')), keys = tx.message.staticAccountKeys.map(String);
+  assert.equal(keys[0], body.player); assert.equal(tx.message.header.numRequiredSignatures, 2);
+  assert.deepEqual(keys.slice(0, 2).sort(), [body.player, body.mint].sort());
+  assert.ok(tx.signatures.every((s) => s.every((b) => b === 0)), 'server signed nothing');
+  assert.match(planRoute({ pair: 'AUTISM' }).steps[0], /paired with \$AUTISM \(no swap\)/);
+  assert.equal(planRoute().steps[0].includes('$KIBBLE'), true, 'default plan stays $KIBBLE');
+  assert.ok(minLamports({ pair: 'AUTISM' }).total === minLamports({ pair: 'KIBBLE' }).total);
+  const buy = validateBuild(req({ pair: 'AUTISM', devBuySol: 0.01 }));
+  assert.equal(buy.ok, true); assert.equal(buy.v.pair, 'AUTISM');
+});
+
 
 test('$KIBBLE + opening swap: one UNSIGNED tx, SOL → $KIBBLE → coin, slippage floor from the dry run, fits 1232 bytes via the public ALT', async () => {
   const d = deps(), h = makeLaunchHandler({ env: {}, store: memoryStore(), deps: d }), body = req({ devBuySol: 0.01, slippageBps: 300 });
