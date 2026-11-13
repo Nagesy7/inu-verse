@@ -48,7 +48,7 @@ export function checkRoute(tx, built, { pair, devBuySol }) {
   const alts = (tx.message.addressTableLookups || []).map((l) => l.accountKey.toBase58());
   if (alts.some((a) => a !== ROUTE_ALT) || alts.length > 1) throw new Error('Safety check failed: unexpected address lookup table.');
   if (built.pair !== pair) throw new Error('Safety check failed: pair changed.');
-  if ((pair === 'KIBBLE' || pair === 'FLC' || pair === 'FOOD' || pair === 'AUTISM') && devBuySol > 0 && !(BigInt(built.minOut || 0) > 0n)) throw new Error('Safety check failed: no slippage floor on the quote-mint route.');
+  if ((pair === 'KIBBLE' || pair === 'FLC' || pair === 'FOOD' || pair === 'AUTISM' || /^[1-9A-HJ-NP-Za-km-z]{32,44}$/.test(String(pair || ''))) && devBuySol > 0 && !(BigInt(built.minOut || 0) > 0n)) throw new Error('Safety check failed: no slippage floor on the quote-mint route.');
   return { alts };
 }
 

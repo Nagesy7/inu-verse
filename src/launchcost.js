@@ -15,7 +15,9 @@ export const COST = {
 export const MAX_DEV_BUY_SOL = 5;
 export const DEFAULT_PAIR = 'KIBBLE';
 export const QUOTE_TICKER = { KIBBLE: '$KIBBLE', FLC: '$FLC', FOOD: '$FOOD', AUTISM: '$AUTISM' };
-const isQuoted = (pair) => pair === 'KIBBLE' || pair === 'FLC' || pair === 'FOOD' || pair === 'AUTISM';
+// A community main arrives as pair=<its mint> (approved in the registry, re-verified on-chain by the server at build time).
+export const isMintPair = (pair) => /^[1-9A-HJ-NP-Za-km-z]{32,44}$/.test(String(pair || ''));
+const isQuoted = (pair) => pair === 'KIBBLE' || pair === 'FLC' || pair === 'FOOD' || pair === 'AUTISM' || isMintPair(pair);
 export function minLamports({ devBuySol = 0, pair = DEFAULT_PAIR } = {}) {
   const buy = Math.max(0, Math.min(MAX_DEV_BUY_SOL, Number(devBuySol) || 0));
   const buyL = Math.round(buy * LAMPORTS);
@@ -34,9 +36,10 @@ export const ROUTE_ALT = 'Hyif6eWb8x88RVrvjPfabsgRYnwkVnyByEXTVTXbUcyP';
 const fine = (l) => (l / LAMPORTS).toFixed(6).replace(/0+$/, '').replace(/\.$/, '');
 const pctTxt = (bps) => (bps / 100).toFixed(2).replace(/\.?0+$/, '') + '%';
 // Plain-words preview of the route and every fee for the current form (shown before anything is built or signed).
-export function planRoute({ pair = DEFAULT_PAIR, devBuySol = 0, slippageBps = 300, symbol = 'YOURCOIN' } = {}) {
-  const n = minLamports({ devBuySol, pair }), buy = n.parts.devBuy, tick = '$' + (symbol || 'YOURCOIN'), quoted = isQuoted(pair), qTick = QUOTE_TICKER[pair] || '$KIBBLE';
-  const firstVenue = pair === 'FLC' || pair === 'FOOD' || pair === 'AUTISM' ? `the ${qTick} PumpSwap pool` : `the ${qTick} pump.fun bonding curve`;
+export function planRoute({ pair = DEFAULT_PAIR, devBuySol = 0, slippageBps = 300, symbol = 'YOURCOIN', quoteTicker = '', quoteVenue = '' } = {}) {
+  const n = minLamports({ devBuySol, pair }), buy = n.parts.devBuy, tick = '$' + (symbol || 'YOURCOIN'), quoted = isQuoted(pair);
+  const qTick = QUOTE_TICKER[pair] || (isMintPair(pair) ? '$' + (String(quoteTicker || '').replace(/^\$/, '').toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 10) || 'COIN') : '$KIBBLE');
+  const firstVenue = pair === 'FLC' || pair === 'FOOD' || pair === 'AUTISM' || (isMintPair(pair) && quoteVenue === 'pumpswap-pool') ? `the ${qTick} PumpSwap pool` : `the ${qTick} pump.fun bonding curve`;
   const cu = quoted && buy ? 450_000 : 300_000, steps = [], fees = [];
   if (buy && quoted) {
     steps.push(`Swap ${sol(buy)} SOL → ${qTick} on ${firstVenue}`, `Swap all of that ${qTick} → ${tick} on your new bonding curve (same transaction)`);
@@ -51,5 +54,6 @@ export function planRoute({ pair = DEFAULT_PAIR, devBuySol = 0, slippageBps = 30
   fees.push('Network fee: 0.00001 SOL (2 signatures × 0.000005 SOL)', `Priority fee: ${fine(cu * 0.1)} SOL (${cu.toLocaleString('en-US')} compute units × 0.1 lamports)`,
     `Account deposits (rent): about ${fine(n.parts.create - 10_000)} SOL${buy ? ' + token accounts' : ''}. pump.fun charges no separate create fee`);
   const notes = quoted ? [`Charity routing isn't available for ${qTick}-paired coins.`] : [];
+  if (isMintPair(pair)) notes.push(`${qTick} is a community main: added by a user, checked on-chain, not featured and not endorsed by Inu. NFA.`);
   return { steps, fees, notes, cu };
 }
