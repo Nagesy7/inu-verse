@@ -9,11 +9,14 @@ const { PUMP_SDK, OnlinePumpSdk, getBuyTokenAmountFromSolAmount, BN, Connection,
 export { kit };
 export const KIBBLE_MINT = "4VE9sy4fEMJdZ6i7MkYPbnqDJd2oqzJQmg44WJ3opump";
 export const FLC_MINT = "7yLCJpWQvE2bnX3JZGbmmKrCkCSrSGbqTmgA8tMdpump";
+export const FOOD_MINT = "FTu55MyigXns96jz4nTCDDiTCjYJjyrHSceCgG9Upump";
 export const WSOL = "So11111111111111111111111111111111111111112";
 // $KIBBLE is the default; SOL stays available. $FLC is an accepted quote mint (same create_v2 path) for Cabal Meme Maker launches.
+// $FOOD is a third accepted quote mint (same path) for Foodcoin-paired launches.
 export const PAIRS = {
   KIBBLE: { quote: KIBBLE_MINT, devBuy: true, ticker: "$KIBBLE" },
   FLC: { quote: FLC_MINT, devBuy: true, ticker: "$FLC" },
+  FOOD: { quote: FOOD_MINT, devBuy: true, ticker: "$FOOD" },
   SOL: { quote: null, devBuy: true, ticker: "SOL" },
 };
 export const DEFAULT_PAIR = "KIBBLE";
@@ -52,7 +55,7 @@ export function validateBuild(body = {}) {
   const uri = String(body.uri || "");
   if (!/^https:\/\/[^\s"'<>]{8,200}$/.test(uri)) errors.push("metadata uri must be https");
   const pair = body.pair == null || body.pair === "" ? DEFAULT_PAIR : PAIRS[body.pair] ? body.pair : null;
-  if (!pair) errors.push("pair must be KIBBLE, FLC, or SOL");
+  if (!pair) errors.push("pair must be KIBBLE, FLC, FOOD, or SOL");
   const devBuySol = Number(body.devBuySol || 0);
   if (!Number.isFinite(devBuySol) || devBuySol < 0 || devBuySol > MAX_DEV_BUY_SOL) errors.push(`opening swap must be 0-${MAX_DEV_BUY_SOL} SOL`);
   const slippageBps = body.slippageBps == null || body.slippageBps === "" ? SLIPPAGE_BPS.def : Number(body.slippageBps);
@@ -156,7 +159,7 @@ export function describeRoute({ pair, symbol, lamports = 0, slippageBps = SLIPPA
   const legQuote = trades.find((t) => t.mint === qMint), legNew = trades.find((t) => t.mint === mint) || trades[trades.length - 1];
   const steps = [], fees = [], notes = [];
   if (lamports > 0 && spec.quote) {
-    const firstVenue = pair === "FLC" ? `the ${qTick} PumpSwap pool` : `the ${qTick} pump.fun bonding curve`;
+    const firstVenue = pair === "FLC" || pair === "FOOD" ? `the ${qTick} PumpSwap pool` : `the ${qTick} pump.fun bonding curve`;
     steps.push({ from: "SOL", to: qTick, venue: firstVenue, in: solTxt(lamports), out: legQuote ? units(legQuote.tokenAmount) + " " + qTick : "quoted in the dry run" });
     steps.push({ from: qTick, to: tick, venue: `your new ${tick} bonding curve (created in this same transaction)`, in: legNew ? units(legNew.quoteAmount) + " " + qTick : "all " + qTick + " from step 1", out: legNew ? units(legNew.tokenAmount) + " " + tick : "quoted in the dry run" });
     fees.push({ key: "pumpfun", label: "pump.fun trading fee", bps: legQuote?.feeBps ?? 95, amount: legQuote ? solTxt(legQuote.fee) : null,
@@ -282,7 +285,7 @@ export function validateBuy(body = {}) {
   if (!player) errors.push("player wallet address is invalid");
   if (!mint) errors.push("mint public key is invalid");
   const pair = body.pair == null || body.pair === "" ? DEFAULT_PAIR : PAIRS[body.pair] ? body.pair : null;
-  if (!pair || !PAIRS[pair]?.quote) errors.push("first-buy follows a $KIBBLE or $FLC create");
+  if (!pair || !PAIRS[pair]?.quote) errors.push("first-buy follows a $KIBBLE, $FLC, or $FOOD create");
   const devBuySol = Number(body.devBuySol || 0);
   if (!Number.isFinite(devBuySol) || devBuySol <= 0 || devBuySol > MAX_DEV_BUY_SOL) errors.push(`opening swap must be greater than 0 and at most ${MAX_DEV_BUY_SOL} SOL`);
   const slippageBps = body.slippageBps == null || body.slippageBps === "" ? SLIPPAGE_BPS.def : Number(body.slippageBps);

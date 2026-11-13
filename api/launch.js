@@ -4,7 +4,7 @@
 // and creator, and the new mint's keypair is generated and used only in the player's browser.
 //
 //   POST /api/launch {action:"metadata", name, symbol, description, twitter, telegram, website, image:dataURL} -> {uri, image, storage}
-//   POST /api/launch {action:"build", player, mint(PUBLIC key), name, symbol, uri, pair:"KIBBLE"(default)|"FLC"|"SOL", devBuySol, slippageBps} -> {tx(base64, unsigned), route{steps,fees,notes}, simulation, ...}
+//   POST /api/launch {action:"build", player, mint(PUBLIC key), name, symbol, uri, pair:"KIBBLE"(default)|"FLC"|"FOOD"|"SOL", devBuySol, slippageBps} -> {tx(base64, unsigned), route{steps,fees,notes}, simulation, ...}
 //   POST /api/launch {action:"build-buy", player, mint, pair, devBuySol, slippageBps} -> unsigned first-buy after a split create (player is the only signer)
 //   POST /api/launch {action:"send", tx}   relays an already fully-signed launch tx to Solana (extension path); adds no signature
 //   POST /api/launch {action:"rpc", method, params}  allowlisted RPC proxy: getBalance, getLatestBlockhash, getSignatureStatuses, getAccountInfo
@@ -45,7 +45,7 @@ export function makeLaunchHandler({ env = process.env, store = upstashStore(env)
         if (q.sig) { if (!B58.test(String(q.sig))) return json(res, 400, { error: "bad signature" });
           const st = (await rpc().conn.getSignatureStatuses([String(q.sig)], { searchTransactionHistory: true })).value[0];
           return json(res, 200, { status: !st ? "pending" : st.err ? "failed" : st.confirmationStatus || "processed", err: st?.err ? JSON.stringify(st.err) : null }); }
-        return json(res, 200, { ok: true, builds: "unsigned pump.fun create transactions only", serverSigns: false, pairs: ["SOL", "KIBBLE"] }, "public, max-age=60");
+        return json(res, 200, { ok: true, builds: "unsigned pump.fun create transactions only", serverSigns: false, pairs: ["KIBBLE", "FLC", "FOOD", "SOL"] }, "public, max-age=60");
       }
       if (req.method !== "POST") return json(res, 405, { error: "GET or POST" });
       const body = typeof req.body === "string" ? JSON.parse(req.body || "{}") : req.body || {};
