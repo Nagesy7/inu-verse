@@ -14,8 +14,8 @@ export const COST = {
 };
 export const MAX_DEV_BUY_SOL = 5;
 export const DEFAULT_PAIR = 'KIBBLE';
-export const QUOTE_TICKER = { KIBBLE: '$KIBBLE', FLC: '$FLC', FOOD: '$FOOD' };
-const isQuoted = (pair) => pair === 'KIBBLE' || pair === 'FLC' || pair === 'FOOD';
+export const QUOTE_TICKER = { KIBBLE: '$KIBBLE', FLC: '$FLC', FOOD: '$FOOD', AUTISM: '$AUTISM' };
+const isQuoted = (pair) => pair === 'KIBBLE' || pair === 'FLC' || pair === 'FOOD' || pair === 'AUTISM';
 export function minLamports({ devBuySol = 0, pair = DEFAULT_PAIR } = {}) {
   const buy = Math.max(0, Math.min(MAX_DEV_BUY_SOL, Number(devBuySol) || 0));
   const buyL = Math.round(buy * LAMPORTS);
@@ -36,7 +36,7 @@ const pctTxt = (bps) => (bps / 100).toFixed(2).replace(/\.?0+$/, '') + '%';
 // Plain-words preview of the route and every fee for the current form (shown before anything is built or signed).
 export function planRoute({ pair = DEFAULT_PAIR, devBuySol = 0, slippageBps = 300, symbol = 'YOURCOIN' } = {}) {
   const n = minLamports({ devBuySol, pair }), buy = n.parts.devBuy, tick = '$' + (symbol || 'YOURCOIN'), quoted = isQuoted(pair), qTick = QUOTE_TICKER[pair] || '$KIBBLE';
-  const firstVenue = pair === 'FLC' || pair === 'FOOD' ? `the ${qTick} PumpSwap pool` : `the ${qTick} pump.fun bonding curve`;
+  const firstVenue = pair === 'FLC' || pair === 'FOOD' || pair === 'AUTISM' ? `the ${qTick} PumpSwap pool` : `the ${qTick} pump.fun bonding curve`;
   const cu = quoted && buy ? 450_000 : 300_000, steps = [], fees = [];
   if (buy && quoted) {
     steps.push(`Swap ${sol(buy)} SOL → ${qTick} on ${firstVenue}`, `Swap all of that ${qTick} → ${tick} on your new bonding curve (same transaction)`);
