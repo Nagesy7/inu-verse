@@ -22,6 +22,17 @@ export const PAIRS = {
   SOL: { quote: null, devBuy: true, ticker: "SOL" },
 };
 export const DEFAULT_PAIR = "KIBBLE";
+// Community mains (added in the Cabal Meme Maker, approved in the Kibble Pay registry, re-verified on-chain per build by
+// api/launch.js) arrive as pair=<mint>. They are never featured and never the default. -> spec or null.
+export function communitySpec(c) {
+  if (!c || !B58.test(String(c.mint || "")) || PAIRS[c.mint] || Object.values(PAIRS).some((p) => p.quote === c.mint)) return null;
+  const t = String(c.symbol || "").toUpperCase().replace(/[^A-Z0-9]/g, "").slice(0, 10) || "COIN";
+  return { quote: c.mint, devBuy: true, ticker: "$" + t, community: true, venue: c.venue || null };
+}
+export function specFor(pair, community = null) {
+  if (PAIRS[pair]) return PAIRS[pair];
+  const cs = communitySpec(community); return cs && cs.quote === pair ? cs : null;
+}
 export const CU = { limit: 300_000, hopLimit: 450_000, microLamports: 100_000 };
 export const SIG_FEE = 5000; // Solana base fee per signature (lamports)
 export const SLIPPAGE_BPS = { def: 300, min: 50, max: 1500 };
@@ -44,7 +55,7 @@ export function carriesSecret(v, depth = 0) {
 const pk = (s) => { try { if (!B58.test(String(s || ""))) return null; const p = new PublicKey(s); return PublicKey.isOnCurve(p.toBytes()) ? p : null; } catch { return null; } };
 export const cleanText = (s, n) => String(s ?? "").replace(/[<>\u0000-\u001f\u007f]/g, "").trim().slice(0, n);
 
-export function validateBuild(body = {}) {
+export function validateBuild(body = {}, { community = null } = {}) {
   const errors = [];
   if (carriesSecret(body)) return { ok: false, errors: ["Never send private keys or seed phrases. The mint keypair stays in your browser; send only its public key."] };
   const player = pk(body.player), mint = pk(body.mint);
@@ -56,13 +67,13 @@ export function validateBuild(body = {}) {
   if (!/^[A-Z0-9]{1,10}$/.test(symbol)) errors.push("ticker must be 1-10 letters/numbers");
   const uri = String(body.uri || "");
   if (!/^https:\/\/[^\s"'<>]{8,200}$/.test(uri)) errors.push("metadata uri must be https");
-  const pair = body.pair == null || body.pair === "" ? DEFAULT_PAIR : PAIRS[body.pair] ? body.pair : null;
-  if (!pair) errors.push("pair must be KIBBLE, FLC, FOOD, AUTISM, or SOL");
+  const pair = body.pair == null || body.pair === "" ? DEFAULT_PAIR : specFor(body.pair, community) ? body.pair : null;
+  if (!pair) errors.push("pair must be KIBBLE, FLC, FOOD, AUTISM, SOL, or an approved community main's mint");
   const devBuySol = Number(body.devBuySol || 0);
   if (!Number.isFinite(devBuySol) || devBuySol < 0 || devBuySol > MAX_DEV_BUY_SOL) errors.push(`opening swap must be 0-${MAX_DEV_BUY_SOL} SOL`);
   const slippageBps = body.slippageBps == null || body.slippageBps === "" ? SLIPPAGE_BPS.def : Number(body.slippageBps);
   if (!Number.isInteger(slippageBps) || slippageBps < SLIPPAGE_BPS.min || slippageBps > SLIPPAGE_BPS.max) errors.push(`slippage must be ${SLIPPAGE_BPS.min / 100}-${SLIPPAGE_BPS.max / 100}%`);
-  return errors.length ? { ok: false, errors } : { ok: true, v: { player, mint, name, symbol, uri, pair, devBuySol, slippageBps } };
+  return errors.length ? { ok: false, errors } : { ok: true, v: { player, mint, name, symbol, uri, pair, devBuySol, slippageBps, spec: specFor(pair, community) } };
 }
 
 // RPC-backed dependencies (replaced by mocks in tests).
@@ -155,13 +166,13 @@ export function quoteNewCoinAmount({ global, feeConfig, quoteMint, amount, pumpQ
 }
 
 // Plain-words route + every fee, shown to the player before they sign. Amounts come from the mainnet dry run when we have one.
-export function describeRoute({ pair, symbol, lamports = 0, slippageBps = SLIPPAGE_BPS.def, minOut = null, cuLimit = CU.limit, signers = 2, sim = null, mint = null, alt = null }) {
+export function describeRoute({ pair, symbol, lamports = 0, slippageBps = SLIPPAGE_BPS.def, minOut = null, cuLimit = CU.limit, signers = 2, sim = null, mint = null, alt = null, spec: given = null }) {
   const trades = sim?.trades || [], tick = "$" + symbol, network = SIG_FEE * signers, priority = Math.ceil(cuLimit * CU.microLamports / 1e6);
-  const spec = PAIRS[pair] || PAIRS.KIBBLE, qTick = spec.ticker || "$KIBBLE", qMint = spec.quote || KIBBLE_MINT;
+  const spec = given || PAIRS[pair] || PAIRS.KIBBLE, qTick = spec.ticker || "$KIBBLE", qMint = spec.quote || KIBBLE_MINT;
   const legQuote = trades.find((t) => t.mint === qMint), legNew = trades.find((t) => t.mint === mint) || trades[trades.length - 1];
   const steps = [], fees = [], notes = [];
   if (lamports > 0 && spec.quote) {
-    const firstVenue = pair === "FLC" || pair === "FOOD" || pair === "AUTISM" ? `the ${qTick} PumpSwap pool` : `the ${qTick} pump.fun bonding curve`;
+    const firstVenue = pair === "FLC" || pair === "FOOD" || pair === "AUTISM" || (spec.community && spec.venue === "pumpswap-pool") ? `the ${qTick} PumpSwap pool` : `the ${qTick} pump.fun bonding curve`;
     steps.push({ from: "SOL", to: qTick, venue: firstVenue, in: solTxt(lamports), out: legQuote ? units(legQuote.tokenAmount) + " " + qTick : "quoted in the dry run" });
     steps.push({ from: qTick, to: tick, venue: `your new ${tick} bonding curve (created in this same transaction)`, in: legNew ? units(legNew.quoteAmount) + " " + qTick : "all " + qTick + " from step 1", out: legNew ? units(legNew.tokenAmount) + " " + tick : "quoted in the dry run" });
     fees.push({ key: "pumpfun", label: "pump.fun trading fee", bps: legQuote?.feeBps ?? 95, amount: legQuote ? solTxt(legQuote.fee) : null,
@@ -185,13 +196,14 @@ export function describeRoute({ pair, symbol, lamports = 0, slippageBps = SLIPPA
   fees.push({ key: "rent", label: "Account deposits (rent)", amount: rent != null ? solTxt(rent) : null, lamports: rent, plain: "One-time Solana storage deposits for your coin's mint, metadata, bonding curve and your token accounts. pump.fun charges no separate create fee." });
   if (spec.quote) notes.push(`Charity routing isn't available for ${qTick}-paired coins.`);
   if (alt) notes.push(`Uses ${alt}, a public address lookup table widely used by pump.fun transactions, to fit everything in one transaction. It only shortens addresses; it can't move funds.`);
+  if (spec.community) notes.push(`${qTick} is a community main: added by a user, re-checked on-chain for this build (authorities revoked, SOL route, liquidity), not featured and not endorsed by Inu. NFA.`);
   notes.push("Inu Verse never signs, holds or moves your SOL or tokens. You sign in your own wallet.");
   return { pair, steps, fees, notes, total: sim?.cost != null ? { lamports: sim.cost, text: solTxt(sim.cost), from: "mainnet dry run" } : null };
 }
 
 export async function buildCreateTx(v, deps) {
   const { player, mint, name, symbol, uri, pair, devBuySol, slippageBps = SLIPPAGE_BPS.def } = v;
-  const spec = PAIRS[pair] || PAIRS[DEFAULT_PAIR], quoteMint = spec.quote || null, qTick = spec.ticker || pair;
+  const spec = v.spec || PAIRS[pair] || PAIRS[DEFAULT_PAIR], quoteMint = spec.quote || null, qTick = spec.ticker || pair;
   const lamports = Math.round(devBuySol * 1e9), hop = !!quoteMint && lamports > 0, cuLimit = hop ? CU.hopLimit : CU.limit;
   const head = [ComputeBudgetProgram.setComputeUnitLimit({ units: cuLimit }), ComputeBudgetProgram.setComputeUnitPrice({ microLamports: CU.microLamports })];
   let compose, alt = null, quote = null, create = null;
@@ -271,34 +283,34 @@ export async function buildCreateTx(v, deps) {
   }
   if (deps.simulate && !simulation) simulation = await runSim(built.t);
   if (split?.trades && simulation && !(simulation.trades || []).find((t) => t.mint === mint.toBase58())) simulation = { ...simulation, trades: split.trades, quoted: true };
-  const route = describeRoute({ pair, symbol, lamports, slippageBps, minOut: minOut == null ? null : minOut.toString(), cuLimit, signers: built.info.signers.length, sim: simulation, mint: mint.toBase58(), alt: alt ? ROUTE_ALT : null });
+  const route = describeRoute({ pair, symbol, lamports, slippageBps, minOut: minOut == null ? null : minOut.toString(), cuLimit, signers: built.info.signers.length, sim: simulation, mint: mint.toBase58(), alt: alt ? ROUTE_ALT : null, spec });
   if (split) route.notes = [`Your first buy is a second unsigned transaction after this coin is created (${split.reason}). You sign both in your own wallet; the server never signs.`, ...(route.notes || [])];
   if (simulation) delete simulation.trades;
   return { tx: Buffer.from(built.bytes).toString("base64"), size: built.bytes.length, feePayer: built.info.feePayer, creator: player.toBase58(), signers: built.info.signers, mint: mint.toBase58(), pair, devBuySol, slippageBps,
-    minOut: minOut == null ? null : minOut.toString(), lookupTable: alt ? ROUTE_ALT : null, quoteMint, minLamports: minLamports({ devBuySol, pair }), route, simulation, serverSigned: false,
+    minOut: minOut == null ? null : minOut.toString(), lookupTable: alt ? ROUTE_ALT : null, quoteMint, minLamports: minLamports({ devBuySol, pair }), route, simulation, serverSigned: false, quoteTicker: quoteMint ? qTick : "SOL", community: !!spec.community,
     ...(split ? { split: true, buyAfterCreate: true } : {}) };
 }
 
 
-export function validateBuy(body = {}) {
+export function validateBuy(body = {}, { community = null } = {}) {
   const errors = [];
   if (carriesSecret(body)) return { ok: false, errors: ["Never send private keys or seed phrases."] };
   const player = pk(body.player), mint = pk(body.mint);
   if (!player) errors.push("player wallet address is invalid");
   if (!mint) errors.push("mint public key is invalid");
-  const pair = body.pair == null || body.pair === "" ? DEFAULT_PAIR : PAIRS[body.pair] ? body.pair : null;
-  if (!pair || !PAIRS[pair]?.quote) errors.push("first-buy follows a $KIBBLE, $FLC, $FOOD, or $AUTISM create");
+  const pair = body.pair == null || body.pair === "" ? DEFAULT_PAIR : specFor(body.pair, community) ? body.pair : null;
+  if (!pair || !specFor(pair, community)?.quote) errors.push("first-buy follows a $KIBBLE, $FLC, $FOOD, $AUTISM or approved community-main create");
   const devBuySol = Number(body.devBuySol || 0);
   if (!Number.isFinite(devBuySol) || devBuySol <= 0 || devBuySol > MAX_DEV_BUY_SOL) errors.push(`opening swap must be greater than 0 and at most ${MAX_DEV_BUY_SOL} SOL`);
   const slippageBps = body.slippageBps == null || body.slippageBps === "" ? SLIPPAGE_BPS.def : Number(body.slippageBps);
   if (!Number.isInteger(slippageBps) || slippageBps < SLIPPAGE_BPS.min || slippageBps > SLIPPAGE_BPS.max) errors.push(`slippage must be ${SLIPPAGE_BPS.min / 100}-${SLIPPAGE_BPS.max / 100}%`);
-  return errors.length ? { ok: false, errors } : { ok: true, v: { player, mint, pair, devBuySol, slippageBps } };
+  return errors.length ? { ok: false, errors } : { ok: true, v: { player, mint, pair, devBuySol, slippageBps, spec: specFor(pair, community) } };
 }
 
 /** Unsigned first-buy (SOL → quote → existing mint) after a split create. Player is the only signer. Server never signs. */
 export async function buildBuyTx(v, deps) {
   const { player, mint, pair, devBuySol, slippageBps = SLIPPAGE_BPS.def } = v;
-  const spec = PAIRS[pair] || PAIRS[DEFAULT_PAIR], quoteMint = spec.quote, qTick = spec.ticker || pair;
+  const spec = v.spec || PAIRS[pair] || PAIRS[DEFAULT_PAIR], quoteMint = spec.quote, qTick = spec.ticker || pair;
   const lamports = Math.round(devBuySol * 1e9), cuLimit = CU.hopLimit;
   if (!quoteMint || lamports <= 0) throw Object.assign(new Error("nothing to buy"), { status: 400 });
   if (!deps.quoteFirstBuy) throw Object.assign(new Error(`can't quote the SOL → ${qTick} first buy right now`), { status: 503 });
@@ -326,7 +338,7 @@ export async function buildBuyTx(v, deps) {
     if (simulation.ok === false) return { tx: null, pair, devBuySol, slippageBps, mint: mint.toBase58(), feePayer: player.toBase58(), minOut: minOut.toString(), quoteMint, simulation, serverSigned: false, kind: "buy" };
     if (simulation && !(simulation.trades || []).find((tr) => tr.mint === mint.toBase58())) simulation = { ...simulation, trades: quoted.trades, quoted: true };
   }
-  const route = describeRoute({ pair, symbol: "COIN", lamports, slippageBps, minOut: minOut.toString(), cuLimit, signers: 1, sim: simulation, mint: mint.toBase58(), alt: ROUTE_ALT });
+  const route = describeRoute({ pair, symbol: "COIN", lamports, slippageBps, minOut: minOut.toString(), cuLimit, signers: 1, sim: simulation, mint: mint.toBase58(), alt: ROUTE_ALT, spec });
   if (simulation) delete simulation.trades;
   return { tx: Buffer.from(t.serialize()).toString("base64"), size: t.serialize().length, feePayer: info.feePayer, signers: info.signers, mint: mint.toBase58(), pair, devBuySol, slippageBps,
     minOut: minOut.toString(), lookupTable: ROUTE_ALT, quoteMint, route, simulation, serverSigned: false, kind: "buy" };
