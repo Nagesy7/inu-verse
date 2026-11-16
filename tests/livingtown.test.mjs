@@ -244,17 +244,18 @@ test('Meadow Row has its own art: painters, station props, carried goods, tools 
   assert.match(town.innerHTML, /Used in town today/);
 });
 
-test('workers walk at the designed pace: slower than the player in real px/s, on the game\'s 12-minute sky day', async () => {
-  const { DAY_LEN } = await import('../src/ambient.js');
+test('workers walk at the designed pace: 70 real px/s, slower than the player, on the wall-clock 24-minute sky day', async () => {
+  const { SKY_DAY_MS } = await import('../src/weather.js');
   const { WALK_SPEED } = await import('../src/mobility.js');
-  assert.equal(WR.GAME_DAY_S, DAY_LEN, 'plan clock is tied to the real game day length');
-  assert.equal(WR.PLAN_S_PER_REAL_S, WR.SKY_DAY_S / DAY_LEN);
+  assert.equal(WR.GAME_DAY_S, SKY_DAY_MS / 1000, 'plan clock is tied to the real sky clock main.js syncs to every frame');
+  assert.equal(WR.PLAN_S_PER_REAL_S, 1);
+  const main = readFileSync(new URL('../src/main.js', import.meta.url), 'utf8');
+  assert.match(main, /time \+= dt; syncSky\(\)/, 'the hour is re-synced to the wall-clock sky every frame');
   const realPx = WR.WALK_PX * WR.PLAN_S_PER_REAL_S;
   assert.equal(realPx, 70); assert.ok(realPx < WALK_SPEED, `workers ${realPx} px/s vs player ${WALK_SPEED} px/s`);
-  // measured on a real plan: tiles covered per real second while walking
   const g = WR.dayPlan(WR.workerById('pip')).segs.find((s) => s.kind === 'walk' && s.path.length > 10);
-  const realS = (g.t1 - g.t0) / WR.PLAN_S_PER_REAL_S, px = (g.path.length - 1) * 32;
+  const px = (g.path.length - 1) * 32, realS = (g.t1 - g.t0) / WR.PLAN_S_PER_REAL_S;
   assert.ok(Math.abs(px / realS - 70) < 0.01, `${px / realS} px/s`);
-  // whoever cannot fit another round stays at the bench and still gets home by 5 pm
+  // everyone gets home by 5 pm; whoever cannot fit another round stays at the bench
   for (const w of WR.ROW_WORKERS) { const p = WR.dayPlan(w); assert.ok(p.segs.at(-1).t0 <= WR.HOME_H * WR.HOUR_S + 0.001, `${w.id} home by 17:00`); }
 });
