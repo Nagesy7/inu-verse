@@ -175,7 +175,7 @@ test('Meadow Row workers are wired into existing chains: wool to the Tailor, tea
   for (const id of ['woolly', 'matcha', 'taper']) {
     const w = WR.workerById(id), plan = WR.dayPlan(w);
     assert.ok(WR.MEADOW_LOTS.includes(w.lot), id);
-    assert.ok(plan.cycles >= 2, `${id} does at least two full rounds a day (${plan.cycles})`);
+    assert.ok(plan.cycles >= 1 && plan.drops >= 1, `${id} does at least one full round a day at walking pace (${plan.cycles})`);
     // the walk out leaves the workplace door and ends on the delivery door (real street route, not a jump)
     const out = plan.segs.find((g) => g.kind === 'walk' && g.carry);
     assert.ok(out && out.path.length > 10, `${id} walks a real route with goods`);
@@ -242,4 +242,19 @@ test('Meadow Row has its own art: painters, station props, carried goods, tools 
   const town = { innerHTML: '', querySelector: () => null, querySelectorAll: () => [] };
   renderTownLife(town, { tl, id: 'woolly', tab: 'town' });
   assert.match(town.innerHTML, /Used in town today/);
+});
+
+test('workers walk at the designed pace: slower than the player in real px/s, on the game\'s 12-minute sky day', async () => {
+  const { DAY_LEN } = await import('../src/ambient.js');
+  const { WALK_SPEED } = await import('../src/mobility.js');
+  assert.equal(WR.GAME_DAY_S, DAY_LEN, 'plan clock is tied to the real game day length');
+  assert.equal(WR.PLAN_S_PER_REAL_S, WR.SKY_DAY_S / DAY_LEN);
+  const realPx = WR.WALK_PX * WR.PLAN_S_PER_REAL_S;
+  assert.equal(realPx, 70); assert.ok(realPx < WALK_SPEED, `workers ${realPx} px/s vs player ${WALK_SPEED} px/s`);
+  // measured on a real plan: tiles covered per real second while walking
+  const g = WR.dayPlan(WR.workerById('pip')).segs.find((s) => s.kind === 'walk' && s.path.length > 10);
+  const realS = (g.t1 - g.t0) / WR.PLAN_S_PER_REAL_S, px = (g.path.length - 1) * 32;
+  assert.ok(Math.abs(px / realS - 70) < 0.01, `${px / realS} px/s`);
+  // whoever cannot fit another round stays at the bench and still gets home by 5 pm
+  for (const w of WR.ROW_WORKERS) { const p = WR.dayPlan(w); assert.ok(p.segs.at(-1).t0 <= WR.HOME_H * WR.HOUR_S + 0.001, `${w.id} home by 17:00`); }
 });

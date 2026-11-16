@@ -983,3 +983,10 @@ body.npcwork.inworld:not(.mm-open) #minimap-wrap,body.npcwork.mm-on.inworld:not(
 #town-hops[hidden]{display:none}
 #town-hops button{min-width:44px;min-height:44px;padding:8px 12px;font:11px Silkscreen,monospace;background:#d4a640;color:#141a2e;border:3px solid #141a2e}
 body.inworld #feed-tick{position:static!important;top:auto!important;left:auto!important;max-width:100%!important}
+/* Narrow phones: with the TEST debug chip gone, a compact Notices button (envelope + count, aria-label "Notices") lets
+   Bones, Town and Notices share one top-bar row instead of wrapping to a second. */
+@media (max-width:430px){
+ body.inworld #notice-toggle{font-size:0!important;padding:0 10px!important;display:inline-flex!important;align-items:center;gap:5px}
+ body.inworld #notice-toggle::before{content:'\2709';font-size:17px;line-height:1}
+ body.inworld #notice-toggle #notice-count{font-size:13px}
+}

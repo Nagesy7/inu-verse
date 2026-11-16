@@ -1,6 +1,7 @@
 // Living-town preview: Orchard Row workplaces, their crew, and the six living-town systems layered on top.
 // Pure and deterministic: where every worker is, what they carry and how many goods they have moved is a function of the
-// shared sky clock (one sky day = 24 real minutes, so one sky hour = 60 real seconds). Every device sees the same pup at the
+// shared sky clock. Plans count 60 plan-seconds per sky hour (1440 per sky day); the game's sky day is GAME_DAY_S = 720 real
+// seconds, so one plan-second is half a real second. Walking speed is set in real px/s and converted. Every device sees the same pup at the
 // same station. Only memory, apprenticeships and keepsakes are personal, and they live in their own preview key.
 // Nothing here reads or writes inuverse.save.v1, Bones, $KIBBLE, wallets, prizes or scores. Goods are town scenery.
 // Workers are town characters. They are not paid in anything real, and nothing here is earnings.
@@ -10,9 +11,16 @@ import { sydneyYMD, seasonOfMonth } from './seasons.js';
 
 export const ROW_SAVE_KEY = 'inuverse.preview.livingtown.v1';
 export const LIVE_SAVE_KEY = 'inuverse.save.v1';
-export const SKY_DAY_S = 1440; // 24 real minutes
+export const SKY_DAY_S = 1440; // plan-seconds per sky day (60 per sky hour)
 export const HOUR_S = 60;
-export const WALK_PX = 70; // workers stroll a little slower than the player (92 px/s)
+// The game's sky day (src/ambient.js DAY_LEN): 720 real seconds = 12 real minutes. Kept as a literal so this file stays
+// light for tests; tests/livingtown.test.mjs checks it still equals DAY_LEN.
+export const GAME_DAY_S = 720;
+export const PLAN_S_PER_REAL_S = SKY_DAY_S / GAME_DAY_S; // 2: the plan clock runs twice as fast as real time
+// Designed pace: workers stroll at 70 real px/s, a little slower than the player (WALK_SPEED 92 px/s). In plan units that is
+// 35 px per plan-second. (Before this fix it was 70 px per plan-second = 140 real px/s, faster than the player.)
+export const WALK_REAL_PX = 70;
+export const WALK_PX = WALK_REAL_PX / PLAN_S_PER_REAL_S;
 export const LEAVE_H = 7;
 export const HOME_H = 17;
 export const LUNCH_H = 12;
@@ -53,7 +61,7 @@ export const ROW_WORKERS = Object.freeze([
   { id: 'clover', name: 'Clover', coat: 'tan', job: 'Dairy hand', lot: 'dairy', home: 'P2', tool: 'pail', good: 'milk', marketSwap: 'sip', recipe: 'Cheese wheel',
     steps: [['work', 40], ['go', 'sip', 'milk'], ['drop', 3, 'milk'], ['go', 'dairy', null]] },
   { id: 'kiln', name: 'Kiln', coat: 'red', job: 'Potter', lot: 'pottery', home: 'cot0', tool: 'clay', good: 'pots', marketSwap: 'goods', recipe: 'Clay planter',
-    steps: [['go', 'quarry', null], ['pick', 3, 'clay'], ['go', 'pottery', 'clay'], ['work', 40], ['go', 'goods', 'pots'], ['drop', 3, 'pots'], ['go', 'pottery', null]] },
+    steps: [['go', 'quarry', null], ['pick', 3, 'clay'], ['go', 'pottery', 'clay'], ['work', 28], ['go', 'goods', 'pots'], ['drop', 3, 'pots'], ['go', 'pottery', null]] },
   { id: 'chip', name: 'Chip', coat: 'dark', job: 'Carpenter', lot: 'carpentry', home: 'p4', tool: 'saw', good: 'chairs', recipe: 'Footstool',
     steps: [['go', 'sawmill', null], ['pick', 3, 'planks'], ['go', 'carpentry', 'planks'], ['work', 44], ['go', 'goldden', 'chair'], ['drop', 3, 'chairs'], ['go', 'carpentry', null]] },
   { id: 'letty', name: 'Letty', coat: 'gray', job: 'Postie', lot: 'post', home: 'P1', tool: 'stamp', good: 'letters', recipe: 'Postcard',
@@ -67,9 +75,9 @@ export const ROW_WORKERS = Object.freeze([
   { id: 'woolly', name: 'Woolly', coat: 'gray', job: 'Shepherd', lot: 'sheep', home: 'p1', tool: 'shears', good: 'wool', recipe: 'Wool scarf',
     steps: [['work', 44], ['go', 'tailor', 'wool'], ['drop', 3, 'wool'], ['go', 'sheep', null]] },
   { id: 'matcha', name: 'Matcha', coat: 'tan', job: 'Tea picker', lot: 'teagarden', home: 'p2', tool: 'leaf', good: 'tea', marketSwap: 'sip', recipe: 'Tea sachet',
-    steps: [['work', 40], ['go', 'sip', 'tea'], ['drop', 3, 'tea'], ['go', 'teagarden', null]] },
+    steps: [['work', 28], ['go', 'sip', 'tea'], ['drop', 3, 'tea'], ['go', 'teagarden', null]] },
   { id: 'taper', name: 'Taper', coat: 'cream', job: 'Candle maker', lot: 'candles', home: 'p6', tool: 'dip', good: 'candles', recipe: 'Tea light',
-    steps: [['go', 'apiary', null], ['pick', 3, 'wax'], ['go', 'candles', 'wax'], ['work', 42], ['go', 'h3', 'candles'], ['drop', 2, 'candles'], ['go', 'h4', 'candles'], ['drop', 2, 'candles'], ['go', 'candles', null]] },
+    steps: [['go', 'apiary', null], ['pick', 3, 'wax'], ['go', 'candles', 'wax'], ['work', 28], ['go', 'h3', 'candles'], ['drop', 2, 'candles'], ['go', 'h4', 'candles'], ['drop', 2, 'candles'], ['go', 'candles', null]] },
 ]);
 export const WORKER_IDS = Object.freeze(ROW_WORKERS.map((w) => w.id));
 export const workerById = (id) => ROW_WORKERS.find((w) => w.id === id) || null;
@@ -129,9 +137,11 @@ export function dayPlan(w, { foreman = false, market = false } = {}) {
   const speed = foreman ? 0.85 : 1;
   const cycleLen = () => { let s = 0, here = at; for (const st of steps) { if (st[0] === 'go') { s += walkS(route(here, st[1])); here = st[1]; } else s += st[1] * (st[0] === 'work' ? speed : 1); } return s; };
   const endH = HOME_H * HOUR_S;
+  const homeWalk = walkS(route(workLot, w.home));
   while (cycles < 40) {
-    if (!lunched && t >= LUNCH_H * HOUR_S) { segs.push({ kind: 'lunch', t0: t, t1: t + LUNCH_S, at }); t += LUNCH_S; lunched = true; }
-    if (t + cycleLen() > endH) break;
+    // lunch near noon: if the next round would run well past 12, eat first
+    if (!lunched && t + cycleLen() / 2 >= LUNCH_H * HOUR_S) { segs.push({ kind: 'lunch', t0: t, t1: t + LUNCH_S, at }); t += LUNCH_S; lunched = true; }
+    if (t + cycleLen() + (lunched ? 0 : LUNCH_S) > endH - homeWalk) break; // leave time to walk home by knocking-off time
     for (const st of steps) {
       if (st[0] === 'go') { go(at, st[1], st[2]); at = st[1]; }
       else if (st[0] === 'work') { const d = st[1] * speed; segs.push({ kind: 'work', t0: t, t1: t + d, at }); t += d; }
@@ -140,6 +150,9 @@ export function dayPlan(w, { foreman = false, market = false } = {}) {
     }
     cycles++;
   }
+  // a full round no longer fits: stay at the bench until knocking-off time instead of heading home early
+  if (!lunched && t < endH && t >= LUNCH_H * HOUR_S - 1) { segs.push({ kind: 'lunch', t0: t, t1: t + LUNCH_S, at }); t += LUNCH_S; lunched = true; }
+  { const homeBy = endH - homeWalk; if (at === workLot && t < homeBy) { segs.push({ kind: 'work', t0: t, t1: homeBy, at, tail: true }); t = homeBy; } }
   go(at, w.home, null);
   segs.push({ kind: 'home', t0: t, t1: SKY_DAY_S, at: w.home });
   const plan = { segs, cycles, drops: segs.filter((s) => s.kind === 'drop').length, works: segs.filter((s) => s.kind === 'work').length };
@@ -227,7 +240,7 @@ export function sydneyDayIndex(ms = Date.now()) {
   return Math.floor((Date.UTC(y, m - 1, d) - Date.UTC(EPOCH_YMD.y, EPOCH_YMD.m - 1, EPOCH_YMD.d)) / 864e5);
 }
 export const dayKey = (ms = Date.now()) => { const { y, m, d } = sydneyYMD(ms); return `${y}-${String(m).padStart(2, '0')}-${String(d).padStart(2, '0')}`; };
-export const skyDayIndex = (ms = Date.now()) => Math.floor((ms - EPOCH_MS) / (SKY_DAY_S * 1000));
+export const skyDayIndex = (ms = Date.now()) => Math.floor((ms - EPOCH_MS) / (GAME_DAY_S * 1000)); // one per real game sky day (12 min)
 export const seasonNow = (ms = Date.now(), forced = null) => forced || seasonOfMonth(sydneyYMD(ms).m);
 export const harvestOf = (season) => HARVEST[season] || 'apples';
 

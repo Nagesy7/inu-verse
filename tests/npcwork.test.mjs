@@ -2,7 +2,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
-import { SHEAF_WORLD, bottomCentre, createNpcWork, npcWorkOn } from '../src/npcwork.js';
+import { SHEAF_WORLD, bottomCentre, createNpcWork, npcWorkOn, npcDebugOn } from '../src/npcwork.js';
 import { lunchLayout, setLife } from '../src/daytown.js';
 import { LIVE_SAVE_KEY, SAVE_KEY } from '../src/npcbuildings.js';
 
@@ -85,4 +85,14 @@ test('lunch composites on the sit anchor and the day shift does not mint bones',
   assert.equal(src.includes('inuverse.save.v1'), false);
   assert.match(src, /dock-east\.png/);
   assert.equal(src.includes('dock/dock.png'), false);
+});
+
+test('the TEST debug chip is off the top bar unless ?npcdebug=1', () => {
+  const made = (search) => { const els = []; const d = doc(search); d.getElementById = (id) => (id === 'hud' ? { appendChild: (e) => els.push(e) } : null); d.body.appendChild = (e) => els.push(e); createNpcWork(d, mem()); return els.map((e) => e.id); };
+  assert.equal(npcDebugOn(''), false); assert.equal(npcDebugOn('?npcdebug=1'), true); assert.equal(npcDebugOn('?npcdebug=0'), false);
+  assert.ok(!made('').includes('npcwork-chip'));
+  assert.ok(!made('').includes('npcwork-pop'));
+  assert.ok(made('?npcdebug=1').includes('npcwork-chip'));
+  // the summary readout still works for tests without the chip
+  const w = createNpcWork(doc(''), mem()); assert.equal(w.frameNote().visible, 'TEST');
 });

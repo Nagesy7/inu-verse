@@ -15,6 +15,11 @@ import { createTownLife } from './townlife.js';
 
 export const NPCWORK_QUERY = 'npcwork';
 
+export const NPCDEBUG_QUERY = 'npcdebug';
+export function npcDebugOn(search = '') {
+  try { return new URLSearchParams(search).get(NPCDEBUG_QUERY) === '1'; } catch { return false; }
+}
+
 export function npcWorkOn(search = '') {
   const v = new URLSearchParams(search).get(NPCWORK_QUERY);
   return v !== '0' && v !== 'off';
@@ -677,8 +682,11 @@ export function createNpcWork(doc = document, storage = globalThis.localStorage)
   const row = createTownLife(storage, search);
   let held = false;
   let acc = 0;
-  const pop = doc?.createElement ? doc.createElement('div') : null;
-  const chip = doc?.createElement ? doc.createElement('button') : null;
+  // The TEST debug chip and its readout are off the top bar by default (it pushed the phone HUD to a second row).
+  // Developers can still open them with ?npcdebug=1; nothing else depends on them.
+  const debug = npcDebugOn(search);
+  const pop = debug && doc?.createElement ? doc.createElement('div') : null;
+  const chip = debug && doc?.createElement ? doc.createElement('button') : null;
   if (chip) {
     chip.id = 'npcwork-chip';
     chip.type = 'button';
