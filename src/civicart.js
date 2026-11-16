@@ -41,10 +41,10 @@ export function civicActors({ skyDay, sec, t, px = null, py = null, fires = {}, 
 export function civicProps({ skyDay, sec, t, fires = {} }) {
   const out = [];
   for (const f of firesAt(skyDay, sec, fires)) { if (f.phase !== 'burning' && f.phase !== 'out') continue; const l = lotById(PLACES[f.place].lot); if (!l) continue;
-    const cx = (l.x + l.w / 2) * TILE, top = l.y * TILE + 10, base = (l.y + l.h) * TILE;
+    const cx = (l.x + l.w / 2) * TILE, base = (l.y + l.h) * TILE, top = base - 58; // flames lick out of the front windows
     out.push({ y: base + 2, d: (c) => { const k = f.k;
       for (let i = 0; i < 5; i++) { const sx = cx - 30 + i * 15 + Math.sin(t * 2 + i) * 4, sy = top - 30 - ((t * 18 + i * 13) % 40); R(c, sx - 6, sy - 6, 12, 12, `rgba(90,90,100,${0.5 * Math.max(0.2, k)})`); }
-      if (f.phase === 'burning') for (let i = 0; i < 4; i++) { const fx = cx - 24 + i * 16, h = (14 + Math.sin(t * 12 + i * 2) * 5) * k; R(c, fx - 6, top - h, 12, h, '#ff5a2a'); R(c, fx - 3, top - h * 0.7, 6, h * 0.7, '#ffd84a'); } } }); }
+      if (f.phase === 'burning') for (let i = 0; i < 5; i++) { const fx = cx - 40 + i * 20, h = (22 + Math.sin(t * 12 + i * 2) * 7) * k; R(c, fx - 8, top - h, 16, h, '#141a2e'); R(c, fx - 7, top - h + 1, 14, h - 1, '#ff5a2a'); R(c, fx - 3, top - h * 0.7, 6, h * 0.7, '#ffd84a'); } } }); }
   return out;
 }
 export { placeDoor };
