@@ -883,3 +883,8 @@ export function drawBuildingGlow(c, ox, oy, lit = 1) {
   } finally { c.restore(); FRAME_GLOW.length = 0; }
   return n;
 }
+
+// ---------------------------------------------------------------- extension kit (living-town preview workplaces, src/workrowart.js)
+/** register an extra painter ({ paint(c, b, F, V, g), anim?(c, b, F, t, g, V) }) under a building id; does not change BLDG_IDS */
+export function registerPainter(id, painter) { if (id && painter && typeof painter.paint === 'function') P[id] = painter; }
+export const KIT = Object.freeze({ R, A, hash, wall, gable, roofBand, chimney, win, flowerBox, awning, door, sign, streetLamp, shrub, aFrame, dropShadow, plinth, steam, twinkle, bunting, picket, slatFence, planks, bricks, stoneBlocks, stucco, flagpole, wavingFlag, nameplate });
