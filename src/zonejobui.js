@@ -2,6 +2,7 @@
 // the multiplier, then a results card. Logic lives in zonejobs.js; this file only draws and reads taps.
 import { ZJ, ZJOBS, MARKER, ensureTownx, newShift, step, tap, finishShift, rankOf, capLeft, zoneAt } from './zonejobs.js';
 import { drawShiba } from './art.js';
+import { injuryCap } from './civic.js';
 export const ZW = 360, ZH = 540;
 const INK = '#141a2e';
 let active = null;
@@ -19,7 +20,7 @@ export function startZoneJob(jobId, ctx) {
   const cv = document.createElement('canvas'); cv.id = 'zj-canvas'; ov.appendChild(cv); document.body.appendChild(ov); const c = cv.getContext('2d');
   const fit = () => { const k = Math.min(innerWidth / ZW, innerHeight / ZH) * 0.98, d = devicePixelRatio || 1; cv.style.width = Math.round(ZW * k) + 'px'; cv.style.height = Math.round(ZH * k) + 'px'; cv.width = Math.round(ZW * k * d); cv.height = Math.round(ZH * k * d); cv._s = k * d; c.imageSmoothingEnabled = false; };
   fit(); addEventListener('resize', fit);
-  const st = { job: jobId, phase: 'ready', t: 0, run: newShift(jobId), zone: zoneAt(jobId, 0, 0), anim: null, res: null, paused: false, fx: [], msg: '', msgCol: '#fff', ready: 1.0 };
+  const st = { job: jobId, phase: 'ready', t: 0, run: newShift(jobId, { cap: injuryCap(ctx.state) }), zone: zoneAt(jobId, 0, 0), anim: null, res: null, paused: false, fx: [], msg: '', msgCol: '#fff', ready: 1.0 };
   active = st;
   const day = () => (ctx.day ? ctx.day() : ''), skyDay = () => (ctx.skyDay ? ctx.skyDay() : 0);
   const blip = (f) => { try { ctx.blip?.(f); } catch {} };
@@ -34,7 +35,7 @@ export function startZoneJob(jobId, ctx) {
     if (st.run.done) setTimeout(() => finish(), 650);
   }
   function finish() { if (st.phase !== 'play') return; st.phase = 'results'; st.res = finishShift(ctx.state, st.run, { day: day(), skyDay: skyDay() }); blip(st.res.paid ? 880 : 300); try { ctx.onDone?.(st.res); } catch {} }
-  function again() { st.run = newShift(jobId); st.phase = 'ready'; st.ready = 1.0; st.anim = null; st.msg = ''; st.res = null; }
+  function again() { st.run = newShift(jobId, { cap: injuryCap(ctx.state) }); st.phase = 'ready'; st.ready = 1.0; st.anim = null; st.msg = ''; st.res = null; }
   function end() { if (st.phase === 'play' && st.run.taps > 0) finish(); close(); }
   function close() { if (!active) return; active = null; removeEventListener('keydown', kd, true); removeEventListener('resize', fit); ov.remove(); try { ctx.onClose?.(st.res); } catch {} }
   st.close = close; st.tap = doTap; st.finish = finish;
@@ -90,7 +91,7 @@ function draw(c, s, st, job, ctx) {
   const z = st.zone; B(c, BAR.x, BAR.y, BAR.w, BAR.h, '#2a3050');
   const zx = BAR.x + (z.c - z.w / 2) * BAR.w, zw = z.w * BAR.w; R(c, zx, BAR.y, zw, BAR.h, '#e83a3a'); R(c, zx + zw * (0.5 - ZJ.PERFECT_FRAC / 2), BAR.y, Math.max(2, zw * ZJ.PERFECT_FRAC), BAR.h, '#ff8a6a'); R(c, zx, BAR.y, zw, 3, '#ff9a8a');
   const mx = BAR.x + MARKER * BAR.w; R(c, mx - 1, BAR.y - 6, 3, BAR.h + 12, '#fff'); c.fillStyle = '#ffd84a'; c.beginPath(); c.moveTo(mx - 7, BAR.y - 14); c.lineTo(mx + 8, BAR.y - 14); c.lineTo(mx + 0.5, BAR.y - 5); c.fill(); c.beginPath(); c.moveTo(mx - 7, BAR.y + BAR.h + 14); c.lineTo(mx + 8, BAR.y + BAR.h + 14); c.lineTo(mx + 0.5, BAR.y + BAR.h + 5); c.fill();
-  if (st.phase === 'ready') T(c, 'GET READY…', ZW / 2, 400, 11, '#ffe7a3'); else if (st.msg && st.anim && st.t - st.anim.t0 < 1.2) T(c, st.msg, ZW / 2, 400, 10, st.msgCol); else T(c, job.how.toUpperCase(), ZW / 2, 400, 7, '#c8d0e8');
+  if (st.phase === 'ready') { T(c, 'GET READY…', ZW / 2, 400, 11, '#ffe7a3'); if (r.cap < ZJ.MULT_CAP) T(c, `SORE (${X.injury?.what || 'a bump'}): MAX x${r.cap} · VISIT THE HOSPITAL`, ZW / 2, 384, 7, '#ff9a8a'); } else if (st.msg && st.anim && st.t - st.anim.t0 < 1.2) T(c, st.msg, ZW / 2, 400, 10, st.msgCol); else T(c, job.how.toUpperCase(), ZW / 2, 400, 7, '#c8d0e8');
   const pressed = st.anim && st.t - st.anim.t0 < 0.12; B(c, BTN.x, BTN.y + (pressed ? 3 : 0), BTN.w, BTN.h - (pressed ? 3 : 0), pressed ? '#b8862a' : '#d4a640'); R(c, BTN.x, BTN.y + (pressed ? 3 : 0), BTN.w, 5, '#f2cc68');
   T(c, job.verb, ZW / 2, BTN.y + 46, 20, INK === '#fff' ? INK : '#fff8e0');
   const left = capLeft(ctx.state, ctx.day ? ctx.day() : '');

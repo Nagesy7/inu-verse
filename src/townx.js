@@ -21,6 +21,9 @@ export const PLACES = Object.freeze({
   candles: { id: 'candles', lot: 'candles', name: 'Candle Works', shop: 'candles' },
   exchange: { id: 'exchange', lot: 'exchange', name: 'Town Exchange', civic: 'exchange' },
   townhall: { id: 'townhall', lot: 'town-hall', name: 'Town Hall', civic: 'townhall' },
+  police: { id: 'police', lot: 'police', name: 'Police Academy', job: 'police', civic: 'police' },
+  hospital: { id: 'hospital', lot: 'hospital', name: 'Hospital', civic: 'hospital' },
+  firehouse: { id: 'firehouse', lot: 'firehouse', name: 'Fire Station', civic: 'fire' },
 });
 export const PLACE_IDS = Object.freeze(Object.keys(PLACES));
 export const NEAR_PX = 34;

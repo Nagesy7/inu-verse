@@ -72,12 +72,12 @@ export function rankOf(hits) {
 export function capLeft(s, day) { const X = ensureTownx(s); return Math.max(0, ZJ.DAILY_CAP - (X.jobDay.day === day ? X.jobDay.bones : 0)); }
 
 // ---- one shift
-export function newShift(jobId) { return { job: jobId, taps: 0, hits: 0, perfects: 0, mult: 1, bestMult: 1, score: 0, misses: 0, missRow: 0, bumped: false, phase: 0, done: false, last: null }; }
+export function newShift(jobId, { cap = 0 } = {}) { return { job: jobId, cap: cap || ZJ.MULT_CAP, taps: 0, hits: 0, perfects: 0, mult: 1, bestMult: 1, score: 0, misses: 0, missRow: 0, bumped: false, phase: 0, done: false, last: null }; }
 export function tap(run, z) {
   if (run.done) return run.last;
   const hit = isHit(z), perfect = hit && isPerfect(z);
   let pay = 0;
-  if (hit) { pay = ZJ.BASE * run.mult + (perfect ? ZJ.PERFECT_BONUS : 0); run.hits++; run.missRow = 0; if (perfect) run.perfects++; run.mult = Math.min(ZJ.MULT_CAP, run.mult * 2); run.bestMult = Math.max(run.bestMult, run.mult); }
+  if (hit) { pay = ZJ.BASE * run.mult + (perfect ? ZJ.PERFECT_BONUS : 0); run.hits++; run.missRow = 0; if (perfect) run.perfects++; run.mult = Math.min(run.cap || ZJ.MULT_CAP, run.mult * 2); run.bestMult = Math.max(run.bestMult, run.mult); }
   else { run.misses++; run.missRow++; run.mult = 1; if (run.missRow >= ZJ.BUMP_MISSES) run.bumped = true; }
   run.score += pay; run.taps++;
   if (run.taps >= ZJ.SHIFT_ZONES) run.done = true;

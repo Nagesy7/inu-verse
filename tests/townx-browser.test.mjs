@@ -97,3 +97,28 @@ test('walk into the Town Exchange on a phone, read every board, and walk back ou
     assert.deepEqual(errs, []); await ctx.close();
   } finally { await browser.close(); srv.close(); }
 });
+
+test('civic row on a phone: catch a pickpocket, get patched up at the Hospital, read the Fire Station and Police logs', { timeout: 120000 }, async () => {
+  const srv = await serveRoot(); const browser = await chromium.launch();
+  try {
+    const { ctx, page, errs } = await boot(browser, srv, { width: 390, height: 844 });
+    const c = await page.evaluate(() => __inu.townx.civic().crimes[0]);
+    await page.evaluate((h) => __inu.setHour(h), (c.t0 + 4) / 60); await page.waitForTimeout(300);
+    assert.equal(await page.evaluate(() => __inu.townx.civic().crimes[0].phase), 'sneaking');
+    const pos = await page.evaluate((id) => { const T = __inu.townx; return T.civic().crimes.find((q) => q.id === id); }, c.id);
+    const door = await page.evaluate((stall) => { __inu.townx.open(stall); const el = document.querySelector(`[data-tx-place="${stall}"]`); return !!el; }, pos.stall);
+    assert.ok(door); await page.evaluate(() => document.querySelector('#panel-close')?.click()); await page.waitForTimeout(200);
+    await page.evaluate((stall) => { const p = __inu.townx.placeDoor(stall); __inu.state.player.x = p.x + 22; __inu.state.player.y = p.y + 14; }, pos.stall); await page.waitForTimeout(400);
+    assert.match(await page.evaluate(() => document.getElementById('prompt').innerText), /Stop .* the pickpocket/i);
+    const b0 = await page.evaluate(() => __inu.state.bones);
+    await page.dispatchEvent('#btn-a', 'pointerdown'); await page.waitForTimeout(300);
+    const after = await page.evaluate(() => ({ c: __inu.townx.civic().crimes[0], bones: __inu.state.bones, catches: __inu.townx.state().catches }));
+    assert.equal(after.c.phase, 'caught'); assert.equal(after.c.by, 'you'); assert.equal(after.bones, b0 + 5); assert.equal(after.catches, 1);
+    await page.evaluate(() => __inu.townx.open('police')); await page.waitForSelector(`[data-tx-crime="${c.id}"][data-phase="caught"]`); assert.ok(await page.locator('[data-tx-job="police"]').count() === 1, 'join the police: Beat Patrol shift');
+    await page.evaluate(() => { __inu.townx.state().injury = { kind: 'job', job: 'mine', what: 'a bonked head', day: 0 }; __inu.townx.open('hospital'); });
+    await page.waitForSelector('[data-tx-sec="hospital"][data-tx-injury="a bonked head"]'); await page.click('[data-tx-treat]');
+    await page.waitForSelector('[data-tx-sec="hospital"][data-tx-injury=""]'); assert.equal(await page.evaluate(() => __inu.townx.state().injury), null);
+    await page.evaluate(() => __inu.townx.open('firehouse')); await page.waitForSelector('[data-tx-sec="fire"]');
+    assert.deepEqual(errs, []); await ctx.close();
+  } finally { await browser.close(); srv.close(); }
+});
