@@ -1,5 +1,6 @@
 import { PLOTS, PLOT_COST, TILE } from './world.js';
 import { ensurePacks } from './packs.js';
+import { ensureTownx } from './zonejobs.js';
 import { FURNITURE, WALLS, FLOORS, canPlace } from './furniture.js';
 import { markBought, canSellFurniture, afterFurnitureSold } from './trade.js';
 import { ensureClub, roomOf, SAVE_V } from './club/state.js';
@@ -25,7 +26,7 @@ export function newGame({ name = 'Inu', coat = 'tan' } = {}) {
     wardrobe: { owned: [], equipped: {} },
     packs: null,
   };
-  ensurePacks(s); s.mall = { v: 1, treasury: 0, pools: { daily: 0, weekly: 0, monthly: 0 }, owned: [], cars: [], ledger: [], winners: [], period: { day: 0 }, activity: { dayBones: 0, weekDecor: 0 } }; ensureClub(s); return s;
+  ensurePacks(s); ensureTownx(s); s.mall = { v: 1, treasury: 0, pools: { daily: 0, weekly: 0, monthly: 0 }, owned: [], cars: [], ledger: [], winners: [], period: { day: 0 }, activity: { dayBones: 0, weekDecor: 0 } }; ensureClub(s); return s;
 }
 
 const ok = (extra = {}) => ({ ok: true, ...extra });

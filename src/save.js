@@ -3,6 +3,7 @@ import { normalizeCoat } from './game.js';
 import { ensurePacks } from './packs.js';
 import { ensureMall } from './mall.js';
 import { migrateSave, SAVE_V } from './club/state.js';
+import { ensureTownx } from './zonejobs.js';
 export const SAVE_KEY = 'inuverse.save.v1';
 export function save(state, storage) {
   let out = state;
@@ -20,7 +21,7 @@ export function load(storage) {
     const s = JSON.parse(raw);
     if (!s || !(s.v === 1 || s.v === SAVE_V) || !s.player || typeof s.bones !== 'number') return null;
     s.plots ||= {}; s.inventory ||= {}; s.tokens ||= []; s.stats ||= { shifts: 0, bonesEarned: 0, served: 0 };
-    s.player.coat = normalizeCoat(s.player.coat); ensureWardrobe(s); ensurePacks(s); ensureMall(s); migrateSave(s); // v1 -> v2 adds the club slice (kennel, stamps, pins, parties)
+    s.player.coat = normalizeCoat(s.player.coat); ensureWardrobe(s); ensurePacks(s); ensureMall(s); migrateSave(s); ensureTownx(s); // town economy extras slice (preview): added with defaults, nothing wiped. v1 -> v2 adds the club slice (kennel, stamps, pins, parties)
     return s;
   } catch { return null; }
 }
