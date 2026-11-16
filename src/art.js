@@ -62,8 +62,10 @@ export const artReady = typeof Image === 'undefined' ? Promise.resolve() : Promi
 export function artKey(coat) { return 'layer:' + coat; }
 
 // Ordered atlas keys (base first, then item layers by manifest z) for coat/view/frame/equipped.
+// Townsfolk-only wear (bought at the Tailor by NPCs, src/folkart.js): atlas layers, never in OUTFITS, so players can't buy/equip/trade them.
+export const NPC_WEAR_IDS = new Set(['npc_beanie', 'npc_scarf', 'npc_jacket']);
 export function outfitLayers(coat, view, frame, equipped = {}) {
-  const items = Object.values(equipped || {}).filter((id) => OUTFITS[id] && OUTFIT_ATLAS.items[id]);
+  const items = Object.values(equipped || {}).filter((id) => (OUTFITS[id] || NPC_WEAR_IDS.has(id)) && OUTFIT_ATLAS.items[id]);
   const noBottom = items.some((id) => OUTFIT_ATLAS.items[id].replacesBottom);
   const ids = items.filter((id) => !(noBottom && OUTFIT_ATLAS.items[id].slot === 'bottom')).sort((a, b) => OUTFIT_ATLAS.items[a].z - OUTFIT_ATLAS.items[b].z);
   return ['base', ...ids].map((id) => `${id}|${view}|${frame}`).filter((k) => OUTFIT_ATLAS.frames[coat]?.[k]);
