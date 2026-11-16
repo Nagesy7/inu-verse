@@ -3,6 +3,7 @@
 import {
   ROW_WORKERS, WORKPLACES, UPGRADES, HALL_STAGES, LESSONS_TO_GRADUATE, FOREMAN_XP, LEAVE_H, HOME_H, SKY_DAY_S, HOUR_S,
   workerAt, needsOf, fireOn, hallStage, marketDay, goodsMoved, upgradesFor, sydneyDayIndex, skyDayIndex, dayKey, seasonNow, harvestOf,
+  townStock, SERVICE, SERVE_FX_S,
   loadLife, saveLife, talk, startApprentice, lesson, craft, recipesOf, isForeman, xpOf, workerById,
 } from './workrow.js';
 import { rowProps, rowOverlay } from './workrowart.js';
@@ -40,7 +41,8 @@ export function createTownLife(storage = globalThis.localStorage, search = '') {
       return { w, at, foreman, needs: needsOf(w, s, { rain: env.rain, metToday, fire: F }), metToday };
     });
     const points = goodsMoved(skyDay(), s, (w) => ({ foreman: isForeman(L, w.id, dIdx), market }));
-    frame = { s, fire: F, market, season, harvest: harvestOf(season), workers, upgrades: upgradesFor(points), hall: hallStage(dIdx, s), dayIdx: dIdx, skyDay: skyDay(), today };
+    const stock = townStock(s, (w) => ({ foreman: isForeman(L, w.id, dIdx), market }));
+    frame = { s, fire: F, market, season, harvest: harvestOf(season), workers, stock, upgrades: upgradesFor(points), hall: hallStage(dIdx, s), dayIdx: dIdx, skyDay: skyDay(), today };
     return frame;
   }
   const api = {
@@ -71,7 +73,7 @@ export function createTownLife(storage = globalThis.localStorage, search = '') {
       }
       return out;
     },
-    props() { const f = api.frame(); return rowProps({ workers: f.workers, season: f.season, harvest: f.harvest, t: env.t, upgrades: f.upgrades, fire: f.fire, hall: f.hall, market: f.market, rain: env.rain, night: env.night }); },
+    props() { const f = api.frame(); return rowProps({ workers: f.workers, stock: f.stock, serveFxS: SERVE_FX_S, season: f.season, harvest: f.harvest, t: env.t, upgrades: f.upgrades, fire: f.fire, hall: f.hall, market: f.market, rain: env.rain, night: env.night }); },
     talk(id, playerName) {
       const f = api.frame();
       const r = talk(L, id, { day: f.today, playerName, sec: f.s, rain: env.rain, dayIdx: f.dayIdx });
@@ -84,6 +86,7 @@ export function createTownLife(storage = globalThis.localStorage, search = '') {
       const f = api.frame();
       return {
         hour: env.hour, rain: env.rain, season: f.season, harvest: f.harvest, market: f.market, fire: f.fire, hall: f.hall, upgrades: f.upgrades, dayIdx: f.dayIdx, skyDay: f.skyDay,
+        stock: f.stock.map((p) => ({ ...p, servedAgo: p.servedAgo == null ? null : Math.round(p.servedAgo) })),
         workers: f.workers.map((r) => ({ id: r.w.id, name: r.w.name, job: r.w.job, lot: r.w.lot, kind: r.at.kind, visible: r.at.visible, x: Math.round(r.at.x), y: Math.round(r.at.y), carry: r.at.carry, made: r.at.made, delivered: r.at.delivered, sheltering: r.at.sheltering, firefight: r.at.firefight, foreman: r.foreman, mood: r.needs.mood, xp: xpOf(L, r.w.id, f.dayIdx) })),
         life: JSON.parse(JSON.stringify(L)),
       };
@@ -117,8 +120,9 @@ export function renderTownLife(body, { tl, id, tab = 'worker', greet = '', toast
   } else if (tab === 'town') {
     const u = f.upgrades, F = f.fire;
     html += `<p><b>Season:</b> ${esc(f.season)}. The orchard is giving ${esc(f.harvest)}.${tl.summary().rain ? ' It is raining: outdoor crews shelter under the eaves and walk with umbrellas.' : ''}</p>
-      <p><b>Today:</b> ${f.market ? 'Market Day. Orchard, apiary, dairy and pottery goods go to the Farmers Market stalls.' : 'An ordinary work day.'}</p>
+      <p><b>Today:</b> ${f.market ? 'Market Day. Orchard, apiary, dairy, pottery and tea garden goods go to the Farmers Market stalls.' : 'An ordinary work day.'}</p>
       <p><b>Fire watch:</b> ${F ? (F.on ? `Chimney flare-up at the ${esc(lotById(F.lot)?.name)}. The crew has the bucket line going.` : F.after ? 'All clear after a chimney flare-up.' : F.upcoming ? 'Quiet so far.' : 'Quiet.') : 'Quiet.'} Cartoon only: nothing is damaged.</p>
+      <p><b>Used in town today:</b> ${(() => { const used = f.stock.filter((p) => p.used > 0 && p.good !== 'build'); return used.length ? used.map((p) => `${p.used} ${esc(p.good)} ${esc(SERVICE[p.good] || 'used')} (${esc(lotById(p.lot)?.name || p.lot)})`).join(', ') : 'nothing yet. Deliveries are used a little after they arrive.'; })()}</p>
       <p><b>Town Hall build:</b> ${esc(f.hall.name)}, ${f.hall.pct}% (${f.hall.daysLeft ? `about ${f.hall.daysLeft} more day${f.hall.daysLeft === 1 ? '' : 's'}` : 'done'}). One stage per real day.</p>
       <p><b>Town upgrades</b> (shared by everyone, from goods moved: ${u.points.toLocaleString('en-AU')})</p><ul class="lt-up">${UPGRADES.map((x) => `<li class="${u.done.includes(x.id) ? 'done' : ''}">${u.done.includes(x.id) ? '✓' : '·'} ${esc(x.name)} <small>${x.need.toLocaleString('en-AU')}</small></li>`).join('')}</ul>`;
   } else {

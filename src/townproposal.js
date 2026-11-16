@@ -145,6 +145,10 @@ export const LOTS = Object.freeze([
   lot('carpentry', "Carpenter's Shop", 'orchard', 61, 28, 5, 3, [63, 27]),
   lot('post', 'Post Office', 'orchard', 72, 28, 5, 3, [74, 27]),
   lot('print', 'Print Shop', 'orchard', 78, 28, 5, 3, [80, 27]),
+  // Meadow Row (living-town preview): three more staffed workplaces in the north-east meadow, on their own lane (y 7).
+  lot('sheep', 'Sheep Meadow', 'orchard', 74, 3, 5, 4, [76, 7]),
+  lot('teagarden', 'Tea Garden', 'orchard', 80, 3, 5, 4, [82, 7]),
+  lot('candles', 'Candle Works', 'orchard', 86, 3, 5, 4, [88, 7]),
 ]);
 
 export const STONES = Object.freeze([
@@ -301,6 +305,10 @@ export function buildProposalGrid() {
   // Orchard Lane: a two-tile lane under the Orchard Row lots, joined to the plaza in the west and the main path in the east.
   for (let y = 26; y <= 27; y++) for (let x = 58; x <= 86; x++) if (openUp.has(grid[y][x])) grid[y][x] = T.WALK;
   for (let y = 28; y <= 35; y++) if (openUp.has(grid[y][85])) grid[y][85] = T.WALK;
+  // Meadow Lane: a one-tile lane under the Meadow Row lots (y 7, clear of the Academy roof), joined to the north path at x 71.
+  for (let x = 73; x <= 91; x++) if (openUp.has(grid[7][x])) grid[7][x] = T.WALK;
+  for (let y = 8; y <= 9; y++) if (openUp.has(grid[y][73])) grid[y][73] = T.WALK;
+  for (let x = 71; x <= 73; x++) if (openUp.has(grid[9][x])) grid[9][x] = T.WALK;
   for (const b of LOTS) {
     const [x, y] = b.door;
     for (const [dx, dy] of [[0, 0], [1, 0], [-1, 0], [0, 1], [0, -1]]) {

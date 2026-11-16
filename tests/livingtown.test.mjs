@@ -8,8 +8,8 @@ import { createTownLife, renderTownLife, queryOverrides } from '../src/townlife.
 
 function mem() { const m = new Map(); return { m, getItem: (k) => (m.has(k) ? m.get(k) : null), setItem: (k, v) => m.set(k, String(v)), removeItem: (k) => m.delete(k) }; }
 
-test('seven new Orchard Row workplaces are solid lots with a reachable door', () => {
-  assert.equal(WR.ROW_LOTS.length, 7);
+test('ten staffed living-town workplaces (Orchard Row 7 + Meadow Row 3) are solid lots with a reachable door', () => {
+  assert.equal(WR.ORCHARD_LOTS.length, 7); assert.equal(WR.MEADOW_LOTS.length, 3); assert.equal(WR.ROW_LOTS.length, 10);
   for (const id of WR.ROW_LOTS) {
     const lot = lotById(id); assert.ok(lot, id);
     for (let y = lot.y; y < lot.y + lot.h; y++) for (let x = lot.x; x < lot.x + lot.w; x++) assert.ok(isBlocked(x, y), `${id} ${x},${y} solid`);
@@ -36,8 +36,8 @@ test('fastPath agrees with proposalPath on length', () => {
   }
 });
 
-test('eight workers, each has a full day plan that only walks on open tiles', () => {
-  assert.equal(WR.ROW_WORKERS.length, 8);
+test('eleven workers, each has a full day plan that only walks on open tiles', () => {
+  assert.equal(WR.ROW_WORKERS.length, 11);
   for (const w of WR.ROW_WORKERS) {
     const plan = WR.dayPlan(w);
     assert.ok(plan.segs.some((s) => s.kind === 'work'), `${w.id} works`);
@@ -138,10 +138,10 @@ test('town life actors and props render as world sprites', () => {
   const tl = createTownLife(mem(), '');
   tl.setEnv({ hour: 10, rain: false, ev: null, night: false });
   const a = tl.actors();
-  assert.equal(a.length, 8);
+  assert.equal(a.length, 11);
   for (const x of a) { assert.ok(Number.isFinite(x.x) && Number.isFinite(x.y)); assert.ok(x.npcwork); }
   assert.ok(tl.props().length > 20);
-  const s = tl.summary(); assert.equal(s.workers.length, 8);
+  const s = tl.summary(); assert.equal(s.workers.length, 11);
 });
 
 test('preview overrides force a fire, a market and a construction day', () => {
@@ -163,4 +163,83 @@ test('card copy never says anyone earns anything real', () => {
   }
   const src = readFileSync(new URL('../src/workrow.js', import.meta.url), 'utf8') + readFileSync(new URL('../src/townlife.js', import.meta.url), 'utf8');
   assert.doesNotMatch(src, /localStorage\.setItem\(['"]inuverse\.save\.v1/);
+});
+
+// ---------------------------------------------------------------- go-live pass: Meadow Row, consumption, honest hand-offs
+test('Meadow Row workers are wired into existing chains: wool to the Tailor, tea to the Café, Apiary wax into candles for the homes', () => {
+  const chain = (id) => WR.workerById(id).steps;
+  assert.deepEqual(chain('woolly').filter((s) => s[0] === 'go' && s[2]).map((s) => [s[1], s[2]]), [['tailor', 'wool']]);
+  assert.deepEqual(chain('matcha').filter((s) => s[0] === 'go' && s[2]).map((s) => [s[1], s[2]]), [['sip', 'tea']]);
+  assert.deepEqual(chain('taper').filter((s) => s[0] === 'pick').map((s) => s[2]), ['wax']);
+  assert.equal(chain('taper')[0][1], 'apiary');
+  for (const id of ['woolly', 'matcha', 'taper']) {
+    const w = WR.workerById(id), plan = WR.dayPlan(w);
+    assert.ok(WR.MEADOW_LOTS.includes(w.lot), id);
+    assert.ok(plan.cycles >= 2, `${id} does at least two full rounds a day (${plan.cycles})`);
+    // the walk out leaves the workplace door and ends on the delivery door (real street route, not a jump)
+    const out = plan.segs.find((g) => g.kind === 'walk' && g.carry);
+    assert.ok(out && out.path.length > 10, `${id} walks a real route with goods`);
+    const [ex, ey] = out.path[out.path.length - 1]; assert.deepEqual([ex, ey], [...lotById(out.to).door]);
+  }
+});
+
+test('Meadow Lane joins the north path and the new lots stay clear of the Holder Lounge', () => {
+  for (let x = 73; x <= 91; x++) assert.ok(!isBlocked(x, 7), `lane ${x},7 open`);
+  const acad = LOTS.find((l) => l.x <= 76 && l.x + l.w > 76 && l.y > 7 && l.y < 14); if (acad) assert.ok(acad.y >= 10, 'lane sits two rows clear of the building below');
+  const lounge = lotById('lounge'), sheep = lotById('sheep');
+  assert.ok(sheep.x >= lounge.x + lounge.w + 1, 'one tile of grass between the Lounge and the meadow');
+});
+
+test('hand-offs show what the worker really walked in with (pots and chairs, not clay and planks)', () => {
+  for (const [id, good] of [['kiln', 'pots'], ['chip', 'chair'], ['taper', 'candles']]) {
+    const w = WR.workerById(id), d = WR.dayPlan(w).segs.find((g) => g.kind === 'drop');
+    assert.equal(d.carry, good, id);
+    assert.equal(WR.workerAt(w, d.t0 + 0.1).carry, good, `${id} at drop`);
+    assert.equal(WR.workerAt(w, d.t1 - 0.1).carry, null, `${id} after hand-off`);
+  }
+});
+
+test('deliveries are used up: stock = delivered - used, every place uses what arrives, and the service shows briefly', () => {
+  const mid = WR.townStock(11 * 60), end = WR.townStock(19 * 60);
+  assert.ok(mid.length >= 10);
+  for (const p of mid) { assert.equal(p.stock, p.delivered - p.used); assert.ok(p.stock >= 0); assert.ok(WR.SERVICE[p.good], p.good); }
+  // by evening everything delivered has been used
+  for (const p of end) assert.equal(p.stock, 0, `${p.lot}:${p.good}`);
+  // used counts only grow through the day
+  let prev = 0; for (let s = 420; s <= 1080; s += 30) { const u = WR.townStock(s).reduce((n, p) => n + p.used, 0); assert.ok(u >= prev); prev = u; }
+  // the tailor gets wool, the café gets tea and milk, homes get candles
+  const keys = new Set(end.map((p) => p.lot + ':' + p.good));
+  for (const k of ['tailor:wool', 'sip:tea', 'sip:milk', 'h3:candles', 'h4:candles']) assert.ok(keys.has(k), k);
+  // a serve puff exists right after a use
+  const tea = WR.dayPlan(WR.workerById('matcha')).segs.find((g) => g.kind === 'drop');
+  const at = WR.townStock(tea.t1 + WR.USE_S + 1).find((p) => p.lot === 'sip' && p.good === 'tea');
+  assert.ok(at.servedAgo != null && at.servedAgo < WR.SERVE_FX_S);
+});
+
+test('an older preview save (before Meadow Row) loads intact; new workers start fresh; live save untouched', () => {
+  const s = mem();
+  s.setItem(WR.LIVE_SAVE_KEY, '{"live":1}');
+  s.setItem(WR.ROW_SAVE_KEY, JSON.stringify({ v: 1, met: { pip: { days: ['2026-11-16'], talks: 2 } }, apprentice: { id: 'honey', lessons: 2, lastHour: 5 }, graduated: ['kiln'], keepsakes: { 'Clay planter': 3 }, crafted: {} }));
+  const L = WR.loadLife(s);
+  assert.deepEqual(L.met.pip, { days: ['2026-11-16'], talks: 2 });
+  assert.equal(L.apprentice.id, 'honey'); assert.equal(L.apprentice.lessons, 2);
+  assert.deepEqual(L.graduated, ['kiln']); assert.equal(L.keepsakes['Clay planter'], 3);
+  assert.equal(L.met.woolly, undefined);
+  const tl = createTownLife(s, ''); tl.setEnv({ hour: 10 });
+  tl.talk('woolly', 'Kabosu');
+  const after = JSON.parse(s.getItem(WR.ROW_SAVE_KEY));
+  assert.equal(after.met.pip.talks, 2); assert.equal(after.met.woolly.talks, 1); assert.equal(after.apprentice.lessons, 2);
+  assert.equal(s.getItem(WR.LIVE_SAVE_KEY), '{"live":1}');
+});
+
+test('Meadow Row has its own art: painters, station props, carried goods, tools and delivered piles', async () => {
+  const art = readFileSync(new URL('../src/workrowart.js', import.meta.url), 'utf8');
+  for (const id of ['sheep', 'teagarden', 'candles']) assert.match(art, new RegExp(`registerPainter\\('${id}'`));
+  for (const k of ['wool:', 'tea:', 'wax:', 'candles:', 'shears:', 'leaf:', 'dip:']) assert.ok(art.includes(k), k);
+  const tl = createTownLife(mem(), ''); tl.setEnv({ hour: 11, rain: false, night: false });
+  const ids = tl.actors().map((a) => a.rowId);
+  for (const id of ['woolly', 'matcha', 'taper']) assert.ok(ids.includes(id), id);
+  const town = { innerHTML: '', querySelector: () => null, querySelectorAll: () => [] };
+  renderTownLife(town, { tl, id: 'woolly', tab: 'town' });
+  assert.match(town.innerHTML, /Used in town today/);
 });

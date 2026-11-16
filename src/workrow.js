@@ -21,7 +21,10 @@ export const LUNCH_S = 40;
 export const EPOCH_YMD = Object.freeze({ y: 2026, m: 11, d: 16 });
 export const EPOCH_MS = Date.UTC(2026, 10, 15, 13, 0, 0); // 16 Nov 2026 00:00 Australia/Sydney (UTC+11)
 
-export const ROW_LOTS = Object.freeze(['orchard', 'apiary', 'dairy', 'pottery', 'carpentry', 'post', 'print']);
+export const ORCHARD_LOTS = Object.freeze(['orchard', 'apiary', 'dairy', 'pottery', 'carpentry', 'post', 'print']);
+// Meadow Row: three more staffed workplaces in the north-east meadow (added for the go-live pass).
+export const MEADOW_LOTS = Object.freeze(['sheep', 'teagarden', 'candles']);
+export const ROW_LOTS = Object.freeze([...ORCHARD_LOTS, ...MEADOW_LOTS]);
 
 // Station = where the worker stands while working, in tiles (feet point). Outdoor stations move under the eave in rain.
 export const WORKPLACES = Object.freeze({
@@ -32,6 +35,9 @@ export const WORKPLACES = Object.freeze({
   carpentry: { id: 'carpentry', name: "Carpenter's Shop", outdoor: false, station: [62.0, 27.3], verb: 'building chairs' },
   post: { id: 'post', name: 'Post Office', outdoor: false, station: [73.1, 27.3], verb: 'sorting mail' },
   print: { id: 'print', name: 'Print Shop', outdoor: false, station: [79.1, 27.3], verb: 'printing The Daily Bone' },
+  sheep: { id: 'sheep', name: 'Sheep Meadow', outdoor: true, station: [75.6, 6.3], shelter: [77.4, 7.45], verb: 'shearing the sheep' },
+  teagarden: { id: 'teagarden', name: 'Tea Garden', outdoor: true, station: [81.4, 6.3], shelter: [83.4, 7.45], verb: 'picking tea leaves' },
+  candles: { id: 'candles', name: 'Candle Works', outdoor: false, station: [87.2, 7.4], verb: 'dipping candles' },
   'town-hall': { id: 'town-hall', name: 'Town Hall site', outdoor: true, station: [41.5, 64.4], verb: 'building the Town Hall' },
 });
 
@@ -56,6 +62,14 @@ export const ROW_WORKERS = Object.freeze([
     steps: [['work', 44], ['go', 'jobs', 'papers'], ['drop', 3, 'papers'], ['go', 'fountain', 'papers'], ['drop', 3, 'papers'], ['go', 'print', null]] },
   { id: 'brick', name: 'Brick', coat: 'golden', job: 'Builder', lot: 'town-hall', home: 'p3', tool: 'hammer', good: 'build', recipe: 'Birdhouse', base: 'builders',
     steps: [['work', 60], ['go', 'builders', null], ['pick', 3, 'planks'], ['go', 'town-hall', 'planks'], ['drop', 2, 'build']] },
+  // Meadow Row crew. Each one is wired into an existing chain: wool feeds the Tailor, tea goes to the Café with Clover's milk,
+  // and the Candle Works takes wax from Honey's Apiary and lights the homes on the high street.
+  { id: 'woolly', name: 'Woolly', coat: 'gray', job: 'Shepherd', lot: 'sheep', home: 'p1', tool: 'shears', good: 'wool', recipe: 'Wool scarf',
+    steps: [['work', 44], ['go', 'tailor', 'wool'], ['drop', 3, 'wool'], ['go', 'sheep', null]] },
+  { id: 'matcha', name: 'Matcha', coat: 'tan', job: 'Tea picker', lot: 'teagarden', home: 'p2', tool: 'leaf', good: 'tea', marketSwap: 'sip', recipe: 'Tea sachet',
+    steps: [['work', 40], ['go', 'sip', 'tea'], ['drop', 3, 'tea'], ['go', 'teagarden', null]] },
+  { id: 'taper', name: 'Taper', coat: 'cream', job: 'Candle maker', lot: 'candles', home: 'p6', tool: 'dip', good: 'candles', recipe: 'Tea light',
+    steps: [['go', 'apiary', null], ['pick', 3, 'wax'], ['go', 'candles', 'wax'], ['work', 42], ['go', 'h3', 'candles'], ['drop', 2, 'candles'], ['go', 'h4', 'candles'], ['drop', 2, 'candles'], ['go', 'candles', null]] },
 ]);
 export const WORKER_IDS = Object.freeze(ROW_WORKERS.map((w) => w.id));
 export const workerById = (id) => ROW_WORKERS.find((w) => w.id === id) || null;
@@ -106,7 +120,8 @@ export function dayPlan(w, { foreman = false, market = false } = {}) {
   const stagger = (WORKER_IDS.indexOf(w.id) % 4) * 6;
   let t = LEAVE_H * HOUR_S + stagger;
   segs.push({ kind: 'home', t0: 0, t1: t, at: w.home });
-  const go = (from, to, carry) => { const path = route(from, to); const d = walkS(path); segs.push({ kind: 'walk', t0: t, t1: t + d, from, to, path, carry }); t += d; };
+  let lastCarry = null;
+  const go = (from, to, carry) => { const path = route(from, to); const d = walkS(path); segs.push({ kind: 'walk', t0: t, t1: t + d, from, to, path, carry }); t += d; lastCarry = carry || null; };
   const workLot = w.lot;
   go(w.home, w.base || workLot, null);
   if (w.base) go(w.base, workLot, null);
@@ -121,7 +136,7 @@ export function dayPlan(w, { foreman = false, market = false } = {}) {
       if (st[0] === 'go') { go(at, st[1], st[2]); at = st[1]; }
       else if (st[0] === 'work') { const d = st[1] * speed; segs.push({ kind: 'work', t0: t, t1: t + d, at }); t += d; }
       else if (st[0] === 'pick') { segs.push({ kind: 'pick', t0: t, t1: t + st[1], at, carry: st[2] }); t += st[1]; }
-      else if (st[0] === 'drop') { segs.push({ kind: 'drop', t0: t, t1: t + st[1], at, good: st[2] }); t += st[1]; }
+      else if (st[0] === 'drop') { segs.push({ kind: 'drop', t0: t, t1: t + st[1], at, good: st[2], carry: lastCarry }); t += st[1]; }
     }
     cycles++;
   }
@@ -172,8 +187,38 @@ export function workerAt(w, sec, ctx = {}) {
   out.x = d[0] * TILE + 16; out.y = d[1] * TILE + 16;
   if (seg.kind === 'lunch') { out.x += 20; out.y += 2; out.face = 'down'; out.lunch = true; }
   if (seg.kind === 'pick') { out.carry = f > 0.5 ? seg.carry : null; out.face = 'up'; }
-  if (seg.kind === 'drop') { out.carry = f < 0.5 ? (w.steps.find((x) => x[0] === 'go' && x[2])?.[2] || null) : null; out.face = 'up'; out.dropping = seg.good; }
+  // the hand-off shows what the worker actually walked in with (Kiln brings pots, not clay; Chip brings a chair, not planks)
+  if (seg.kind === 'drop') { out.carry = f < 0.5 ? (seg.carry || null) : null; out.face = 'up'; out.dropping = seg.good; }
   return out;
+}
+
+// ---------------------------------------------------------------- deliveries are used up (service effects)
+// Every delivered good is used by the place it went to USE_S seconds after it arrives, so piles at doors grow with deliveries
+// and shrink as the town uses them. Pure: derived from the same day plans, so every device sees the same stock.
+export const USE_S = 75;
+export const SERVE_FX_S = 12;
+export const SERVICE = Object.freeze({
+  fruit: 'sold at the stalls', honey: 'baked into honey buns', milk: 'poured into lattes', pots: 'sold at the stalls', chairs: 'set out for customers',
+  letters: 'opened at home', papers: 'read around town', wool: 'sewn into coats', tea: 'brewed into pots of tea', candles: 'lit in the windows', build: 'built into the Town Hall',
+});
+/** stock at every delivery door at sky second `sec`: [{ lot, good, delivered, used, stock, servedAgo }] */
+export function townStock(sec, ctxFor = () => ({})) {
+  const s = ((sec % SKY_DAY_S) + SKY_DAY_S) % SKY_DAY_S;
+  const out = new Map();
+  for (const w of ROW_WORKERS) {
+    const c = ctxFor(w) || {};
+    for (const g of dayPlan(w, { foreman: !!c.foreman, market: !!c.market }).segs) {
+      if (g.kind !== 'drop' || g.t1 > s) continue;
+      const k = g.at + ':' + g.good;
+      const e = out.get(k) || { lot: g.at, good: g.good, delivered: 0, used: 0, stock: 0, servedAgo: null };
+      e.delivered++;
+      const usedAt = g.t1 + USE_S;
+      if (usedAt <= s) { e.used++; const ago = s - usedAt; if (e.servedAgo == null || ago < e.servedAgo) e.servedAgo = ago; }
+      e.stock = e.delivered - e.used;
+      out.set(k, e);
+    }
+  }
+  return [...out.values()];
 }
 
 // ---------------------------------------------------------------- shared clocks

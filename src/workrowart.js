@@ -5,6 +5,7 @@ import { TILE } from './world.js';
 import { lotById } from './townproposal.js';
 import { drawBuilding, registerPainter, KIT, ptext, nightK, shade, INK } from './bldgfx.js';
 
+const WORKPLACE_X = { candles: 87.2 };
 const { R, A, hash, wall, gable, roofBand, chimney, win, flowerBox, awning, door, sign, streetLamp, dropShadow, steam, picket, slatFence, planks, flagpole, wavingFlag } = KIT;
 
 export const ROW_F = Object.freeze({
@@ -15,6 +16,9 @@ export const ROW_F = Object.freeze({
   carpentry: { wall: '#9a6a3a', roof: '#4a3020', accent: '#e8c890', trim: '#f8ecd8', signBg: '#2a1a0e', sign: '#ffe0a8', glow: '#e8b060' },
   post: { wall: '#2f5fa8', roof: '#1a2c58', accent: '#e83a3a', trim: '#f4f4fa', signBg: '#a82828', sign: '#fff4d0', glow: '#ffd060' },
   print: { wall: '#4a4a5a', roof: '#22222c', accent: '#2ec8d8', trim: '#e8f0f4', signBg: '#141a2e', sign: '#9ff4ff', glow: '#7ae8ff' },
+  sheep: { wall: '#d8c8a0', roof: '#5a4a3a', accent: '#f4f0e8', trim: '#fffaf0', signBg: '#2a2418', sign: '#fff4dc', glow: '#ffe0a0' },
+  teagarden: { wall: '#5a8a4a', roof: '#2a4a24', accent: '#c8e890', trim: '#f4fae8', signBg: '#1a2a14', sign: '#d8ffb0', glow: '#e8ffa0' },
+  candles: { wall: '#8a3a5a', roof: '#3a1a2a', accent: '#ffd84a', trim: '#fff0f4', signBg: '#2a0e1a', sign: '#ffe0a0', glow: '#ffb040' },
 });
 
 const geoBox = (b) => ({ x: b.x * TILE, y: b.y * TILE, w: b.w * TILE, h: b.h * TILE, base: (b.y + b.h) * TILE });
@@ -115,6 +119,39 @@ registerPainter('print', {
   anim(c, b, F, t, g) { steam(c, g.x + g.w - 24, g.y - 16, t * 0.8, 3, '#b8b8c4'); },
 });
 
+// Meadow Row (go-live pass): sheep meadow, tea garden, candle works.
+registerPainter('sheep', {
+  paint(c, b, F, V, g) { const { x, y, w, base } = g;
+    R(c, x, y + 30, w, base - y - 30, '#86b858');
+    for (let i = 0; i < 18; i++) { const fx = x + 6 + hash(i, 5, 9) * (w - 12), fy = y + 46 + hash(i, 6, 9) * (base - y - 56); R(c, fx, fy, 2, 3, '#5e9a3e'); }
+    smallShed(c, x + w - 62, y + 54, 56, 40, F, V, 'SHEEP', 'star');
+    R(c, x + w - 42, y + 36, 14, 18, INK); R(c, x + w - 41, y + 37, 12, 17, V.night ? '#ffd27a' : '#3a2a18');
+    // wool bales by the shed
+    for (let i = 0; i < 2; i++) { R(c, x + w - 76 + i * 12, y + 44, 12, 10, INK); R(c, x + w - 75 + i * 12, y + 45, 10, 8, '#f4f0e8'); }
+  },
+});
+registerPainter('teagarden', {
+  paint(c, b, F, V, g) { const { x, y, w, base } = g;
+    R(c, x, y + 30, w, base - y - 30, '#7a5a34');
+    // terraced tea rows; the bushes themselves are props so the picker can stand between them
+    for (let yy = y + 44; yy < base - 6; yy += 18) { R(c, x + 4, yy + 10, w - 8, 3, '#5a4024'); }
+    smallShed(c, x + 4, y + 46, 54, 36, F, V, 'TEA', 'cup');
+    R(c, x + 22, y + 32, 14, 14, INK); R(c, x + 23, y + 33, 12, 13, V.night ? '#ffd27a' : '#1a2a14');
+  },
+});
+registerPainter('candles', {
+  paint(c, b, F, V, g) { const { x, y, w, base } = g, top = y + 18;
+    dropShadow(c, x, base, w);
+    chimney(c, x + 14, y - 6, 26, '#6a4a5a');
+    wall(c, x, top, w, base - top, F.wall, 'brick', V, {});
+    roofBand(c, x - 6, top - 18, w + 12, 20, F.roof, { style: 'shingle' });
+    sign(c, x + w / 2, top - 36, 'CANDLES', F, V, { maxW: w + 30, icon: 'lamp', k: 1 });
+    win(c, x + 10, top + 22, 56, 32, F, V, { panes: [2, 1], curtains: false, inner: (cc, wx, wy, ww, wh) => { for (let i = 0; i < 5; i++) { R(cc, wx + 6 + i * 10, wy + wh - 16, 4, 12, '#f8f0dc'); R(cc, wx + 7 + i * 10, wy + wh - 20, 2, 4, '#ffb030'); } } });
+    if (g.dx != null && Math.abs(g.dx - (x + 38)) > 36) door(c, g.dx, base, F, V, { w: 22, h: 34, col: '#3a1a2a', lamps: true });
+  },
+  anim(c, b, F, t, g) { steam(c, g.x + 26, g.y - 8, t * 0.6, 2, '#c8b8c4'); },
+});
+
 export function drawRowBuilding(c, id) {
   const lot = lotById(id); if (!lot) return false;
   return drawBuilding(c, { id, name: lot.name, x: lot.x, y: lot.y, w: lot.w, h: lot.h, door: { tx: lot.door[0] } }, ROW_F[id]);
@@ -159,9 +196,33 @@ function crate(c, x, base, col) { R(c, x - 8, base - 12, 16, 12, INK); R(c, x - 
 function jar(c, x, base) { R(c, x - 4, base - 10, 8, 10, INK); R(c, x - 3, base - 9, 6, 8, '#ffb020'); R(c, x - 3, base - 11, 6, 2, '#f4f0e8'); R(c, x - 2, base - 8, 1, 5, '#ffe080'); }
 function churn(c, x, base) { R(c, x - 5, base - 16, 10, 16, INK); R(c, x - 4, base - 15, 8, 14, '#c8ccd8'); R(c, x - 4, base - 15, 2, 14, '#eef0f6'); R(c, x - 3, base - 18, 6, 3, INK); R(c, x - 4, base - 9, 8, 2, '#8a909c'); }
 function bundle(c, x, base) { R(c, x - 8, base - 8, 16, 8, INK); R(c, x - 7, base - 7, 14, 6, '#f4f4ee'); R(c, x - 7, base - 5, 14, 1, '#9aa0b4'); R(c, x - 1, base - 8, 2, 8, '#c8382e'); }
+function sheep(c, x, base, t, flip, shorn) {
+  const s = flip ? -1 : 1, X = (v) => x + v * s - (s < 0 ? 1 : 0);
+  A(c, 0.25, () => R(c, x - 14, base - 3, 28, 4, '#0a0e1e'));
+  for (const lx of [-9, -4, 5, 9]) R(c, X(lx) - 1, base - 9, 3, 9, INK);
+  const body = shorn ? '#e8dcc0' : '#f8f6f0', bw = shorn ? 22 : 28;
+  R(c, x - bw / 2 - 1, base - 23, bw + 2, 16, INK); R(c, x - bw / 2, base - 22, bw, 14, body);
+  if (!shorn) for (let i = 0; i < 4; i++) R(c, x - 11 + i * 6, base - 24, 5, 3, body);
+  const nod = Math.round(Math.sin(t * 1.8 + x) * 1.5);
+  R(c, X(12) - 1, base - 24 + nod, 9, 9, INK); R(c, X(13), base - 23 + nod, 7, 7, '#2a2a34'); R(c, X(17), base - 21 + nod, 2, 2, '#f4f4f4');
+}
+function teaBush(c, x, base, picked) {
+  R(c, x - 13, base - 14, 26, 14, INK); R(c, x - 12, base - 13, 24, 12, '#3e7a32'); R(c, x - 12, base - 13, 24, 3, '#5ea048');
+  const tips = Math.max(0, 5 - picked); for (let i = 0; i < tips; i++) R(c, x - 10 + i * 5, base - 16, 3, 3, '#a8e070');
+}
+function candle(c, x, base) { R(c, x - 3, base - 12, 6, 12, INK); R(c, x - 2, base - 11, 4, 10, '#f8f0dc'); R(c, x - 1, base - 15, 2, 3, '#ffb030'); }
+function woolBale(c, x, base) { R(c, x - 7, base - 10, 14, 10, INK); R(c, x - 6, base - 9, 12, 8, '#f4f0e8'); R(c, x - 6, base - 6, 12, 1, '#c8c0b0'); }
+function teaChest(c, x, base) { R(c, x - 7, base - 10, 14, 10, INK); R(c, x - 6, base - 9, 12, 8, '#7a4a24'); R(c, x - 4, base - 7, 8, 4, '#a8e070'); }
 function letter(c, x, base) { R(c, x - 5, base - 6, 10, 6, INK); R(c, x - 4, base - 5, 8, 4, '#f8f0dc'); R(c, x - 4, base - 5, 8, 1, '#c8382e'); }
 
-const DROP_ART = { fruit: crate, honey: jar, milk: churn, pots: (c, x, b) => pot(c, x, b, '#c86a48'), chairs: chair, letters: letter, papers: bundle };
+const DROP_ART = { fruit: crate, honey: jar, milk: churn, pots: (c, x, b) => pot(c, x, b, '#c86a48'), chairs: chair, letters: letter, papers: bundle, wool: woolBale, tea: teaChest, candles: (c, x, b) => { candle(c, x - 4, b); candle(c, x + 4, b); } };
+// a short world-space puff where a delivery was just used: steam for drinks and baking, a warm glow for candles, a stitch spark for wool
+const SERVE_FX = {
+  steam: (c, x, b, k, t) => { for (let i = 0; i < 3; i++) { const ph = (t * 0.9 + i / 3) % 1; A(c, (1 - ph) * k, () => R(c, x - 6 + i * 6, b - 18 - ph * 22, 4, 4, '#f4f4fa')); } },
+  glow: (c, x, b, k, t) => { A(c, 0.35 * k * (0.8 + 0.2 * Math.sin(t * 9)), () => R(c, x - 10, b - 22, 20, 20, '#ffd060')); },
+  spark: (c, x, b, k, t) => { const f = Math.floor(t * 6) % 2; A(c, k, () => { R(c, x - 1, b - 22 - f * 2, 2, 6, '#ffd84a'); R(c, x - 3, b - 20 - f * 2, 6, 2, '#ffd84a'); }); },
+};
+const FX_OF = { milk: 'steam', tea: 'steam', honey: 'steam', candles: 'glow' };
 
 /** props for stations, delivered goods and lane scenery. env: { workers: [{w, at}], season, harvest, t, upgrades, fire, hall, market, night } */
 export function rowProps(env) {
@@ -175,6 +236,12 @@ export function rowProps(env) {
     push(g.base - 1, (c) => { if (id === 'dairy') slatFence(c, g.x + 2, g.x + g.w - 2, g.base, [doorX(lot) - 14, doorX(lot) + 14]); else picket(c, g.x + 2, g.x + g.w - 2, g.base, '#f8f4ec', [doorX(lot) - 14, doorX(lot) + 14]); });
   }
   for (const id of ['pottery', 'carpentry', 'post', 'print']) { const lot = lotById(id); if (lot) push((lot.y + lot.h) * TILE - 1, (c) => drawRowBuilding(c, id)); }
+  for (const id of ['sheep', 'teagarden']) {
+    const lot = lotById(id); if (!lot) continue; const g = geoBox(lot);
+    push(g.y + 8, (c) => drawRowBuilding(c, id));
+    push(g.base - 1, (c) => { if (id === 'sheep') slatFence(c, g.x + 2, g.x + g.w - 2, g.base, [doorX(lot) - 14, doorX(lot) + 14]); else picket(c, g.x + 2, g.x + g.w - 2, g.base, '#e8f0d8', [doorX(lot) - 14, doorX(lot) + 14]); });
+  }
+  { const lot = lotById('candles'); if (lot) push((lot.y + lot.h) * TILE - 1, (c) => drawRowBuilding(c, 'candles')); }
   const W = Object.fromEntries((env.workers || []).map((r) => [r.w.id, r.at]));
   // orchard trees (fruit thins out as the picker works through the day)
   { const lot = lotById('orchard'); if (lot) { const g = geoBox(lot), k = W.pip ? Math.min(4, W.pip.made) : 0;
@@ -184,6 +251,22 @@ export function rowProps(env) {
   { const lot = lotById('dairy'); if (lot) { const g = geoBox(lot); const winter = env.season === 'winter';
     push(g.y + 96, (c) => cow(c, g.x + 130, g.y + 96, t, false, winter)); push(g.y + 112, (c) => cow(c, g.x + 46, g.y + 112, t, true, winter));
     const made = W.clover ? Math.min(3, W.clover.made % 4) : 0; for (let i = 0; i < made; i++) push(g.y + 120, (c) => churn(c, g.x + 150 + i * 12, g.y + 120)); } }
+  // sheep in the meadow: the one next to the shepherd is shorn while Woolly works; wool bales pile by the gate until carried off
+  { const lot = lotById('sheep'); if (lot) { const g = geoBox(lot), wk = W.woolly && W.woolly.kind === 'work';
+    push(g.y + 104, (c) => sheep(c, g.x + 30, g.y + 104, t, false, wk && W.woolly.f > 0.5));
+    push(g.y + 80, (c) => sheep(c, g.x + 70, g.y + 80, t, true, false));
+    push(g.y + 116, (c) => sheep(c, g.x + 96, g.y + 116, t, true, false));
+    const bales = W.woolly ? Math.max(0, Math.min(3, W.woolly.made - W.woolly.delivered - (W.woolly.carry === 'wool' ? 1 : 0))) : 0;
+    for (let i = 0; i < bales; i++) push(g.base - 2, (c) => woolBale(c, g.x + 14 + i * 16, g.base - 4)); } }
+  // tea bushes thin out while Matcha picks; picked leaves fill the basket chest by the shed
+  { const lot = lotById('teagarden'); if (lot) { const g = geoBox(lot), k = W.matcha ? Math.min(4, W.matcha.made) : 0;
+    for (const [dx, dy] of [[80, 70], [120, 70], [70, 106], [110, 106], [146, 106]]) if (dx < g.w - 8) push(g.y + dy, (c) => teaBush(c, g.x + dx, g.y + dy, k)); } }
+  // candle works: dipping vat in front, finished candles on the rack
+  { const lot = lotById('candles'); if (lot) { const g = geoBox(lot), vx = WORKPLACE_X.candles * TILE + 26, base = g.base + 10;
+    const dipping = W.taper && W.taper.kind === 'work';
+    push(base - 2, (c) => { R(c, vx - 10, base - 14, 20, 14, INK); R(c, vx - 9, base - 13, 18, 12, '#5a5a6a'); R(c, vx - 8, base - 13, 16, 3, '#f8e8b0'); if (dipping) A(c, 0.6, () => R(c, vx - 4, base - 20 - (Math.floor(t * 3) % 2) * 2, 3, 4, '#f4f4fa')); });
+    const rack = W.taper ? Math.max(0, Math.min(4, W.taper.made * 2 - W.taper.delivered * 2 - (W.taper.carry === 'candles' ? 2 : 0))) : 0;
+    for (let i = 0; i < rack; i++) push(g.base - 1, (c) => candle(c, g.x + g.w - 34 + i * 7, g.base - 2)); } }
   // pottery wheel + finished pots on the shelf
   { const lot = lotById('pottery'); if (lot) { const g = geoBox(lot), wx = (82.2) * TILE, base = g.base + 6;
     const working = W.kiln && W.kiln.kind === 'work';
@@ -205,12 +288,13 @@ export function rowProps(env) {
     push(base - 4, (c) => { R(c, px - 16, base - 22, 32, 22, INK); R(c, px - 15, base - 21, 30, 20, '#3a3a48'); const k = W.inky && W.inky.kind === 'work' ? Math.floor(t * 4) % 2 : 0; R(c, px - 12, base - 18 + k * 4, 24, 4, '#9aa0b4'); R(c, px - 10, base - 6, 20, 3, '#f4f4ee'); });
     const stack = W.inky && W.inky.kind === 'work' ? Math.min(3, Math.floor(W.inky.f * 4)) : 0; for (let i = 0; i < stack; i++) push(base, (c) => bundle(c, g.x + g.w - 16, base - i * 7)); } }
   // delivered goods sit by the door they went to (today's count, a few shown)
-  const piles = new Map();
-  for (const r of env.workers || []) { if (!r.at.delivered || !r.at.last) continue; const good = r.w.good === 'build' ? null : r.w.good; if (!good) continue;
-    const key = r.at.last + ':' + good; piles.set(key, { lot: r.at.last, good, n: (piles.get(key)?.n || 0) + r.at.delivered }); }
-  for (const p of piles.values()) { const lot = lotById(p.lot); if (!lot) continue; const art = DROP_ART[p.good]; if (!art) continue; const n = Math.min(4, p.n);
-    const bx = (lot.door[0] + 0.5) * TILE + 22, by = (lot.door[1] + 0.5) * TILE + 2;
-    for (let i = 0; i < n; i++) push(by + i * 0.01, (c) => art(c, bx + (i % 2) * 16, by - Math.floor(i / 2) * 10)); }
+  // the pile is what is still waiting (delivered minus used); when the place uses one, a short puff shows the service
+  const slot = new Map();
+  for (const p of env.stock || []) { const lot = lotById(p.lot); if (!lot) continue; const art = DROP_ART[p.good]; if (!art) continue;
+    const k = slot.get(p.lot) || 0; slot.set(p.lot, k + 1);
+    const bx = (lot.door[0] + 0.5) * TILE + 22 + k * 34, by = (lot.door[1] + 0.5) * TILE + 2, n = Math.min(4, p.stock);
+    for (let i = 0; i < n; i++) push(by + i * 0.01, (c) => art(c, bx + (i % 2) * 16, by - Math.floor(i / 2) * 10));
+    if (p.servedAgo != null && p.servedAgo < (env.serveFxS || 12)) { const kk = 1 - p.servedAgo / (env.serveFxS || 12), fx = SERVE_FX[FX_OF[p.good] || 'spark']; push(by + 0.05, (c) => fx(c, bx + 8, by, kk, t)); } }
   // town events
   if (env.fire && (env.fire.on || env.fire.after)) push(((lotById(env.fire.lot)?.y || 0) + (lotById(env.fire.lot)?.h || 0)) * TILE + 0.5, (c) => drawFire(c, env.fire, t));
   if (env.hall) push((59 + 5) * TILE - 1, (c) => drawHall(c, env.hall, t, env.upgrades));
@@ -278,6 +362,10 @@ function drawMarket(c, t, harvest) {
 
 // ---------------------------------------------------------------- worker overlays (screen scale: 2 units per world px, feet at 0,0)
 const CARRY = {
+  wool: (c) => { woolBale(c, 0, -34); woolBale(c, 0, -44); },
+  tea: (c) => { teaChest(c, 0, -34); },
+  wax: (c) => { R(c, -8, -44, 16, 10, INK); R(c, -7, -43, 14, 8, '#f8e8b0'); R(c, -7, -43, 14, 2, '#fff8d8'); },
+  candles: (c) => { R(c, -12, -36, 24, 4, INK); R(c, -11, -35, 22, 2, '#8a5a3a'); for (let i = 0; i < 4; i++) candle(c, -8 + i * 5, -36); },
   fruit: (c) => { crate(c, 0, -34, '#e8283a'); },
   honey: (c) => { jar(c, -6, -34); jar(c, 6, -34); },
   milk: (c) => { churn(c, 18, -2); },
@@ -289,6 +377,9 @@ const CARRY = {
   papers: (c) => { bundle(c, 0, -34); bundle(c, 0, -42); },
 };
 const TOOL = {
+  shears: (c, t) => { const o = Math.round(Math.abs(Math.sin(t * 8)) * 4); R(c, 12, -34 - o, 14, 3, INK); R(c, 12, -30 + o, 14, 3, INK); R(c, 13, -33 - o, 12, 1, '#c9cede'); R(c, 13, -29 + o, 12, 1, '#c9cede'); R(c, 8, -34, 5, 8, '#9a6a3c'); },
+  leaf: (c, t) => { const lift = Math.round(Math.abs(Math.sin(t * 3.4)) * 8); R(c, -18, -22, 20, 14, INK); R(c, -17, -21, 18, 12, '#c8a060'); for (let i = 0; i < 3; i++) R(c, -15 + i * 5, -24, 4, 3, '#a8e070'); R(c, 14, -50 - lift, 5, 4, '#a8e070'); R(c, 14, -46 - lift, 3, 16, INK); },
+  dip: (c, t) => { const d = Math.round((Math.sin(t * 2.6) + 1) * 7); R(c, 8, -52 + d, 22, 3, INK); for (let i = 0; i < 3; i++) { R(c, 10 + i * 7, -49 + d, 4, 14, INK); R(c, 11 + i * 7, -48 + d, 2, 12, '#f8f0dc'); } },
   basket: (c, t) => { const lift = Math.round(Math.abs(Math.sin(t * 3)) * 10); R(c, 14, -60 - lift, 4, 22, INK); R(c, 14, -60 - lift, 3, 3, '#e8283a'); R(c, -18, -22, 22, 14, INK); R(c, -17, -21, 20, 12, '#c8a060'); for (let i = 0; i < 3; i++) R(c, -15 + i * 6, -24, 5, 4, '#e8283a'); },
   smoker: (c, t) => { R(c, 12, -40, 10, 14, INK); R(c, 13, -39, 8, 12, '#9aa0b4'); for (let i = 0; i < 3; i++) { const ph = (t * 0.8 + i / 3) % 1; A(c, 1 - ph, () => R(c, 16 + ph * 10, -46 - ph * 26, 6 + ph * 6, 5, '#e8e8f0')); } R(c, -16, -50, 30, 8, 'rgba(240,240,220,.55)'); },
   pail: (c, t) => { const s = Math.round(Math.sin(t * 6) * 2); R(c, -6, -14, 14, 14, INK); R(c, -5, -13, 12, 12, '#c8ccd8'); R(c, -4, -12, 10, 3, '#ffffff'); R(c, 12 + s, -30, 4, 10, '#f4d0c0'); },
