@@ -137,6 +137,14 @@ export const LOTS = Object.freeze([
   lot('town-hall', 'Town Hall', 'civic', 40, 59, 6, 5, [42, 64], { reserved: true, soft: true }),
   lot('station', 'Station', 'market', 56, 75, 6, 4, [58, 79], { reserved: true, soft: true }),
   lot('bandstand', 'Bandstand', 'homes', 18, 66, 3, 2, [19, 68], { reserved: true, soft: true }),
+  // Orchard Row (living-town preview): seven more staffed workplaces on the east edge, on their own lane.
+  lot('orchard', 'Orchard', 'orchard', 60, 22, 7, 4, [63, 26]),
+  lot('apiary', 'Apiary', 'orchard', 68, 22, 5, 4, [70, 26]),
+  lot('dairy', 'Dairy', 'orchard', 74, 22, 6, 4, [76, 26]),
+  lot('pottery', 'Pottery', 'orchard', 81, 22, 5, 4, [83, 26]),
+  lot('carpentry', "Carpenter's Shop", 'orchard', 61, 28, 5, 3, [63, 27]),
+  lot('post', 'Post Office', 'orchard', 72, 28, 5, 3, [74, 27]),
+  lot('print', 'Print Shop', 'orchard', 78, 28, 5, 3, [80, 27]),
 ]);
 
 export const STONES = Object.freeze([
@@ -290,6 +298,9 @@ export function buildProposalGrid() {
   };
   carve([[44, 76], [50, 82], [56, 87]]);
   carve([[14, 78], [15, 84]]);
+  // Orchard Lane: a two-tile lane under the Orchard Row lots, joined to the plaza in the west and the main path in the east.
+  for (let y = 26; y <= 27; y++) for (let x = 58; x <= 86; x++) if (openUp.has(grid[y][x])) grid[y][x] = T.WALK;
+  for (let y = 28; y <= 35; y++) if (openUp.has(grid[y][85])) grid[y][85] = T.WALK;
   for (const b of LOTS) {
     const [x, y] = b.door;
     for (const [dx, dy] of [[0, 0], [1, 0], [-1, 0], [0, 1], [0, -1]]) {

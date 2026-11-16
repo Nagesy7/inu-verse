@@ -256,7 +256,7 @@ function groundExtras(c) {
   }
 }
 
-const WORK_LOTS = new Set(['bakery', 'tailor', 'farm', 'mill', 'mine', 'smelter', 'forge', 'scrap', 'sawmill', 'lumber', 'mechanic', 'factory', 'cloth', 'cotton', 'goods', 'depot', 'tower', 'shed', 'sip', 'vet', 'cot0', 'cot1', 'cot2', 'quarry', 'builders', 'stage', 'pay', 'drawwell', 'eastdock', 'jobs']);
+const WORK_LOTS = new Set(['bakery', 'tailor', 'farm', 'mill', 'mine', 'smelter', 'forge', 'scrap', 'sawmill', 'lumber', 'mechanic', 'factory', 'cloth', 'cotton', 'goods', 'depot', 'tower', 'shed', 'sip', 'vet', 'cot0', 'cot1', 'cot2', 'quarry', 'builders', 'stage', 'pay', 'drawwell', 'eastdock', 'jobs', 'orchard', 'apiary', 'dairy', 'pottery', 'carpentry', 'post', 'print']);
 
 // Preview-only facades. The live loop still paints these from bldgfx.js.
 // punch: 'door' keeps the Golden Den door column; 'glass' keeps every lit pane and lantern.

@@ -11,6 +11,7 @@ import {
   SAVE_KEY, TAG, advance, crewView, routeProgress, seek, seedState,
 } from './npcbuildings.js';
 import { layoutPose } from './npcroutes.js';
+import { createTownLife } from './townlife.js';
 
 export const NPCWORK_QUERY = 'npcwork';
 
@@ -672,6 +673,8 @@ export function createNpcWork(doc = document, storage = globalThis.localStorage)
   const search = doc?.defaultView?.location?.search || '';
   if (!npcWorkOn(search)) return null;
   let state = seedState();
+  // Living-town preview layer (Orchard Row crew + seasons, events, memory, foremen, moods, upgrades, apprenticeships).
+  const row = createTownLife(storage, search);
   let held = false;
   let acc = 0;
   const pop = doc?.createElement ? doc.createElement('div') : null;
@@ -748,6 +751,7 @@ export function createNpcWork(doc = document, storage = globalThis.localStorage)
       return this.summary();
     },
     step(dt) {
+      row.step(dt);
       if (held) { paint(); return state; }
       acc += Math.max(0, dt) * 1000;
       lineMs += Math.max(0, dt) * 1000;
@@ -829,7 +833,7 @@ export function createNpcWork(doc = document, storage = globalThis.localStorage)
           name: named ? a.name : '', art: null, npcwork: true, npcOverlay,
           worker: { tool: '', face: a.face, phase: state.phase, work: 0 },
         };
-      }).concat(lunchActor() || []);
+      }).concat(lunchActor() || [], laidOut ? row.actors() : []);
     },
     props() {
       rememberStocks(state);
@@ -903,9 +907,11 @@ export function createNpcWork(doc = document, storage = globalThis.localStorage)
           },
         }] : []),
       ];
+      if (laidOut) for (const p of row.props()) list.push(p);
       return list;
     },
-    focus(x, y) { setFocus(x, y); },
+    row,
+    focus(x, y) { setFocus(x, y); row.setEnv({ px: x, py: y }); },
     nearestNook(px, py) {
       let best = null;
       let bd = 48;

@@ -123,6 +123,7 @@ import { buildDrawer, drawerOpen } from './hudmenu.js';
 import { layoutSafe } from './safezones.js';
 import { createGroveTown } from './groveview.js';
 import { createNpcWork, drawNpcOverlay, useLayout } from './npcwork.js';
+import { renderTownLife, TOWN_LIFE_CSS } from './townlife.js';
 import { drawSeated, punchNightLights } from './daytown.js';
 import { hop, isBlocked as previewBlocked, LOTS as proposalLots, NOOKS, PLAZA_FOLK, preparePreviewPlayer, previewGround, proposalPath, PROPOSAL_H, PROPOSAL_W, STOPS, visitDistrict, GRID as previewGrid, T as previewTile } from './townproposal.js';
 import { makeDoorState, doorStep, doorExit, outsideOf } from './doors.js';
@@ -188,6 +189,7 @@ const NPCW = createNpcWork(document, localStorage);
 if (NPCW) {
   setPreviewCollision({ solid: previewBlocked, find: proposalPath, size: { w: PROPOSAL_W, h: PROPOSAL_H } });
   useLayout(true);
+  { const st = document.createElement('style'); st.id = 'town-life-css'; st.textContent = TOWN_LIFE_CSS; document.head.appendChild(st); }
 }
 mountPlaySheet(document);
 const folkBase = () => (SKYS.pinH != null ? TF.folkSec(SKYS.pinH) + time : TF.folkSec(dayPhase(time + dayOffset).hour)); // a pinned ?tod= still lets them walk
@@ -634,7 +636,7 @@ function crewProps() { const out = []; for (const w of crew) { if (!w.on) contin
   return out; }
 // the trader cart wins over a field/sign under it (only within its small talk radius) so you can always trade
 function nearIt(x, y) { if (NPCW) return null; return !drive && EVX.nearTrader(x, y) ? null : nearestInteractable(state, x, y); }
-function nearPup() { for (const w of crew) if (w.on && Math.hypot(w.x - state.player.x, w.y - state.player.y) < 40) return { workerRef: w, name: w.name }; const pet = activePet(state); if (pet && !drive && Math.hypot(petF.x - state.player.x, petF.y - state.player.y) < 34) return { pet, name: pet.name }; if (presidentPresent(pres) && Math.hypot(pres.x - state.player.x, pres.y - state.player.y) < 40) return { president: true, name: 'President Inu' }; let b = null, bd = 36; for (const n of npcs) { const d = Math.hypot(n.x - state.player.x, n.y - state.player.y); if (d < bd) { bd = d; b = n; } }
+function nearPup() { if (NPCW && !drive) { const r = NPCW.row.near(state.player.x, state.player.y); if (r) return { rowRef: r.w.id, name: r.w.name }; } for (const w of crew) if (w.on && Math.hypot(w.x - state.player.x, w.y - state.player.y) < 40) return { workerRef: w, name: w.name }; const pet = activePet(state); if (pet && !drive && Math.hypot(petF.x - state.player.x, petF.y - state.player.y) < 34) return { pet, name: pet.name }; if (presidentPresent(pres) && Math.hypot(pres.x - state.player.x, pres.y - state.player.y) < 40) return { president: true, name: 'President Inu' }; let b = null, bd = 36; for (const n of npcs) { const d = Math.hypot(n.x - state.player.x, n.y - state.player.y); if (d < bd) { bd = d; b = n; } }
   if (!b && !drive && EVX.nearTrader(state.player.x, state.player.y)) return { trader: true, name: EVR.TRADER.name };
   if (!b && !drive) { const f = TF.nearestFolk(TFS, state.player.x, state.player.y); if (f) return { folk: f, name: f.folkName }; } return b; } // townsfolk: chat only, no rewards
 function presBanner(msg) { let b = document.getElementById('pres-banner'); if (!b) { b = document.createElement('div'); b.id = 'pres-banner'; b.style.cssText = 'position:fixed;left:50%;top:64px;transform:translateX(-50%);z-index:40;padding:10px 22px;background:#121a36;color:#f2cc68;border:3px solid #d4a640;font:14px Silkscreen,monospace;letter-spacing:1px;box-shadow:0 4px 0 #0008;pointer-events:none;text-align:center'; document.body.appendChild(b); }
@@ -648,6 +650,7 @@ function carAction() { // E/A: park (while driving) or hop into the parked car n
   return false; }
 function spawnCar(id) { const g = ensureGarage(state), car = carOf(state, id); if (!car) return; g.active = id; g.parked = null; drive = { car, v: 0, vx: 0, vy: 0, dir: 'east' }; closePanel(); toast(`Hop in! Drive with WASD/stick, H/B to honk, E/A to park.`, 'good'); persist(); }
 function petPup(n) { if (n.trader) { blip(880); dqNote('trader'); openPanel('event'); return; } if (n.folk) { blip(880); dqNote('talk', { name: n.name }); feel.say(n.name, TF.talkTo(TFS, n.folk, { ev: EVX.ev.id, now: time, rng, hour: dayPhase(time + dayOffset).hour, wx: folkWx() }), textBlip); return; }
+  if (n.rowRef) { blip(880); const r = NPCW.row.talk(n.rowRef, state.player.name); openPanel('townlife', { id: n.rowRef, greet: r?.line || '' }); return; }
   if (n.workerRef) { const w = n.workerRef; blip(880); if (w.chatted) { w.chatted = false; playJob(WORKER_JOB[w.job]); return; } w.chatted = true; feel.say(`${w.name} (${w.job})`, w.line + ' (talk again for an odd job)', textBlip); return; }
   if (n.pet) { petF.love = 2; blip(990); feel.say(n.pet.name, ['*happy noises*', '*nuzzles you*', '*purrs/chirps contentedly*', '*does a little spin*'][Math.floor(rng() * 4)], textBlip); return; }
   if (n.president) { if (pres.stage === 'visit') { const d = claimPresDrop(state, 'visit' + pres.n); if (d.ok) { toast(`President Inu gave you a free limited drop: ${d.drop.name}!`, 'good'); persist(); } } const r = presTalk(pres, state); pres.emote = { kind: 'heart', t: 2 }; blip(990); feel.say('President Inu', r.quote, textBlip); if (r.tip) { toast(`President Inu tipped you ${r.tip} bones!`, 'good'); hud(); persist(); } return; } n.wag = 1.2; n.path = []; blip(990); if (REL.PEOPLE[n.name]) { const r = REL.chat(state, n.name, gameDay()); if (r.gain) n.emote = { kind: 'heart', t: 2.2 }; persist(); openPanel('friend', { name: n.name }); if (r.scene) startScene(n.name, REL.SCENES[r.scene](n.name)); return; } feel.say(n.name, PUP_LINES[Math.floor(rng() * PUP_LINES.length)], textBlip); }
@@ -893,6 +896,7 @@ function updateWorld(dt) {
   PAB.simTick(dt, time, { x: p.x, y: p.y, driving: !!drive, busy: !!panel }, (tx, ty) => (isSolid(tx, ty) ? -1 : MAP[ty][tx]), T); // sim police/rangers: reads a copy of the position only, never blocks play
   if (!drive) GROVE.step({ x: p.x, y: p.y, now: performance.now(), input: !!player.moving, foreground: document.visibilityState !== 'hidden' });
   if (!drive && NPCW) {
+    NPCW.row.setEnv({ hour: dayPhase(time + dayOffset).hour, rain: amb.rain > 0.3, ev: EVX.ev?.id || null, night: !!globalThis.__inuNight });
     NPCW.step(dt);
     NPCW.focus(p.x, p.y);
     const nearStop = STOPS.find((s) => Math.hypot(p.x - (s.tx + 1) * TILE, p.y - (s.ty + 1) * TILE) < 70);
@@ -920,6 +924,7 @@ function updateWorld(dt) {
   else if ((seat = seatNear(itDist(it)))?.sitting) { pr.hidden = false; pr.innerHTML = `<kbd${hc()}>${hk('a', 'E')}</kbd>Stand up`; pr.dataset.target = 'seat:' + seat.spot.id; setA('UP'); }
   else if (!pup && stoneHere()) { const stn = stoneHere(); pr.hidden = false; pr.innerHTML = `<kbd${hc()}>${hk('a', 'E')}</kbd>Portal stone: ${esc(stn.name)} · warp`; pr.dataset.target = 'portal:' + stn.id; setA('WARP'); }
   else if (pup?.trader) { pr.hidden = false; pr.innerHTML = `<kbd${hc()}>${hk('a', 'E')}</kbd>Trade with ${esc(pup.name)}`; setA('TRADE'); }
+  else if (pup?.rowRef) { pr.hidden = false; pr.innerHTML = `<kbd${hc()}>${hk('a', 'E')}</kbd>Talk to ${esc(pup.name)}`; setA('TALK'); }
   else if (pup?.workerRef) { pr.hidden = false; const v = pup.workerRef.chatted ? `Play ${JOB_DEFS[WORKER_JOB[pup.workerRef.job]].name} with` : 'Chat with'; pr.innerHTML = `<kbd${hc()}>${hk('a', 'E')}</kbd>${v} ${esc(pup.name)}`; setA('TALK'); }
   else if (pup) { pr.hidden = false; const v = pup.folk ? `Chat with ${esc(pup.name)}` : REL.PEOPLE[pup.name] && !pup.pet ? `Talk to ${esc(pup.name)} ${'♥'.repeat(REL.hearts(REL.ensureRel(state)[pup.name]))}` : `Pet ${esc(pup.name)}`; pr.innerHTML = PAD.padMode ? `<kbd${hc()}>${hk('a', 'E')}</kbd>${v}` : tch ? `<kbd class="ta">A</kbd>${v}` : `<kbd>E</kbd>${v} · <kbd>T</kbd> throw ball`; setA(pup.folk || (REL.PEOPLE[pup.name] && !pup.pet) ? 'TALK' : 'PET'); }
   else if (seat) { pr.hidden = false; const k = `<kbd${hc()}>${hk('a', 'E')}</kbd>`; pr.innerHTML = seat.sitting ? `${k}Stand up` : `${k}Sit on the ${SPOT_NAME[seat.spot.kind]}`; pr.dataset.target = 'seat:' + seat.spot.id; setA(seat.sitting ? 'UP' : 'SIT'); }
@@ -1338,6 +1343,7 @@ function openPanel(kind, opts = {}) {
   if (!panel) { feel.fade(); uiOpen(); } panel = { kind, ...opts }; $('#panel').hidden = false; const mpPop = $('#mp-pop'); if (mpPop) mpPop.hidden = true; /* the players-online card never sits over a panel */ $('#prompt').hidden = true; keys.clear();
   const body = $('#panel-body'); body.onclick = null; const dg = $('#dialog'); if (dg) { dg.style.pointerEvents = 'none'; dg.style.visibility = 'hidden'; }
   if (kind !== 'onboard') maybeOfferOnboard(kind, opts);
+  if (kind === 'townlife' && NPCW) return renderTownLife(body, { tl: NPCW.row, id: opts.id, tab: opts.tab, greet: opts.greet, toast, reopen: (o) => openPanel('townlife', o) });
   if (kind === 'event') return renderEventPanel(body);
   if (kind === 'dquests') return renderQuestPanel(body);
   if (kind === 'club-pups') return renderPups(clubCtx());
