@@ -60,3 +60,20 @@ test('every job mini-game draws its scene and plays without errors', { timeout: 
     assert.deepEqual(errs, []); await ctx.close();
   } finally { await browser.close(); srv.close(); }
 });
+
+test('shop card on a phone: buy three scarves, become a Regular, see 5% off; challenge the owner to Meme Brawl', { timeout: 90000 }, async () => {
+  const srv = await serveRoot(); const browser = await chromium.launch();
+  try {
+    const { ctx, page, errs } = await boot(browser, srv, { width: 390, height: 844 });
+    await page.evaluate(() => __inu.setHour(14)); await page.waitForTimeout(300);
+    await page.evaluate(() => __inu.townx.open('tailor')); await page.waitForSelector('[data-tx-sec="shop"][data-tx-tier="stranger"]');
+    for (let i = 0; i < 3; i++) { await page.click('[data-tx-buy="tailor:scarf"]'); await page.waitForTimeout(120); }
+    await page.waitForSelector('[data-tx-sec="shop"][data-tx-tier="regular"]');
+    const beanie = await page.locator('[data-tx-item="beanie"]').innerText(); assert.match(beanie, /22\s+21 Bones/i);
+    await page.click('[data-tx-brawl="tailor"]'); await page.waitForSelector('[data-tx-brawl-state="playing"]');
+    assert.match(await page.locator('[data-tx-sec="brawl"]').innerText(), /Stitch is playing Meme Brawl/i);
+    await page.click('[data-tx-brawl-res="tailor:won"]'); await page.waitForSelector('[data-tx-brawl-state="done"]');
+    assert.match(await page.locator('[data-tx-sec="brawl"]').innerText(), /You tore right through me/);
+    assert.deepEqual(errs, []); await ctx.close();
+  } finally { await browser.close(); srv.close(); }
+});

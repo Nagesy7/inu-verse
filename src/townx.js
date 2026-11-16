@@ -9,12 +9,16 @@ import { ZJOBS } from './zonejobs.js';
 export const PLACES = Object.freeze({
   sawmill: { id: 'sawmill', lot: 'sawmill', name: 'Sawmill', job: 'sawmill' },
   mine: { id: 'mine', lot: 'mine', name: 'Mine', job: 'mine' },
-  forge: { id: 'forge', lot: 'forge', name: 'Forge', job: 'forge' },
-  bakery: { id: 'bakery', lot: 'bakery', name: 'Bakery', job: 'bakery' },
+  forge: { id: 'forge', lot: 'forge', name: 'Forge', job: 'forge', shop: 'forge' },
+  bakery: { id: 'bakery', lot: 'bakery', name: 'Bakery', job: 'bakery', shop: 'bakery' },
   farm: { id: 'farm', lot: 'farm', name: 'Wheat Farm', job: 'farm' },
   quarry: { id: 'quarry', lot: 'quarry', name: 'Quarry', job: 'quarry' },
   fishery: { id: 'fishery', lot: 'dock', name: 'Fishery', job: 'fishery' },
   docks: { id: 'docks', lot: 'eastdock', name: 'East Dock', job: 'docks' },
+  tailor: { id: 'tailor', lot: 'tailor', name: 'Tailor', shop: 'tailor' },
+  market: { id: 'market', lot: 'goods', name: 'Market', shop: 'market' },
+  cafe: { id: 'cafe', lot: 'sip', name: 'Café', shop: 'cafe' },
+  candles: { id: 'candles', lot: 'candles', name: 'Candle Works', shop: 'candles' },
 });
 export const PLACE_IDS = Object.freeze(Object.keys(PLACES));
 export const NEAR_PX = 34;
