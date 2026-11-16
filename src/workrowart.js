@@ -218,9 +218,13 @@ function letter(c, x, base) { R(c, x - 5, base - 6, 10, 6, INK); R(c, x - 4, bas
 const DROP_ART = { fruit: crate, honey: jar, milk: churn, pots: (c, x, b) => pot(c, x, b, '#c86a48'), chairs: chair, letters: letter, papers: bundle, wool: woolBale, tea: teaChest, candles: (c, x, b) => { candle(c, x - 4, b); candle(c, x + 4, b); } };
 // a short world-space puff where a delivery was just used: steam for drinks and baking, a warm glow for candles, a stitch spark for wool
 const SERVE_FX = {
-  steam: (c, x, b, k, t) => { for (let i = 0; i < 3; i++) { const ph = (t * 0.9 + i / 3) % 1; A(c, (1 - ph) * k, () => R(c, x - 6 + i * 6, b - 18 - ph * 22, 4, 4, '#f4f4fa')); } },
-  glow: (c, x, b, k, t) => { A(c, 0.35 * k * (0.8 + 0.2 * Math.sin(t * 9)), () => R(c, x - 10, b - 22, 20, 20, '#ffd060')); },
-  spark: (c, x, b, k, t) => { const f = Math.floor(t * 6) % 2; A(c, k, () => { R(c, x - 1, b - 22 - f * 2, 2, 6, '#ffd84a'); R(c, x - 3, b - 20 - f * 2, 6, 2, '#ffd84a'); }); },
+  // a mug with steam rising: the drink (or bake) was just served
+  steam: (c, x, b, k, t) => { A(c, Math.max(0.6, k), () => { R(c, x - 7, b - 14, 14, 12, INK); R(c, x - 6, b - 13, 12, 10, '#f4f0e8'); R(c, x - 6, b - 13, 12, 3, '#c89060'); R(c, x + 6, b - 11, 4, 6, INK); R(c, x + 7, b - 10, 2, 4, '#f4f0e8'); });
+    for (let i = 0; i < 3; i++) { const ph = (t * 0.9 + i / 3) % 1; A(c, (1 - ph) * k, () => R(c, x - 5 + i * 4, b - 18 - ph * 20, 3, 5, '#ffffff')); } },
+  // a lit candle with a warm halo: the candle is burning in the window
+  glow: (c, x, b, k, t) => { A(c, 0.45 * k * (0.8 + 0.2 * Math.sin(t * 9)), () => R(c, x - 12, b - 28, 24, 24, '#ffd060')); A(c, Math.max(0.6, k), () => { R(c, x - 3, b - 14, 6, 14, INK); R(c, x - 2, b - 13, 4, 12, '#f8f0dc'); R(c, x - 2, b - 19, 4, 5, '#ffb030'); R(c, x - 1, b - 21, 2, 2, '#fff0a0'); }); },
+  // a four-point sparkle over the door: the goods were put to use
+  spark: (c, x, b, k, t) => { const f = Math.floor(t * 6) % 2, s = 4 + f * 2; A(c, Math.max(0.6, k), () => { R(c, x - 1, b - 22 - s, 3, s * 2 + 1, '#ffd84a'); R(c, x - 1 - s, b - 22, s * 2 + 3, 3, '#ffd84a'); R(c, x, b - 22, 1, 1, '#ffffff'); }); },
 };
 const FX_OF = { milk: 'steam', tea: 'steam', honey: 'steam', candles: 'glow' };
 
@@ -294,7 +298,7 @@ export function rowProps(env) {
     const k = slot.get(p.lot) || 0; slot.set(p.lot, k + 1);
     const bx = (lot.door[0] + 0.5) * TILE + 22 + k * 34, by = (lot.door[1] + 0.5) * TILE + 2, n = Math.min(4, p.stock);
     for (let i = 0; i < n; i++) push(by + i * 0.01, (c) => art(c, bx + (i % 2) * 16, by - Math.floor(i / 2) * 10));
-    if (p.servedAgo != null && p.servedAgo < (env.serveFxS || 12)) { const kk = 1 - p.servedAgo / (env.serveFxS || 12), fx = SERVE_FX[FX_OF[p.good] || 'spark']; push(by + 0.05, (c) => fx(c, bx + 8, by, kk, t)); } }
+    if (p.servedAgo != null && p.servedAgo < (env.serveFxS || 12)) { const kk = 1 - p.servedAgo / (env.serveFxS || 12), fx = SERVE_FX[FX_OF[p.good] || 'spark'], fx0 = (lot.door[0] + 0.5) * TILE + 14; push(by + 0.05, (c) => fx(c, fx0, by - 4, kk, t)); } }
   // town events
   if (env.fire && (env.fire.on || env.fire.after)) push(((lotById(env.fire.lot)?.y || 0) + (lotById(env.fire.lot)?.h || 0)) * TILE + 0.5, (c) => drawFire(c, env.fire, t));
   if (env.hall) push((59 + 5) * TILE - 1, (c) => drawHall(c, env.hall, t, env.upgrades));
