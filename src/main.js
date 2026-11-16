@@ -128,6 +128,8 @@ import { nearPlace, promptOf, placeProps, placeDoor } from './townx.js';
 import { renderExchange } from './exchangeui.js';
 import { nearThief, catchThief, savedCaught, savedFires, firesAt, crimesAt, HAULERS, haulerAt } from './civic.js';
 import { civicActors, civicProps } from './civicart.js';
+import { folkStatus, townWants, wantLine, showOffLine, shiftLine } from './npcspend.js';
+import { folkOverlay } from './folkart.js';
 import { needStatus } from './townneeds.js';
 import { renderPlace, TOWNX_CSS } from './townxui.js';
 import { startZoneJob, zoneJobActive, zoneJobDebug } from './zonejobui.js';
@@ -640,6 +642,13 @@ globalThis.__eng = ENG; globalThis.__fly5 = F5;
 // Town economy extras (preview): walk up to a workplace / shop / civic door in the reviewed town, press A for its card.
 const txNear = () => (NPCW && !drive && state && mode === 'world' ? nearPlace(state.player.x, state.player.y) : null);
 const txThief = () => (NPCW && !drive && state && mode === 'world' && !panel ? nearThief(skyDayIndex(), txSkySec(), savedCaught(state, skyDayIndex()), state.player.x, state.player.y) : null);
+// NPC spending (preview): what each townsfolk wears, wants, shows off; drawn over the worker/hauler actors
+function txFolk(list) { if (!state) return list; const d = skyDayIndex(), px = state.player.x, py = state.player.y;
+  for (const a of list) { const id = a.rowId || (a.civic?.startsWith('hauler:') ? a.civic.slice(7) : null); if (!id) continue; const st = folkStatus(id, d);
+    const near = Math.hypot(a.x - px, a.y - py) < 150, cyc = (time + id.length * 3.1) % 12;
+    const say = !near || a.lunch ? null : cyc < 4 ? (showOffLine(st) || wantLine(st)) : cyc < 8 ? (wantLine(st) || shiftLine(st)) : null;
+    a.folk = { id, wearing: st.wearing, want: st.want?.id || null, say }; a.npcOverlay = folkOverlay(a.npcOverlay, st.wearing, say, a.face); }
+  return list; }
 function txCivicActors() { if (!state) return []; const d = skyDayIndex(); return civicActors({ skyDay: d, sec: txSkySec(), t: time, px: state.player.x, py: state.player.y, fires: savedFires(state, d), caught: savedCaught(state, d) }); }
 function txCatch() { const c = txThief(); if (!c) return false; const r = catchThief(state, skyDayIndex(), txSkySec(), c.id, sydDayKey()); blip(r.ok ? 990 : 300);
   toast(r.ok ? `Caught ${c.thief}! ${c.loot} goes back to the stall${r.paid ? ` · +${r.paid} Bones` : ''}` : r.reason, r.ok ? 'good' : ''); if (r.ok) { hud(); persist(); } return true; }
@@ -648,7 +657,9 @@ function txAct() { if (!panel && !zoneJobActive() && txCatch()) return true; con
   openPanel('townx', { place: p.id }); return true; }
 function txMade() { const X = ensureTownx(state), d = skyDayIndex(); return X.made.day === d ? X.made.goods : {}; }
 function txExchangeOpts(opts) { const d = skyDayIndex(), sec = txSkySec();
-  return { tab: opts.tab, skyDay: d, led: txLedger(), routes: deliveries(sec), need: needStatus(d, sec, txMade()), wanted: [], spending: [],
+  return { tab: opts.tab, skyDay: d, led: txLedger(), routes: deliveries(sec), need: needStatus(d, sec, txMade()),
+    wanted: townWants(d).wanted.map((w) => ({ item: w.id, name: w.name, shop: SHOPS[w.shop].name, count: w.who.length, who: w.who })),
+    spending: townWants(d).folk.map((f) => ({ id: f.id, name: f.name, note: [f.job, f.status === 'extra shift' ? 'took an extra shift' : f.status, f.wearing ? `wearing a ${f.wearing}` : '', f.want ? `wants a ${f.want.name.toLowerCase()}` : '', f.homeUpgrade ? `fixed up home: ${f.homeUpgrade}` : ''].filter(Boolean).join(' · '), food: f.spentToday.food, home: f.spentToday.home, upgrades: f.spentToday.upgrade, savings: f.savings })),
     shops: SHOP_IDS.map((id) => { const R = relOf(state, id), t = tierOf(R.buys); return { owner: SHOPS[id].owner, shop: SHOPS[id].name, tier: t.name, off: Math.round(t.off * 100), buys: R.buys }; }),
     reopen: (o) => openPanel('exchange', { ...opts, ...o }) }; }
 const txLook = () => ({ coat: state.player.coat, outfit: state.wardrobe?.equipped || {}, art: artKey(state.player.coat, state.wardrobe?.equipped) });
@@ -992,7 +1003,7 @@ function renderWorld() {
   if (player.clickMark && player.pw.pts.length) drawMark(ctx, player.clickMark, time);
   const meActor = drive ? [] : [{ x: state.player.x, y: state.player.y, coat: state.player.coat, outfit: state.wardrobe.equipped, face: player.face, phase: player.phase, moving: player.moving, name: FB.titleOf(state) ? `${state.player.name} «${FB.titleOf(state)}»` : state.player.name, me: true, badge: badgeOf(myPack(state)), emote: player.emote, act: ACT.act, art: artKey(state.player.coat, state.wardrobe.equipped), profile: hasCustomLook(state) ? myProfile() : null }];
   const actors = NPCW
-    ? [...meActor, ...petActors(), ...NPCW.actors(), ...txCivicActors(), ...PLAZA_FOLK.map((f) => ({ ...f, art: artKey(f.coat), moving: false, phase: 0, outfit: {} }))]
+    ? [...meActor, ...petActors(), ...txFolk([...NPCW.actors(), ...txCivicActors()]), ...PLAZA_FOLK.map((f) => ({ ...f, art: artKey(f.coat), moving: false, phase: 0, outfit: {} }))]
     : [MWd.crierActor(time, artKey), ...npcs.map((n, i) => ({ ...n, npc: true, idx: i, badge: badgeOf(packOfName(state, n.name)) })), ...meActor, ...streetPups(), ...presActors(), ...petActors(), ...crewActors(), ...pupActors(), ...(mpActs = MPL.actors(view, state.player)), ...remotePetActors(mpActs), ...dogWalkActors(view, walkNow(), artKey), ...stepFolk(view), ...mascotActors(state, time)];
   // one depth-sorted list: static props (culled), dynamic props and actors, by ground y
   const L = -ox - 200, Rt = -ox + vw + 200, Tp = -oy - 60, Bt = -oy + vh + 400, list = [];
@@ -1371,7 +1382,7 @@ function interact(it, viaDoor = false) { if (!viaDoor && isWalkDoor(it)) { toast
 }
 
 const txSkySec = () => dayPhase(time + dayOffset).hour * 60;
-function txLedger() { const X = ensureTownx(state), d = skyDayIndex(); return ledger(txSkySec(), { made: X.made.day === d ? X.made.goods : {}, used: playerUsed(state, d) }); }
+function txLedger() { const X = ensureTownx(state), d = skyDayIndex(); return ledger(txSkySec(), { made: X.made.day === d ? X.made.goods : {}, used: playerUsed(state, d), wanted: townWants(d).demand }); }
 function txPlaceOpts(opts) { return { state, sec: txSkySec, place: opts.place, day: sydDayKey(), skyDay: skyDayIndex(), greet: opts.greet, brawl: opts.brawl, ledger: txLedger, need: () => needStatus(skyDayIndex(), txSkySec(), txMade()), saved: () => { hud(); persist(); }, startJob: (id) => playZoneJob(id), toast, reopen: (o) => openPanel('townx', { ...opts, ...o }) }; }
 function maybeOfferOnboard(kind, opts = {}) {
   const place = OB.placeFromPanel(kind, opts) || OB.placeFromInteract({ kind, id: opts.id || kind }) || (kind === 'rescue' || kind === 'quest' ? kind : null);
@@ -2660,7 +2671,7 @@ cv.addEventListener('wheel', (e) => { if (mode !== 'world') return; e.preventDef
   cv.addEventListener('touchend', (e) => { if (e.touches.length < 2) pinch = null; }, { passive: true }); }
 document.getElementById('zin')?.addEventListener('click', () => setZoom(stepZoom(ZOOM, 1))); document.getElementById('zout')?.addEventListener('click', () => setZoom(stepZoom(ZOOM, -1)));
 GROVE.place = (x, y) => { state.player.x = x; state.player.y = y; cam.x = x; cam.y = y; };
-window.__inu = { townx: { near: () => txNear(), open: (id) => openPanel('townx', { place: id }), job: (id) => playZoneJob(id), zj: () => zoneJobDebug(), state: () => state && ensureTownx(state), ledger: () => txLedger(), where: () => ({ mode, room: mode === 'room' ? RP.id : null, tx: Math.floor(state.player.x / TILE), ty: Math.floor(state.player.y / TILE) }), leave: () => mode === 'room' && roomPortal(RP.sc.exits[0]), catch: () => txCatch(), thief: () => txThief(), placeDoor: (id) => placeDoor(id),
+window.__inu = { townx: { near: () => txNear(), open: (id) => openPanel('townx', { place: id }), job: (id) => playZoneJob(id), zj: () => zoneJobDebug(), state: () => state && ensureTownx(state), ledger: () => txLedger(), where: () => ({ mode, room: mode === 'room' ? RP.id : null, tx: Math.floor(state.player.x / TILE), ty: Math.floor(state.player.y / TILE) }), leave: () => mode === 'room' && roomPortal(RP.sc.exits[0]), catch: () => txCatch(), thief: () => txThief(), placeDoor: (id) => placeDoor(id), folk: (id, d) => folkStatus(id, d ?? skyDayIndex()), wants: (d) => townWants(d ?? skyDayIndex()), seen: () => txFolk([...NPCW.actors(), ...txCivicActors()]).filter((a) => a.folk).map((a) => ({ ...a.folk, x: Math.round(a.x), y: Math.round(a.y), name: a.name })),
     civic: () => { const d = skyDayIndex(), sec = txSkySec(); return { skyDay: d, sec, fires: firesAt(d, sec, savedFires(state, d)), crimes: crimesAt(d, sec, savedCaught(state, d)), haulers: HAULERS.map((h) => ({ id: h.id, name: h.name, good: h.good, from: h.from, to: h.to, ...haulerAt(h, sec) })), injury: ensureTownx(state).injury }; }, exchange: (tab) => openPanel('exchange', { tab }), enterExchange: () => { const d = placeDoor('exchange'); enterRoom('exchange', 'door', { kind: 'civic', id: 'exchange', name: 'Town Exchange', tx: d.tx, ty: d.ty }); } }, grove: GROVE, npcwork: NPCW, guide, pet: { get f() { return petF; }, PL, remote: RPETS }, portals: { PT, found: PFOUND, warp: (to, from) => warpTo(to, from), here: () => stoneHere(), get view() { return mmView; } }, photo: { get on() { return photo; }, get cam() { return PHC; }, toggle: () => togglePhoto(), ui: PHUI, PHM }, emo: { get act() { return ACT.act; }, action: (k) => doAction(k), seat: () => seatNear(), sit: (id) => { const sp = SPOTS.find((q) => q.id === id); if (sp) { state.player.x = sp.x; state.player.y = sp.y + 10; const sn = seatNear(); if (sn) sitAt(sn); } return ACT.act; }, spots: SPOTS, wheel }, audio: { debug: audioDebug, settings: audioSettings, area: () => sndArea }, open: (k, o) => openPanel(k, o), get time() { return time; }, get player() { return player; }, get zoom() { return ZOOM; }, setZoom, president: pres, presVisit: (k) => startVisit(pres, k, { dayLen: DAY_LEN }), setHour: (h) => { const w = SKY.skyWorldT(skyNow(), DAY_LEN); SKYS.pinH = null; SKYS.shift = timeForHour(h) - (((w % DAY_LEN) + DAY_LEN) % DAY_LEN); syncSky(); }, folk: { T: TFS, Q: FOLKQ, sec: () => folkSecNow(), at: (i, s) => TF.folkAt(i, s), setSec: (s) => { FOLKQ.shift = s - folkBase(); }, find: (name, doing) => { const i = TF.FOLK_NAMES.indexOf(name), o = {}; for (let s = 0; s < TF.FOLK_DAY; s += 2) { TF.folkAt(i, s, o); if (o.doing === doing) return { s, x: o.x, y: o.y }; } return null; } }, setRain: (r) => { SKYS.wx = r ? 'rain' : 'clear'; amb.rain = amb.rainTarget = amb.cloud = amb.cloudTarget = r ? 1 : 0; amb.weatherT = 999; }, sky: SKYS, get amb() { return amb; }, get npcs() { return npcs; }, get mood() { return { ...MOOD.current, shown: MWd.MW.mood }; }, emote: (k) => doEmote(k), cam, get state() { return state; }, get mode() { return mode; }, get panel() { return panel?.kind; }, get panelObj() { return panel; }, mp: MPL, club: { hunt: () => huntNow(), party: () => partyNow(), kennel: () => enterKennel(), room: (id, at) => enterRoom(id, at || null), get rp() { return RP; } } };
 // Inu Arcade inside the desktop overlay: its 🏠 button asks us to close the overlay instead of reloading.
 // framed Arcade (hall peek) -> Verse: ready / exit (close + inu:back-to-verse alias) / score. Origin pinned (districts.js). Score = toast only.

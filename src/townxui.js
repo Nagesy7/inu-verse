@@ -3,6 +3,7 @@
 import { PLACES } from './townx.js';
 import { ZJ, ZJOBS, ensureTownx, rankOf, capLeft } from './zonejobs.js';
 import { STAFF, INJURED_CAP, CATCH_BONES, treat, putOut, firesAt, crimesAt, savedFires, savedCaught } from './civic.js';
+import { restockOf, townWants } from './npcspend.js';
 import { SHOPS, TIERS, relOf, tierOf, priceFor, itemStock, buy, brawlResult, MEME_BRAWL_URL } from './shops.js';
 const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (ch) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[ch]));
 export const TOWNX_CSS = `.tx-card h2{margin:0 0 6px;font-size:16px}.tx-card h2 small{font-size:9px;color:#f2cc68;border:1px solid #f2cc68;padding:1px 4px;margin-left:6px;vertical-align:middle}
@@ -32,7 +33,7 @@ export function renderPlace(body, opts) {
   if (opts.sec) { const f = firesAt(opts.skyDay, opts.sec(), savedFires(opts.state, opts.skyDay)).find((q) => q.place === p.id && q.phase === 'burning');
     if (f) html += `<div class="tx-sec tx-alert" data-tx-sec="fire-here"><h3>${f.kind === 'kitchen' ? 'Kitchen' : 'Forge'} fire!</h3><p>Smoke is pouring out. ${f.crew != null ? `${STAFF.ember.name} is on the way.` : 'The Fire Station crew is rolling out.'} Nobody is hurt.</p><button type="button" class="tx-btn" data-tx-fire="${f.id}">Grab a hose and put it out</button></div>`; }
   if (p.job && ensureTownx(opts.state).injury) html += `<p class="tx-note tx-sore">Sore from ${esc(ensureTownx(opts.state).injury.what)}: shifts max out at x${INJURED_CAP} until the Hospital patches you up.</p>`;
-  if (p.shop) html += shopSection(opts.state, p.shop, opts.ledger ? opts.ledger().rows : [], opts.brawl || null);
+  if (p.shop) html += shopSection(opts.state, p.shop, opts.ledger ? opts.ledger().rows : [], opts.brawl || null, opts.skyDay);
   if (p.job) html += jobSection(opts.state, p.job, opts.day);
   if (p.civic === 'townhall' && opts.need) html += needSection(opts.need());
   if (p.civic === 'hospital') html += hospitalSection(opts.state);
@@ -43,7 +44,7 @@ export function renderPlace(body, opts) {
   body.innerHTML = html;
   body.onclick = (e) => { const b = e.target.closest('button'); if (!b) return;
     if (b.dataset.txJob) return opts.startJob(b.dataset.txJob);
-    if (b.dataset.txBuy) { const [sh, id] = b.dataset.txBuy.split(':'); const rows = opts.ledger ? opts.ledger().rows : []; const r = buy(opts.state, sh, id, { skyDay: opts.skyDay, stock: itemStock(sh, id, rows) });
+    if (b.dataset.txBuy) { const [sh, id] = b.dataset.txBuy.split(':'); const rows = opts.ledger ? opts.ledger().rows : []; const r = buy(opts.state, sh, id, { skyDay: opts.skyDay, stock: stockOf(sh, id, rows, opts.skyDay) });
       if (!r.ok) { opts.toast?.(r.reason, 'bad'); return; }
       opts.saved?.(); opts.toast?.(`${r.item.name}: -${r.paid} Bones${r.paid < r.full ? ` (${Math.round(r.tier.off * 100)}% off)` : ''}${r.tierUp ? ` · ${SHOPS[sh].owner} now calls you ${r.tier.name}!` : ''}${r.gift ? ` · gift: ${r.gift}!` : ''}`, 'good');
       return opts.reopen({ greet: r.line, brawl: null }); }
@@ -55,7 +56,9 @@ export function renderPlace(body, opts) {
     opts.onButton?.(b, p); };
 }
 
-export function shopSection(state, shopId, rows, brawl) {
+// shelf = town stock of the good + what the shop ordered in on demand for townsfolk who want the item
+export const stockOf = (shopId, itemId, rows, skyDay) => itemStock(shopId, itemId, rows) + (skyDay == null ? 0 : restockOf(shopId, itemId, skyDay).n);
+export function shopSection(state, shopId, rows, brawl, skyDay = null) {
   const sh = SHOPS[shopId], R = relOf(state, shopId), t = tierOf(R.buys);
   const next = t.next ? `${R.buys}/${t.next.buys} buys to ${t.next.name} (${Math.round(t.next.off * 100)}% off)` : 'Top tier';
   let html = `<div class="tx-sec" data-tx-sec="shop" data-tx-tier="${t.id}"><h3>${esc(sh.owner)}'s ${esc(sh.name)}</h3>
@@ -63,10 +66,12 @@ export function shopSection(state, shopId, rows, brawl) {
     <div class="tx-row"><span>Next</span><span>${esc(next)}</span></div>${t.next ? bar(R.buys / t.next.buys, '#f2cc68') : ''}
     <p class="tx-note">Tiers: ${TIERS.map((x) => `${x.name} ${Math.round(x.off * 100)}%`).join(' · ')}. Besties sometimes get a small gift.</p>`;
   for (const it of sh.items) {
-    const st = itemStock(shopId, it.id, rows), price = priceFor(it, R.buys), off = price < it.price;
-    html += `<div class="tx-row" data-tx-item="${it.id}"><span>${esc(it.name)}<br><span class="tx-note">from the ${esc(goodFrom(it.good))} · ${st > 0 ? `${st} on the shelf` : 'sold out, restock ordered'}</span></span>
+    const rs = skyDay == null ? { n: 0, who: [] } : restockOf(shopId, it.id, skyDay), st = itemStock(shopId, it.id, rows) + rs.n, price = priceFor(it, R.buys), off = price < it.price;
+    html += `<div class="tx-row" data-tx-item="${it.id}"${rs.n ? ` data-tx-restock="${rs.n}"` : ''}><span>${esc(it.name)}<br><span class="tx-note">from the ${esc(goodFrom(it.good))} · ${st > 0 ? `${st} on the shelf` : 'sold out, restock ordered'}${rs.n ? ` · <b>+${rs.n} restocked on demand</b> (${esc(rs.who.slice(0, 2).join(', '))} want one)` : ''}</span></span>
       <span>${off ? `<s class="tx-note">${it.price}</s> ` : ''}<b>${price}</b> Bones <button type="button" class="tx-btn" data-tx-buy="${shopId}:${it.id}" ${st > 0 ? '' : 'disabled'}>Buy</button></span></div>`;
   }
+  if (skyDay != null) { const eye = townWants(skyDay).folk.filter((f) => f.want && f.want.shop === shopId);
+    if (eye.length) html += `<p class="tx-note" data-tx-eyeing>${eye.slice(0, 3).map((f) => `${esc(f.name)} is eyeing the ${esc(f.want.name.toLowerCase())} (${f.want.short ? `saving up, ${f.want.short} to go` : 'nearly bought it'})`).join(' · ')}</p>`; }
   html += '</div>';
   const b = brawl && brawl.shop === shopId ? brawl : null;
   html += `<div class="tx-sec" data-tx-sec="brawl"><h3>Challenge ${esc(sh.owner)} to Meme Brawl</h3>`;

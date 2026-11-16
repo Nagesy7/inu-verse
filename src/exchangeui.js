@@ -30,7 +30,7 @@ export function renderExchange(body, o) {
       <div class="tx-row"><span>From the crews</span><b>${n.crew}</b></div><div class="tx-row"><span>From your shifts</span><b>${n.you}</b></div><div class="tx-row"><span>Still needed</span><b>${n.left}</b></div>
       <p class="tx-greet">${n.complete ? esc(n.done) : `Work a ${esc(JOB_FOR[n.good] || 'job')} shift to chip in.`}</p></div>`;
   } else {
-    html += `<div class="tx-sec"><h3>What workers spend Bones on</h3>`;
+    html += `<div class="tx-sec"><h3>What workers spend Bones on</h3><p class="tx-note">Wages, lunch, home and upgrades today. In-game Bones only; nobody is earning real money.</p>`;
     if (!o.spending.length) html += '<p class="tx-note">Spending shows up once the workers are paid.</p>';
     for (const p of o.spending) html += `<div class="tx-row" data-ex-spend="${esc(p.id)}"><span><b>${esc(p.name)}</b><br><span class="tx-note">${esc(p.note || '')}</span></span><span>food ${p.food} · home ${p.home} · upgrades ${p.upgrades} · saved ${p.savings}</span></div>`;
     html += `</div><div class="tx-sec"><h3>Your shop friends</h3>`;

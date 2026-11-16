@@ -122,3 +122,20 @@ test('civic row on a phone: catch a pickpocket, get patched up at the Hospital, 
     assert.deepEqual(errs, []); await ctx.close();
   } finally { await browser.close(); srv.close(); }
 });
+
+test('NPC spending in town: workers wear what they bought, say what they want, and fill the Exchange boards', { timeout: 90000 }, async () => {
+  const srv = await serveRoot(); const browser = await chromium.launch();
+  try {
+    const { ctx, page, errs } = await boot(browser, srv, { width: 375, height: 667 });
+    await page.evaluate(() => __inu.setHour(11.2)); await page.waitForTimeout(300);
+    const seen = await page.evaluate(() => __inu.townx.seen()); assert.ok(seen.length >= 10);
+    for (const a of seen) { const st = await page.evaluate((id) => __inu.townx.folk(id), a.id); assert.equal(a.wearing, st.wearing, a.id + ' wears what it bought'); }
+    const talker = seen.find((a) => a.want) || seen[0];
+    await page.evaluate(([x, y]) => { __inu.state.player.x = x - 40; __inu.state.player.y = y + 20; }, [talker.x, talker.y]);
+    await page.waitForFunction(() => __inu.townx.seen().some((a) => a.say), null, { timeout: 15000 });
+    await page.evaluate(() => __inu.townx.exchange('wanted')); await page.waitForSelector('[data-ex-want]');
+    await page.evaluate(() => __inu.townx.exchange('spending')); assert.equal(await page.locator('[data-ex-spend]').count(), 14);
+    assert.match(await page.locator('[data-tx-exchange="spending"]').innerText(), /in-game bones only/i);
+    assert.deepEqual(errs, []); await ctx.close();
+  } finally { await browser.close(); srv.close(); }
+});
