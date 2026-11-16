@@ -19,6 +19,8 @@ export const PLACES = Object.freeze({
   market: { id: 'market', lot: 'goods', name: 'Market', shop: 'market' },
   cafe: { id: 'cafe', lot: 'sip', name: 'Café', shop: 'cafe' },
   candles: { id: 'candles', lot: 'candles', name: 'Candle Works', shop: 'candles' },
+  exchange: { id: 'exchange', lot: 'exchange', name: 'Town Exchange', civic: 'exchange' },
+  townhall: { id: 'townhall', lot: 'town-hall', name: 'Town Hall', civic: 'townhall' },
 });
 export const PLACE_IDS = Object.freeze(Object.keys(PLACES));
 export const NEAR_PX = 34;
@@ -43,7 +45,7 @@ export function promptOf(p) {
 const R = (c, x, y, w, h, col) => { c.fillStyle = col; c.fillRect(Math.round(x), Math.round(y), w, h); };
 export function placeProps(t = 0, near = null) {
   const list = [];
-  for (const id of PLACE_IDS) { const p = PLACES[id], d = placeDoor(id); if (!d || p.civic === 'townhall') continue;
+  for (const id of PLACE_IDS) { const p = PLACES[id], d = placeDoor(id); if (!d) continue;
     const on = near && near.id === id, bob = on ? Math.round(Math.sin(t * 5) * 2) : 0, x = d.x + 12, y = d.y - 30 + bob;
     list.push({ y: d.y - 18, d: (c) => { R(c, x - 1, y - 1, 14, 14, '#141a2e'); R(c, x, y, 12, 12, p.job ? '#d4a640' : p.shop ? '#7fd1b9' : '#9fb8ff');
       if (p.job) { R(c, x + 5, y + 2, 2, 8, '#141a2e'); R(c, x + 3, y + 2, 6, 3, '#141a2e'); } // hammer = job here

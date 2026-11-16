@@ -446,8 +446,15 @@ export function drawLotBuilding(c, lot) {
   if (drawTypedFacade(c, lot)) return true;
   const artId = HOUSE_ART[lot.id] || lot.id;
   if (drawBuildingArt(c, artId, lot.x, lot.y, lot.w, lot.h)) return true;
-  return drawBuilding(c, { ...lot, name: lot.name || lot.id }, FUNC.shop);
+  return drawBuilding(c, { ...lot, name: lot.name || lot.id }, CIVIC_F[lot.id] || FUNC.shop);
 }
+// Town economy extras (preview): the Town Exchange and the civic row use the shared building painter with their own colours.
+const CIVIC_F = Object.freeze({
+  exchange: { wall: '#d8c8a0', roof: '#3a5a3a', accent: '#e3b341', trim: '#fff4d8', signBg: '#1f3a24', sign: '#ffe08a', glow: '#ffe08a', tag: 'exchange' },
+  police: { wall: '#3a5aa8', roof: '#1a2a5a', accent: '#ffd84a', trim: '#e8f0ff', signBg: '#0e1a40', sign: '#ffe08a', glow: '#8ab8ff', tag: 'police-blue' },
+  hospital: FUNC.clinic,
+  firehouse: { wall: '#c8382e', roof: '#5a1a14', accent: '#ffd84a', trim: '#fff0e0', signBg: '#3a0e0a', sign: '#ffe08a', glow: '#ffb060', tag: 'fire-red' },
+});
 
 export function proposalProps(grid, w, h, lots) {
   const S = sprites();

@@ -117,19 +117,21 @@ import { renderAcademy } from './academyui.js';
 import * as Lounge from './lounge.js';
 import { renderLounge } from './loungeui.js';
 import { makeRoomPlay } from './roomplay.js';
-import { sceneForDoor, HUB_GATES, resolveExit, makePortalState, portalStep, SCENES, scene as sceneOf, walkInExits, solidAt as sceneSolid, ST as ROOM_ST } from './scenes.js';
+import { sceneForDoor, LOT_SCENES, HUB_GATES, resolveExit, makePortalState, portalStep, SCENES, scene as sceneOf, walkInExits, solidAt as sceneSolid, ST as ROOM_ST } from './scenes.js';
 import { hubGateProp } from './sceneart.js';
 import { buildDrawer, drawerOpen } from './hudmenu.js';
 import { layoutSafe } from './safezones.js';
 import { createGroveTown } from './groveview.js';
 import { createNpcWork, drawNpcOverlay, useLayout } from './npcwork.js';
 import { renderTownLife, TOWN_LIFE_CSS } from './townlife.js';
-import { nearPlace, promptOf, placeProps } from './townx.js';
+import { nearPlace, promptOf, placeProps, placeDoor } from './townx.js';
+import { renderExchange } from './exchangeui.js';
+import { needStatus } from './townneeds.js';
 import { renderPlace, TOWNX_CSS } from './townxui.js';
 import { startZoneJob, zoneJobActive, zoneJobDebug } from './zonejobui.js';
 import { ensureTownx } from './zonejobs.js';
-import { ledger } from './townecon.js';
-import { playerUsed } from './shops.js';
+import { ledger, deliveries } from './townecon.js';
+import { playerUsed, SHOP_IDS, SHOPS, relOf, tierOf } from './shops.js';
 import { dayKey as sydDayKey, skyDayIndex } from './workrow.js';
 import { drawSeated, punchNightLights } from './daytown.js';
 import { hop, isBlocked as previewBlocked, LOTS as proposalLots, NOOKS, PLAZA_FOLK, preparePreviewPlayer, previewGround, proposalPath, PROPOSAL_H, PROPOSAL_W, STOPS, visitDistrict, GRID as previewGrid, T as previewTile } from './townproposal.js';
@@ -635,7 +637,14 @@ let arcadeOpen = false; globalThis.__arcade = { open: openArcade, close: closeAr
 globalThis.__eng = ENG; globalThis.__fly5 = F5;
 // Town economy extras (preview): walk up to a workplace / shop / civic door in the reviewed town, press A for its card.
 const txNear = () => (NPCW && !drive && state && mode === 'world' ? nearPlace(state.player.x, state.player.y) : null);
-function txAct() { const p = txNear(); if (!p || panel || zoneJobActive() || nearPup()?.rowRef) return false; blip(700); openPanel('townx', { place: p.id }); return true; }
+function txAct() { const p = txNear(); if (!p || panel || zoneJobActive() || nearPup()?.rowRef) return false; blip(700);
+  if (LOT_SCENES[p.civic]) { const d = placeDoor(p.id); enterRoom(LOT_SCENES[p.civic], 'door', { kind: 'civic', id: 'exchange', name: p.name, tx: d.tx, ty: d.ty }); return true; }
+  openPanel('townx', { place: p.id }); return true; }
+function txMade() { const X = ensureTownx(state), d = skyDayIndex(); return X.made.day === d ? X.made.goods : {}; }
+function txExchangeOpts(opts) { const d = skyDayIndex(), sec = txSkySec();
+  return { tab: opts.tab, skyDay: d, led: txLedger(), routes: deliveries(sec), need: needStatus(d, sec, txMade()), wanted: [], spending: [],
+    shops: SHOP_IDS.map((id) => { const R = relOf(state, id), t = tierOf(R.buys); return { owner: SHOPS[id].owner, shop: SHOPS[id].name, tier: t.name, off: Math.round(t.off * 100), buys: R.buys }; }),
+    reopen: (o) => openPanel('exchange', { ...opts, ...o }) }; }
 const txLook = () => ({ coat: state.player.coat, outfit: state.wardrobe?.equipped || {}, art: artKey(state.player.coat, state.wardrobe?.equipped) });
 function playZoneJob(id) { if (panel) closePanel(); keys.clear(); ensureTownx(state);
   return startZoneJob(id, { state, look: txLook(), day: () => sydDayKey(), skyDay: () => skyDayIndex(), blip,
@@ -1151,6 +1160,7 @@ const doorReady = () => time >= doorSt.until;
 // ---- Round 2: rooms & zones (walkable interiors + outdoor zones; see scenes.js / roomplay.js) ----
 let roomBuild = null; const gateSt = makePortalState(); const GATE_EXITS = HUB_GATES.map((g) => ({ tiles: [[g.tx, g.ty]], face: g.face, gate: g }));
 const roomDoorById = (id) => doorList(state).find((q) => q.id === id) || interactables(state).find((q) => q.id === id);
+const txOutside = (id) => { const d = placeDoor(id); return d ? { x: d.x, y: d.y, face: 'down' } : null; };
 function drawRoomActor(c, a, snap) {
   c.save(); c.translate(snap(a.x), snap(a.y)); c.scale(0.5, 0.5);
   if (a.me) { const look = hasCustomLook(state) ? myProfile() : null, em = player.emote, pz = poseFor({ act: ACT.act, face: player.face }), mm = pz && CP.on ? CP.meMunch(time) : 0; if (mm) { pz.dy += mm * 1.6; pz.rot += (player.face === 'left' ? -1 : 1) * mm * 0.05; } // eating at your café table
@@ -1261,7 +1271,7 @@ function enterRoom(id, at, door = null) { if (mode === 'room' && RP.id === id) r
   if (door) { const o = outsideOf(door); Object.assign(state.player, { x: o.x, y: o.y }); } // saves/reloads/Back-to-Verse always land you outside, never inside a room
   setTimeout(() => { mode = 'room'; RP.enter(id, at); roomUi(RP.sc); persist(); }, 70); }
 function enterGate(g) { if (mode !== 'world' || panel) return; globalThis.__portalFires = (globalThis.__portalFires || 0) + 1; stopWalk(); Object.assign(state.player, { x: (g.out[0] + 0.5) * TILE, y: (g.out[1] + 0.5) * TILE }); enterRoom(g.to, g.at); }
-function roomPortal(ex) { if (RP.R.busy) return; const r = resolveExit(ex, { outsideOf, doorById: roomDoorById }); if (!r) return;
+function roomPortal(ex) { if (RP.R.busy) return; const r = resolveExit(ex, { outsideOf, doorById: roomDoorById }); if (!r) return; if (r.scene === 'hub' && !Number.isFinite(r.x) && txOutside(ex.door)) Object.assign(r, txOutside(ex.door));
   if (r.scene !== 'hub') return RP.travel(r.scene, ex.at, 'gate'); // (travel counts itself for the e2e)
   globalThis.__portalFires = (globalThis.__portalFires || 0) + 1;
   if (!Number.isFinite(r.x)) { r.x = state.player.x; r.y = state.player.y; r.face = 'down'; }
@@ -1354,7 +1364,7 @@ function interact(it, viaDoor = false) { if (!viaDoor && isWalkDoor(it)) { toast
 
 const txSkySec = () => dayPhase(time + dayOffset).hour * 60;
 function txLedger() { const X = ensureTownx(state), d = skyDayIndex(); return ledger(txSkySec(), { made: X.made.day === d ? X.made.goods : {}, used: playerUsed(state, d) }); }
-function txPlaceOpts(opts) { return { state, place: opts.place, day: sydDayKey(), skyDay: skyDayIndex(), greet: opts.greet, brawl: opts.brawl, ledger: txLedger, saved: () => { hud(); persist(); }, startJob: (id) => playZoneJob(id), toast, reopen: (o) => openPanel('townx', { ...opts, ...o }) }; }
+function txPlaceOpts(opts) { return { state, place: opts.place, day: sydDayKey(), skyDay: skyDayIndex(), greet: opts.greet, brawl: opts.brawl, ledger: txLedger, need: () => needStatus(skyDayIndex(), txSkySec(), txMade()), saved: () => { hud(); persist(); }, startJob: (id) => playZoneJob(id), toast, reopen: (o) => openPanel('townx', { ...opts, ...o }) }; }
 function maybeOfferOnboard(kind, opts = {}) {
   const place = OB.placeFromPanel(kind, opts) || OB.placeFromInteract({ kind, id: opts.id || kind }) || (kind === 'rescue' || kind === 'quest' ? kind : null);
   if (place) setTimeout(() => onboardUi.offer(place), 280);
@@ -1364,6 +1374,7 @@ function openPanel(kind, opts = {}) {
   const body = $('#panel-body'); body.onclick = null; const dg = $('#dialog'); if (dg) { dg.style.pointerEvents = 'none'; dg.style.visibility = 'hidden'; }
   if (kind !== 'onboard') maybeOfferOnboard(kind, opts);
   if (kind === 'townx') return renderPlace(body, txPlaceOpts(opts));
+  if (kind === 'exchange') return renderExchange(body, txExchangeOpts(opts));
   if (kind === 'townlife' && NPCW) return renderTownLife(body, { tl: NPCW.row, id: opts.id, tab: opts.tab, greet: opts.greet, toast, reopen: (o) => openPanel('townlife', o) });
   if (kind === 'event') return renderEventPanel(body);
   if (kind === 'dquests') return renderQuestPanel(body);
@@ -2641,7 +2652,7 @@ cv.addEventListener('wheel', (e) => { if (mode !== 'world') return; e.preventDef
   cv.addEventListener('touchend', (e) => { if (e.touches.length < 2) pinch = null; }, { passive: true }); }
 document.getElementById('zin')?.addEventListener('click', () => setZoom(stepZoom(ZOOM, 1))); document.getElementById('zout')?.addEventListener('click', () => setZoom(stepZoom(ZOOM, -1)));
 GROVE.place = (x, y) => { state.player.x = x; state.player.y = y; cam.x = x; cam.y = y; };
-window.__inu = { townx: { near: () => txNear(), open: (id) => openPanel('townx', { place: id }), job: (id) => playZoneJob(id), zj: () => zoneJobDebug(), state: () => state && ensureTownx(state), ledger: () => txLedger() }, grove: GROVE, npcwork: NPCW, guide, pet: { get f() { return petF; }, PL, remote: RPETS }, portals: { PT, found: PFOUND, warp: (to, from) => warpTo(to, from), here: () => stoneHere(), get view() { return mmView; } }, photo: { get on() { return photo; }, get cam() { return PHC; }, toggle: () => togglePhoto(), ui: PHUI, PHM }, emo: { get act() { return ACT.act; }, action: (k) => doAction(k), seat: () => seatNear(), sit: (id) => { const sp = SPOTS.find((q) => q.id === id); if (sp) { state.player.x = sp.x; state.player.y = sp.y + 10; const sn = seatNear(); if (sn) sitAt(sn); } return ACT.act; }, spots: SPOTS, wheel }, audio: { debug: audioDebug, settings: audioSettings, area: () => sndArea }, open: (k, o) => openPanel(k, o), get time() { return time; }, get player() { return player; }, get zoom() { return ZOOM; }, setZoom, president: pres, presVisit: (k) => startVisit(pres, k, { dayLen: DAY_LEN }), setHour: (h) => { const w = SKY.skyWorldT(skyNow(), DAY_LEN); SKYS.pinH = null; SKYS.shift = timeForHour(h) - (((w % DAY_LEN) + DAY_LEN) % DAY_LEN); syncSky(); }, folk: { T: TFS, Q: FOLKQ, sec: () => folkSecNow(), at: (i, s) => TF.folkAt(i, s), setSec: (s) => { FOLKQ.shift = s - folkBase(); }, find: (name, doing) => { const i = TF.FOLK_NAMES.indexOf(name), o = {}; for (let s = 0; s < TF.FOLK_DAY; s += 2) { TF.folkAt(i, s, o); if (o.doing === doing) return { s, x: o.x, y: o.y }; } return null; } }, setRain: (r) => { SKYS.wx = r ? 'rain' : 'clear'; amb.rain = amb.rainTarget = amb.cloud = amb.cloudTarget = r ? 1 : 0; amb.weatherT = 999; }, sky: SKYS, get amb() { return amb; }, get npcs() { return npcs; }, get mood() { return { ...MOOD.current, shown: MWd.MW.mood }; }, emote: (k) => doEmote(k), cam, get state() { return state; }, get mode() { return mode; }, get panel() { return panel?.kind; }, get panelObj() { return panel; }, mp: MPL, club: { hunt: () => huntNow(), party: () => partyNow(), kennel: () => enterKennel(), room: (id, at) => enterRoom(id, at || null), get rp() { return RP; } } };
+window.__inu = { townx: { near: () => txNear(), open: (id) => openPanel('townx', { place: id }), job: (id) => playZoneJob(id), zj: () => zoneJobDebug(), state: () => state && ensureTownx(state), ledger: () => txLedger(), where: () => ({ mode, room: mode === 'room' ? RP.id : null, tx: Math.floor(state.player.x / TILE), ty: Math.floor(state.player.y / TILE) }), leave: () => mode === 'room' && roomPortal(RP.sc.exits[0]), exchange: (tab) => openPanel('exchange', { tab }), enterExchange: () => { const d = placeDoor('exchange'); enterRoom('exchange', 'door', { kind: 'civic', id: 'exchange', name: 'Town Exchange', tx: d.tx, ty: d.ty }); } }, grove: GROVE, npcwork: NPCW, guide, pet: { get f() { return petF; }, PL, remote: RPETS }, portals: { PT, found: PFOUND, warp: (to, from) => warpTo(to, from), here: () => stoneHere(), get view() { return mmView; } }, photo: { get on() { return photo; }, get cam() { return PHC; }, toggle: () => togglePhoto(), ui: PHUI, PHM }, emo: { get act() { return ACT.act; }, action: (k) => doAction(k), seat: () => seatNear(), sit: (id) => { const sp = SPOTS.find((q) => q.id === id); if (sp) { state.player.x = sp.x; state.player.y = sp.y + 10; const sn = seatNear(); if (sn) sitAt(sn); } return ACT.act; }, spots: SPOTS, wheel }, audio: { debug: audioDebug, settings: audioSettings, area: () => sndArea }, open: (k, o) => openPanel(k, o), get time() { return time; }, get player() { return player; }, get zoom() { return ZOOM; }, setZoom, president: pres, presVisit: (k) => startVisit(pres, k, { dayLen: DAY_LEN }), setHour: (h) => { const w = SKY.skyWorldT(skyNow(), DAY_LEN); SKYS.pinH = null; SKYS.shift = timeForHour(h) - (((w % DAY_LEN) + DAY_LEN) % DAY_LEN); syncSky(); }, folk: { T: TFS, Q: FOLKQ, sec: () => folkSecNow(), at: (i, s) => TF.folkAt(i, s), setSec: (s) => { FOLKQ.shift = s - folkBase(); }, find: (name, doing) => { const i = TF.FOLK_NAMES.indexOf(name), o = {}; for (let s = 0; s < TF.FOLK_DAY; s += 2) { TF.folkAt(i, s, o); if (o.doing === doing) return { s, x: o.x, y: o.y }; } return null; } }, setRain: (r) => { SKYS.wx = r ? 'rain' : 'clear'; amb.rain = amb.rainTarget = amb.cloud = amb.cloudTarget = r ? 1 : 0; amb.weatherT = 999; }, sky: SKYS, get amb() { return amb; }, get npcs() { return npcs; }, get mood() { return { ...MOOD.current, shown: MWd.MW.mood }; }, emote: (k) => doEmote(k), cam, get state() { return state; }, get mode() { return mode; }, get panel() { return panel?.kind; }, get panelObj() { return panel; }, mp: MPL, club: { hunt: () => huntNow(), party: () => partyNow(), kennel: () => enterKennel(), room: (id, at) => enterRoom(id, at || null), get rp() { return RP; } } };
 // Inu Arcade inside the desktop overlay: its 🏠 button asks us to close the overlay instead of reloading.
 // framed Arcade (hall peek) -> Verse: ready / exit (close + inu:back-to-verse alias) / score. Origin pinned (districts.js). Score = toast only.
 addEventListener('message', (e) => { const m = DIS.arcadeMessage(e, new URL(ARCADE.url).origin); if (!m) return; globalThis.__arcadeMsgs = [...(globalThis.__arcadeMsgs || []).slice(-9), m];

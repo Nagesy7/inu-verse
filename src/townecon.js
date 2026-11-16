@@ -2,20 +2,20 @@
 // sees the same numbers and screenshots can be checked against them. Units are in-game goods; Bones are in-game only.
 // Row workplaces: real deliveries from the day plans (workrow.js). Base workplaces (sawmill, mine...): a steady rate
 // while their crews are on shift (7:00-17:00). The player's job shifts add goods; shop sales and lunches use them up.
-import { townStock, HOUR_S, LEAVE_H, HOME_H, SKY_DAY_S } from './workrow.js';
+import { townStock, HOUR_S, LEAVE_H, HOME_H, SKY_DAY_S, ROW_WORKERS } from './workrow.js';
 
 export const BATCH = 4; // units in one row delivery
 // good -> who makes it, where it goes, and (base goods) units per working hour
 export const GOODS = Object.freeze({
-  planks: { name: 'Planks', from: 'Sawmill', to: "Builders' Yard", rate: 3 },
-  ore: { name: 'Ore', from: 'Mine', to: 'Smelter', rate: 3 },
-  bars: { name: 'Metal bars', from: 'Smelter', to: 'Forge', rate: 1.5 },
-  tools: { name: 'Tools', from: 'Forge', to: 'Forge counter', rate: 1 },
-  wheat: { name: 'Wheat', from: 'Wheat Farm', to: 'Flour Mill', rate: 3 },
-  bread: { name: 'Bread', from: 'Bakery', to: 'Bakery counter', rate: 3 },
-  fish: { name: 'Fish', from: 'Fishery', to: 'Market', rate: 2 },
-  stone: { name: 'Stone', from: 'Quarry', to: "Builders' Yard", rate: 2 },
-  cargo: { name: 'Cargo', from: 'East Dock', to: 'Delivery Depot', rate: 1.5 },
+  planks: { name: 'Planks', from: 'Sawmill', to: "Builders' Yard", rate: 3, fromLot: 'sawmill', toLot: 'builders' },
+  ore: { name: 'Ore', from: 'Mine', to: 'Smelter', rate: 3, fromLot: 'mine', toLot: 'smelter' },
+  bars: { name: 'Metal bars', from: 'Smelter', to: 'Forge', rate: 1.5, fromLot: 'smelter', toLot: 'forge' },
+  tools: { name: 'Tools', from: 'Forge', to: 'Forge counter', rate: 1, fromLot: 'forge', toLot: 'forge' },
+  wheat: { name: 'Wheat', from: 'Wheat Farm', to: 'Flour Mill', rate: 3, fromLot: 'farm', toLot: 'mill' },
+  bread: { name: 'Bread', from: 'Bakery', to: 'Bakery counter', rate: 3, fromLot: 'bakery', toLot: 'bakery' },
+  fish: { name: 'Fish', from: 'Fishery', to: 'Market', rate: 2, fromLot: 'dock', toLot: 'goods' },
+  stone: { name: 'Stone', from: 'Quarry', to: "Builders' Yard", rate: 2, fromLot: 'quarry', toLot: 'builders' },
+  cargo: { name: 'Cargo', from: 'East Dock', to: 'Delivery Depot', rate: 1.5, fromLot: 'eastdock', toLot: 'depot' },
   fruit: { name: 'Fruit', from: 'Orchard', to: 'Market', row: true },
   honey: { name: 'Honey', from: 'Apiary', to: 'Bakery', row: true },
   milk: { name: 'Milk', from: 'Dairy', to: 'Café', row: true },
@@ -43,7 +43,10 @@ export function production(sec, made = {}) {
 // row deliveries so far today, for the route map: [{ from, to, good, n }]
 export function deliveries(sec) {
   const m = new Map();
-  for (const e of townStock(sec)) { const k = e.good + '>' + e.lot; const d = m.get(k) || { good: e.good, to: e.lot, from: GOODS[e.good]?.from || '', n: 0 }; d.n += e.delivered; m.set(k, d); }
+  const fromLot = (g) => ROW_WORKERS.find((w) => w.good === g)?.lot || null;
+  for (const e of townStock(sec)) { const k = e.good + '>' + e.lot; const d = m.get(k) || { good: e.good, to: e.lot, fromLot: fromLot(e.good), from: GOODS[e.good]?.from || '', n: 0 }; d.n += e.delivered; m.set(k, d); }
+  const wh = workedHours(sec); // base chains: one cart per worked hour on each leg
+  for (const g of GOOD_IDS) { const G = GOODS[g]; if (G.row || !G.fromLot || G.fromLot === G.toLot) continue; m.set(g + '>' + G.toLot, { good: g, to: G.toLot, fromLot: G.fromLot, from: G.from, n: Math.floor(wh) }); }
   return [...m.values()].sort((a, b) => b.n - a.n);
 }
 /** whole-town ledger at a moment. used = { good: n } (shop sales, lunches, town needs), wanted = { good: n } */

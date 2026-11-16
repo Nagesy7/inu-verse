@@ -77,3 +77,23 @@ test('shop card on a phone: buy three scarves, become a Regular, see 5% off; cha
     assert.deepEqual(errs, []); await ctx.close();
   } finally { await browser.close(); srv.close(); }
 });
+
+test('walk into the Town Exchange on a phone, read every board, and walk back out', { timeout: 90000 }, async () => {
+  const srv = await serveRoot(); const browser = await chromium.launch();
+  try {
+    const { ctx, page, errs } = await boot(browser, srv, { width: 375, height: 667 });
+    await page.evaluate(() => __inu.setHour(13)); await goDoor(page, 56, 43); await page.waitForTimeout(500);
+    assert.match(await page.evaluate(() => document.getElementById('prompt').innerText), /Town Exchange/i);
+    await page.dispatchEvent('#btn-a', 'pointerdown');
+    await page.waitForFunction(() => __inu.townx.where().room === 'exchange', null, { timeout: 5000 }); await page.waitForTimeout(300);
+    for (const tab of ['production', 'routes', 'needs', 'wanted', 'spending']) {
+      await page.evaluate((t) => __inu.townx.exchange(t), tab); await page.waitForSelector(`[data-tx-exchange="${tab}"]`);
+    }
+    await page.evaluate(() => __inu.townx.exchange('production')); assert.ok(await page.locator('[data-ex-good="planks"]').count() === 1);
+    await page.evaluate(() => __inu.townx.exchange('routes')); assert.ok(await page.locator('#ex-map').count() === 1);
+    await page.evaluate(() => __inu.townx.exchange('needs')); assert.match(await page.locator('[data-ex-need]').innerText(), /needs today/i);
+    await page.evaluate(() => { document.querySelector('#panel-close')?.click(); __inu.townx.leave(); }); await page.waitForFunction(() => __inu.townx.where().mode === 'world', null, { timeout: 5000 });
+    assert.deepEqual(await page.evaluate(() => { const w = __inu.townx.where(); return [w.tx, w.ty]; }), [56, 43], 'back out on the Exchange door tile');
+    assert.deepEqual(errs, []); await ctx.close();
+  } finally { await browser.close(); srv.close(); }
+});

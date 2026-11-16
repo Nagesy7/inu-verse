@@ -36,6 +36,24 @@ export const SCENES = {
     npcs: [{ name: 'Barista Biscuit', coat: 'cream', x: 7, y: 2, face: 'down', staff: true, lines: ['One puppy latte, coming up!', 'Grab an apron at the counter if you want a shift!', 'Hungry? Order at the counter on the right, or sit at any table.'] },
       { name: 'Latte', coat: 'tan', x: 10, y: 6, wander: true, lines: ['This bone-shaped biscuit is perfect.', 'I come here every morning.'] },
       { name: 'Pebble', coat: 'gray', x: 3, y: 8, wander: true, lines: ['Have you tried the honey scone?', 'Shh, I am reading.'] }] }),
+  // Town economy extras (preview): the walk-in Town Exchange. Each board opens the live logistics for that wall.
+  exchange: S({ name: 'Town Exchange', kind: 'interior', floor: 'wood', wall: '#7a8a6a', legend: IN, map: [
+    '################',
+    '#WQQ#WWWWWW#QQW#',
+    '#..............#',
+    '#.NNN..TT..NNN.#',
+    '#..............#',
+    '#.NNN......NNN.#',
+    '#..............#',
+    '#P.....,,.....P#',
+    '#######EE#######'],
+    spawns: { door: [7, 7, 'up'] }, exits: [{ tiles: [[7, 8], [8, 8]], face: 'down', to: 'hub', door: 'exchange' }],
+    spots: [{ id: 'production', tx: 3, ty: 4, face: 'up', name: 'Production board', act: { panel: 'exchange', opts: { tab: 'production' } }, label: 'Production, stock & shortages', verb: 'read' },
+      { id: 'routes', tx: 7, ty: 4, face: 'up', name: 'Route map', act: { panel: 'exchange', opts: { tab: 'routes' } }, label: 'Delivery route map', verb: 'read' },
+      { id: 'wanted', tx: 12, ty: 4, face: 'up', name: 'Most wanted', act: { panel: 'exchange', opts: { tab: 'wanted' } }, label: 'Most wanted items', verb: 'read' },
+      { id: 'needs', tx: 3, ty: 6, face: 'up', name: 'Town Hall needs', act: { panel: 'exchange', opts: { tab: 'needs' } }, label: 'Town Hall needs board', verb: 'read' },
+      { id: 'spending', tx: 12, ty: 6, face: 'up', name: 'Spending board', act: { panel: 'exchange', opts: { tab: 'spending' } }, label: 'Spending & shop friends', verb: 'read' }],
+    npcs: [{ name: 'Clerk Tally', coat: 'gray', x: 8, y: 2, face: 'down', staff: true, lines: ['Every plank, loaf and fish in town goes up on these boards.', 'Short of something? The workers get an order for more.', 'The Town Hall posts one need a day. Your shifts count!'] }] }),
   shop: S({ name: 'Paws & Pillows', kind: 'interior', floor: 'tile', wall: '#8fb3c9', legend: IN, map: [
     '##################',
     '#WW#QQ#SSSS#QQ#WW#',
@@ -245,6 +263,8 @@ export const SCENES = {
 };
 
 // door ids on the hub that now lead into a walkable interior (Launch Hall + mall stores + game doors keep their old entry)
+// town-plan lot doors (townproposal / townx places) that open an interior; main.js enters them via txAct
+export const LOT_SCENES = { exchange: 'exchange' };
 export const DOOR_SCENES = { 'building:cafe': 'cafe', 'building:shop': 'shop', 'building:fashion': 'fashion', 'building:cars': 'cars', 'building:academy': 'academy', 'building:lounge': 'lounge', 'bank:bank': 'bank', 'mall:mall': 'mall', 'clubhouse:clubhouse': 'clubhouse' };
 export const sceneForDoor = (d) => DOOR_SCENES[d.kind + ':' + d.id] || null;
 // hub gates (walk into them to change zone). tx,ty = hub stand tile; face = walking direction.

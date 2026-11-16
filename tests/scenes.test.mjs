@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { SCENES, scene, solidAt, spawnOf, exitAt, HUB_GATES, DOOR_SCENES, sceneForDoor, resolveExit, makePortalState, portalStep, ST, nearestSpot } from '../src/scenes.js';
+import { SCENES, scene, solidAt, spawnOf, exitAt, HUB_GATES, DOOR_SCENES, LOT_SCENES, sceneForDoor, resolveExit, makePortalState, portalStep, ST, nearestSpot } from '../src/scenes.js';
 import { astar } from '../src/mobility.js';
 import { isSolid, doorList, MAP_W, MAP_H, TILE } from '../src/world.js';
 import { outsideOf } from '../src/doors.js';
@@ -56,7 +56,7 @@ test('hub gates are on walkable, reachable hub tiles and lead to zones; zone exi
     const r = resolveExit(back, {}); assert.deepEqual([Math.floor(r.x / ST), Math.floor(r.y / ST), r.face], g.out); }
 });
 test('scene graph: every scene is reachable from the hub (doors, gates, ferry) and links resolve to walkable spawns', () => {
-  const adj = { hub: new Set([...Object.values(DOOR_SCENES), ...HUB_GATES.map((g) => g.to)]) };
+  const adj = { hub: new Set([...Object.values(DOOR_SCENES), ...Object.values(LOT_SCENES), ...HUB_GATES.map((g) => g.to)]) };
   for (const id of ids) { const sc = scene(id); adj[id] = new Set();
     for (const e of sc.exits) { adj[id].add(e.to); if (e.to !== 'hub') { const r = resolveExit(e); assert.ok(!solidAt(scene(e.to), Math.floor(r.x / ST), Math.floor(r.y / ST)), `${id}->${e.to}`); } }
     for (const s of sc.spots) if (s.act.travel) { adj[id].add(s.act.travel); const sp = spawnOf(s.act.travel, s.act.at); assert.ok(!solidAt(scene(s.act.travel), ...tileOf(sp))); } }
@@ -79,7 +79,7 @@ test('portal fires once per visit: not on spawn, not while standing, not facing 
   assert.equal(portalStep(st, sc, at(ex, ey - 1, 'up'), 3.2), null); assert.ok(portalStep(st, sc, at(ex, ey, 'down'), 3.3), 're-armed');
 });
 test('spot actions only use existing panels / build / say / ferry', () => {
-  const ok = new Set(['cafe', 'shop', 'fashion', 'wardrobe', 'cars', 'garage', 'bank', 'mall', 'packs', 'cabinet', 'fasttravel', 'boothrent', 'academy', 'lounge']); // + district cabinet doors / fast travel / booth lease (main.js)
+  const ok = new Set(['cafe', 'shop', 'fashion', 'wardrobe', 'cars', 'garage', 'bank', 'mall', 'packs', 'cabinet', 'fasttravel', 'boothrent', 'academy', 'lounge', 'exchange']); // exchange: Town Exchange boards (townx, preview) // + district cabinet doors / fast travel / booth lease (main.js)
   for (const id of ids) for (const s of scene(id).spots) { const a = s.act; assert.ok((a.panel && ok.has(a.panel)) || a.build === 'clubhouse' || a.say || a.travel || (id === 'cafe' && a.diner), `${id}.${s.id}`); assert.ok(nearestSpot(scene(id), (s.tx + 0.5) * ST, (s.ty + 0.5) * ST) === s); }
 });
 test('original names only: no trademarked game names in scene data', () => {

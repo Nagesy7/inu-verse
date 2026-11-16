@@ -149,6 +149,11 @@ export const LOTS = Object.freeze([
   lot('sheep', 'Sheep Meadow', 'orchard', 74, 3, 5, 4, [76, 7]),
   lot('teagarden', 'Tea Garden', 'orchard', 80, 3, 5, 4, [82, 7]),
   lot('candles', 'Candle Works', 'orchard', 86, 3, 5, 4, [88, 7]),
+  // Town economy extras (preview): the walk-in Town Exchange on Exchange Lane (y 43), and the civic row on Civic Lane (y 16).
+  lot('exchange', 'Town Exchange', 'metal', 54, 40, 6, 3, [56, 43]),
+  lot('police', 'Police Academy', 'civic', 69, 17, 6, 4, [71, 16]),
+  lot('hospital', 'Hospital', 'civic', 76, 17, 6, 4, [78, 16]),
+  lot('firehouse', 'Fire Station', 'civic', 83, 17, 5, 4, [85, 16]),
 ]);
 
 export const STONES = Object.freeze([
@@ -309,6 +314,9 @@ export function buildProposalGrid() {
   for (let x = 73; x <= 91; x++) if (openUp.has(grid[7][x])) grid[7][x] = T.WALK;
   for (let y = 8; y <= 9; y++) if (openUp.has(grid[y][73])) grid[y][73] = T.WALK;
   for (let x = 71; x <= 73; x++) if (openUp.has(grid[9][x])) grid[9][x] = T.WALK;
+  // Exchange Lane (y 43) from the main road to the east path, and Civic Lane (y 16) along the civic row's front doors.
+  for (let x = 50; x <= 63; x++) if (openUp.has(grid[43][x])) grid[43][x] = T.WALK;
+  for (let x = 68; x <= 88; x++) if (openUp.has(grid[16][x])) grid[16][x] = T.WALK;
   for (const b of LOTS) {
     const [x, y] = b.door;
     for (const [dx, dy] of [[0, 0], [1, 0], [-1, 0], [0, 1], [0, -1]]) {

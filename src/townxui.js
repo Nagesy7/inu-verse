@@ -30,6 +30,7 @@ export function renderPlace(body, opts) {
   for (const fn of opts.before || []) html += fn(p) || '';
   if (p.shop) html += shopSection(opts.state, p.shop, opts.ledger ? opts.ledger().rows : [], opts.brawl || null);
   if (p.job) html += jobSection(opts.state, p.job, opts.day);
+  if (p.civic === 'townhall' && opts.need) html += needSection(opts.need());
   for (const fn of opts.after || []) html += fn(p) || '';
   html += '</div>';
   body.innerHTML = html;
@@ -68,3 +69,9 @@ export function shopSection(state, shopId, rows, brawl) {
   return html + '</div>';
 }
 const goodFrom = (g) => ({ bread: 'Bakery', honey: 'Apiary', fruit: 'Orchard', wool: 'Sheep Meadow', fish: 'Fishery', pots: 'Pottery', tea: 'Tea Garden', milk: 'Dairy', tools: 'Forge', candles: 'Candle Works' }[g] || g);
+
+export function needSection(n) {
+  return `<div class="tx-sec" data-tx-sec="need"><h3>Today's town need</h3><p><b>${esc(n.title)}</b></p>${bar(n.have / n.n, n.complete ? '#7af07a' : '#f2cc68')}
+    <div class="tx-row"><span>Crews</span><b>${n.crew}</b></div><div class="tx-row"><span>Your shifts</span><b>${n.you}</b></div><div class="tx-row"><span>Still needed</span><b>${n.left}</b></div>
+    <p class="tx-greet">${n.complete ? esc(n.done) : 'Every hit in a job shift makes goods for the town.'}</p><p class="tx-note">The full logistics boards are inside the Town Exchange on Exchange Lane.</p></div>`;
+}
