@@ -93,7 +93,7 @@ export function rpcDeps(rpcUrl) {
         quoteTokens = new BN(out.toString());
       } else {
         const [global, feeConfig, curve] = await Promise.all([online.fetchGlobal(), online.fetchFeeConfig().catch(() => null), online.fetchBondingCurve(new PublicKey(quoteMint))]);
-        quoteTokens = getBuyTokenAmountFromSolAmount({ global, feeConfig, mintSupply: null, bondingCurve: curve, amount: new BN(lamports), quoteMint: new PublicKey(WSOL) });
+        quoteTokens = quoteCurveBuyAmount({ global, feeConfig, curve, amount: lamports });
       }
       const [global, feeConfig] = await Promise.all([online.fetchGlobal(), online.fetchFeeConfig().catch(() => null)]);
       const tokenOut = quoteNewCoinAmount({ global, feeConfig, quoteMint, amount: quoteTokens, pumpQuote });
@@ -142,6 +142,13 @@ export function quotedTrades({ quoteMint, mint, lamports, quoteTokens, tokenOut 
     { mint: quoteMint, quoteMint: WSOL, isBuy: true, quoteAmount: String(lamports), tokenAmount: String(quoteTokens), fee: "0", feeBps: 95, creatorFee: "0", creatorFeeBps: 0, buybackFee: "0", holderRewards: "0", holderRewardsBps: 0 },
     { mint, quoteMint, isBuy: true, quoteAmount: String(quoteTokens), tokenAmount: String(tokenOut), fee: "0", feeBps: 0, creatorFee: "0", creatorFeeBps: 30, buybackFee: "0", holderRewards: "0", holderRewardsBps: 0 },
   ];
+}
+// SOL -> tokens on an EXISTING pump.fun bonding curve (the quote mint while it is still on its curve, e.g. $KIBBLE).
+// The SDK ignores the curve you pass and prices a brand-new initial curve whenever mintSupply is null, which overquoted
+// $KIBBLE by ~31% and made the on-chain min-out check fail (Custom 6004, ExceededSlippage). Pass the real supply so the real reserves are used.
+export function quoteCurveBuyAmount({ global, feeConfig, curve, amount }) {
+  const supply = curve.tokenTotalSupply && !new BN(curve.tokenTotalSupply.toString()).isZero() ? new BN(curve.tokenTotalSupply.toString()) : global.tokenTotalSupply;
+  return getBuyTokenAmountFromSolAmount({ global, feeConfig, mintSupply: supply, bondingCurve: curve, amount: new BN(amount.toString()), quoteMint: new PublicKey(WSOL) });
 }
 export function quoteNewCoinAmount({ global, feeConfig, quoteMint, amount, pumpQuote }) {
   const qMint = new PublicKey(quoteMint), amt = amount instanceof BN ? amount : new BN(String(amount));
