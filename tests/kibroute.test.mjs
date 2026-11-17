@@ -4,7 +4,7 @@
 import test from 'node:test'; import assert from 'node:assert/strict'; import fs from 'node:fs';
 import { makeLaunchHandler } from '../api/launch.js';
 import { memoryStore } from '../api/coins.js';
-import { kit as K, decodeAccount, KIBBLE_MINT, FLC_MINT, FOOD_MINT, AUTISM_MINT, PAIRS, DEFAULT_PAIR as API_DEFAULT, ROUTE_ALT, tradesFromLogs, describeRoute, validateBuild, explainSim, SLIPPAGE_BPS, minOutFromTokenOut, quotedTrades } from '../api/_lib/launchtx.js';
+import { kit as K, decodeAccount, KIBBLE_MINT, FLC_MINT, FOOD_MINT, AUTISM_MINT, MIKOL_MINT, PAIRS, DEFAULT_PAIR as API_DEFAULT, ROUTE_ALT, tradesFromLogs, describeRoute, validateBuild, explainSim, SLIPPAGE_BPS, minOutFromTokenOut, quotedTrades } from '../api/_lib/launchtx.js';
 import * as NX from '../src/noext.js';
 import * as CK from '../src/vendor/phantom-kit.js';
 import { planRoute, minLamports, DEFAULT_PAIR, ROUTE_ALT as CLIENT_ALT } from '../src/launchcost.js';
@@ -32,7 +32,7 @@ test('$KIBBLE is the default pair everywhere; SOL stays available; $FLC, $FOOD a
   assert.equal(validateBuild(req()).v.pair, 'KIBBLE'); assert.equal(validateBuild(req({ pair: 'SOL' })).v.pair, 'SOL');
   assert.equal(validateBuild(req({ pair: 'FLC' })).ok, true); assert.equal(validateBuild(req({ pair: 'FLC' })).v.pair, 'FLC');
   assert.equal(validateBuild(req({ pair: 'FOOD' })).ok, true); assert.equal(validateBuild(req({ pair: 'FOOD' })).v.pair, 'FOOD');
-  assert.equal(validateBuild(req({ pair: 'AUTISM' })).ok, true); assert.equal(validateBuild(req({ pair: 'AUTISM' })).v.pair, 'AUTISM');
+  assert.equal(validateBuild(req({ pair: 'MIKOL' })).ok, true); assert.equal(PAIRS.MIKOL.quote, MIKOL_MINT); assert.equal(MIKOL_MINT, 'ANt31zPFtdqb327BxLcvPnSUSTMzm5Rf7xfKN5kbpump'); assert.equal(API_DEFAULT, 'KIBBLE'); assert.equal(validateBuild(req({ pair: 'AUTISM' })).ok, true); assert.equal(validateBuild(req({ pair: 'AUTISM' })).v.pair, 'AUTISM');
   assert.equal(PAIRS.FLC.quote, FLC_MINT); assert.equal(PAIRS.FOOD.quote, FOOD_MINT); assert.equal(PAIRS.AUTISM.quote, AUTISM_MINT); assert.equal(PAIRS.KIBBLE.quote, KIBBLE_MINT); assert.equal(PAIRS.SOL.quote, null);
   assert.equal(validateBuild(req({ pair: 'BONK' })).ok, false); assert.equal(validateBuild(req()).v.slippageBps, SLIPPAGE_BPS.def);
   const ui = fs.readFileSync('src/launchui.js', 'utf8'); assert.match(ui, /form: \{ pair: 'KIBBLE'/); assert.match(ui, /<option value="KIBBLE"[^>]*>★ \$KIBBLE \(default\)<\/option><option value="SOL"/);
