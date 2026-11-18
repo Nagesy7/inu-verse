@@ -14,8 +14,8 @@ export const COST = {
 };
 export const MAX_DEV_BUY_SOL = 5;
 export const DEFAULT_PAIR = 'KIBBLE';
-export const QUOTE_TICKER = { KIBBLE: '$KIBBLE', FLC: '$FLC', FOOD: '$FOOD', AUTISM: '$AUTISM', MIKOL: '$MIKOL' };
-const isQuoted = (pair) => pair === 'KIBBLE' || pair === 'FLC' || pair === 'FOOD' || pair === 'AUTISM' || pair === 'MIKOL';
+export const QUOTE_TICKER = { KIBBLE: '$KIBBLE', FLC: '$FLC', FOOD: '$FOOD', AUTISM: '$AUTISM', MIKOL: '$MIKOL', LIVEVI: '$LIVEVI' };
+const isQuoted = (pair) => pair === 'KIBBLE' || pair === 'FLC' || pair === 'FOOD' || pair === 'AUTISM' || pair === 'MIKOL' || pair === 'LIVEVI';
 export function minLamports({ devBuySol = 0, pair = DEFAULT_PAIR } = {}) {
   const buy = Math.max(0, Math.min(MAX_DEV_BUY_SOL, Number(devBuySol) || 0));
   const buyL = Math.round(buy * LAMPORTS);

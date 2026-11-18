@@ -4,7 +4,7 @@
 import test from 'node:test'; import assert from 'node:assert/strict'; import fs from 'node:fs';
 import { makeLaunchHandler } from '../api/launch.js';
 import { memoryStore } from '../api/coins.js';
-import { kit as K, decodeAccount, KIBBLE_MINT, FLC_MINT, FOOD_MINT, AUTISM_MINT, MIKOL_MINT, PAIRS, DEFAULT_PAIR as API_DEFAULT, ROUTE_ALT, tradesFromLogs, describeRoute, validateBuild, explainSim, SLIPPAGE_BPS, minOutFromTokenOut, quotedTrades } from '../api/_lib/launchtx.js';
+import { kit as K, decodeAccount, KIBBLE_MINT, FLC_MINT, FOOD_MINT, AUTISM_MINT, MIKOL_MINT, LIVEVI_MINT, PAIRS, DEFAULT_PAIR as API_DEFAULT, ROUTE_ALT, tradesFromLogs, describeRoute, validateBuild, validateBuy, explainSim, SLIPPAGE_BPS, minOutFromTokenOut, quotedTrades } from '../api/_lib/launchtx.js';
 import * as NX from '../src/noext.js';
 import * as CK from '../src/vendor/phantom-kit.js';
 import { planRoute, minLamports, DEFAULT_PAIR, ROUTE_ALT as CLIENT_ALT } from '../src/launchcost.js';
@@ -82,6 +82,26 @@ test('$AUTISM create-only: UNSIGNED pump.fun create_v2 quoted in Autism Coin, de
   assert.equal(buy.ok, true); assert.equal(buy.v.pair, 'AUTISM');
 });
 
+
+test('$LIVEVI quote pair: accepted by the API and the client plan, default still $KIBBLE, create-only tx is UNSIGNED, mint is exact', async () => {
+  assert.equal(LIVEVI_MINT, '3U5YDJKFxf4EFCea4eCFZ81vzSR3vc3GkYB5H6ZPpump'); assert.equal(PAIRS.LIVEVI.quote, LIVEVI_MINT); assert.equal(PAIRS.LIVEVI.ticker, '$LIVEVI');
+  assert.equal(API_DEFAULT, 'KIBBLE'); assert.equal(validateBuild(req()).v.pair, 'KIBBLE');
+  assert.equal(validateBuild(req({ pair: 'LIVEVI' })).ok, true); assert.equal(validateBuild(req({ pair: 'LIVEVI' })).v.pair, 'LIVEVI');
+  assert.equal(validateBuild(req({ pair: 'LIVEVI', devBuySol: 0.01 })).ok, true);
+  assert.equal(validateBuild(req({ pair: 'LIVE' })).ok, false); assert.match(validateBuild(req({ pair: 'BONK' })).errors.join(' '), /MIKOL, LIVEVI, or SOL/);
+  assert.equal(validateBuy({ player: req().player, mint: req().mint, pair: 'LIVEVI', devBuySol: 0.01 }).ok, true);
+  const d = deps(), h = makeLaunchHandler({ env: {}, store: memoryStore(), deps: d }), body = req({ pair: 'LIVEVI' });
+  const r = await call(h, body); assert.equal(r.code, 200, JSON.stringify(r.body));
+  assert.equal(r.body.pair, 'LIVEVI'); assert.equal(r.body.quoteMint, LIVEVI_MINT); assert.equal(r.body.serverSigned, false);
+  const tx = K.VersionedTransaction.deserialize(Buffer.from(r.body.tx, 'base64')), keys = tx.message.staticAccountKeys.map(String);
+  assert.equal(keys[0], body.player); assert.equal(tx.message.header.numRequiredSignatures, 2);
+  assert.ok(tx.signatures.every((x) => x.every((b) => b === 0)), 'server signed nothing');
+  assert.match(planRoute({ pair: 'LIVEVI' }).steps[0], /paired with \$LIVEVI \(no swap\)/);
+  assert.match(planRoute({ pair: 'LIVEVI', devBuySol: 0.01 }).steps[0], /\$LIVEVI on the \$LIVEVI pump\.fun bonding curve/, 'a not-yet-graduated coin is bought on its curve, not a PumpSwap pool');
+  assert.ok(minLamports({ pair: 'LIVEVI' }).total === minLamports({ pair: 'KIBBLE' }).total);
+  assert.equal(planRoute().steps[0].includes('$KIBBLE'), true, 'default plan stays $KIBBLE');
+  assert.equal(JSON.stringify(PAIRS).includes('streamer'), false);
+});
 
 test('$KIBBLE + opening swap: one UNSIGNED tx, SOL → $KIBBLE → coin, slippage floor from the dry run, fits 1232 bytes via the public ALT', async () => {
   const d = deps(), h = makeLaunchHandler({ env: {}, store: memoryStore(), deps: d }), body = req({ devBuySol: 0.01, slippageBps: 300 });
